@@ -1,0 +1,86 @@
+:root {
+  --content-width: 800px;
+  --side-width: 192px;
+  --gap-size: 40px;
+  --year-width: 160px;
+  --border-color: rgba(229, 231, 235, 0.3);
+  --border-color-dark: rgba(55, 65, 81, 0.3);
+  --border-width: 1.5px;
+}
+
+.posts-container {
+  max-width: var(--content-width);
+  margin: 0 auto;
+  width: 100%;
+  padding: 0 0.5rem;
+  border-top: var(--border-width) solid var(--border-color);
+}
+
+.posts-grid {
+  display: grid;
+  grid-template-columns: var(--year-width) 1fr;
+  gap: var(--gap-size);
+  padding: 1rem 0;
+  border-bottom: var(--border-width) solid var(--border-color);
+}
+
+.year-column {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  padding-top: 0.25rem;
+}
+
+.posts-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.post-link {
+  display: block;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  padding: 0.5rem 0;
+  border-bottom: none !important;
+}
+
+.post-title {
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+  opacity: 0.7;
+  margin: 0;
+  flex: 1;
+}
+
+.post-date {
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+.post-link:hover .post-title,
+.post-link:hover .post-date {
+  opacity: 1;
+}
+
+.post-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2rem;
+}
+
+@media (max-width: 768px) {
+  .posts-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .year-column {
+    padding-bottom: 0.5rem;
+    border-bottom: var(--border-width) solid var(--border-color);
+  }
+}

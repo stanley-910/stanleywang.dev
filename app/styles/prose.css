@@ -1,0 +1,115 @@
+/* styles/prose.css */
+:root {
+  --fg-deep: #222;
+  --text-primary: #333;
+  --text-secondary: #666;
+  --border-color: #e5e5e5;
+}
+
+.dark {
+  --fg-deep: #ddd;
+  --text-primary: #e5e5e5;
+  --text-secondary: #a3a3a3;
+  --border-color: #404040;
+}
+
+.prose :not(pre) > code {
+  font-family: var(--font-mono) !important;
+  font-feature-settings: "ss01" 1, "ss02" 1, "ss03" 1, "ss04" 1, "ss05" 1, "ss06" 1, "ss07" 1, "ss08" 1;
+  color: var(--fg-deep);
+  font-weight: 500;
+  font-size: 0.875em;
+  background-color: rgba(170, 170, 170, 0.1);
+  border-radius: 0.25rem;
+  padding: 0.2em 0.3em;
+  margin: -0.2em 0;
+}
+
+/* Strip backticks from inline-code */
+.prose-code:before {
+  content: none;
+}
+.prose-code:after {
+  content: none;
+}
+
+/* Prose styles for blog content */
+/* TODO: change later */
+/* .prose p {
+  color: var(--text-primary);
+  margin-bottom: 1.5em;
+  line-height: 1.75;
+}
+
+.prose li {
+  color: var(--text-primary);
+  margin-bottom: 0.5em;
+}
+
+.prose h2 {
+  color: var(--fg-deep);
+  font-size: 1.5em;
+  margin-top: 3rem;
+  margin-bottom: 1.5rem;
+  font-weight: 500;
+  scroll-margin-top: 5rem;
+}
+
+.prose h3 {
+  color: var(--fg-deep);
+  font-size: 1.25em;
+  margin-top: 2.5rem;
+  margin-bottom: 1.25rem;
+  font-weight: 500;
+}
+
+.prose h4 {
+  color: var(--fg-deep);
+  font-size: 1.125em;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  font-weight: 500;
+}
+
+.prose strong {
+  color: var(--fg-deep);
+  font-weight: 500;
+}
+
+.prose blockquote {
+  color: var(--text-secondary);
+  border-left: 4px solid var(--border-color);
+  padding-left: 1rem;
+  margin: 1.5rem 0;
+  font-style: italic;
+} */
+
+/* .prose code {
+  color: #ec4899;
+  font-family: var(--font-mono);
+} */
+/* 
+.dark .prose code {
+  color: #f472b6;
+}  */
+
+/* --- */
+.prose hr {
+  border-color: rgba(125, 125, 125, 0.3);
+  margin-top: 3em;
+  margin-bottom: 3em;
+}
+
+.prose a {
+  color: var(--fg-deeper);
+  text-decoration: none;
+  font-weight: 500;
+}
+.prose strong {
+  color: var(--fg-deep);
+  font-weight: 600;
+}
+
+.prose a code {
+  color: #111827;
+}

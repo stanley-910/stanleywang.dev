@@ -1,0 +1,35 @@
+
+.prose hr {
+  width: 50px;
+  margin: 2em auto;
+}
+
+.prose a {
+    font-weight: inherit;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(125, 125, 125, 0.3);
+    transition: border 0.3s ease-in-out;
+  }
+  
+.prose a:hover {
+    border-bottom: 1px solid var(--fg);
+}
+
+.prose a code {
+    color: inherit;
+}
+
+html.dark .prose {
+    --fg-light: #888;
+    --fg: #bbb;
+    --fg-deep: #ddd;
+    --fg-deeper: #fff;
+  }
+.prose {
+  --fg-light: #888;
+  --fg: #555;
+  --fg-deep: #222;
+  --fg-deeper: #000;
+
+  color: var(--fg);
+}

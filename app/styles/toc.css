@@ -1,0 +1,144 @@
+/* Table of Contents Styles */
+.table-of-contents {
+  position: fixed;
+  top: 90px;
+  bottom: 0;
+  font-size: 1em;
+  font-family: var(--font-mono);
+  left: 20px;
+  z-index: 200;
+  overflow: hidden;
+  display: none; /* Hidden by default on mobile */
+}
+
+@media (min-width: 1024px) {
+  .table-of-contents {
+    display: flex;
+    flex-direction: column;
+    width: 200px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .table-of-contents {
+    width: 300px;
+  }
+}
+
+.table-of-contents-anchor {
+  margin: 0 0.5rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  font-size: 1.125rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-base);
+  border-radius: 0.25rem;
+  color: #888777;
+  border: 1px solid var(--bg-base);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  transition: all 400ms;
+}
+
+@media (min-width: 768px) {
+  .table-of-contents-anchor {
+    border-color: transparent;
+    box-shadow: none;
+  }
+}
+
+.table-of-contents > ul {
+  text-overflow: ellipsis;
+  height: 100%;
+  overflow-y: auto;
+  border-radius: 0.25rem;
+  opacity: 0;
+  margin-top: 0.25rem;
+  padding-bottom: 1.25rem;
+  transition: opacity 700ms;
+  list-style: none;
+  padding-left: 0;
+}
+
+*:hover > .table-of-contents > .table-of-contents-anchor,
+.toc-always-on .table-of-contents > .table-of-contents-anchor {
+  color: inherit;
+}
+
+.toc-always-on .table-of-contents > ul {
+  opacity: 0.6;
+}
+
+*:hover > .table-of-contents > ul {
+  opacity: 0.75;
+}
+
+.table-of-contents ul > li::before {
+  display: none;
+}
+
+.table-of-contents ul > li {
+  padding-left: 0;
+  line-height: 1.5em;
+  margin-top: 0.5em;
+  font-size: 0.8em;
+}
+
+.table-of-contents ul > li > a {
+  opacity: 0.75;
+  transition: opacity 200ms, text-decoration-color 200ms ease;
+  text-decoration: underline;
+  text-decoration-color: rgba(115, 115, 115, 0.4); /* Light underline for light mode */
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px; /* Makes the underline thicker */
+  display: block;
+  border-bottom: none !important;
+  padding-left: 0;
+}
+
+/* Dark mode styles */
+@media (prefers-color-scheme: dark) {
+  .table-of-contents ul > li > a {
+    text-decoration-color: rgba(115, 115, 115, 0.4); /* Lighter underline for dark mode */
+  }
+}
+
+/* Support for class-based dark mode */
+.dark .table-of-contents ul > li > a {
+  text-decoration-color: rgba(115, 115, 115, 0.4); /* Lighter underline for dark mode */
+}
+
+.dark .table-of-contents ul > li > a:hover {
+    opacity: 1;
+    text-decoration-color: rgba(255, 255, 255); /* Lighter hover for dark mode */
+    text-decoration-thickness: 1.2px; /* Makes the underline thicker */
+}
+
+
+@media (prefers-color-scheme: dark) {
+  .table-of-contents ul > li > a:hover {
+    opacity: 1;
+    text-decoration-color: rgba(0, 0, 0, 1); /* Darker hover for Light mode */
+    text-decoration-thickness: 1.5px; /* Makes the underline thicker */
+  }
+}
+
+/* Support for class-based dark mode */
+
+/* Dynamic indentation levels */
+.table-of-contents ul > li.toc-level-0 > a {
+  padding-left: 1rem;
+}
+
+.table-of-contents ul > li.toc-level-1 > a {
+  padding-left: 2rem;
+}
+
+.table-of-contents ul > li.toc-level-2 > a {
+  padding-left: 3rem;
+}
+
+.table-of-contents ul > li.toc-level-3 > a {
+  padding-left: 4rem;
+} 
