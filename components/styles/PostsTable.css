@@ -25,7 +25,7 @@
 }
 
 .year-column {
-  font-size: 0.875rem;
+  /* font-size: 0.875rem; */
   color: var(--text-secondary);
   padding-top: 0.25rem;
 }
@@ -40,12 +40,12 @@
   display: block;
   text-decoration: none;
   transition: all 0.2s ease;
-  padding: 0.5rem 0;
+  padding: 0.3rem 0;
   border-bottom: none !important;
 }
 
 .post-title {
-  font-size: 0.875rem;
+  /* font-size: 0.875rem; */
   color: var(--text-primary);
   transition: all 0.2s ease;
   opacity: 0.7;
@@ -54,7 +54,7 @@
 }
 
 .post-date {
-  font-size: 0.875rem;
+  /* font-size: 0.875rem; */
   color: var(--text-primary);
   transition: all 0.2s ease;
   opacity: 0.7;

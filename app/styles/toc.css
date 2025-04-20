@@ -1,14 +1,37 @@
 /* Table of Contents Styles */
 .table-of-contents {
   position: fixed;
-  top: 90px;
+  /* top: 90px; */
+  top: 100px;
   bottom: 0;
   font-size: 1em;
   font-family: var(--font-mono);
-  left: 20px;
+  /* left: 20px; */
+  right: 20px; /* Changed from left to right */
   z-index: 200;
   overflow: hidden;
   display: none; /* Hidden by default on mobile */
+  opacity: 0; /* Start hidden for fade in */
+  visibility: hidden; /* Hide until mounted */
+  transform: translateY(10px);
+}
+
+/* Initial fade in animation when mounted */
+.table-of-contents.mounted {
+  animation: tocFadeIn 700ms ease-out forwards;
+  visibility: visible;
+}
+
+/* Initial fade in animation */
+@keyframes tocFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @media (min-width: 1024px) {
@@ -56,9 +79,20 @@
   opacity: 0;
   margin-top: 0.25rem;
   padding-bottom: 1.25rem;
-  transition: opacity 700ms;
+  transition: opacity 700ms;  /* Base transition without delay */
   list-style: none;
   padding-left: 0;
+}
+
+/* Immediate fade in on hover */
+*:hover > .table-of-contents > ul {
+  opacity: 0.75;
+  transition: opacity 700ms 0ms;  /* Explicit 0ms delay for hover */
+}
+
+/* Delayed fade out when hover is removed */
+.table-of-contents > ul {
+  transition: opacity 700ms 3000ms;  /* 5s delay before fade out */
 }
 
 *:hover > .table-of-contents > .table-of-contents-anchor,
@@ -68,10 +102,6 @@
 
 .toc-always-on .table-of-contents > ul {
   opacity: 0.6;
-}
-
-*:hover > .table-of-contents > ul {
-  opacity: 0.75;
 }
 
 .table-of-contents ul > li::before {
@@ -128,17 +158,17 @@
 
 /* Dynamic indentation levels */
 .table-of-contents ul > li.toc-level-0 > a {
-  padding-left: 1rem;
+  margin-left: 0rem;
 }
 
 .table-of-contents ul > li.toc-level-1 > a {
-  padding-left: 2rem;
+  margin-left: 1rem;
 }
 
 .table-of-contents ul > li.toc-level-2 > a {
-  padding-left: 3rem;
+  margin-left: 2rem;
 }
 
 .table-of-contents ul > li.toc-level-3 > a {
-  padding-left: 4rem;
+  margin-left: 3rem;
 } 

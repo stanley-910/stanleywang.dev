@@ -13,6 +13,7 @@ module.exports = {
         condensed: ['var(--font-condensed)'],
         script: ['var(--font-script)'],
         serif: ['var(--font-serif)'],
+        inter: ['var(--font-inter)'],
       },
     },
   },

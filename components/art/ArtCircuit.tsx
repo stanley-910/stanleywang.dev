@@ -13,7 +13,8 @@ export default function ArtCircuit() {
     // Constants
     const r180 = Math.PI;
     const r90 = Math.PI / 2;
-    const color = '#88888815';
+    // const color = '#88888815';
+    const color = 'rgba(186,149,94, 0.05)';
     const MIN_BRANCH = 10;
     const len = 20;
     

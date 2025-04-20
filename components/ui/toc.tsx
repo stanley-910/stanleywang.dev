@@ -13,8 +13,12 @@ export function TableOfContents() {
   const [headings, setHeadings] = useState<TocItem[]>([])
   const [isVisible, setIsVisible] = useState(true)
   const [minLevel, setMinLevel] = useState(1)
+  const [isMounted, setIsMounted] = useState(false)
 
   useEffect(() => {
+    // Set mounted state for initial animation
+    setIsMounted(true)
+    
     // Find all heading elements in the document
     const headingElements = document.querySelectorAll('h1, h2, h3, h4')
     const slugger = new GithubSlugger()
@@ -88,13 +92,16 @@ export function TableOfContents() {
   }
 
   return (
-    <nav className={`table-of-contents ${isVisible ? 'toc-always-on' : ''}`}>
+    <nav 
+      className={`table-of-contents ${isVisible ? 'toc-always-on' : ''} ${isMounted ? 'mounted' : ''}`}
+      aria-hidden={!isMounted}
+    >
       <button 
         className="table-of-contents-anchor"
         // onClick={() => setIsVisible(!isVisible)}
         aria-label="Toggle table of contents"
       >
-        ≡
+        {/* ≡ */}
         {/* {isVisible ? '≡' : '☰'} */}
       </button>
       <ul>

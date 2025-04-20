@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { TextEffect } from '@/components/ui/text-effect'
+import { ThemeSwitch } from '@/components/ui/theme-switch'
 import { useEffect, useState, useCallback } from 'react'
 
 export function Header() {
@@ -25,20 +26,24 @@ export function Header() {
 
   return (
     <>
-      {/* Invisible div that detects mouse hover near top */}
+      {/* Mouse detection area - make it pointer-events-none */}
       <div 
-        className="fixed left-0 top-0 z-10 h-16 w-full" 
+        className="fixed left-0 top-0 z-10 h-16 w-full pointer-events-none" 
         onMouseEnter={() => setIsVisible(true)}
       />
-      {/* Left part of the header - absolute on mobile, fixed on desktop */}
+      {/* Theme Switch for large screens - Fixed in top right */}
+      <div className="fixed top-4 right-4 z-30 pointer-events-auto hidden lg:block">
+        <ThemeSwitch />
+      </div>
+      {/* Header container - only interactive elements should capture pointer events */}
       <div 
-        className={`absolute md:fixed left-4 top-4 z-20 transition-opacity duration-200 ${
+        className={`absolute md:fixed left-0 top-4 z-20 transition-opacity duration-200 pointer-events-none w-full px-4 ${
           isVisible ? 'opacity-100' : 'opacity-0'
         }`}
       >
-        <div className="flex items-center justify-between w-[calc(100vw-2rem)]">
-          <div className="pl-4">
-            <Link href="/" className="font-serif text-2xl text-black dark:text-white">
+        <div className="flex flex-col sm:flex-row lg:flex-col sm:items-center lg:items-start sm:justify-between max-w-full">
+          <div className="mb-6 sm:mb-0 lg:mb-6">
+            <Link href="/" className="font-serif text-2xl text-black dark:text-white pointer-events-auto" title="@stanley-wang.dev">
               Stanley Wang
             </Link>
             <TextEffect
@@ -52,13 +57,36 @@ export function Header() {
             </TextEffect>
           </div>
           
-          <nav className="hidden md:flex items-center">
+          <nav className="flex flex-row lg:flex-col items-center lg:items-start lg:ml-2 space-y-0 lg:space-y-2 space-x-6 lg:space-x-0">
             <Link 
               href="/posts" 
-              className="text-sm text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors"
+              className="text-lg font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto"
             >
-              Posts
+              Writing
             </Link>
+            <Link 
+              href="/projects" 
+              className="text-lg font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto"
+            >
+              Projects
+            </Link>
+            <Link 
+              href="/about" 
+              className="text-lg font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto"
+            >
+              About
+            </Link>
+            <Link 
+              // href="/about" 
+              href="https://stanleywang.dev"
+              className="text-md font-mono text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto"
+            >
+              run x86
+            </Link>
+            {/* Theme Switch for small/medium screens - In navigation */}
+            <div className="pointer-events-auto lg:hidden">
+              <ThemeSwitch />
+            </div>
           </nav>
         </div>
       </div>

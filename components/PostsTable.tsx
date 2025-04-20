@@ -26,7 +26,7 @@ export default function PostsTable({ posts }: PostsTableProps) {
       {sortedYears.map(year => (
         <div key={year} className="posts-grid">
           {/* Year column */}
-          <div className="year-column">
+          <div className="year-column font-inter text-sm">
             {year}
           </div>
           
@@ -41,10 +41,10 @@ export default function PostsTable({ posts }: PostsTableProps) {
                   className="post-link"
                 >
                   <div className="post-row">
-                    <p className="post-title">
+                    <p className="post-title font-serif tracking-wide text-sm">
                       {post.title}
                     </p>
-                    <div className="post-date">
+                    <div className="post-date font-inter text-sm">
                       {format(new Date(post.date), 'MM/dd')}
                     </div>
                   </div>
