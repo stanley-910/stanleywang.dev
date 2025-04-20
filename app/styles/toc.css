@@ -4,10 +4,11 @@
   /* top: 90px; */
   top: 100px;
   bottom: 0;
-  font-size: 1em;
-  font-family: var(--font-mono);
-  /* left: 20px; */
-  right: 20px; /* Changed from left to right */
+  font-size: 1.1em;
+  font-family: var(--font-sans);
+  left: 20px;
+  /* right: 20px; Changed from left to right */
+  top: 30vh;
   z-index: 200;
   overflow: hidden;
   display: none; /* Hidden by default on mobile */
@@ -121,8 +122,8 @@
   text-decoration: underline;
   text-decoration-color: rgba(115, 115, 115, 0.4); /* Light underline for light mode */
   text-underline-offset: 2px;
-  text-decoration-thickness: 1px; /* Makes the underline thicker */
-  display: block;
+  text-decoration-thickness: 1px;
+  display: inline-block;
   border-bottom: none !important;
   padding-left: 0;
 }

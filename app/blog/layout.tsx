@@ -43,7 +43,7 @@ function BlogHeader() {
       <h1 className="mb-2 text-3xl font-medium" data-toc-exclude>
         {post.title}
       </h1>
-      <div className="flex flex-col ">
+      <div className="flex flex-col">
         <div className="flex items-center gap-3 text-sm text-zinc-500 dark:text-zinc-400">
           <time dateTime={post.date}>
             {new Date(post.date).toLocaleDateString('en-US', {
@@ -54,6 +54,16 @@ function BlogHeader() {
           </time>
           <span>•</span>
           <span>{post.readingTime}</span>
+        </div>
+        <div className="flex flex-row flex-wrap gap-2 mt-2">
+          {post.tags.map((tag) => (
+            <span 
+              key={tag} 
+              className="cursor-pointer text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors"
+            >
+              #{tag}
+            </span>
+          ))}
         </div>
         <CopyButton />
       </div>
