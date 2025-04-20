@@ -7,6 +7,7 @@ import { BLOG_POSTS } from '@/app/data'
 import { usePathname } from 'next/navigation'
 import '@/app/styles/prose.css'
 import '@/app/styles/markdown.css'
+import '@/app/styles/code.css'
 function CopyButton() {
   const [text, setText] = useState('Copy')
   const currentUrl = typeof window !== 'undefined' ? window.location.href : ''

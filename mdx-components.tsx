@@ -7,9 +7,9 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
   
   return {
     ...components,
-    code: ({ children }) => {
-      return <code className="prose-code">{children}</code>
-    },
+    // code: ({ children }) => {
+    //   return <code className="prose-code">{children}</code>
+    // },
     h1: ({ children }) => {
       const slug = slugger.slug(children?.toString() || '')
       return <h1 id={slug}>{children}</h1>
