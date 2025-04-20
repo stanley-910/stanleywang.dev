@@ -4,14 +4,21 @@ import { useEffect, useState } from 'react'
 
 function Clock() {
   const [time, setTime] = useState(new Date())
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     const timer = setInterval(() => {
       setTime(new Date())
     }, 1000)
 
     return () => clearInterval(timer)
   }, [])
+
+  // Only render the clock on the client side
+  if (!mounted) {
+    return <span>Loading...</span>
+  }
 
   return (
     <span>
