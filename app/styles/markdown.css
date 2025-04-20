@@ -33,3 +33,24 @@ html.dark .prose {
 
   color: var(--fg);
 }
+
+.prose h1 {
+  font-weight: 400;
+}
+
+.prose h2 {
+    font-family: var(--font-serif);
+}
+
+.prose h3 {
+    font-family: var(--font-serif);
+}
+
+.prose h4 {
+    font-size: 1.1875em;
+    font-weight: 400;
+    font-family: var(--font-serif);
+}
+
+
+

@@ -1,0 +1,7 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+Please for any client rendering react component that uses any UseState, UseEffect, etc. Attach 'use client' at the top of the file

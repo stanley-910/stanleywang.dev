@@ -7,6 +7,7 @@ import { useEffect, useState, useCallback } from 'react'
 export function Header() {
   const [isVisible, setIsVisible] = useState(true)
 
+
   // Debounce scroll handler to reduce number of updates
   const handleScroll = useCallback(() => {
     const currentScrollY = window.scrollY
@@ -37,11 +38,12 @@ export function Header() {
       </div>
       {/* Header container - only interactive elements should capture pointer events */}
       <div 
-        className={`absolute md:fixed left-0 top-4 z-20 transition-opacity duration-200 pointer-events-none w-full px-4 ${
+        className={`lg:fixed sm:absolute  left-0 top-4 z-20 transition-opacity duration-200 pointer-events-none w-full px-4 ${
           isVisible ? 'opacity-100' : 'opacity-0'
         }`}
       >
-        <div className="flex flex-col sm:flex-row lg:flex-col sm:items-center lg:items-start sm:justify-between max-w-full">
+        <div className="flex flex-col sm:flex-row lg:flex-col sm:items-center lg:items-start sm:justify-between max-w-full
+        ">
           <div className="mb-6 sm:mb-0 lg:mb-6">
             <Link href="/" className="font-serif text-2xl text-black dark:text-white pointer-events-auto" title="@stanley-wang.dev">
               Stanley Wang

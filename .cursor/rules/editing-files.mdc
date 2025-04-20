@@ -1,0 +1,10 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Comment guidelines
+
+- Do NOT lint comments / remove them unless specified
+- Add comments to changes so I know why the changes are being made

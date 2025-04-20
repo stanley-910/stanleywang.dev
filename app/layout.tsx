@@ -10,6 +10,7 @@ import { Header } from './header'
 import { Footer } from './footer'
 import { ThemeProvider } from 'next-themes'
 import { BackgroundArt } from '@/components/art/BackgroundArt'
+import { ScrollToTop } from './components/ScrollToTop'
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -62,6 +63,7 @@ export default function RootLayout({
                 {children}
               </main>
               <Footer />
+              <ScrollToTop />
             </div>
           </div>
         </ThemeProvider>
