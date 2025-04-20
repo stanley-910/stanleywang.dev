@@ -1,4 +1,16 @@
 
+.prose img {
+  width: 100%;
+}
+
+.prose p > img {
+  width: 100%;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  border-radius: 0.5rem;
+  transform: scale(1.05);
+  margin: 2.6em 0;
+}
+
 .prose hr {
   width: 50px;
   margin: 2em auto;
@@ -7,12 +19,23 @@
 .prose a {
     font-weight: inherit;
     text-decoration: none;
-    border-bottom: 1px solid rgba(125, 125, 125, 0.3);
+    border-bottom: 1px solid rgba(125, 125, 125, 0.5);
     transition: border 0.3s ease-in-out;
   }
   
 .prose a:hover {
     border-bottom: 1px solid var(--fg);
+}
+
+a.item {
+  transition: 0.2s all ease-out;
+  text-decoration: none;
+  border-bottom: none !important;
+  opacity: 0.6;
+}
+
+a.item:hover {
+  opacity: 1;
 }
 
 .prose a code {
@@ -51,6 +74,54 @@ html.dark .prose {
     font-weight: 400;
     font-family: var(--font-serif);
 }
+
+.prose em {
+  /* font-family: var(--font-serif); */
+  color: var(--fg-deeper);
+  /* font-size: 1.03em; */
+}
+
+.prose strong {
+  color: var(--fg-deeper);
+  font-weight: 400;
+  font-size: 1.04em;
+}
+
+.prose s {
+  opacity: 0.5;
+}
+
+
+.prose blockquote {
+  font-weight: normal;
+  font-style: normal;
+  line-height: 1.75em;
+  border-inline-start-width: 0.15em;
+  /* border-inline-start-color: var(--fg-light); */
+  padding: 0.5em 1em;
+  margin-left: -1.1em;
+}
+
+.prose blockquote > * {
+  opacity: 0.7;
+}
+
+.prose blockquote > :first-child {
+  margin-top: 0;
+}
+
+.prose blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+.prose blockquote p:first-of-type::before {
+  content: none;
+}
+
+.prose blockquote p:first-of-type::after {
+  content: none;
+}
+
 
 
 

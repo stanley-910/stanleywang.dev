@@ -123,9 +123,11 @@
 
 .table-of-contents ul > li {
   padding-left: 0;
-  line-height: 1.5em;
-  margin-top: 0.5em;
+  line-height: 1.2em;
+  margin-top: 0.4em;
   font-size: 0.8em;
+  white-space: nowrap; /* Prevent wrapping */
+  overflow: hidden; /* Hide overflow */
 }
 
 .table-of-contents ul > li > a {
@@ -135,9 +137,12 @@
   text-decoration-color: rgba(115, 115, 115, 0.4); /* Light underline for light mode */
   text-underline-offset: 2px;
   text-decoration-thickness: 1px;
-  display: inline-block;
+  display: inline-block; /* Changed back to inline-block for text-only clicking */
   border-bottom: none !important;
   padding-left: 0;
+  max-width: 100%; /* Use max-width instead of width */
+  overflow: hidden;
+  text-overflow: ellipsis; /* Add ellipsis */
 }
 
 /* Dark mode styles */
