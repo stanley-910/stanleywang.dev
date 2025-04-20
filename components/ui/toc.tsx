@@ -108,21 +108,19 @@ export function TableOfContents({ title }: { title?: string }) {
 
   return (
     <nav 
-      className={`ml-4 table-of-contents ${isVisible ? 'toc-always-on' : ''} ${isMounted ? 'mounted' : ''}`}
+      className={`ml-6 table-of-contents ${isVisible ? 'toc-always-on' : ''} ${isMounted ? 'mounted' : ''}`}
       aria-hidden={!isMounted}
     >
-      <div className="flex items-center">
-        <button 
+      <div className="flex items-center pt-2">
+        {/* <button 
           className="table-of-contents-anchor"
           aria-label="Toggle table of contents"
         >
           <TableOfContentsIcon className="h-4 w-4" /> 
-        </button>
+        </button> */}
         {title && (
           <span 
-            className={`text-sm text-zinc-500 dark:text-zinc-400 transition-opacity duration-700 ${
-              showTitle ? 'opacity-100' : 'opacity-0'
-            }`}
+            className={`font-bold text-sm text-zinc-500 dark:text-zinc-400 transition-opacity duration-700`}
           >
             {title}
           </span>
