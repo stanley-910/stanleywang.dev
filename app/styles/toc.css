@@ -1,4 +1,9 @@
 /* Table of Contents Styles */
+:root {
+  --border-color: rgba(229, 231, 235, 0.3);
+  --border-color-dark: rgba(55, 65, 81, 0.3);
+}
+
 .table-of-contents {
   position: fixed;
   /* top: 90px; */
@@ -6,7 +11,9 @@
   bottom: 0;
   font-size: 1.1em;
   font-family: var(--font-sans);
-  left: 20px;
+  /* left: 20px; */
+  /* left: 1rem; */
+  left: 0;
   /* right: 20px; Changed from left to right */
   top: 30vh;
   z-index: 200;
@@ -15,6 +22,7 @@
   opacity: 0; /* Start hidden for fade in */
   visibility: hidden; /* Hide until mounted */
   transform: translateY(10px);
+  border-top: 1.2px solid var(--border-color) !important;
 }
 
 /* Initial fade in animation when mounted */
@@ -159,17 +167,17 @@
 
 /* Dynamic indentation levels */
 .table-of-contents ul > li.toc-level-0 > a {
-  margin-left: 0rem;
-}
-
-.table-of-contents ul > li.toc-level-1 > a {
   margin-left: 1rem;
 }
 
-.table-of-contents ul > li.toc-level-2 > a {
+.table-of-contents ul > li.toc-level-1 > a {
   margin-left: 2rem;
 }
 
-.table-of-contents ul > li.toc-level-3 > a {
+.table-of-contents ul > li.toc-level-2 > a {
   margin-left: 3rem;
+}
+
+.table-of-contents ul > li.toc-level-3 > a {
+  margin-left: 4rem;
 } 

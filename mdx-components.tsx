@@ -42,8 +42,8 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
         </figure>
       )
     },
-    TOC: () => {
-      return <TableOfContents />
+    TOC: ({ title }: { title?: string }) => {
+      return <TableOfContents title={title} />
     },
   }
 }

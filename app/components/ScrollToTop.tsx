@@ -33,7 +33,7 @@ export function ScrollToTop() {
   return (
     <button
       onClick={scrollToTop}
-      title="Scroll to top"
+      title="gg"
       className={`
         fixed right-3 bottom-3 w-10 h-10 rounded-full
         

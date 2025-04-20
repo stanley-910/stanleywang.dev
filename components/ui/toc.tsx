@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import GithubSlugger from 'github-slugger'
 import '@/app/styles/toc.css'
+import { TableOfContents as TableOfContentsIcon } from 'lucide-react'
 
 interface TocItem {
   level: number
@@ -9,11 +10,25 @@ interface TocItem {
   slug: string
 }
 
-export function TableOfContents() {
+export function TableOfContents({ title }: { title?: string }) {
   const [headings, setHeadings] = useState<TocItem[]>([])
   const [isVisible, setIsVisible] = useState(true)
   const [minLevel, setMinLevel] = useState(1)
   const [isMounted, setIsMounted] = useState(false)
+  const [showTitle, setShowTitle] = useState(false)
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowTitle(window.scrollY > 300)
+    }
+
+    // Initial check
+    handleScroll()
+
+    // Add scroll listener
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   useEffect(() => {
     // Set mounted state for initial animation
@@ -93,17 +108,26 @@ export function TableOfContents() {
 
   return (
     <nav 
-      className={`table-of-contents ${isVisible ? 'toc-always-on' : ''} ${isMounted ? 'mounted' : ''}`}
+      className={`ml-4 table-of-contents ${isVisible ? 'toc-always-on' : ''} ${isMounted ? 'mounted' : ''}`}
       aria-hidden={!isMounted}
     >
-      <button 
-        className="table-of-contents-anchor"
-        // onClick={() => setIsVisible(!isVisible)}
-        aria-label="Toggle table of contents"
-      >
-        {/* ≡ */}
-        {/* {isVisible ? '≡' : '☰'} */}
-      </button>
+      <div className="flex items-center">
+        <button 
+          className="table-of-contents-anchor"
+          aria-label="Toggle table of contents"
+        >
+          <TableOfContentsIcon className="h-4 w-4" /> 
+        </button>
+        {title && (
+          <span 
+            className={`text-sm text-zinc-500 dark:text-zinc-400 transition-opacity duration-700 ${
+              showTitle ? 'opacity-100' : 'opacity-0'
+            }`}
+          >
+            {title}
+          </span>
+        )}
+      </div>
       <ul>
         {headings.map((heading, index) => (
           <li key={index} className={getIndentClass(heading.level)}>

@@ -33,7 +33,7 @@ export function Header() {
         onMouseEnter={() => setIsVisible(true)}
       />
       {/* Theme Switch for large screens - Fixed in top right */}
-      <div className="fixed top-4 right-4 z-30 pointer-events-auto hidden lg:block">
+      <div className="lg:mr-4 fixed top-4 right-4 z-30 pointer-events-auto hidden lg:block">
         <ThemeSwitch />
       </div>
       {/* Header container - only interactive elements should capture pointer events */}
@@ -44,7 +44,7 @@ export function Header() {
       >
         <div className="flex flex-col sm:flex-row lg:flex-col sm:items-center lg:items-start sm:justify-between max-w-full
         ">
-          <div className="mb-6 sm:mb-0 lg:mb-6">
+          <div className="lg:ml-4 mb-6 sm:mb-0 lg:mb-6">
             <Link href="/" className="font-serif text-2xl text-black dark:text-white pointer-events-auto" title="@stanley-wang.dev">
               Stanley Wang
             </Link>
@@ -59,29 +59,29 @@ export function Header() {
             </TextEffect>
           </div>
           
-          <nav className="flex flex-row lg:flex-col items-center lg:items-start lg:ml-2 space-y-0 lg:space-y-2 space-x-6 lg:space-x-0">
+          <nav className="flex flex-row lg:flex-col items-center lg:items-start lg:ml-6 space-y-0 lg:space-y-2 space-x-6 lg:space-x-0">
             <Link 
               href="/posts" 
-              className="text-lg font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto"
+              className="text-[1.1em] font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto"
             >
               Writing
             </Link>
             <Link 
               href="/projects" 
-              className="text-lg font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto"
+              className="text-[1.1em] font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto"
             >
               Projects
             </Link>
             <Link 
               href="/about" 
-              className="text-lg font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto"
+              className="text-[1.1em] font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto"
             >
               About
             </Link>
             <Link 
               // href="/about" 
               href="https://stanleywang.dev"
-              className="text-md font-mono text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto"
+              className="text-[1em] font-mono text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto"
             >
               run x86
             </Link>

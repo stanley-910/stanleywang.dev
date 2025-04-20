@@ -5,14 +5,14 @@
   --year-width: 160px;
   --border-color: rgba(229, 231, 235, 0.3);
   --border-color-dark: rgba(55, 65, 81, 0.3);
-  --border-width: 1.5px;
+  --border-width: 1.2px;
 }
 
 .posts-container {
   max-width: var(--content-width);
   margin: 0 auto;
   width: 100%;
-  padding: 0 0.5rem;
+  /* padding: 0 0.5rem; */
   border-top: var(--border-width) solid var(--border-color);
 }
 
@@ -77,6 +77,10 @@
   .posts-grid {
     grid-template-columns: 1fr;
     gap: 1rem;
+    border-bottom: none;
+  }
+  .posts-container {
+    border-top: none;
   }
 
   .year-column {
