@@ -51,13 +51,13 @@
   .table-of-contents {
     display: flex;
     flex-direction: column;
-    width: 200px;
+    width: 17ch;
   }
 }
 
 @media (min-width: 1280px) {
   .table-of-contents {
-    width: 300px;
+    width: 25ch;
   }
 }
 

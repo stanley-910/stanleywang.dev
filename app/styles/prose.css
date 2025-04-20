@@ -6,6 +6,12 @@
   --border-color: #e5e5e5;
 }
 
+/* Override Tailwind prose max-width */
+/* this way word wrap will happen on the max-screen-size */
+/* .prose {
+  max-width: 80ch !important; 
+} */
+
 .dark {
   --fg-deep: #ddd;
   --text-primary: #e5e5e5;
