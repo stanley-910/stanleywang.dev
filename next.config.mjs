@@ -11,7 +11,11 @@ const nextConfig = {
 
 /** @type {import('rehype-pretty-code').Options} */
 const options = {
-  theme: 'catppuccin-mocha',
+  theme: {
+    dark: 'catppuccin-mocha',
+    light: 'catppuccin-latte',
+  },
+  keepBackground: false,
   transformers: [
     transformerNotationDiff(),
     transformerNotationHighlight(),

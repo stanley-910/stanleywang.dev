@@ -85,7 +85,7 @@ export default function LayoutBlogPost({
           bounce: 0,
         }}
       />
-      <main className="prose prose-gray mt-10 pb-20 dark:prose-invert">
+      <main className="prose prose-gray mt-10 pb-20 dark:prose-invert prose-pre:bg-transparent prose-pre:p-0">
         <BlogHeader />
         {children}
       </main>

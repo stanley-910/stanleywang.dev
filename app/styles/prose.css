@@ -124,12 +124,12 @@
 .prose pre {
   background-color: #1a1b26;
   border-radius: 0.5rem;
-  padding: 0.5rem;
+  padding: 0.8rem;
   overflow-x: auto;
 }
 
 .prose pre code {
-  background-color: transparent;
+  /* background-color: transparent; */
   border-radius: 0;
   padding: 0;
   font-weight: 400;
