@@ -2,25 +2,25 @@
 @plugin '@tailwindcss/typography';
 @custom-variant dark (&:is(.dark *));
 
-/* Fix iOS overscroll background color */
+/* Fix iOS theme color and safe areas */
 :root {
   background-color: #fff;
-  overflow: auto;
-  overscroll-behavior: none;
+  color-scheme: light;
+  /* Add padding for iOS safe areas */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 :root.dark {
   background-color: rgb(9 9 11); /* zinc-950 */
+  color-scheme: dark;
 }
 
-html {
-  overscroll-behavior: none;
-  height: 100%;
-}
-
-body {
-  overscroll-behavior: none;
-  min-height: 100%;
+@supports (padding-top: env(safe-area-inset-top)) {
+  body {
+    /* Ensure content respects safe areas */
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
 }
 
 /*

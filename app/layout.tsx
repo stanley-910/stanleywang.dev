@@ -16,7 +16,11 @@ import { ScrollToTop } from '@/components/ScrollToTop'
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  themeColor: '#ffffff',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: 'rgb(9 9 11)' }
+  ],
+  viewportFit: 'cover',
 }
 
 export const metadata: Metadata = {
