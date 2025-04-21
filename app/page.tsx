@@ -77,14 +77,7 @@ function ProjectMedia({ media }: ProjectMediaProps) {
         }}
       >
         <MorphingDialogTrigger>
-          <div 
-            className="relative w-full"
-            onClick={(e) => {
-              // Prevent video's native click behavior
-              e.preventDefault()
-              e.stopPropagation()
-            }}
-          >
+          <div className="relative w-full">
             <video
               src={media.sources[0]}
               autoPlay
@@ -93,8 +86,8 @@ function ProjectMedia({ media }: ProjectMediaProps) {
               playsInline
               className="aspect-video w-full cursor-zoom-in rounded-xl"
               onClick={(e) => {
-                // Prevent video click from bubbling
-                e.stopPropagation()
+                // Only prevent the video's default behavior
+                e.preventDefault()
               }}
             />
           </div>
@@ -158,7 +151,7 @@ function ProjectMedia({ media }: ProjectMediaProps) {
           <img
             src={media.sources[currentImageIndex]}
             alt={`Project image ${currentImageIndex + 1}`}
-            className="aspect-video h-[50vh] w-full rounded-xl object-contain md:h-[70vh]"
+            className="w-full h-full rounded-xl object-contain max-h-[80vh] max-w-[90vw]"
           />
         </MorphingDialogContent>
         <MorphingDialogClose
