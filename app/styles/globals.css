@@ -2,6 +2,27 @@
 @plugin '@tailwindcss/typography';
 @custom-variant dark (&:is(.dark *));
 
+/* Fix iOS overscroll background color */
+:root {
+  background-color: #fff;
+  overflow: auto;
+  overscroll-behavior: none;
+}
+
+:root.dark {
+  background-color: rgb(9 9 11); /* zinc-950 */
+}
+
+html {
+  overscroll-behavior: none;
+  height: 100%;
+}
+
+body {
+  overscroll-behavior: none;
+  min-height: 100%;
+}
+
 /*
   The default border color has changed to `currentColor` in Tailwind CSS v4,
   so we've added these compatibility styles to make sure everything still
