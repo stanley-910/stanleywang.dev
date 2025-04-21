@@ -101,7 +101,7 @@ export function Header() {
               <ApertureIcon className="w-4 h-4 lg:hidden" />
             </Link>
             <Link 
-              href="/sh"
+              href="https://sh.stanleywang.dev/"
               className="leading-6 text-[0.9em] font-mono text-zinc-600 dark:text-zinc-400 pointer-events-auto flex items-center  transition-colors"
 
               title="Run Shell..."
