@@ -2,7 +2,6 @@ import type { MDXComponents } from 'mdx/types'
 import { TableOfContents } from '@/components/ui/toc'
 import { Stars } from '@/components/ui/stars'
 import GithubSlugger from 'github-slugger'
-
 export function useMDXComponents(components: MDXComponents): MDXComponents {
   const slugger = new GithubSlugger()
   
@@ -28,19 +27,22 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
       const slug = slugger.slug(children?.toString() || '')
       return <h4 id={slug}>{children}</h4>
     },
+    
     Cover: ({
       src,
       alt,
+      title,
       caption,
     }: {
       src: string
       alt: string
+      title: string
       caption: string
     }) => {
       return (
         <figure>
-          <img src={src} alt={alt} className="rounded-xl" />
-          <figcaption className="text-center">{caption}</figcaption>
+          <img title={title} src={src} alt={alt} className="cover rounded-xl" />
+          <figcaption className="text-center font-sans">{caption}</figcaption>
         </figure>
       )
     },
