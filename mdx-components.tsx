@@ -46,7 +46,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     }) => {
       return (
         <figure>
-          <img title={title} src={src} alt={alt} className={cn("cover rounded-xl", invert && "invert")} />
+          <img title={title} src={src} alt={alt} className={cn("cover rounded-xl", invert && "dark:invert")} />
           <figcaption className="text-center font-sans">{caption}</figcaption>
         </figure>
       )
