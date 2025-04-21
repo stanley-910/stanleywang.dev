@@ -8,19 +8,22 @@ tags: ["Algorithms"]
 
 <TOC title="Dijkstra's Algorithm" />
 
-### Quick Definition
+{/* #### Quick Definition */}
 
-- dijkstras
-	- no negative-weight edges ^ov8ycg
-	- weighted version of breadth-first-search
-		- instead of FIFO queue, use priority queue
-		- keys are shortest-path weights $d[v]$
-	- two sets of vertices ^cfhxy9
-		- $S$ vertices whose final shortest-path weights are already found
-		- $Q$ priority queue = vertices still in the queue, those we still need to evaluate their shortest path
-	- greedy-choice: at each step we choose the light edge
+**Quick Recap on Dijkstra's:**
 
-### Code
+- no negative-weight edges 
+- weighted version of breadth-first-search
+    - instead of FIFO queue, use priority queue
+    - keys are shortest-path weights $d[v]$
+- two sets of vertices
+    - $S$ vertices whose final shortest-path weights are already found
+    - $Q$ priority queue = vertices still in the queue, those we still need to evaluate their shortest path
+- greedy-choice: at each step we choose the light edge
+
+<StarDivider />
+
+## Code
 
 ```python  showLineNumbers
 def init_single_source(vertices, source_node): 
@@ -46,32 +49,36 @@ def dijkstra(V, E, w, s):
 			relax(u, v, w)
 ```
 
-### Mathematical Context For Path Properties
+## Mathematical Context For Path Properties
 
-First, let’s cover the working parts & properties:
+First, let's cover the working parts & properties:
 	
-Triangle Inequality
+### Triangle Inequality
+
+
 The **Triangle Inequality** states that for all $(u,v)\in E$, we have $\delta(s,v) \leq \delta(s,u)+w(u,v)$.
 
-**Proof:**
+#### Proof
 
 - we have a path $s\leadsto u\to v$, as well as a shortest path $s\leadsto v$
 	- the weight of the shortest path $s\leadsto v$ is $\leq$ any path $s\leadsto v$
 - let us say that the path $s\leadsto u=\delta(s,u)$
 - this means if we use the shortest path $s\leadsto u$ and direct edge $u\to v$, then the weight along $s\leadsto u\to v=\delta(s,u)+w(u,v)$
 
-<Img src="/Dijkstra Proof-attachment.webp" alt="Dijkstra Proof" caption="Triangle Inequality" invert />
+<Img src="/Dijkstra Proof-attachment.webp"  alt="Dijkstra Proof" caption="Triangle Inequality" invert size={60} />
 
-Upper Bound Property
+### Upper Bound Property
+
+
 The **Upper Bound Property** states that we always have $d[v]\geq\delta(s,v),\forall v\in V$. Once $d[v]=\delta(s,v)$, it never changes.
 
-**Proof by Contradiction on Inequality:**
+#### Proof by Contradiction on Inequality
 
-- let’s assume this starts initially true
+- let's assume this starts initially true
 - then, assume $\exists v\in V;d[v]<\delta(s,v)$
 	- this is the first instance of it happening
 
-We know that this can’t have happened at initialization, because `init_single_source()` sets all $d[v]=\infty$, therefore this must have happened at some point during the algorithm’s run time.
+We know that this can't have happened at initialization, because `init_single_source()` sets all $d[v]=\infty$, therefore this must have happened at some point during the algorithm's run time.
 
 Let $u$ be the vertex that causes $d[v]$ to change, since in order for us to have altered $d[v]$, `relax(u, v, w){:python}` must have been called.
 
@@ -81,7 +88,7 @@ Within `relax(u, v, w){:python}`, $d[v]$ is altered only if:
 -  if so, `d[v] = d[u] + w(u, v)` is the change made to $d[v]$
 
 Recall our initial assumption, we have: $d[v]<\delta(s,v)$
-1. via **Triangle Inequality**, $\delta(s,v)\leq\delta(s,u)+w(u,v)$
+1. via [Triangle Inequality](#triangle-inequality), $\delta(s,v)\leq\delta(s,u)+w(u,v)$
 2. $d(s,u)\leq d[u]$, since $v$ was the first vertex where its estimate was less than the shortest path, meaning:
 	- $\delta(s,u)\leq d[u]\implies \delta(s,u)+w(u,v)\leq d[u]+w(u,v)$
 3. this results in the full inequality:
@@ -94,17 +101,23 @@ However, this is impossible, since `relax(u, v, w){:python}` set $d[v]=d[u]+w(u,
 
 Thus, we have proved $\delta(s,v)\leq d[v],\forall v\in V$. $\blacksquare$
 
-No-Path Property
+<StarDivider />
+
+### No-Path Property
 
 The **No-Path Property** states that if $\delta(s,v)=\infty$, then $d[v]$ will **always** equal $\infty$
 
-**Proof**
-- via the **Upper Bound Property**, $d[v]\geq\delta(s,v)$
+#### Proof
+
+- via the [Upper Bound Property](#upper-bound-property), $d[v]\geq\delta(s,v)$
 - this means $\delta(s,v)=\infty \implies d[v]=\infty$
 
 $\blacksquare$
 
-Convergence Property
+<StarDivider />
+
+### Convergence Property
+
 The **Convergence Property** states that if:
 
 1. we have a path $s\leadsto u\to v=\delta(s,v)$ – (it is a shortest path)
@@ -113,7 +126,7 @@ The **Convergence Property** states that if:
 
 then $d[v]=\delta(s,v)$ afterward.
 
-**Proof:**
+#### Proof
 
 We relax $v$ within this code:
 
@@ -141,14 +154,19 @@ $$
 d[v]\leq\;\;\;\delta(s,v)=\delta(s,u)+w(u,v)
 $$
 
-Finally, by the **Upper Bound Property**, we know that $d[v]\geq \delta(s,v)$. This means we must have $d[v]=\delta(s,v)$. $\blacksquare$
+Finally, by the [Upper Bound Property](#upper-bound-property), we know that $d[v]\geq \delta(s,v)$. This means we must have $d[v]=\delta(s,v)$. $\blacksquare$
 
-Path Relaxation Property
+<StarDivider />
+
+### Path Relaxation Property
+
 Let $p = \langle v_{0},v_{1},\dots,v_{k} \rangle$ be a shortest path from $s=v_{0}$ to $v_{k}$. Relaxing these edges, **in order**, will ensure that $d[v_{k}]=\delta(v_{0},v_{k})$. (The shortest path estimate at $v_{k}$ is the correct one).
 
-**Proof by Induction on the number of vertices:**
+#### Proof by Induction 
 
-We will show via induction that $d[v_{i}]=\delta(s,v_{i})$ after the edge $(v_{i-1},v_{i})$ is relaxed.
+
+
+We will show via induction on the number of vertices that $d[v_{i}]=\delta(s,v_{i})$ after the edge $(v_{i-1},v_{i})$ is relaxed.
 
 **Base Case:** $i=0$, and $v_{0}=s$.
 
@@ -156,7 +174,7 @@ At initialization in `init_single_source(){:python}`, we set $d[s]=0\implies\del
 
 **Inductive Step:** Assume $d[v_{i-1}]=\delta(v_{i-1}, s)$.
 
-As we relax edge $(v_{i-1},v_{i})$, note that we have met the pre-conditions for the **Convergence Property**:
+As we relax edge $(v_{i-1},v_{i})$, note that we have met the pre-conditions for the [Convergence Property](#convergence-property):
 
 1. we have a shortest path $s\leadsto v_{i-1} \to v_{i} \leadsto v_{k}$
 	- by optimal substructure, the path $s\leadsto v_{i-1} \to v_{i}$ must also be a shortest path $\delta(s,v_{i})$
@@ -167,9 +185,13 @@ hence, $d[v_{i}]$ converges to be $\delta(v_{i},s)$ and never changes.
 
 We have proved by induction that $d[v_{k}]=\delta(v_{0},v_{k})$ if we relax the edges in order. $\blacksquare$
 
-### Dijkstra’s Proof
+<StarDivider />
 
-We will prove via a **Loop Invariant** that Dijkstra’s Algorithm is correct.
+## Dijkstra's Proof
+
+### via Loop Invariant
+
+We will prove via a **Loop Invariant** that Dijkstra's Algorithm is correct.
 
 ```python
 def dijkstra(V, E, w, s): 
@@ -186,13 +208,11 @@ def dijkstra(V, E, w, s):
 
 **Loop Invariant:** At the end of each iteration of the while loop, $d[v]=\delta(s,v), \forall v\in S$
 
-**Initialization:**  
+#### Initialization
 
 At initialization, $S$ is an empty set, and so the loop invariant holds as a by-product of having no $v\in S$ yet.
 
-<StarDivider />
-
-**Maintenance:**
+#### Maintenance
 
 Show that $d[v] = \delta(s,v)$ when $v$ is added to $S$ in each iteration.
 
@@ -204,7 +224,7 @@ What do we know?
 
 For starters, we know that $v\neq s$, as $d[s]=\delta(s,s)=0$. This means that $s\in S$ and $S\neq \emptyset$ when $v$ is added.
 
-We also know, by the **No-Path Property**, there **exists some path** $s\leadsto v$. Otherwise, the property states that:
+We also know, by the [No-Path Property](#no-path-property), there **exists some path** $s\leadsto v$. Otherwise, the property states that:
 
 $$
 \{\;\delta(s,v)=\infty\; \} \implies \{ \; d[v] \text{ will always }= \infty \;\} \implies \{ \;d[v]=\infty=\delta(s,v)\;\}
@@ -218,11 +238,12 @@ Allow us to decompose $p$ into $s\leadsto^{p_{1}} x\to y\leadsto^{p_{2}}v$, such
 
 ***Claim:*** $d[y]=\delta(y,s)$ when $u$ is added to $S$
 
-- **Proof:**
+**Proof:**
+
 	1. by optimal substructure, any subpath within $s\leadsto v$, such as $s\leadsto x\to y$, is a shortest path as well
 	2. $x\in S \implies d[x] = \delta(s,x)$
 	3. we called `relax` on edge $(x,y)$ at the time of adding $x$ to $S$
-	- so by the **Convergence Property**, $d[y]=\delta(s,y)$
+        - so by the [Convergence Property](#convergence-property), $d[y]=\delta(s,y)$
 
 This means that if $y=v$, we have already reached a contradiction, as our initial assumption was:
 
@@ -234,13 +255,13 @@ and we have just proved that the estimate **is** the correct delta, and the proo
 
 However, what if $y\neq v$? Can we still reach a contradiction?
 
-Once again, we know that there exists a shortest path $p$ from $s\leadsto v$ via the **No-Path Property**, and that any subpath along $p$ is also a shortest path by optimal substructure. This implies a chain of logic:
+Once again, we know that there exists a shortest path $p$ from $s\leadsto v$ via the [No-Path Property](#no-path-property), and that any subpath along $p$ is also a shortest path by optimal substructure. This implies a chain of logic:
 1. $s\leadsto y$ is a shortest path
 2. by our ***Claim***, $d[y]=\delta(s,y)$
 3. since there are no *non-negative* edge weights, a shortest path $s\leadsto y\leadsto v$ must be at least as long as $\delta(s,y)$, meaning:
 4. $s\leadsto y\leadsto v\implies\delta(s,y)\leq\delta(s,v)$
 	- this is because we must pass $y$ to get to $v$
-5. $\delta(s,v)\leq d[v]$ by the **Upper Bound Property**
+5. $\delta(s,v)\leq d[v]$ by the [Upper Bound Property](#upper-bound-property)
 
 Putting this all together:  
 
@@ -265,13 +286,11 @@ $$
 d[v]\leq d[y] \land d[y]\leq d[v]\implies d[v]=d[y]
 $$
 
-The estimate $d[v]$ **must be equal** to the estimate $d[y]$ if it is both $\leq$ and $\geq$ $d[y]$. This, again, contradicts our initial assumption that $d[v]\neq\delta(s,v)$ as $d[v]=d[y]$, and $d[y]=\delta(s,y)$ by our ***Claim***. 
+The estimate $d[v]$ **must be equal** to the estimate $d[y]$ if it is both $\leq$ and $\geq$ $d[y]$. This, again, contradicts our initial assumption that $d[v]\neq\delta(s,v)$ as $d[v]=d[y]$, and $d[y]=\delta(s,y)$ by our initial ***Claim***. $\blacksquare$
 
-$\blacksquare$
 
-<StarDivider />
 
-**Termination:**
+#### Termination
 
 At the end of the while loop, $Q$ (which was equal to $V$) is now the $\emptyset$. At each iteration, we added the current vertex to $S$, meaning that now, $S=V$. This implies that:
 
@@ -279,4 +298,4 @@ $$
 d[v]=\delta(s,v),\;\forall v\in V
 $$
 
-The loop variant has been shown to hold across initialization, maintenance, and termination, thus proving Dijkstra’s Algorithm. $\blacksquare$
+The loop variant has been shown to hold across initialization, maintenance, and termination, thus proving Dijkstra's Algorithm. $\blacksquare$

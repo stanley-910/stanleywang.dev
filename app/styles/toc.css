@@ -95,6 +95,14 @@
   transition: opacity 700ms;  /* Base transition without delay */
   list-style: none;
   padding-left: 0;
+  /* Hide scrollbar for different browsers while maintaining functionality */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.table-of-contents > ul::-webkit-scrollbar {
+  display: none;
 }
 
 /* Immediate fade in on hover */

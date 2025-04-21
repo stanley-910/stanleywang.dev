@@ -36,17 +36,31 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
       alt,
       title,
       caption,
-      invert = false
+      invert = false,
+      size,
+      className
     }: {
       src: string
       alt: string
       title: string
       caption: string
       invert?: boolean
+      size?: number
+      className?: string
     }) => {
       return (
-        <figure>
-          <img title={title} src={src} alt={alt} className={cn("cover rounded-xl", invert && "dark:invert")} />
+        <figure className="flex flex-col items-center">
+          <img 
+            title={title} 
+            src={src} 
+            alt={alt} 
+            className={cn(
+              "cover rounded-xl mx-auto",
+              invert && "dark:invert",
+              className
+            )}
+            style={size ? { width: `${size}%`, height: 'auto' } : undefined}
+          />
           <figcaption className="text-center font-sans">{caption}</figcaption>
         </figure>
       )
