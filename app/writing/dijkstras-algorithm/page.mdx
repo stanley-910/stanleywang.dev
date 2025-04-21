@@ -22,7 +22,7 @@ tags: ["Algorithms"]
 
 ### Code
 
-```python
+```python  showLineNumbers
 def init_single_source(vertices, source_node): 
 	for v in vertices: 
 		d[v] = inf
@@ -73,9 +73,9 @@ The **Upper Bound Property** states that we always have $d[v]\geq\delta(s,v),\fo
 
 We know that this can’t have happened at initialization, because `init_single_source()` sets all $d[v]=\infty$, therefore this must have happened at some point during the algorithm’s run time.
 
-Let $u$ be the vertex that causes $d[v]$ to change, since in order for us to have altered $d[v]$, `relax(u, v, w)` must have been called.
+Let $u$ be the vertex that causes $d[v]$ to change, since in order for us to have altered $d[v]$, `relax(u, v, w){:python}` must have been called.
 
-Within `relax(u, v, w)`, $d[v]$ is altered only if:
+Within `relax(u, v, w){:python}`, $d[v]$ is altered only if:
 
 - `d[v] > d[u] + w(u,v)` evaluates to true.
 -  if so, `d[v] = d[u] + w(u, v)` is the change made to $d[v]$
@@ -90,7 +90,7 @@ $$
 d[v]<\delta(s,v)\leq\delta(s,u)+w(u,v)\leq d[u]+w(u,v)
 $$
 
-However, this is impossible, since `relax(u, v, w)` set $d[v]=d[u]+w(u,v)$, and nothing can be equal **and** be explicitly less than something else simultaneously.
+However, this is impossible, since `relax(u, v, w){:python}` set $d[v]=d[u]+w(u,v)$, and nothing can be equal **and** be explicitly less than something else simultaneously.
 
 Thus, we have proved $\delta(s,v)\leq d[v],\forall v\in V$. $\blacksquare$
 
@@ -109,7 +109,7 @@ The **Convergence Property** states that if:
 
 1. we have a path $s\leadsto u\to v=\delta(s,v)$ – (it is a shortest path)
 2. $d[u]=\delta(s,u)$
-3. we call `relax(u, v, w)`,
+3. we call `relax(u, v, w){:python}`,
 
 then $d[v]=\delta(s,v)$ afterward.
 
@@ -123,7 +123,7 @@ if d[v] > d[u] + w(u, v):
 	p[v] = u
 ```
 
-After this code, $d[v]\leq d[u]+w(u,v)$, because when entering `relax(u, v, w)`:
+After this code, $d[v]\leq d[u]+w(u,v)$, because when entering `relax(u, v, w){:python}`:
 1. if $d[v]$ was $\leq d[u]+w(u,v)$ – we would bypass the if-condition, and nothing happens
 2. if $d[v]$ was $>$, then it is set $=d[u]+w(u,v)$
 
@@ -152,7 +152,7 @@ We will show via induction that $d[v_{i}]=\delta(s,v_{i})$ after the edge $(v_{i
 
 **Base Case:** $i=0$, and $v_{0}=s$.
 
-At initialization in `init_single_source()`, we set $d[s]=0\implies\delta(s,s)=0$.
+At initialization in `init_single_source(){:python}`, we set $d[s]=0\implies\delta(s,s)=0$.
 
 **Inductive Step:** Assume $d[v_{i-1}]=\delta(v_{i-1}, s)$.
 
@@ -179,12 +179,12 @@ def dijkstra(V, E, w, s):
 	
 	while Q is not empty: 
 		u = extract_min(Q) 
-		S.add(u)
+		S.add(u) # [!code hl]
 		for v in adj_list[u]:
 			relax(u, v, w)
 ```
 
-**Loop Invariant:** At the end of each iteration of the while loop, $d[v]=\delta(s,v),\forall v\in S$
+**Loop Invariant:** At the end of each iteration of the while loop, $d[v]=\delta(s,v), \forall v\in S$
 
 **Initialization:**  
 
@@ -216,7 +216,7 @@ Since there exists a path $s\leadsto v$, there **must** exist a shortest path, $
 
 Allow us to decompose $p$ into $s\leadsto^{p_{1}} x\to y\leadsto^{p_{2}}v$, such that $\{ s,x \}\in S$, $\{ y,v \}\in Q$, and edge $(x,y)$ is the edge crossing the two sets $S,Q$.
 
-**Claim 1:** $d[y]=\delta(y,s)$ when $u$ is added to $S$
+***Claim:*** $d[y]=\delta(y,s)$ when $u$ is added to $S$
 
 - **Proof:**
 	1. by optimal substructure, any subpath within $s\leadsto v$, such as $s\leadsto x\to y$, is a shortest path as well
@@ -236,7 +236,7 @@ However, what if $y\neq v$? Can we still reach a contradiction?
 
 Once again, we know that there exists a shortest path $p$ from $s\leadsto v$ via the **No-Path Property**, and that any subpath along $p$ is also a shortest path by optimal substructure. This implies a chain of logic:
 1. $s\leadsto y$ is a shortest path
-2. by **Claim 1**, $d[y]=\delta(s,y)$
+2. by our ***Claim***, $d[y]=\delta(s,y)$
 3. since there are no *non-negative* edge weights, a shortest path $s\leadsto y\leadsto v$ must be at least as long as $\delta(s,y)$, meaning:
 4. $s\leadsto y\leadsto v\implies\delta(s,y)\leq\delta(s,v)$
 	- this is because we must pass $y$ to get to $v$
@@ -255,8 +255,8 @@ $$
 
 Lastly, we know that:
 - we are in the iteration of the while loop where we **choose $v$**
-- $Q$ stores a vertex $v$ as a key-value pair `{ v : d[v] }`
--  `extract_min(Q)` chooses to extract the vertex `v` if `d[v]` is minimum across all estimates it finds in `Q`
+- $Q$ stores a vertex $v$ as a key-value pair `{ v : d[v] }{:python}`
+-  `extract_min(Q){:python}` chooses to extract the vertex `v` if `d[v]{:python}` is minimum across all estimates it finds in `Q`
 - both $v$ and $y$ were in $Q$ when we chose $v$
 
 This means in order for $v$ to have been chosen, $d[v]\leq d[y]$. We can conclude:
@@ -265,7 +265,9 @@ $$
 d[v]\leq d[y] \land d[y]\leq d[v]\implies d[v]=d[y]
 $$
 
-The estimate $d[v]$ **must be equal** to the estimate $d[y]$ if it is both $\leq$ and $\geq$ $d[y]$. This, again, contradicts our initial assumption that $d[v]\neq\delta(s,v)$ as $d[v]=d[y]$, and $d[y]=\delta(s,y)$ by **Claim 1**. $\blacksquare$
+The estimate $d[v]$ **must be equal** to the estimate $d[y]$ if it is both $\leq$ and $\geq$ $d[y]$. This, again, contradicts our initial assumption that $d[v]\neq\delta(s,v)$ as $d[v]=d[y]$, and $d[y]=\delta(s,y)$ by our ***Claim***. 
+
+$\blacksquare$
 
 <StarDivider />
 
