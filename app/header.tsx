@@ -61,7 +61,7 @@ export function Header() {
         <div className="flex flex-col sm:flex-row lg:flex-col sm:items-center lg:items-start sm:justify-between max-w-full
         ">
           <div className="lg:ml-4 mb-6 sm:mb-0 lg:mb-6">
-            <Link href="/" className="font-serif text-2xl text-black dark:text-white pointer-events-auto" title="@stanley-wang.dev">
+            <Link href="/" className="font-serif text-2xl text-black dark:text-white pointer-events-auto" title="@stanleywang.dev">
               Stanley Wang
             </Link>
             <TextEffect
@@ -101,7 +101,7 @@ export function Header() {
               <ApertureIcon className="w-4 h-4 lg:hidden" />
             </Link>
             <Link 
-              href="https://stanleywang.dev"
+              href="/sh"
               className="leading-6 text-[0.9em] font-mono text-zinc-600 dark:text-zinc-400 pointer-events-auto flex items-center  transition-colors"
 
               title="Run Shell..."
