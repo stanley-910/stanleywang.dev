@@ -86,14 +86,25 @@ html.dark .prose {
 
 .prose em {
   /* font-family: var(--font-serif); */
-  color: var(--fg-deeper);
+  color: var(--fg-deep);
   /* font-size: 1.03em; */
 }
 
 .prose strong {
   color: var(--fg-deeper);
-  font-weight: 400;
-  font-size: 1.04em;
+  font-family: var(--font-inter);
+  font-weight: 500;
+  /* font-size: 1.04em; */
+}
+
+/* Styling for combined em and strong (***text***) */
+.prose em strong,
+.prose strong em {
+  color: var(--fg-deeper);
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-style: italic;
+  /* letter-spacing: -0.01em; */
 }
 
 .prose s {
@@ -131,6 +142,34 @@ html.dark .prose {
   content: none;
 }
 
+/* KaTeX Math Styling */
+/* .prose .katex-display { */
+  /* For block equations ($$) */
+  /* font-size: 1.1em; */
+  /* color: var(--fg); */
+  /* margin: 1.5em 0; */
+  /* overflow-x: auto; */
+  /* overflow-y: hidden; */
+  /* padding-top: 0.1em; */
+  /* padding-bottom: 0.1em; */
+/* } */
 
+.prose .katex {
+  /* For inline equations ($) */
+  font-size: 1.0em;
+  color: var(--fg-deeper);
+}
 
+.prose .katex-display > .katex {
+  /* Specifically target the block equation content */
+  font-size: 1.1em;
+  /* white-space: nowrap; */
+}
 
+/* Add horizontal scrolling for long equations */
+/* .prose .katex-display > .katex > .katex-html {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 0.5em; 
+  margin-bottom: -0.5em;
+} */

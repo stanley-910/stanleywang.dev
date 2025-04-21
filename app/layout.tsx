@@ -12,6 +12,7 @@ import { Footer } from './footer'
 import { ThemeProvider } from 'next-themes'
 import { BackgroundArt } from '@/components/art/BackgroundArt'
 import { ScrollToTop } from '@/components/ScrollToTop'
+import { ProgressBar } from '@/components/ui/progress-bar'
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -50,6 +51,7 @@ export default function RootLayout({
       <body
         className="bg-white tracking-tight antialiased dark:bg-zinc-950"
       >
+        <ProgressBar />
         <ThemeProvider
           enableSystem={true}
           attribute="class"

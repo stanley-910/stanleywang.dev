@@ -8,7 +8,12 @@ import { usePathname } from 'next/navigation'
 import '@/app/styles/prose.css'
 import '@/app/styles/markdown.css'
 import '@/app/styles/code.css'
+import 'katex/dist/katex.css'
 import Giscus from '@giscus/react'
+import { useTheme } from 'next-themes'
+import PostsPage from '@/app/writing/page'
+
+
 function CopyButton() {
   const [text, setText] = useState('Copy')
   const currentUrl = typeof window !== 'undefined' ? window.location.href : ''
@@ -20,17 +25,18 @@ function CopyButton() {
   }, [text])
 
   return (
-    <button
-      onClick={() => {
-        setText('Copied')
-        navigator.clipboard.writeText(currentUrl)
-      }}
-      className="flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300 transition-colors"
-      type="button"
-    >
-      <TextMorph>{text}</TextMorph>
-      <span>URL</span>
-    </button>
+    <div className="flex items-center gap-1 text-sm ">
+      <button
+        onClick={() => {
+          setText('Copied')
+          navigator.clipboard.writeText(currentUrl)
+        }}
+        className="transition-colors"
+        type="button"
+      >
+        <span className="flex items-center gap-1 duration-200 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"><TextMorph>{text}</TextMorph> URL</span>
+      </button>
+    </div>
   )
 }
 
@@ -75,11 +81,21 @@ function BlogHeader() {
   )
 }
 
+
+
 export default function LayoutBlogPost({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const { resolvedTheme } = useTheme()
+  const pathname = usePathname()
+  const isPostsPage = pathname === '/writing'
+
+  if (isPostsPage) {
+    return <PostsPage />
+  }
+
   return (
     <>
       <ScrollProgress
@@ -92,20 +108,21 @@ export default function LayoutBlogPost({
         <BlogHeader />
         {children}
       </main>
-      <div className="mt-6">
-      <Giscus
-        repo="stanley-utf8/stanley"
-        repoId="R_kgDOOcaodg"
-        category="Writing"
-        categoryId="DIC_kwDOOcaods4CpSuT"
-        mapping="og:title"
-        strict="0"
-        reactionsEnabled="0"
-        emitMetadata="0"
-        inputPosition="top"
-        theme="transparent_dark"
-        lang="en"
-        loading="lazy"
+      <hr className="prose-hr"></hr>
+      <div className="">
+        <Giscus
+          repo="stanley-utf8/stanley"
+          repoId="R_kgDOOcaodg"
+          category="Writing"
+          categoryId="DIC_kwDOOcaods4CpSuT"
+          mapping="og:title"
+          strict="0"
+          reactionsEnabled="0"
+          emitMetadata="0"
+          inputPosition="top"
+          theme={resolvedTheme === 'dark' ? 'transparent_dark' : 'light'}
+          lang="en"
+          // loading="lazy"
         />
       </div>
     </>

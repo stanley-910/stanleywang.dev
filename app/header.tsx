@@ -84,7 +84,7 @@ export function Header() {
               <KeyboardMusicIcon className="w-4 h-4 lg:hidden" />
             </Link>
             <Link 
-              href="/posts" 
+              href="/writing" 
               className="text-[1.0em] font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto flex items-center"
               title="writing"
             >

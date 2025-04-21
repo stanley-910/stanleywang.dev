@@ -10,6 +10,7 @@ code[data-line-numbers] {
   display: inline-block;
   width: 0.75rem;
   margin-right: 1rem;
+  margin-left: -0.75rem;
   text-align: right;
   color: gray;
 }
@@ -131,11 +132,11 @@ pre::-webkit-scrollbar {
 }
 
 .dark pre {
-  background-color: rgba(14, 14, 14, 0.5);
+  background-color: rgba(65, 65, 65, 0.2);
 }
 
 .light pre {
-  background-color: rgba(250, 250, 250, 0.5);
+  background-color: rgba(208, 208, 208, 0.2);
 }
 
 /* Make the line highlighting more specific and match the styling hierarchy */
@@ -154,4 +155,74 @@ code .highlighted {
     padding: 1px 3px;
     margin: -1px -3px;
     border-radius: 4px;
+}
+
+/* Diff styling */
+
+.diff.add {
+  background-color: rgba(74, 222, 128, 0.253) !important;
+    width: calc(100% + 48px);
+    display: inline-block;
+    transition: background-color 0.5s;
+    margin: 0px -24px;
+    padding: 0px 24px;
+}
+
+.diff.remove {
+  background-color: rgba(248, 113, 113, 0.326) !important;
+    width: calc(100% + 48px);
+    display: inline-block;
+    transition: background-color 0.5s;
+    margin: 0px -24px;
+    padding: 0px 24px;
+}
+
+.diff.add::before {
+  content: "+";
+  color: #4ade80;
+  position: absolute;
+  left: 0rem;
+  padding-right: 0.25rem;
+  padding-left: 0.25rem;
+  user-select: none;
+}
+
+.diff.remove::before {
+  content: "-";
+  color: #f87171;
+  position: absolute;
+  left: 0rem;
+  padding-right: 0.25rem;
+  padding-left: 0.25rem;
+  user-select: none;
+}
+
+/* Dark mode adjustments */
+.dark .diff.add {
+  background-color: rgba(16, 185, 129, 0.05);
+}
+
+.dark .diff.remove {
+  background-color: rgba(239, 68, 68, 0.05);
+}
+
+
+/* Inline code block with syntax highlighting */
+.prose :not(pre) > code[data-language] {
+  background-color: rgba(170, 170, 170, 0.1) !important;
+  border-radius: 0.25rem;
+  padding: 0.2em 0.3em;
+  margin: -0.2em 0;
+  font-family: var(--font-mono) !important;
+  font-feature-settings: "ss01" 1, "ss02" 1, "ss03" 1, "ss04" 1, "ss05" 1, "ss06" 1, "ss07" 1, "ss08" 1;
+}
+
+.dark .prose :not(pre) > code[data-language] {
+  background-color: rgba(170, 170, 170, 0.1) !important;
+}
+
+/* Preserve syntax highlighting within inline code */
+.prose :not(pre) > code[data-language] span {
+  font-family: inherit;
+  background-color: transparent !important;
 }

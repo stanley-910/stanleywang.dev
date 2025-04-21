@@ -48,71 +48,16 @@
   content: none;
 }
 
-/* Prose styles for blog content */
-/* TODO: change later */
-/* .prose p {
-  color: var(--text-primary);
-  margin-bottom: 1.5em;
-  line-height: 1.75;
-}
-
-.prose li {
-  color: var(--text-primary);
-  margin-bottom: 0.5em;
-}
-
-.prose h2 {
-  color: var(--fg-deep);
-  font-size: 1.5em;
-  margin-top: 3rem;
-  margin-bottom: 1.5rem;
-  font-weight: 500;
-  scroll-margin-top: 5rem;
-}
-
-.prose h3 {
-  color: var(--fg-deep);
-  font-size: 1.25em;
-  margin-top: 2.5rem;
-  margin-bottom: 1.25rem;
-  font-weight: 500;
-}
-
-.prose h4 {
-  color: var(--fg-deep);
-  font-size: 1.125em;
-  margin-top: 2rem;
-  margin-bottom: 1rem;
-  font-weight: 500;
-}
-
-.prose strong {
-  color: var(--fg-deep);
-  font-weight: 500;
-}
-
-.prose blockquote {
-  color: var(--text-secondary);
-  border-left: 4px solid var(--border-color);
-  padding-left: 1rem;
-  margin: 1.5rem 0;
-  font-style: italic;
-} */
-
-/* .prose code {
-  color: #ec4899;
-  font-family: var(--font-mono);
-} */
-/* 
-.dark .prose code {
-  color: #f472b6;
-}  */
-
-/* --- */
 .prose hr {
   border-color: rgba(125, 125, 125, 0.5);
   margin-top: 3em;
   margin-bottom: 3em;
+}
+
+.prose-hr {
+  border-color: rgba(125, 125, 125, 0.8);
+  width: 200px;
+  margin: 4em auto;
 }
 
 .prose a {
@@ -133,7 +78,7 @@
 .prose pre {
   background-color: #1a1b26;
   border-radius: 0.5rem;
-  padding: 0.8rem;
+  padding: 1em;
   overflow-x: auto;
 }
 
@@ -194,4 +139,120 @@
   margin-top: 1.5em;
   margin-bottom: 0.5em;
   line-height: 1.5;
+}
+
+.prose table {
+  width: 100%;
+  table-layout: auto;
+  text-align: left;
+  margin-top: 2em;
+  margin-bottom: 2em;
+  font-size: 0.875em;
+  line-height: 1.7142857;
+}
+.prose thead {
+  color: var(--fg-deep);
+  font-weight: 600;
+  border-bottom-width: 1px;
+  border-bottom-color: #8882;
+}
+.prose thead th {
+  vertical-align: bottom;
+  padding-right: 0.5714286em;
+  padding-bottom: 0.5714286em;
+  padding-left: 0.5714286em;
+}
+.prose tbody tr {
+  border-bottom-width: 1px;
+  border-bottom-color: #8882;
+}
+.prose tbody tr:last-child {
+  border-bottom-width: 0;
+}
+.prose tbody td {
+  vertical-align: top;
+  padding-top: 0.5714286em;
+  padding-right: 0.5714286em;
+  padding-bottom: 0.5714286em;
+  padding-left: 0.5714286em;
+}
+
+
+
+.prose img {
+  margin-top: 2em;
+  margin-bottom: 2em;
+}
+.prose .photos img {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+.prose video {
+  margin-top: 2em;
+  margin-bottom: 2em;
+}
+.prose h2 code {
+  font-size: 0.875em;
+}
+.prose h3 code {
+  font-size: 0.9em;
+}
+.prose hr + * {
+  margin-top: 0;
+}
+.prose h2 + * {
+  margin-top: 0;
+}
+.prose h3 + * {
+  margin-top: 0;
+}
+.prose h4 + * {
+  margin-top: 0;
+}
+.prose h6 {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  margin-top: 20px;
+  margin-bottom: 10px;
+  opacity: 0.5;
+  font-weight: 500;
+  letter-spacing: 2px;
+}
+.prose thead th:first-child {
+  padding-left: 0;
+}
+.prose thead th:last-child {
+  padding-right: 0;
+}
+.prose tbody td:first-child {
+  padding-left: 0;
+}
+.prose tbody td:last-child {
+  padding-right: 0;
+}
+.prose > :first-child {
+  margin-top: 0;
+}
+.prose > :last-child {
+  margin-bottom: 0;
+}
+.prose b {
+  color: var(--fg-deep);
+}
+.prose em {
+  color: inherit;
+}
+.prose figure {
+  margin-top: 2em;
+  margin-bottom: 2em;
+}
+.prose figure > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+.prose figure figcaption {
+  color: #6b7280;
+  font-size: 0.875em;
+  line-height: 1.4285714;
+  margin-top: 0.8571429em;
 }

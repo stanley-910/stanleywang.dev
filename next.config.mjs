@@ -1,8 +1,11 @@
 import createMDX from '@next/mdx';
 import remarkToc from 'remark-toc';
 import rehypePrettyCode from 'rehype-pretty-code';
-import { transformerNotationDiff, transformerNotationHighlight, transformerNotationWordHighlight } from '@shikijs/transformers';
-
+import { transformerNotationFocus, transformerNotationDiff, transformerNotationHighlight, transformerNotationWordHighlight } from '@shikijs/transformers';
+import remarkGfm from 'remark-gfm';
+import remarkFrontmatter from 'remark-frontmatter';
+import rehypeKatex from 'rehype-katex'
+import remarkMath from 'remark-math'
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -20,6 +23,7 @@ const options = {
     transformerNotationDiff(),
     transformerNotationHighlight(),
     transformerNotationWordHighlight(),
+    transformerNotationFocus(),
   ],
 };
 
@@ -34,8 +38,14 @@ const withMDX = createMDX({
         ordered: false,
         skip: 'table of contents'
       }],
+      [remarkGfm],
+      [remarkFrontmatter],
+      [remarkMath],
+
     ],
-    rehypePlugins: [[rehypePrettyCode, options]],
+    rehypePlugins: [[rehypePrettyCode, options],
+      [rehypeKatex]
+    ],
   },
 });
 

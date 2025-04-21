@@ -19,21 +19,6 @@
     border-color: var(--color-gray-200, currentColor);
   }
 }
-* Fix iOS overscroll background color */
-/* :root {
-  overflow: auto;
-  overscroll-behavior: none;
-}
-
-html {
-  overscroll-behavior: none;
-  height: 100%;
-}
-
-body {
-  overscroll-behavior: none;
-  min-height: 100%;
-} */
 
 
 ::selection {
