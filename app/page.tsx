@@ -273,8 +273,17 @@ export default function Personal() {
             >
               <Spotlight
                 className={
-                  job.gradient 
-                    ? `from-${job.gradient}-900 via-${job.gradient}-800 to-${job.gradient}-700 blur-2xl dark:from-${job.gradient}-100 dark:via-${job.gradient}-200 dark:to-${job.gradient}-50`
+
+                    job.gradient  === 'blue'
+                    ? `from-blue-900 via-blue-800 to-blue-700 blur-2xl dark:from-blue-100 dark:via-blue-200 dark:to-blue-50`
+                    : job.gradient === 'red'
+                    ? `from-red-900 via-red-800 to-red-700 blur-2xl dark:from-red-100 dark:via-red-200 dark:to-red-50`
+                    : job.gradient === 'green'
+                    ? `from-green-900 via-green-800 to-green-700 blur-2xl dark:from-green-100 dark:via-green-200 dark:to-green-50`
+                    : job.gradient === 'yellow'
+                    ? `from-yellow-900 via-yellow-800 to-yellow-700 blur-2xl dark:from-yellow-100 dark:via-yellow-200 dark:to-yellow-50`
+                    : job.gradient === 'purple'
+                    ? `from-purple-900 via-purple-800 to-purple-700 blur-2xl dark:from-purple-100 dark:via-purple-200 dark:to-purple-50`
                     : 'from-zinc-900 via-zinc-800 to-zinc-700 blur-2xl dark:from-zinc-100 dark:via-zinc-200 dark:to-zinc-50'
                 }
                 size={64}
