@@ -64,8 +64,9 @@ export function Spotlight({
       ref={containerRef}
       className={cn(
         'pointer-events-none absolute rounded-full bg-[radial-gradient(circle_at_center,var(--tw-gradient-stops),transparent_80%)] blur-xl transition-opacity duration-200',
-        'from-zinc-50 via-zinc-100 to-zinc-200',
         isHovered ? 'opacity-100' : 'opacity-0',
+        // Only apply default gradient if no custom gradient is provided
+        !className?.includes('from-') && 'from-zinc-50 via-zinc-100 to-zinc-200',
         className,
       )}
       style={{

@@ -23,6 +23,7 @@ import {
 import { format } from 'date-fns'
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
+// import { cn } from '@/lib/utils'
 
 const VARIANTS_CONTAINER = {
   hidden: { opacity: 0 },
@@ -267,11 +268,9 @@ export default function Personal() {
             >
               <Spotlight
                 className={
-                  // gotta be a better way to do this lol
                   job.gradient 
                     ? `from-${job.gradient}-900 via-${job.gradient}-800 to-${job.gradient}-700 blur-2xl dark:from-${job.gradient}-100 dark:via-${job.gradient}-200 dark:to-${job.gradient}-50`
                     : 'from-zinc-900 via-zinc-800 to-zinc-700 blur-2xl dark:from-zinc-100 dark:via-zinc-200 dark:to-zinc-50'
-                
                 }
                 size={64}
               />

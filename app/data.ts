@@ -73,7 +73,7 @@ export const WORK_EXPERIENCE: WorkExperience[] = [
     desc: 'EMS Team',
     link: 'https://www.autodesk.com/collections/media-entertainment/included-software',
     id: 'work1',
-    gradient: 'blue'
+    // gradient: 'blue'
   },
   {
     company: 'Beta Technologies',
