@@ -114,22 +114,13 @@ export const WORK_EXPERIENCE: WorkExperience[] = [
 
 export const BLOG_POSTS: BlogPost[] = [
   {
-    title: 'Exploring the Intersection of Design, AI, and Design Engineering',
-    description: 'How AI is changing the way we design',
-    link: '/writing/exploring-the-intersection-of-design-ai-and-design-engineering',
+    title: "Dijkstra\'s Algorithm",
+    description: 'COMP 251 Notes',
+    link: '/writing/dijkstras-algorithm',
     uid: 'post-1',
-    date: '2024-04-20',
-    readingTime: '10 min',
-    tags: ['Design', 'AI', 'Engineering'],
-  },
-  {
-    title: 'testing, testing',
-    description: '',
-    link: '/writing/post-01',
-    uid: 'post-2',
     date: '2025-04-21',
-    readingTime: '0 min',
-    tags: ['Design', 'AI', 'Engineering'],
+    readingTime: '10 min',
+    tags: ['Algorithms'],
   },
 ]
 

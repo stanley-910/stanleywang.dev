@@ -4,7 +4,7 @@
 
 .prose p > img {
   width: 100%;
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  /* box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1); */
   border-radius: 0.5rem;
   transform: scale(1.05);
   margin: 2.6em 0;
@@ -12,7 +12,7 @@
 
 .cover {
   width: 100%;
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  /* box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1); */
   border-radius: 0.5rem;
   transform: scale(1.05);
   margin: 1.0em 0;
@@ -122,8 +122,8 @@ html.dark .prose {
 .prose strong {
   color: var(--fg-deeper);
   font-family: var(--font-inter);
-  font-weight: 500;
-  /* font-size: 1.04em; */
+  font-weight: 600;
+  font-size: 0.9em;
 }
 
 /* Styling for combined em and strong (***text***) */
