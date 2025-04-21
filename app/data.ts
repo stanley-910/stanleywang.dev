@@ -1,4 +1,4 @@
-type Project = {
+export type Project = {
   name: string
   description: string
   link: string
@@ -7,6 +7,7 @@ type Project = {
     sources: string[]  // Single video URL or array of image URLs
   }
   id: string
+  category?: string
 }
 
 type WorkExperience = {
