@@ -32,7 +32,7 @@ const VARIANTS_CONTAINER = {
 }
 
 const VARIANTS_SECTION = {
-  hidden: { opacity: 0, y: 20, filter: 'blur(8px)' },
+  hidden: { opacity: 0, y: 10, filter: 'blur(8px)' },
   visible: { opacity: 1, y: 0, filter: 'blur(0px)' },
 }
 
@@ -143,7 +143,7 @@ export default function Personal() {
         </div>
       </motion.section>
 
-      {/* <motion.section
+      <motion.section
         variants={VARIANTS_SECTION}
         transition={TRANSITION_SECTION}
       >
@@ -170,7 +170,7 @@ export default function Personal() {
             </div>
           ))}
         </div>
-      </motion.section> */}
+      </motion.section>
 
       <motion.section
         variants={VARIANTS_SECTION}
@@ -217,7 +217,7 @@ export default function Personal() {
         variants={VARIANTS_SECTION}
         transition={TRANSITION_SECTION}
       >
-        <h3 className="mb-3 text-lg font-medium">Blog</h3>
+        <h3 className="mb-3 text-lg font-medium">Writing</h3>
         <div className="flex flex-col space-y-0">
           <AnimatedBackground
             enableHover

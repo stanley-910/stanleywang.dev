@@ -2,7 +2,13 @@
 import Link from 'next/link'
 import { TextEffect } from '@/components/ui/text-effect'
 import { ThemeSwitch } from '@/components/ui/theme-switch'
+import { Terminal } from 'lucide-react'
+import { ApertureIcon } from 'lucide-react'
+import { NotepadTextIcon } from 'lucide-react'
+import { KeyboardMusicIcon } from 'lucide-react'
+import { GitHubLogoIcon } from '@radix-ui/react-icons'
 import { useEffect, useState, useCallback } from 'react'
+import { GlitchText } from '@/components/ui/glitch-text'
 
 export function Header() {
   const [isVisible, setIsVisible] = useState(true)
@@ -32,9 +38,19 @@ export function Header() {
         className="fixed left-0 top-0 z-10 h-16 w-full pointer-events-none" 
         onMouseEnter={() => setIsVisible(true)}
       />
-      {/* Theme Switch for large screens - Fixed in top right */}
+      {/* Theme Switch and GitHub for large screens - Fixed in top right */}
       <div className="lg:mr-4 fixed top-4 right-4 z-30 pointer-events-auto hidden lg:block">
-        <ThemeSwitch />
+        <div className="flex items-center gap-4">
+          <Link 
+            href="https://github.com/stanleyw-tw" 
+            className="text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <GitHubLogoIcon className="w-4 h-4" />
+          </Link>
+          <ThemeSwitch />
+        </div>
       </div>
       {/* Header container - only interactive elements should capture pointer events */}
       <div 
@@ -61,29 +77,38 @@ export function Header() {
           
           <nav className="flex flex-row lg:flex-col items-center lg:items-start lg:ml-6 space-y-0 lg:space-y-2 space-x-6 lg:space-x-0">
             <Link 
-              href="/posts" 
-              className="text-[1.1em] font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto"
+              href="/about" 
+              className="text-[1.1em] font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto flex items-center"
+              title="About"
             >
-              Writing
+              <span className="hidden lg:inline">About</span>
+              <KeyboardMusicIcon className="w-4 h-4 lg:hidden" />
+            </Link>
+            <Link 
+              href="/posts" 
+              className="text-[1.1em] font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto flex items-center"
+              title="Writing"
+            >
+              <span className="hidden lg:inline">Writing</span>
+              <NotepadTextIcon className="w-4 h-4 lg:hidden" />
             </Link>
             <Link 
               href="/projects" 
-              className="text-[1.1em] font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto"
+              className="text-[1.1em] font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto flex items-center"
+              title="Projects"
             >
-              Projects
+              <span className="hidden lg:inline">Projects</span>
+              <ApertureIcon className="w-4 h-4 lg:hidden" />
             </Link>
             <Link 
-              href="/about" 
-              className="text-[1.1em] font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto"
-            >
-              About
-            </Link>
-            <Link 
-              // href="/about" 
               href="https://stanleywang.dev"
-              className="text-[1em] font-mono text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto"
+              className="text-[1em] font-mono text-zinc-600 hover:text-black dark:text-zinc-400 pointer-events-auto flex items-center"
+              title="Run Shell..."
             >
-              run x86
+              <span className="hidden lg:inline">
+                <GlitchText text="term0x86" />
+              </span>
+              <Terminal className="w-4 h-4 lg:hidden" />
             </Link>
             {/* Theme Switch for small/medium screens - In navigation */}
             <div className="pointer-events-auto lg:hidden">

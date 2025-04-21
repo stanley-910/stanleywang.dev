@@ -189,4 +189,20 @@
 
 .table-of-contents ul > li.toc-level-3 > a {
   margin-left: 2.25rem;
+}
+
+/* Title hover transition */
+.table-of-contents span {
+  transition: color 200ms ease-in-out;
+}
+
+.table-of-contents span:hover {
+  color: rgba(0, 0, 0, 1);
+  transition: color 200ms ease-in-out;
+}
+
+/* Support for dark mode */
+.dark .table-of-contents span:hover {
+  color: rgb(229, 231, 235);
+  transition: color 200ms ease-in-out;
 } 

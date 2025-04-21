@@ -8,6 +8,7 @@ import { usePathname } from 'next/navigation'
 import '@/app/styles/prose.css'
 import '@/app/styles/markdown.css'
 import '@/app/styles/code.css'
+import Giscus from '@giscus/react'
 function CopyButton() {
   const [text, setText] = useState('Copy')
   const currentUrl = typeof window !== 'undefined' ? window.location.href : ''
@@ -41,6 +42,7 @@ function BlogHeader() {
 
   return (
     <header className="mb-8">
+      <meta property="og:title" content={post.title} data-toc-exclude />
       <h1 className="mb-2 text-3xl font-medium" data-toc-exclude>
         {post.title}
       </h1>
@@ -56,16 +58,17 @@ function BlogHeader() {
           <span>•</span>
           <span>{post.readingTime}</span>
         </div>
-        <div className="flex flex-row flex-wrap gap-2 mt-2">
-          {post.tags.map((tag) => (
+        {/* TODO: Add tags back in */}
+        {/* <div className="flex flex-row flex-wrap gap-2 mt-2"> */}
+          {/* {post.tags.map((tag) => (
             <span 
               key={tag} 
               className="cursor-pointer text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors"
             >
               #{tag}
             </span>
-          ))}
-        </div>
+          ))} */}
+        {/* </div> */}
         <CopyButton />
       </div>
     </header>
@@ -89,6 +92,23 @@ export default function LayoutBlogPost({
         <BlogHeader />
         {children}
       </main>
+      <div className="mt-16 -mx-4 sm:mx-0">
+
+      <Giscus
+        repo="stanley-utf8/stanley"
+        repoId="R_kgDOOcaodg"
+        category="Writing"
+        categoryId="DIC_kwDOOcaods4CpSuT"
+        mapping="og:title"
+        strict="0"
+        reactionsEnabled="0"
+        emitMetadata="0"
+        inputPosition="top"
+        theme="transparent_dark"
+        lang="en"
+        loading="lazy"
+        />
+      </div>
     </>
   )
 }

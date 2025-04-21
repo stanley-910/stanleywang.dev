@@ -8,8 +8,17 @@
 
 /* Override Tailwind prose max-width */
 /* this way word wrap will happen on the max-screen-size */
-/* .prose {
-  max-width: 80ch !important; 
+/* :root {
+  --prose-max-width: 65ch;
+  --prose-width: min(var(--prose-max-width), 100%);
+  --prose-margin: calc(calc(100vw - var(--prose-width)) / 2);
+}
+
+.prose {
+  color: var(--fg);
+  max-width: var(--prose-max-width);
+  font-size: 1rem;
+  line-height: 1.75;
 } */
 
 .dark {
@@ -134,4 +143,55 @@
   padding: 0;
   font-weight: 400;
   color: inherit;
+}
+
+.prose blockquote {
+  font-weight: 500;
+  font-style: italic;
+  color: inherit;
+  border-left-width: 0.25rem;
+  border-color: rgba(125, 125, 125, 0.3);
+  quotes: '\201C' '\201D' '\2018' '\2019';
+  margin-top: 1.6em;
+  margin-bottom: 1.6em;
+  padding-left: 1em;
+}
+.prose blockquote p:first-of-type::before {
+  content: open-quote;
+}
+.prose blockquote p:last-of-type::after {
+  content: close-quote;
+}
+
+.prose h1 {
+  color: var(--fg-deeper);
+  /* font-weight: 800; */
+  /* font-size: 2.25em; */
+  margin-top: 0;
+  margin-bottom: 0.9em;
+  /* line-height: 1.1111111; */
+}
+.prose h2 {
+  color: var(--fg-deeper);
+  font-weight: 700;
+  font-size: 1.5em;
+  margin-top: 2em;
+  margin-bottom: 1em;
+  line-height: 1.3333333;
+}
+.prose h3 {
+  /* color: var(--fg-deeper); */
+  font-weight: 600;
+  font-size: 1.25em;
+  margin-top: 1.6em;
+  margin-bottom: 0.6em;
+  line-height: 1.6;
+  opacity: 1.0;
+}
+.prose h4 {
+  /* color: var(--fg-deep); */
+  font-weight: 600;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  line-height: 1.5;
 }

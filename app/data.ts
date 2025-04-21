@@ -33,17 +33,17 @@ type SocialLink = {
 
 export const PROJECTS: Project[] = [
   {
-    name: 'Motion Primitives Pro',
+    name: 'Trading Fours',
     description:
-      'Advanced components and templates to craft beautiful websites.',
+      'recommending music.',
     link: 'https://pro.motion-primitives.com/',
     video:
       'https://res.cloudinary.com/read-cv/video/upload/t_v_b/v1/1/profileItems/W2azTw5BVbMXfj7F53G92hMVIn32/newProfileItem/d898be8a-7037-4c71-af0c-8997239b050d.mp4?_a=DATAdtAAZAA0',
     id: 'project1',
   },
   {
-    name: 'Motion Primitives',
-    description: 'UI kit to make beautiful, animated interfaces.',
+    name: 'Datamines',
+    description: "reggie's got a long day ahead of him.",
     link: 'https://motion-primitives.com/',
     video:
       'https://res.cloudinary.com/read-cv/video/upload/t_v_b/v1/1/profileItems/W2azTw5BVbMXfj7F53G92hMVIn32/XSfIvT7BUWbPRXhrbLed/ee6871c9-8400-49d2-8be9-e32675eabf7e.mp4?_a=DATAdtAAZAA0',
@@ -85,59 +85,12 @@ export const BLOG_POSTS: BlogPost[] = [
   {
     title: 'Exploring the Intersection of Design, AI, and Design Engineering',
     description: 'How AI is changing the way we design',
-    link: '/blog/exploring-the-intersection-of-design-ai-and-design-engineering',
-    uid: 'blog-1',
+    link: '/writing/exploring-the-intersection-of-design-ai-and-design-engineering',
+    uid: 'post-1',
     date: '2024-04-20',
     readingTime: '10 min',
     tags: ['Design', 'AI', 'Engineering'],
   },
-  {
-    title: 'Why I left my job to start my own company',
-    description:
-      'A deep dive into my decision to leave my job and start my own company',
-    link: '/blog/exploring-the-intersection-of-design-ai-and-design-engineering',
-    uid: 'blog-2',
-    date: '2024-04-20',
-    readingTime: '10 min',
-    tags: ['Design', 'AI', 'Engineering'],
-  },
-  {
-    title: 'What I learned from my first year of freelancing',
-    description:
-      'A look back at my first year of freelancing and what I learned',
-    link: '/blog/exploring-the-intersection-of-design-ai-and-design-engineering',
-    uid: 'blog-3',
-    date: '2024-04-20',
-    readingTime: '10 min',
-    tags: ['Design', 'AI', 'Engineering'],
-  },
-  {
-    title: 'Building a Design System from Scratch',
-    description: 'A comprehensive guide to creating a scalable design system',
-    link: '/blog/exploring-the-intersection-of-design-ai-and-design-engineering',
-    uid: 'blog-4', 
-    date: '2023-11-15',
-    readingTime: '15 min',
-    tags: ['Design Systems', 'Frontend', 'Architecture'],
-  },
-  {
-    title: 'The Future of Web Animation with CSS and JavaScript',
-    description: 'Exploring modern animation techniques for engaging web experiences',
-    link: '/blog/exploring-the-intersection-of-design-ai-and-design-engineering',
-    uid: 'blog-5',
-    date: '2023-06-22',
-    readingTime: '8 min', 
-    tags: ['Animation', 'CSS', 'JavaScript'],
-  },
-  {
-    title: 'Getting Started with Design Engineering',
-    description: 'Essential skills and tools for aspiring design engineers',
-    link: '/blog/exploring-the-intersection-of-design-ai-and-design-engineering',
-    uid: 'blog-6',
-    date: '2022-09-30',
-    readingTime: '12 min',
-    tags: ['Career', 'Design', 'Engineering'],
-  }
 ]
 
 export const SOCIAL_LINKS: SocialLink[] = [
@@ -159,4 +112,4 @@ export const SOCIAL_LINKS: SocialLink[] = [
   },
 ]
 
-export const EMAIL = 'your@email.com'
+export const EMAIL = 'stanley.wang.cs@gmail.com'

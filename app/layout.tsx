@@ -1,11 +1,11 @@
 import type { Metadata, Viewport } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+// import { Geist, Geist_Mono } from 'next/font/google'
 // Font styles
 import '@fontsource/dm-mono'
 import './styles/fonts.css'
 import './styles/prose.css'
 import './styles/toc.css'
-import './globals.css'
+import './styles/globals.css'
 import { Header } from './header'
 import { Footer } from './footer'
 import { ThemeProvider } from 'next-themes'

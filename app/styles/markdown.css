@@ -48,6 +48,7 @@ html.dark .prose {
     --fg-deep: #ddd;
     --fg-deeper: #fff;
   }
+
 .prose {
   --fg-light: #888;
   --fg: #555;

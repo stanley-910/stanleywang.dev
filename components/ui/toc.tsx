@@ -120,7 +120,8 @@ export function TableOfContents({ title }: { title?: string }) {
         </button> */}
         {title && (
           <span 
-            className={`font-bold text-sm text-zinc-500 dark:text-zinc-400 transition-opacity duration-700`}
+            className={`font-bold text-sm text-zinc-500 dark:text-zinc-400 transition-opacity duration-700 cursor-pointer `}
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           >
             {title}
           </span>
