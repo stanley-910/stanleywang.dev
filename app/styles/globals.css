@@ -19,6 +19,21 @@
     border-color: var(--color-gray-200, currentColor);
   }
 }
+* Fix iOS overscroll background color */
+/* :root {
+  overflow: auto;
+  overscroll-behavior: none;
+}
+
+html {
+  overscroll-behavior: none;
+  height: 100%;
+}
+
+body {
+  overscroll-behavior: none;
+  min-height: 100%;
+} */
 
 
 ::selection {
@@ -85,12 +100,4 @@
     text-shadow: 0.4389924193300864px 0 1px rgba(0, 30, 255, 0.8),
     -0.4389924193300864px 0 1px rgba(255, 0, 80, 0.3), 0 0 4px;
   }
-}
-
-/* Performance optimizations for background art */
-.fixed {
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  perspective: 1000;
-  will-change: transform;
 }

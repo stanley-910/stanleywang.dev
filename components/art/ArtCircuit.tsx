@@ -154,6 +154,7 @@ export default function ArtCircuit() {
 
   return (
     <div
+      className="pointer-events-none print:hidden"
       style={{
         position: 'fixed',
         top: 0,
