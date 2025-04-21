@@ -12,6 +12,8 @@ import {
   MorphingDialogContainer,
 } from '@/components/ui/morphing-dialog'
 import Link from 'next/link'
+import '@/app/styles/prose.css'
+import '@/app/styles/markdown.css'
 import { AnimatedBackground } from '@/components/ui/animated-background'
 import {
   PROJECTS,
@@ -238,7 +240,7 @@ export default function Personal() {
         variants={VARIANTS_SECTION}
         transition={TRANSITION_SECTION}
       >
-        <h3 className="mb-5 text-lg font-medium font-serif">Showcase</h3>
+        <h3 className="mb-5 text-lg font-medium font-serif"><Link className="prose-link" href="/projects">Showcase</Link></h3>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           {PROJECTS.map((project) => (
             <div key={project.name} className="space-y-2">
@@ -331,7 +333,8 @@ export default function Personal() {
         variants={VARIANTS_SECTION}
         transition={TRANSITION_SECTION}
       >
-        <h3 className="mb-3 text-lg font-medium font-serif"><Link href="/writing">Writing</Link></h3>
+        <h3 className="mb-3 text-lg font-medium font-serif"><Link className="prose-link" href="/writing">Writing</Link></h3>
+
         <div className="flex flex-col space-y-0">
           <AnimatedBackground
             enableHover

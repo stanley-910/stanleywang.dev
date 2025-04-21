@@ -50,7 +50,7 @@ export const PROJECTS: Project[] = [
         '/trading-fours3.png'
       ]
     },
-    id: 'project1',
+    id: 'project-1',
     category: 'Machine Learning'
   },
   {
@@ -61,7 +61,7 @@ export const PROJECTS: Project[] = [
       type: 'video',
       sources: ['datamines-demo.mov']
     },
-    id: 'project2',
+    id: 'project-2',
     category: 'Game Dev'
   },
 ]
@@ -75,7 +75,7 @@ export const WORK_EXPERIENCE: WorkExperience[] = [
     location: 'Montreal',
     desc: 'EMS Team',
     link: 'https://www.autodesk.com/collections/media-entertainment/included-software',
-    id: 'work1',
+    id: 'work-1',
     gradient: 'blue'
   },
   {
@@ -86,7 +86,7 @@ export const WORK_EXPERIENCE: WorkExperience[] = [
     location: 'Montreal',
     desc: 'Structural Team',
     link: 'https://beta.team/aircraft',
-    id: 'work2',
+    id: 'work-2',
     gradient: 'yellow'
   },
   {
@@ -96,8 +96,8 @@ export const WORK_EXPERIENCE: WorkExperience[] = [
     end: 'Dec 2024',
     location: 'Montreal',
     desc: 'Presented novel research at UCORE 2024, McGill\'s Undergraduate Research Symposium',
-    link: '',
-    id: 'work3',
+    link: 'https://www.mcgill.ca/',
+    id: 'work-3',
     gradient: 'red'
   },
 
@@ -138,10 +138,6 @@ export const SOCIAL_LINKS: SocialLink[] = [
     label: 'Github',
     link: 'https://github.com/stanley-utf8',
   },
-  // {
-  //   label: 'Twitter',
-  //   link: 'https://twitter.com/stanley_utf8',
-  // },
   {
     label: 'LinkedIn',
     link: 'https://www.linkedin.com/in/stanley-utf8/',

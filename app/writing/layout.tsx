@@ -5,6 +5,7 @@ import { ScrollProgress } from '@/components/ui/scroll-progress'
 import { useEffect, useState } from 'react'
 import { BLOG_POSTS } from '@/app/data'
 import { usePathname } from 'next/navigation'
+import { motion, AnimatePresence } from 'motion/react'
 import '@/app/styles/prose.css'
 import '@/app/styles/markdown.css'
 import '@/app/styles/code.css'
@@ -13,7 +14,24 @@ import Giscus from '@giscus/react'
 import { useTheme } from 'next-themes'
 import PostsPage from '@/app/writing/page'
 
+const VARIANTS_CONTAINER = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.15,
+    },
+  },
+}
 
+const VARIANTS_SECTION = {
+  hidden: { opacity: 0, y: 10, filter: 'blur(8px)' },
+  visible: { opacity: 1, y: 0, filter: 'blur(0px)' },
+}
+
+const TRANSITION_SECTION = {
+  duration: 0.3,
+}
 function CopyButton() {
   const [text, setText] = useState('Copy')
   const currentUrl = typeof window !== 'undefined' ? window.location.href : ''
@@ -92,6 +110,11 @@ export default function LayoutBlogPost({
   const pathname = usePathname()
   const isPostsPage = pathname === '/writing'
 
+  // Add scroll to top effect when pathname changes
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
+
   if (isPostsPage) {
     return <PostsPage />
   }
@@ -105,8 +128,15 @@ export default function LayoutBlogPost({
         }}
       />
       <main className="prose prose-gray mt-10 dark:prose-invert prose-pre:bg-transparent prose-pre:p-0">
-        <BlogHeader />
-        {children}
+    <motion.main
+      className="space-y-12 mt-10 "
+      variants={VARIANTS_CONTAINER}
+      initial="hidden"
+      animate="visible"
+    >
+          <BlogHeader />
+            {children}
+        </motion.main>
       </main>
       <hr className="prose-hr"></hr>
       <div className="">
