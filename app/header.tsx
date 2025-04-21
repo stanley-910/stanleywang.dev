@@ -74,7 +74,7 @@ export function Header() {
             </TextEffect>
           </div>
           
-          <nav className="flex flex-row lg:flex-col items-center lg:items-start lg:ml-6 space-x-6 lg:space-x-0 lg:space-y-2 ">
+          <nav className="flex flex-row lg:flex-col items-center lg:items-start lg:ml-6 space-x-4 lg:space-x-0 lg:space-y-2 ">
             <Link 
               href="/about" 
               className="text-[1.0em] font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto flex items-center"
