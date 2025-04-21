@@ -172,16 +172,16 @@ html.dark .prose {
 }
 
 /* KaTeX Math Styling */
-/* .prose .katex-display { */
+.prose .katex-display {
   /* For block equations ($$) */
   /* font-size: 1.1em; */
   /* color: var(--fg); */
   /* margin: 1.5em 0; */
-  /* overflow-x: auto; */
+  overflow-x: auto;
   /* overflow-y: hidden; */
   /* padding-top: 0.1em; */
   /* padding-bottom: 0.1em; */
-/* } */
+}
 
 .prose .katex {
   /* For inline equations ($) */

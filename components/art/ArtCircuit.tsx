@@ -139,16 +139,16 @@ export default function ArtCircuit() {
     start();
 
     // Handle resize
-    const handleResize = () => {
-      initCanvas();
-      start();
-    };
+    // const handleResize = () => {
+    //   initCanvas();
+    //   start();
+    // };
 
-    window.addEventListener('resize', handleResize);
+    // window.addEventListener('resize', handleResize);
 
     return () => {
       stopped = true;
-      window.removeEventListener('resize', handleResize);
+      // window.removeEventListener('resize', handleResize);
     };
   }, []);
 

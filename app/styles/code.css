@@ -34,8 +34,9 @@ pre {
   padding: 1rem;
   scrollbar-width: none;  /* Firefox */
   -ms-overflow-style: none;  /* IE and Edge */
-  white-space: pre-wrap;       /* wrap text */
-  word-wrap: break-word;       /* break long words */
+
+  /* white-space: pre-wrap;       /* wrap text */
+  /* word-wrap: break-word;       /* break long words */
   max-width: 100%;
   border-radius: 0.5rem;
 }

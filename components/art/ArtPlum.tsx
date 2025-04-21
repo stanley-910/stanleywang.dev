@@ -166,21 +166,21 @@ export default function ArtPlum() {
     start();
 
     // Debounced resize handler
-    let resizeTimeout: NodeJS.Timeout;
-    const handleResize = () => {
-      clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(start, 200);
-    };
+    // let resizeTimeout: NodeJS.Timeout;
+    // const handleResize = () => {
+    //   clearTimeout(resizeTimeout);
+    //   resizeTimeout = setTimeout(start, 200);
+    // };
 
-    window.addEventListener('resize', handleResize);
+    // window.addEventListener('resize', handleResize);
 
     return () => {
       stopped = true;
       if (animationFrame) {
         cancelAnimationFrame(animationFrame);
       }
-      clearTimeout(resizeTimeout);
-      window.removeEventListener('resize', handleResize);
+      // clearTimeout(resizeTimeout);
+      // window.removeEventListener('resize', handleResize);
     };
   }, []);
 

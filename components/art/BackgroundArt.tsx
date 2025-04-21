@@ -1,5 +1,5 @@
 'use client'
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, memo } from 'react';
 import { usePathname } from 'next/navigation';
 
 const ArtPlum = lazy(() => import('./ArtPlum'));
@@ -9,7 +9,8 @@ export type BackgroundArtProps = {
   type?: 'dots' | 'plum' | 'circuit' | 'random';
 };
 
-export function BackgroundArt({ type = 'plum' }: BackgroundArtProps) {
+// Memoize the component to prevent unnecessary re-renders
+export const BackgroundArt = memo(function BackgroundArt({ type = 'plum' }: BackgroundArtProps) {
   // Get the current pathname
   const pathname = usePathname();
   
@@ -29,4 +30,4 @@ export function BackgroundArt({ type = 'plum' }: BackgroundArtProps) {
        }
     </Suspense>
   );
-} 
+}); 
