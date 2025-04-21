@@ -1,13 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 
 export function ProgressBar() {
   const [visible, setVisible] = useState(false)
   const [progress, setProgress] = useState(0)
   const pathname = usePathname()
-  const searchParams = useSearchParams()
 
   useEffect(() => {
     // Reset and show progress bar on route change
@@ -30,7 +29,7 @@ export function ProgressBar() {
       clearTimeout(timer)
       clearTimeout(completeTimer)
     }
-  }, [pathname, searchParams]) // Reset on route change
+  }, [pathname]) // Reset on route change
 
   if (!visible) return null
 
