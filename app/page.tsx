@@ -352,15 +352,15 @@ export default function Personal() {
                 href={post.link}
                 data-id={post.uid}
               >
-                <h4>{post.title}</h4>
-                <p className="text-sm text-zinc-500">
+                <h4 className="text-md font-normal mb-1 dark:text-zinc-100">{post.title}</h4>
+                <p className="text-sm text-zinc-500 mb-1">
                   <time dateTime={post.date}>
                     {format(new Date(post.date), 'MMMM dd, yyyy')}
                   </time>
                   {' • '}
                   {post.readingTime}
                 </p>
-                <p>{post.description}</p>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">{post.description}</p>
               </Link>
             ))}
           </AnimatedBackground>
@@ -392,7 +392,7 @@ export default function Personal() {
         variants={VARIANTS_SECTION}
         transition={TRANSITION_SECTION}
       >
-        <Stars className="fill-yellow-500 dark:fill-amber-400 transition-colors" />
+        <Stars className="fill-[rgb(186,149,94)] dark:fill-[rgb(186,149,94)] transition-colors" />
       </motion.section>
     </motion.main>
   )

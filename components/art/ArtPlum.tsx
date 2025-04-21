@@ -39,7 +39,8 @@ export default function ArtPlum() {
     const r15 = Math.PI / 12;
     // const color = '#88888825';
     // const color = 'rgba(0,28,240, 0.1)';
-    const color = 'rgba(200,70,70, 0.1)';
+    // const color = 'rgba(200,70,70, 0.1)';
+    const color = 'rgba(186,149,94, 0.1)';
     
     const MIN_BRANCH = 30;
     const len = 6;
