@@ -92,8 +92,7 @@ export default function LayoutBlogPost({
         <BlogHeader />
         {children}
       </main>
-      <div className="mt-16 -mx-4 sm:mx-0">
-
+      <div className="mt-6">
       <Giscus
         repo="stanley-utf8/stanley"
         repoId="R_kgDOOcaodg"

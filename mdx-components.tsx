@@ -1,5 +1,6 @@
 import type { MDXComponents } from 'mdx/types'
 import { TableOfContents } from '@/components/ui/toc'
+import { Stars } from '@/components/ui/stars'
 import GithubSlugger from 'github-slugger'
 
 export function useMDXComponents(components: MDXComponents): MDXComponents {
@@ -7,9 +8,10 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
   
   return {
     ...components,
-    // code: ({ children }) => {
-    //   return <code className="prose-code">{children}</code>
-    // },
+    // hr: () => <Stars asHr />,
+    StarDivider: ({ variant, className }: { variant?: 1 | 2 | 3, className?: string }) => (
+      <Stars asHr variant={variant} className={className} />
+    ),
     h1: ({ children }) => {
       const slug = slugger.slug(children?.toString() || '')
       return <h1 id={slug}>{children}</h1>

@@ -2,7 +2,10 @@ type Project = {
   name: string
   description: string
   link: string
-  video: string
+  media: {
+    type: 'video' | 'images'
+    sources: string[]  // Single video URL or array of image URLs
+  }
   id: string
 }
 
@@ -13,7 +16,9 @@ type WorkExperience = {
   end: string
   desc: string
   link: string
+  location: string
   id: string
+  gradient?: string
 }
 
 export type BlogPost = {
@@ -34,51 +39,74 @@ type SocialLink = {
 export const PROJECTS: Project[] = [
   {
     name: 'Trading Fours',
-    description:
-      'recommending music.',
-    link: 'https://pro.motion-primitives.com/',
-    video:
-      'https://res.cloudinary.com/read-cv/video/upload/t_v_b/v1/1/profileItems/W2azTw5BVbMXfj7F53G92hMVIn32/newProfileItem/d898be8a-7037-4c71-af0c-8997239b050d.mp4?_a=DATAdtAAZAA0',
+    description: 'recommending music.',
+    link: 'https://www.youtube.com/watch?v=sx5btkY24hQ',
+    media: {
+      type: 'images',
+      sources: [
+        '/trading-fours1.png',
+        '/trading-fours2.png',
+        '/trading-fours3.png'
+      ]
+    },
     id: 'project1',
   },
   {
     name: 'Datamines',
     description: "reggie's got a long day ahead of him.",
-    link: 'https://motion-primitives.com/',
-    video:
-      'https://res.cloudinary.com/read-cv/video/upload/t_v_b/v1/1/profileItems/W2azTw5BVbMXfj7F53G92hMVIn32/XSfIvT7BUWbPRXhrbLed/ee6871c9-8400-49d2-8be9-e32675eabf7e.mp4?_a=DATAdtAAZAA0',
+    link: 'https://averageosiris.itch.io/datamines',
+    media: {
+      type: 'video',
+      sources: ['datamines-demo.mov']
+    },
     id: 'project2',
   },
 ]
 
 export const WORK_EXPERIENCE: WorkExperience[] = [
   {
-    company: 'Reglazed Studio',
-    title: 'CEO',
-    start: '2024',
-    end: 'Present',
-    desc: 'I ran a company',
-    link: 'https://ibelick.com',
+    company: 'Autodesk',
+    title: 'Software Engineer Intern',
+    start: 'Summer 2025',
+    end: '',
+    location: 'Montreal',
+    desc: 'EMS Team',
+    link: 'https://www.autodesk.com/collections/media-entertainment/included-software',
     id: 'work1',
+    gradient: 'blue'
   },
   {
-    company: 'Freelance',
-    title: 'Design Engineer',
-    start: '2022',
-    end: '2024',
-    desc: 'I was a design engineer',
-    link: 'https://ibelick.com',
+    company: 'Beta Technologies',
+    title: 'Software Engineer Intern',
+    start: 'Jan 2025',
+    end: 'Apr 2025',
+    location: 'Montreal',
+    desc: 'Structural Team',
+    link: 'https://beta.team/aircraft',
     id: 'work2',
+    gradient: 'yellow'
   },
   {
-    company: 'Freelance',
-    title: 'Front-end Developer',
-    start: '2017',
-    end: 'Present',
-    desc: 'I was a front-end developer',
-    link: 'https://ibelick.com',
+    company: 'McGill AI Ethics Lab',
+    title: 'Lead Researcher',
+    start: 'May 2024',
+    end: 'Dec 2024',
+    location: 'Montreal',
+    desc: 'Presented novel research at UCORE 2024, McGill\'s Undergraduate Research Symposium',
+    link: '',
     id: 'work3',
+    gradient: 'red'
   },
+
+  // {
+  //   company: 'Freelance',
+  //   title: 'Front-end Developer',
+  //   start: '2017',
+  //   end: 'Present',
+  //   desc: 'I was a front-end developer',
+  //   link: 'https://ibelick.com',
+  //   id: 'work3',
+  // },
 ]
 
 export const BLOG_POSTS: BlogPost[] = [

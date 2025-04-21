@@ -111,6 +111,14 @@ export function Header() {
               <Terminal className="w-4 h-4 lg:hidden" />
             </Link>
             {/* Theme Switch for small/medium screens - In navigation */}
+            <Link 
+            href="https://github.com/stanleyw-tw" 
+            className="text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors lg:hidden"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <GitHubLogoIcon className="w-4 h-4" />
+          </Link>
             <div className="pointer-events-auto lg:hidden">
               <ThemeSwitch />
             </div>

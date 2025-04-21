@@ -3,7 +3,7 @@ import { MoonIcon, SunIcon } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useEffect, useState } from 'react'
 
-export function ThemeSwitch() {
+export function ThemeSwitch({className}: {className?: string}) {
   const [mounted, setMounted] = useState(false)
   const { theme, setTheme } = useTheme()
 
@@ -16,7 +16,7 @@ export function ThemeSwitch() {
   }
 
   return (
-    <div className="opacity-0 animate-fade-in">
+    <div className={`opacity-0 animate-fade-in ${className}`}>
       <button
         className="inline-flex h-7 w-4 items-center justify-center text-zinc-500 dark:text-zinc-400"
         type="button"
