@@ -60,7 +60,7 @@ export function Header() {
       >
         <div className="flex flex-row sm:flex-row lg:flex-col sm:items-center lg:items-start justify-between max-w-full">
           <div className="lg:ml-4 mb-0 sm:mb-0 lg:mb-6 flex-shrink-0">
-            <Link href="/" className="font-serif text-2xl text-black dark:text-white pointer-events-auto" title="@stanleywang.dev">
+            <Link href="/" className="font-serif text-2xl text-black dark:text-white pointer-events-auto" title="cd ~">
               Stanley Wang
             </Link>
             <TextEffect
@@ -78,7 +78,7 @@ export function Header() {
             <Link 
               href="/about" 
               className="text-[1.0em] font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto flex items-center"
-              title="about"
+              title="cd ~/about"
             >
               <span className="hidden lg:inline">about</span>
               <KeyboardMusicIcon className="w-4 h-4 lg:hidden" />
@@ -86,7 +86,7 @@ export function Header() {
             <Link 
               href="/writing" 
               className="text-[1.0em] font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto flex items-center"
-              title="writing"
+              title="cd ~/writing"
             >
               <span className="hidden lg:inline">writing</span>
               <NotepadTextIcon className="w-4 h-4 lg:hidden" />
@@ -94,7 +94,7 @@ export function Header() {
             <Link 
               href="/projects" 
               className="text-[1.0em] font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto flex items-center"
-              title="projects"
+              title="cd ~/projects"
             >
               <span className="hidden lg:inline">projects</span>
               <ApertureIcon className="w-4 h-4 lg:hidden" />
@@ -102,8 +102,7 @@ export function Header() {
             <Link 
               href="https://sh.stanleywang.dev/"
               className="leading-6 text-[0.9em] font-mono text-zinc-600 dark:text-zinc-400 pointer-events-auto flex items-center  transition-colors"
-
-              title="Run Shell..."
+              title="source ~/.sshrc"
             >
               <span className="hidden lg:inline">
                 <GlitchText text="/bin/sh" />

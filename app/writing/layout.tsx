@@ -13,6 +13,7 @@ import 'katex/dist/katex.css'
 import Giscus from '@giscus/react'
 import { useTheme } from 'next-themes'
 import PostsPage from '@/app/writing/page'
+import CdOut from '@/components/ui/cd-out'
 
 const VARIANTS_CONTAINER = {
   hidden: { opacity: 0 },
@@ -110,9 +111,17 @@ export default function LayoutBlogPost({
   const pathname = usePathname()
   const isPostsPage = pathname === '/writing'
 
-  // Add scroll to top effect when pathname changes
+  // Add scroll to top effect when pathname changes, but not on refresh
   useEffect(() => {
-    window.scrollTo(0, 0)
+    // Get the navigation type from performance entries
+    const navigationEntries = performance.getEntriesByType('navigation');
+    const isRefresh = navigationEntries.length > 0 && 
+      (navigationEntries[0] as PerformanceNavigationTiming).type === 'reload';
+
+    // // Only scroll to top if it's not a page refresh
+    if (!isRefresh) {
+      window.scrollTo(0, 0);
+    }
   }, [pathname])
 
   if (isPostsPage) {
@@ -138,7 +147,28 @@ export default function LayoutBlogPost({
             {children}
         </motion.main>
       </main>
-      <hr className="prose-hr"></hr>
+      <motion.section
+        variants={VARIANTS_SECTION}
+        initial="hidden"
+        animate="visible"
+        transition={TRANSITION_SECTION}
+      >
+        <CdOut title="In Writing" link="/writing" />
+      </motion.section>
+      <motion.section
+        variants={VARIANTS_SECTION}
+        initial="hidden"
+        animate="visible"
+        transition={TRANSITION_SECTION}
+      >
+        <hr className="prose-hr"></hr>
+      </motion.section>
+      <motion.section
+        variants={VARIANTS_SECTION}
+        initial="hidden"
+        animate="visible"
+        transition={TRANSITION_SECTION}
+      >
       <div className="">
         <Giscus
           repo="stanley-utf8/stanley"
@@ -155,6 +185,7 @@ export default function LayoutBlogPost({
           // loading="lazy"
         />
       </div>
+      </motion.section>
     </>
   )
 }

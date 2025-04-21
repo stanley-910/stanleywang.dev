@@ -3,7 +3,7 @@
 import { motion } from 'motion/react'
 import PostsTable from '@/components/PostsTable'
 import { BLOG_POSTS } from '@/app/data'
-
+import CdOut from '@/components/ui/cd-out'
 const VARIANTS_SECTION = {
   hidden: { opacity: 0, y: 10, filter: 'blur(8px)' },
   visible: { opacity: 1, y: 0, filter: 'blur(0px)' },
@@ -15,8 +15,8 @@ const TRANSITION_SECTION = {
 
 export default function PostsPage() {
   return (
-    <main className="prose prose-gray mt-10 dark:prose-invert">
-      <div className="space-y-8">
+    <main className="">
+      <div className="space-y-8 prose prose-gray mt-10 dark:prose-invert">
         <motion.section
           variants={VARIANTS_SECTION}
           initial="hidden"
@@ -29,6 +29,14 @@ export default function PostsPage() {
           <PostsTable posts={BLOG_POSTS} />
         </motion.section>
       </div>
+      <motion.section
+        variants={VARIANTS_SECTION}
+        initial="hidden"
+        animate="visible"
+        transition={TRANSITION_SECTION}
+      >
+        <CdOut link="/" title="Home" />
+      </motion.section>
     </main>
   )
 } 
