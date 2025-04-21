@@ -11,6 +11,8 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     StarDivider: ({ variant, className }: { variant?: 1 | 2 | 3, className?: string }) => (
       <Stars asHr variant={variant} className={className} />
     ),
+
+    strike: ({ children }) => <span className="line-through">{children}</span>,
     h1: ({ children }) => {
       const slug = slugger.slug(children?.toString() || '')
       return <h1 id={slug}>{children}</h1>
