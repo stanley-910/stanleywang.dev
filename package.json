@@ -1,5 +1,5 @@
 {
-  "name": "nim",
+  "name": "stanley-wang",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -37,7 +37,6 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-jsx": "^1.0.0",
-    "react-katex": "^3.0.1",
     "rehype-katex": "^7.0.1",
     "rehype-pretty-code": "^0.14.1",
     "remark-frontmatter": "^5.0.0",

@@ -20,8 +20,10 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: 'Stanley Wang',
-  description:
-    'Stanley Wang - Site',
+  description: 'Stanley Wang - Site',
+  icons: {
+    icon: '/favicon.ico',
+  },
 }
 
 // const geist = Geist({

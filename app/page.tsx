@@ -204,7 +204,7 @@ function MagneticSocialLink({
 export default function Personal() {
   return (
     <motion.main
-      className="space-y-12"
+      className="space-y-12 mt-10 "
       variants={VARIANTS_CONTAINER}
       initial="hidden"
       animate="visible"
@@ -215,12 +215,17 @@ export default function Personal() {
       >
         <div className="flex-1">
           <p className="text-md text-zinc-600 dark:text-zinc-400">
-          Wow I'm so fucking cool.
+        je danse, je suis, and the time ticks slightly back
           </p>
         </div>
       </motion.section>
 
+      <motion.section
+        variants={VARIANTS_SECTION}
+        transition={TRANSITION_SECTION}
+      >
         <Stars />
+      </motion.section>
 
       <motion.section
         variants={VARIANTS_SECTION}
@@ -299,7 +304,12 @@ export default function Personal() {
           ))}
         </div>
       </motion.section>
-      <Stars />
+      <motion.section
+        variants={VARIANTS_SECTION}
+        transition={TRANSITION_SECTION}
+      >
+        <Stars />
+      </motion.section>
 
       <motion.section
         variants={VARIANTS_SECTION}
@@ -337,15 +347,15 @@ export default function Personal() {
           </AnimatedBackground>
         </div>
       </motion.section>
-      <Stars />
+
 
       <motion.section
         variants={VARIANTS_SECTION}
         transition={TRANSITION_SECTION}
       >
-        <h3 className="mb-5 text-lg font-medium">Connect</h3>
+        <h3 className="mb-5 text-lg font-medium">Contact, Contact</h3>
         <p className="mb-5 text-zinc-600 dark:text-zinc-400">
-          Feel free to contact me at{' '}
+          Please don't email me at my email. Thanks. {' '}
           <a className="underline dark:text-zinc-300" href={`mailto:${EMAIL}`}>
             {EMAIL}
           </a>
@@ -358,7 +368,13 @@ export default function Personal() {
           ))}
         </div>
       </motion.section>
-      <Stars className="fill-yellow-500 dark:fill-amber-400 transition-colors" />
+
+      <motion.section
+        variants={VARIANTS_SECTION}
+        transition={TRANSITION_SECTION}
+      >
+        <Stars className="fill-yellow-500 dark:fill-amber-400 transition-colors" />
+      </motion.section>
     </motion.main>
   )
 }

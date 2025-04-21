@@ -40,9 +40,9 @@ export function Header() {
       />
       {/* Theme Switch and GitHub for large screens - Fixed in top right */}
       <div className="lg:mr-4 fixed top-4 right-4 z-30 pointer-events-auto hidden lg:block">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center space-x-6">
           <Link 
-            href="https://github.com/stanleyw-tw" 
+            href="https://github.com/stanley-utf8" 
             className="text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors"
             target="_blank"
             rel="noopener noreferrer"
@@ -78,47 +78,48 @@ export function Header() {
           <nav className="flex flex-row lg:flex-col items-center lg:items-start lg:ml-6 space-y-0 lg:space-y-2 space-x-6 lg:space-x-0">
             <Link 
               href="/about" 
-              className="text-[1.1em] font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto flex items-center"
-              title="About"
+              className="text-[1.0em] font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto flex items-center"
+              title="about"
             >
-              <span className="hidden lg:inline">About</span>
+              <span className="hidden lg:inline">about</span>
               <KeyboardMusicIcon className="w-4 h-4 lg:hidden" />
             </Link>
             <Link 
               href="/posts" 
-              className="text-[1.1em] font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto flex items-center"
-              title="Writing"
+              className="text-[1.0em] font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto flex items-center"
+              title="writing"
             >
-              <span className="hidden lg:inline">Writing</span>
+              <span className="hidden lg:inline">writing</span>
               <NotepadTextIcon className="w-4 h-4 lg:hidden" />
             </Link>
             <Link 
               href="/projects" 
-              className="text-[1.1em] font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto flex items-center"
-              title="Projects"
+              className="text-[1.0em] font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto flex items-center"
+              title="projects"
             >
-              <span className="hidden lg:inline">Projects</span>
+              <span className="hidden lg:inline">projects</span>
               <ApertureIcon className="w-4 h-4 lg:hidden" />
             </Link>
             <Link 
               href="https://stanleywang.dev"
-              className="text-[1em] font-mono text-zinc-600 hover:text-black dark:text-zinc-400 pointer-events-auto flex items-center"
+              className="leading-6 text-[0.9em] font-mono text-zinc-600 dark:text-zinc-400 pointer-events-auto flex items-center  transition-colors"
+
               title="Run Shell..."
             >
               <span className="hidden lg:inline">
-                <GlitchText text="term0x86" />
+                <GlitchText text="/bin/sh" />
               </span>
-              <Terminal className="w-4 h-4 lg:hidden" />
+              <Terminal className=" w-4 h-4 lg:hidden dark:hover:text-white hover:text-black  transition-colors" />
             </Link>
             {/* Theme Switch for small/medium screens - In navigation */}
             <Link 
-            href="https://github.com/stanleyw-tw" 
-            className="text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors lg:hidden"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <GitHubLogoIcon className="w-4 h-4" />
-          </Link>
+              href="https://github.com/stanley-utf8" 
+              className="text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors lg:hidden pointer-events-auto"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <GitHubLogoIcon className="w-4 h-4" />
+            </Link>
             <div className="pointer-events-auto lg:hidden">
               <ThemeSwitch />
             </div>

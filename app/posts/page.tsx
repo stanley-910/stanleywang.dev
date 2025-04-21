@@ -14,7 +14,7 @@ const TRANSITION_SECTION = {
 
 export default function PostsPage() {
   return (
-    <main className="prose prose-gray mt-10 pb-20 dark:prose-invert">
+    <main className="prose prose-gray mt-10 dark:prose-invert">
     <div className="space-y-8">
       <motion.section
         variants={VARIANTS_SECTION}

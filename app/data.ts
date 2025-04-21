@@ -51,6 +51,7 @@ export const PROJECTS: Project[] = [
       ]
     },
     id: 'project1',
+    category: 'Machine Learning'
   },
   {
     name: 'Datamines',
@@ -61,6 +62,7 @@ export const PROJECTS: Project[] = [
       sources: ['datamines-demo.mov']
     },
     id: 'project2',
+    category: 'Game Dev'
   },
 ]
 
@@ -111,33 +113,29 @@ export const WORK_EXPERIENCE: WorkExperience[] = [
 ]
 
 export const BLOG_POSTS: BlogPost[] = [
-  {
-    title: 'Exploring the Intersection of Design, AI, and Design Engineering',
-    description: 'How AI is changing the way we design',
-    link: '/writing/exploring-the-intersection-of-design-ai-and-design-engineering',
-    uid: 'post-1',
-    date: '2024-04-20',
-    readingTime: '10 min',
-    tags: ['Design', 'AI', 'Engineering'],
-  },
+  // {
+  //   title: 'Exploring the Intersection of Design, AI, and Design Engineering',
+  //   description: 'How AI is changing the way we design',
+  //   link: '/writing/exploring-the-intersection-of-design-ai-and-design-engineering',
+  //   uid: 'post-1',
+  //   date: '2024-04-20',
+  //   readingTime: '10 min',
+  //   tags: ['Design', 'AI', 'Engineering'],
+  // },
 ]
 
 export const SOCIAL_LINKS: SocialLink[] = [
   {
     label: 'Github',
-    link: 'https://github.com/ibelick',
+    link: 'https://github.com/stanley-utf8',
   },
-  {
-    label: 'Twitter',
-    link: 'https://twitter.com/ibelick',
-  },
+  // {
+  //   label: 'Twitter',
+  //   link: 'https://twitter.com/stanley_utf8',
+  // },
   {
     label: 'LinkedIn',
-    link: 'https://www.linkedin.com/in/ibelick',
-  },
-  {
-    label: 'Instagram',
-    link: 'https://www.instagram.com/ibelick',
+    link: 'https://www.linkedin.com/in/stanley-utf8/',
   },
 ]
 
