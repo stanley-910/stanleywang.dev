@@ -11,7 +11,7 @@ interface StarsProps {
 
 export const Stars = ({ variant, className, asHr = false }: StarsProps) => {
   // Only apply default fill classes if no custom className is provided
-  const defaultClasses = "fill-zinc-900 dark:fill-zinc-100 transition-colors"
+  const defaultClasses = "fill-zinc-900 dark:fill-zinc-200 transition-colors"
   
   // Initialize with variant prop or 1 as default for SSR
   const [selectedVariant, setSelectedVariant] = useState<number>(variant || 1)

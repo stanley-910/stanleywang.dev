@@ -231,7 +231,7 @@ export default function Personal() {
         variants={VARIANTS_SECTION}
         transition={TRANSITION_SECTION}
       >
-        <Stars />
+        <Stars variant={1}/>
       </motion.section>
 
       <motion.section

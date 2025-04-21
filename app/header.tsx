@@ -54,13 +54,12 @@ export function Header() {
       </div>
       {/* Header container - only interactive elements should capture pointer events */}
       <div 
-        className={`lg:fixed sm:absolute  left-0 top-4 z-20 transition-opacity duration-200 pointer-events-none w-full px-4 ${
+        className={`lg:fixed absolute left-0 top-4 z-20 transition-opacity duration-200 pointer-events-none w-full px-4 ${
           isVisible ? 'opacity-100' : 'opacity-0'
         }`}
       >
-        <div className="flex flex-col sm:flex-row lg:flex-col sm:items-center lg:items-start sm:justify-between max-w-full
-        ">
-          <div className="lg:ml-4 mb-6 sm:mb-0 lg:mb-6">
+        <div className="flex flex-row sm:flex-row lg:flex-col sm:items-center lg:items-start justify-between max-w-full">
+          <div className="lg:ml-4 mb-0 sm:mb-0 lg:mb-6 flex-shrink-0">
             <Link href="/" className="font-serif text-2xl text-black dark:text-white pointer-events-auto" title="@stanleywang.dev">
               Stanley Wang
             </Link>
@@ -75,7 +74,7 @@ export function Header() {
             </TextEffect>
           </div>
           
-          <nav className="flex flex-row lg:flex-col items-center lg:items-start lg:ml-6 space-y-0 lg:space-y-2 space-x-6 lg:space-x-0">
+          <nav className="flex flex-row lg:flex-col items-center lg:items-start lg:ml-6 space-x-6 lg:space-x-0 lg:space-y-2 ">
             <Link 
               href="/about" 
               className="text-[1.0em] font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto flex items-center"
