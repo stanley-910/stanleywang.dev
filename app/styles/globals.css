@@ -86,3 +86,11 @@
     -0.4389924193300864px 0 1px rgba(255, 0, 80, 0.3), 0 0 4px;
   }
 }
+
+/* Performance optimizations for background art */
+.fixed {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000;
+  will-change: transform;
+}
