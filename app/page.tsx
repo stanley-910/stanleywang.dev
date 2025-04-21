@@ -322,12 +322,6 @@ export default function Personal() {
           ))}
         </div>
       </motion.section>
-      <motion.section
-        variants={VARIANTS_SECTION}
-        transition={TRANSITION_SECTION}
-      >
-        <Stars />
-      </motion.section>
 
       <motion.section
         variants={VARIANTS_SECTION}
