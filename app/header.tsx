@@ -7,6 +7,7 @@ import { ApertureIcon } from 'lucide-react'
 import { NotepadTextIcon } from 'lucide-react'
 import { KeyboardMusicIcon } from 'lucide-react'
 import { GitHubLogoIcon } from '@radix-ui/react-icons'
+import { RssIcon } from 'lucide-react'
 import { useEffect, useState, useCallback } from 'react'
 import { GlitchText } from '@/components/ui/glitch-text'
 import { usePathname } from 'next/navigation'
@@ -93,6 +94,13 @@ export function Header() {
                 <GlitchText text="/bin/sh" />
               </span>
               <Terminal className=" w-4 h-4 lg:hidden dark:hover:text-white hover:text-black  transition-colors" />
+            </Link>
+            <Link 
+              href="/api/feed" 
+              className="text-[1.0em] font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto flex items-center"
+              title="RSS Feed"
+            >
+              <RssIcon className="w-4 h-4" />
             </Link>
             <Link 
               href="https://github.com/stanley-utf8" 

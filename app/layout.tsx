@@ -29,6 +29,11 @@ export const metadata: Metadata = {
   icons: {
     icon: '/favicon.ico',
   },
+  alternates: {
+    types: {
+      'application/rss+xml': 'https://stanleywang.dev/api/feed',
+    },
+  },
 }
 
 // const geist = Geist({
