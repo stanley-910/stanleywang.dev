@@ -2,6 +2,8 @@
 :root {
   --border-color: rgba(229, 231, 235, 0.3);
   --border-color-dark: rgba(55, 65, 81, 0.3);
+  --active-glow: rgba(0, 0, 0, 0.8);
+  --active-glow-dark: rgba(255, 255, 255, 0.8);
 }
 
 .table-of-contents {
@@ -140,17 +142,43 @@
 
 .table-of-contents ul > li > a {
   opacity: 0.75;
-  transition: opacity 200ms, text-decoration-color 200ms ease;
+  transition: all 200ms ease;
   text-decoration: underline;
-  text-decoration-color: rgba(115, 115, 115, 0.4); /* Light underline for light mode */
+  text-decoration-color: rgba(115, 115, 115, 0.4);
   text-underline-offset: 2px;
   text-decoration-thickness: 1px;
-  display: inline-block; /* Changed back to inline-block for text-only clicking */
+  display: inline-block;
   border-bottom: none !important;
   padding-left: 0;
-  max-width: 100%; /* Use max-width instead of width */
+  max-width: 100%;
   overflow: hidden;
-  text-overflow: ellipsis; /* Add ellipsis */
+  text-overflow: ellipsis;
+}
+
+/* Active state styles */
+.table-of-contents ul > li > a.active {
+  opacity: 1;
+  font-weight: 500;
+  text-decoration-color: var(--active-glow);
+  text-decoration-thickness: 1.2px;
+  transform: translateX(2px);
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark mode active state */
+.dark .table-of-contents ul > li > a.active {
+  text-decoration-color: var(--active-glow-dark);
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.1);
+}
+
+/* Hover state for active items */
+.table-of-contents ul > li > a.active:hover {
+  opacity: 1;
+  text-decoration-color: var(--active-glow);
+}
+
+.dark .table-of-contents ul > li > a.active:hover {
+  text-decoration-color: var(--active-glow-dark);
 }
 
 /* Dark mode styles */

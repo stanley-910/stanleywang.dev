@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import GithubSlugger from 'github-slugger'
 import '@/app/styles/toc.css'
 import { TableOfContents as TableOfContentsIcon } from 'lucide-react'
@@ -16,55 +16,182 @@ export function TableOfContents({ title }: { title?: string }) {
   const [minLevel, setMinLevel] = useState(1)
   const [isMounted, setIsMounted] = useState(false)
   const [showTitle, setShowTitle] = useState(false)
+  const [activeId, setActiveId] = useState<string>('')
+  const [selectedIndex, setSelectedIndex] = useState<number>(-1)
+  const [isScrollingProgrammatically, setIsScrollingProgrammatically] = useState(false)
+  const scrollTimeoutRef = useRef<number | null>(null)
 
+  // Handle mounting state separately
   useEffect(() => {
-    const handleScroll = () => {
-      setShowTitle(window.scrollY > 300)
-    }
-
-    // Initial check
-    handleScroll()
-
-    // Add scroll listener
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
+    setIsMounted(true)
+    return () => setIsMounted(false)
   }, [])
 
+  // Cleanup timeout on unmount
   useEffect(() => {
-    // Set mounted state for initial animation
-    setIsMounted(true)
-    
-    // Find all heading elements in the document
-    const headingElements = document.querySelectorAll('h1, h2, h3, h4')
+    return () => {
+      if (scrollTimeoutRef.current !== null) {
+        window.clearTimeout(scrollTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  // Scroll to heading helper
+  const scrollToHeading = useCallback((slug: string, index: number) => {
+    const element = document.getElementById(slug)
+    if (element) {
+      // Clear any existing timeout
+      if (scrollTimeoutRef.current !== null) {
+        window.clearTimeout(scrollTimeoutRef.current)
+      }
+
+      setIsScrollingProgrammatically(true)
+      window.history.pushState({}, '', `#${slug}`)
+      
+      const elementPosition = element.getBoundingClientRect().top
+      // Calculate the desired position (3% from the top)
+      const desiredTopPercentage = 0.03;
+      const viewportHeight = window.innerHeight;
+      const desiredTopPosition = viewportHeight * desiredTopPercentage;
+
+      // Calculate the offset needed to position the element at the desired position
+      const offsetPosition = elementPosition + window.scrollY - desiredTopPosition;
+      
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      })
+      
+      setActiveId(slug)
+      setSelectedIndex(index)
+      
+      // Set new timeout and store its reference
+      scrollTimeoutRef.current = window.setTimeout(() => {
+        setIsScrollingProgrammatically(false)
+        scrollTimeoutRef.current = null
+      }, 500)
+    }
+  }, [])
+
+  // Setup headings
+  useEffect(() => {
     const slugger = new GithubSlugger()
+    const headingElements = document.querySelectorAll('h1, h2, h3, h4')
     
     const items: TocItem[] = Array.from(headingElements)
-      .filter(heading => !heading.hasAttribute('data-toc-exclude')) // Exclude headings with data-toc-exclude
+      .filter(heading => !heading.hasAttribute('data-toc-exclude'))
       .map((heading) => {
-        const level = parseInt(heading.tagName[1]) // Get the heading level from h1, h2, etc.
+        const level = parseInt(heading.tagName[1])
         const text = heading.textContent || ''
         const slug = slugger.slug(text)
         
-        // Ensure the heading has an ID for scrolling
         if (!heading.id) {
           heading.id = slug
         }
 
-        return {
-          level,
-          text,
-          slug
-        }
+        return { level, text, slug }
       })
 
-    // Find the minimum heading level
     if (items.length > 0) {
       const minHeadingLevel = Math.min(...items.map(item => item.level))
       setMinLevel(minHeadingLevel)
     }
 
     setHeadings(items)
-  }, []) // Run once when component mounts
+  }, []) // Run once on mount
+
+  // Handle scroll title visibility
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowTitle(window.scrollY > 300)
+    }
+
+    handleScroll()
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  // Handle keyboard navigation
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return
+      }
+
+      if (headings.length === 0) return
+
+      if (e.key === 'j' || e.key === 'k' || e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        
+        let nextIndex = selectedIndex
+        const currentLevel = selectedIndex !== -1 ? headings[selectedIndex].level : null
+
+        if (e.key === 'j' || e.key === 'ArrowDown') {
+          if (e.ctrlKey && currentLevel !== null) {
+            for (let i = selectedIndex + 1; i < headings.length; i++) {
+              if (headings[i].level === currentLevel) {
+                nextIndex = i
+                break
+              }
+            }
+          } else {
+            nextIndex = selectedIndex === -1 ? 0 : Math.min(selectedIndex + 1, headings.length - 1)
+          }
+        } else if (e.key === 'k' || e.key === 'ArrowUp') {
+          if (e.ctrlKey && currentLevel !== null) {
+            for (let i = selectedIndex - 1; i >= 0; i--) {
+              if (headings[i].level === currentLevel) {
+                nextIndex = i
+                break
+              }
+            }
+          } else {
+            nextIndex = selectedIndex === -1 ? headings.length - 1 : Math.max(selectedIndex - 1, 0)
+          }
+        }
+
+        if (nextIndex !== selectedIndex) {
+          scrollToHeading(headings[nextIndex].slug, nextIndex)
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyPress)
+    return () => window.removeEventListener('keydown', handleKeyPress)
+  }, [headings, scrollToHeading, selectedIndex])
+
+  // Setup intersection observer
+  useEffect(() => {
+    if (headings.length === 0) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (isScrollingProgrammatically) return
+
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setActiveId(entry.target.id)
+            const newIndex = headings.findIndex(item => item.slug === entry.target.id)
+            if (newIndex !== -1) {
+              setSelectedIndex(newIndex)
+            }
+          }
+        })
+      },
+      {
+        rootMargin: '-3% 0px -92% 0px' // 3-8% from the top,
+      }
+    )
+
+    const headingElements = document.querySelectorAll('h1, h2, h3, h4')
+    headingElements.forEach((heading) => {
+      if (heading.id) {
+        observer.observe(heading)
+      }
+    })
+
+    return () => observer.disconnect()
+  }, [headings, isScrollingProgrammatically])
 
   const getIndentClass = (level: number) => {
     // Calculate relative indentation based on minimum level
@@ -80,25 +207,6 @@ export function TableOfContents({ title }: { title?: string }) {
         return 'toc-level-3'
       default:
         return 'toc-level-0'
-    }
-  }
-
-  const scrollToHeading = (e: React.MouseEvent<HTMLAnchorElement>, slug: string) => {
-    e.preventDefault()
-    const element = document.getElementById(slug)
-    if (element) {
-      // Update URL with hash
-      window.history.pushState({}, '', `#${slug}`)
-      
-      // Calculate scroll position with offset for some spacing at top
-      const elementPosition = element.getBoundingClientRect().top
-      const offsetPosition = elementPosition + window.scrollY - 20 // 20px offset
-      
-      // Smooth scroll to element with offset
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: 'smooth'
-      })
     }
   }
 
@@ -129,10 +237,17 @@ export function TableOfContents({ title }: { title?: string }) {
       </div>
       <ul>
         {headings.map((heading, index) => (
-          <li key={index} className={getIndentClass(heading.level)}>
+          <li 
+            key={index} 
+            className={`${getIndentClass(heading.level)} `}
+          >
             <a
               href={`#${heading.slug}`}
-              onClick={(e) => scrollToHeading(e, heading.slug)}
+              onClick={(e) => {
+                e.preventDefault()
+                scrollToHeading(heading.slug, index)
+              }}
+              className={activeId === heading.slug ? 'active' : ''}
             >
               {heading.text}
             </a>

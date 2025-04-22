@@ -133,7 +133,7 @@ pre::-webkit-scrollbar {
 }
 
 .dark pre {
-  background-color: rgba(65, 65, 65, 0.2) !important;
+  background-color: rgba(65, 65, 65, 0.1) !important;
 }
 
 .light pre {
