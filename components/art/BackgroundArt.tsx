@@ -15,7 +15,7 @@ export const BackgroundArt = memo(function BackgroundArt({ type = 'plum' }: Back
   const pathname = usePathname();
   
   // Don't render background art on writing pages
-  if (pathname?.startsWith('/writing')) {
+  if (pathname?.startsWith('/writing/')) {
     return null;
   }
 

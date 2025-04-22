@@ -9,9 +9,11 @@ import { KeyboardMusicIcon } from 'lucide-react'
 import { GitHubLogoIcon } from '@radix-ui/react-icons'
 import { useEffect, useState, useCallback } from 'react'
 import { GlitchText } from '@/components/ui/glitch-text'
+import { usePathname } from 'next/navigation'
 
 export function Header() {
   const [isVisible, setIsVisible] = useState(true)
+  const [isWriting, setIsWriting] = useState(false)
 
 
   // Debounce scroll handler to reduce number of updates
@@ -26,6 +28,11 @@ export function Header() {
     }
   }, [isVisible])
 
+  const pathname = usePathname()
+  useEffect(() => {
+    setIsWriting(pathname.startsWith('/writing/'))
+  }, [pathname])
+
   useEffect(() => {
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
@@ -35,31 +42,15 @@ export function Header() {
     <>
       {/* Mouse detection area - make it pointer-events-none */}
       <div 
-        className="fixed left-0 top-0 z-10 h-16 w-full pointer-events-none" 
-        onMouseEnter={() => setIsVisible(true)}
+        className="fixed left-0 top-0 z-10 h-16 w-full" 
       />
-      {/* Theme Switch and GitHub for large screens - Fixed in top right */}
-      <div className="lg:mr-4 fixed top-4 right-4 z-30 pointer-events-auto hidden lg:block">
-        <div className="flex items-center space-x-6">
-          <Link 
-            href="https://github.com/stanley-utf8" 
-            className="text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <GitHubLogoIcon className="w-4 h-4" />
-          </Link>
-          <ThemeSwitch />
-        </div>
-      </div>
-      {/* Header container - only interactive elements should capture pointer events */}
       <div 
-        className={`lg:fixed absolute left-0 top-4 z-20 transition-opacity duration-200 pointer-events-none w-full px-4 ${
+        className={`lg:fixed absolute left-0 top-4 z-20 transition-opacity duration-200 pointer-events-none w-full  lg:px-12 px-4 ${
           isVisible ? 'opacity-100' : 'opacity-0'
         }`}
       >
-        <div className="flex flex-row sm:flex-row lg:flex-col sm:items-center lg:items-start justify-between max-w-full">
-          <div className="lg:ml-4 mb-0 sm:mb-0 lg:mb-6 flex-shrink-0">
+        <div className="flex flex-row  sm:items-center justify-between max-w-full">
+          <div className=" mb-0  flex-shrink-0">
             <Link href="/" className="font-serif text-2xl text-black dark:text-white pointer-events-auto" title="cd ~">
               Stanley Wang
             </Link>
@@ -74,7 +65,7 @@ export function Header() {
             </TextEffect>
           </div>
           
-          <nav className="flex flex-row lg:flex-col items-center lg:items-start lg:ml-6 space-x-4 lg:space-x-0 lg:space-y-2 ">
+          <nav className="flex flex-row items-center  space-x-6  -translate-y-2">
             <Link 
               href="/about" 
               className="text-[1.0em] font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto flex items-center"
@@ -109,18 +100,18 @@ export function Header() {
               </span>
               <Terminal className=" w-4 h-4 lg:hidden dark:hover:text-white hover:text-black  transition-colors" />
             </Link>
-            {/* Theme Switch for small/medium screens - In navigation */}
             <Link 
               href="https://github.com/stanley-utf8" 
-              className="text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors lg:hidden pointer-events-auto"
-              target="_blank"
-              rel="noopener noreferrer"
+              className="text-[1.0em] font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto flex items-center"
+              title="cd ~/projects"
             >
-              <GitHubLogoIcon className="w-4 h-4" />
+              {/* <span className="hidden lg:inline">projects</span> */}
+              <GitHubLogoIcon className="w-4 h-4 " />
             </Link>
-            <div className="pointer-events-auto lg:hidden">
+            <div className="pointer-events-auto ">
               <ThemeSwitch />
             </div>
+
           </nav>
         </div>
       </div>

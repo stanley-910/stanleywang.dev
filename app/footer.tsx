@@ -50,9 +50,6 @@ export function Footer() {
         <div className="text-xs text-zinc-500">
           <Clock />
         </div>
-        {/* <div className="text-xs text-zinc-400">
-          <ThemeSwitch />
-        </div> */}
       </div>
     </footer>
   )

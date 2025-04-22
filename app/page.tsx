@@ -233,7 +233,7 @@ export default function Personal() {
         variants={VARIANTS_SECTION}
         transition={TRANSITION_SECTION}
       >
-        <Stars variant={1}/>
+        <Stars dance={true} variant={1}/>
       </motion.section>
 
       <motion.section
@@ -254,7 +254,7 @@ export default function Personal() {
                   target="_blank"
                 >
                   {project.name}
-                  <span className="absolute bottom-0.5 left-0 block h-[1px] w-full max-w-0 bg-zinc-900 transition-all duration-200 group-hover:max-w-full"></span>
+                  <span className="absolute bottom-0.5 left-0 block h-[1px] w-full max-w-0 bg-zinc-900 dark:bg-zinc-400 transition-all duration-200 group-hover:max-w-full"></span>
                 </a>
                 <p className="text-base text-zinc-600 dark:text-zinc-400">
                   {project.description}

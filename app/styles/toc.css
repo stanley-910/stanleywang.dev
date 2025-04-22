@@ -13,9 +13,9 @@
   font-family: var(--font-serif);
   /* left: 20px; */
   /* left: 1rem; */
-  left: 0;
+  left: 20px;
   /* right: 20px; Changed from left to right */
-  top: 30vh;
+  top: 120px;
   z-index: 200;
   overflow: hidden;
   display: none; /* Hidden by default on mobile */
