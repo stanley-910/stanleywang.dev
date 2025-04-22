@@ -13,7 +13,6 @@ import { usePathname } from 'next/navigation'
 
 export function Header() {
   const [isVisible, setIsVisible] = useState(true)
-  const [isWriting, setIsWriting] = useState(false)
 
 
   // Debounce scroll handler to reduce number of updates
@@ -27,11 +26,6 @@ export function Header() {
       // setIsVisible(false)
     }
   }, [isVisible])
-
-  const pathname = usePathname()
-  useEffect(() => {
-    setIsWriting(pathname.startsWith('/writing/'))
-  }, [pathname])
 
   useEffect(() => {
     window.addEventListener('scroll', handleScroll, { passive: true })

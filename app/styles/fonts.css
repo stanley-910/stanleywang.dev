@@ -7,7 +7,7 @@
      --font-mono: 'DM Mono', 'Input Mono', 'Fira Code', monospace;
      --font-condensed: 'Roboto Condensed', sans-serif;
      --font-script: 'Bad Script', cursive;
-     --font-serif: 'Charter', 'Merriweather', serif;
+     --font-serif: var(--font-charter);
    }
 
    body {
@@ -20,4 +20,9 @@
 
    code {
      font-family: var(--font-mono) !important;
+   }
+
+   .font-serif {
+     font-family: var(--font-serif) !important;
+     letter-spacing: -0.02em;
    }
