@@ -10,6 +10,55 @@
   If we ever want to remove these styles, we need to add an explicit border
   color utility to any element that depends on these defaults.
 */
+
+@font-face {
+  font-family: "Charter";
+  src: url("/fonts/charter-0.woff2") format("woff2"); /* normal */
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Charter";
+  src: url("/fonts/charter-1.woff2") format("woff2"); /* italic */
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Charter";
+  src: url("/fonts/charter-2.woff2") format("woff2"); /* bold italic */
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Charter";
+  src: url("/fonts/charter-3.woff2") format("woff2"); /* bold */
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Charter";
+  src: url("/fonts/charter-4.woff2") format("woff2"); /* black italic */
+  font-weight: 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Charter";
+  src: url("/fonts/charter-5.woff2") format("woff2"); /* black */
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 @layer base {
   *,
   ::after,
