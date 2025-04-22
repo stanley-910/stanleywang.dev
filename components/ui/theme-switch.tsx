@@ -12,7 +12,7 @@ export function ThemeSwitch({className}: {className?: string}) {
   }, [])
 
   if (!mounted) {
-    return null
+    return <div className="w-4 h-4"></div>
   }
 
   return (

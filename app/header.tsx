@@ -59,7 +59,7 @@ export function Header() {
             </TextEffect>
           </div>
           
-          <nav className="flex flex-row items-center  space-x-6  -translate-y-2">
+          <nav className="flex flex-row items-center space-x-4  -translate-y-2">
             <Link 
               href="/about" 
               className="text-[1.0em] font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto flex items-center"
@@ -86,7 +86,7 @@ export function Header() {
             </Link>
             <Link 
               href="https://sh.stanleywang.dev/"
-              className="leading-6 text-[0.9em] font-mono text-zinc-600 dark:text-zinc-400 pointer-events-auto flex items-center  transition-colors"
+              className="translate-y-[1px] text-[0.85em] font-mono text-zinc-600 dark:text-zinc-400 pointer-events-auto flex items-center  transition-colors"
               title="source ~/.sshrc"
             >
               <span className="hidden lg:inline">
@@ -100,12 +100,9 @@ export function Header() {
               title="cd ~/projects"
             >
               {/* <span className="hidden lg:inline">projects</span> */}
-              <GitHubLogoIcon className="w-4 h-4 " />
+              <GitHubLogoIcon className="w-4 h-4" />
             </Link>
-            <div className="pointer-events-auto ">
-              <ThemeSwitch />
-            </div>
-
+              <ThemeSwitch className="pointer-events-auto translate-y-[1px]" />
           </nav>
         </div>
       </div>
