@@ -37,40 +37,52 @@ export function TableOfContents({ title }: { title?: string }) {
   }, [])
 
   // Scroll to heading helper
-  const scrollToHeading = useCallback((slug: string, index: number) => {
-    const element = document.getElementById(slug)
-    if (element) {
-      // Clear any existing timeout
-      if (scrollTimeoutRef.current !== null) {
-        window.clearTimeout(scrollTimeoutRef.current)
-      }
+  const scrollToHeading = useCallback((slug: string | null, index: number) => {
+    // Clear any existing timeout
+    if (scrollTimeoutRef.current !== null) {
+      window.clearTimeout(scrollTimeoutRef.current)
+    }
 
-      setIsScrollingProgrammatically(true)
-      window.history.pushState({}, '', `#${slug}`)
-      
-      const elementPosition = element.getBoundingClientRect().top
-      // Calculate the desired position (3% from the top)
-      const desiredTopPercentage = 0.03;
-      const viewportHeight = window.innerHeight;
-      const desiredTopPosition = viewportHeight * desiredTopPercentage;
-
-      // Calculate the offset needed to position the element at the desired position
-      const offsetPosition = elementPosition + window.scrollY - desiredTopPosition;
-      
+    setIsScrollingProgrammatically(true)
+    
+    if (slug === null) {
+      // Scroll to top when slug is null
+      window.history.pushState({}, '', window.location.pathname)
       window.scrollTo({
-        top: offsetPosition,
+        top: 0,
         behavior: 'smooth'
       })
-      
-      setActiveId(slug)
-      setSelectedIndex(index)
-      
-      // Set new timeout and store its reference
-      scrollTimeoutRef.current = window.setTimeout(() => {
-        setIsScrollingProgrammatically(false)
-        scrollTimeoutRef.current = null
-      }, 500)
+      setActiveId('')
+      setSelectedIndex(-1)
+    } else {
+      const element = document.getElementById(slug)
+      if (element) {
+        window.history.pushState({}, '', `#${slug}`)
+        
+        const elementPosition = element.getBoundingClientRect().top
+        // Calculate the desired position (3% from the top)
+        const desiredTopPercentage = 0.03;
+        const viewportHeight = window.innerHeight;
+        const desiredTopPosition = viewportHeight * desiredTopPercentage;
+
+        // Calculate the offset needed to position the element at the desired position
+        const offsetPosition = elementPosition + window.scrollY - desiredTopPosition;
+        
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: 'smooth'
+        })
+        
+        setActiveId(slug)
+        setSelectedIndex(index)
+      }
     }
+    
+    // Set new timeout and store its reference
+    scrollTimeoutRef.current = window.setTimeout(() => {
+      setIsScrollingProgrammatically(false)
+      scrollTimeoutRef.current = null
+    }, 500)
   }, [])
 
   // Setup headings
@@ -135,6 +147,7 @@ export function TableOfContents({ title }: { title?: string }) {
               }
             }
           } else {
+            // If at top (-1), go to first heading
             nextIndex = selectedIndex === -1 ? 0 : Math.min(selectedIndex + 1, headings.length - 1)
           }
         } else if (e.key === 'k' || e.key === 'ArrowUp') {
@@ -146,12 +159,22 @@ export function TableOfContents({ title }: { title?: string }) {
               }
             }
           } else {
-            nextIndex = selectedIndex === -1 ? headings.length - 1 : Math.max(selectedIndex - 1, 0)
+            // If at first heading and going up, go to top
+            if (selectedIndex <= 0) {
+              nextIndex = -1
+            } else {
+              nextIndex = Math.max(selectedIndex - 1, 0)
+            }
           }
         }
 
+        // Scroll to heading or top
         if (nextIndex !== selectedIndex) {
-          scrollToHeading(headings[nextIndex].slug, nextIndex)
+          if (nextIndex === -1) {
+            scrollToHeading(null, -1)
+          } else {
+            scrollToHeading(headings[nextIndex].slug, nextIndex)
+          }
         }
       }
     }
@@ -170,10 +193,16 @@ export function TableOfContents({ title }: { title?: string }) {
 
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            setActiveId(entry.target.id)
-            const newIndex = headings.findIndex(item => item.slug === entry.target.id)
-            if (newIndex !== -1) {
-              setSelectedIndex(newIndex)
+            // Check if we're at the top of the page
+            if (window.scrollY < 10) {
+              setActiveId('')
+              setSelectedIndex(-1)
+            } else {
+              setActiveId(entry.target.id)
+              const newIndex = headings.findIndex(item => item.slug === entry.target.id)
+              if (newIndex !== -1) {
+                setSelectedIndex(newIndex)
+              }
             }
           }
         })

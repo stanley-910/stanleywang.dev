@@ -133,11 +133,14 @@
 
 .table-of-contents ul > li {
   padding-left: 0;
-  line-height: 1.2em;
+  line-height: 1.4em; /* Increased line height for better readability */
   margin-top: 0.4em;
   font-size: 0.8em;
-  white-space: nowrap; /* Prevent wrapping */
-  overflow: hidden; /* Hide overflow */
+  /* Removed white-space: nowrap to allow text wrapping */
+  overflow-wrap: break-word; /* Allow long words to break */
+  word-wrap: break-word; /* Legacy support */
+  width: 100%; /* Ensure the li takes full width of parent */
+  text-overflow: ellipsis;
 }
 
 .table-of-contents ul > li > a {
@@ -151,17 +154,15 @@
   border-bottom: none !important;
   padding-left: 0;
   max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* Active state styles */
 .table-of-contents ul > li > a.active {
   opacity: 1;
-  font-weight: 500;
+  font-weight: 400;
   text-decoration-color: var(--active-glow);
   text-decoration-thickness: 1.2px;
-  transform: translateX(2px);
+  transform: translateX(3px);
   text-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
 }
 
