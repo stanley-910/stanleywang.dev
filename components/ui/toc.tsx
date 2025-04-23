@@ -15,7 +15,6 @@ export function TableOfContents({ title }: { title?: string }) {
   const [isVisible, setIsVisible] = useState(true)
   const [minLevel, setMinLevel] = useState(1)
   const [isMounted, setIsMounted] = useState(false)
-  const [showTitle, setShowTitle] = useState(false)
   const [activeId, setActiveId] = useState<string>('')
   const [selectedIndex, setSelectedIndex] = useState<number>(-1)
   const [isScrollingProgrammatically, setIsScrollingProgrammatically] = useState(false)
@@ -37,6 +36,18 @@ export function TableOfContents({ title }: { title?: string }) {
     }
   }, [])
 
+  const scrollToTop = useCallback(() => {
+    setIsScrollingProgrammatically(true)
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    })
+    scrollTimeoutRef.current = window.setTimeout(() => {
+      setIsScrollingProgrammatically(false)
+      scrollTimeoutRef.current = null
+    }, 500)
+  }, [])
+  
   // Scroll to heading helper
   const scrollToHeading = useCallback((slug: string | null, index: number) => {
     // Add early return if not initialized
@@ -119,17 +130,6 @@ export function TableOfContents({ title }: { title?: string }) {
     setIsInitialized(true)
   }, []) // Run once on mount
 
-  // Handle scroll title visibility
-  useEffect(() => {
-    const handleScroll = () => {
-      setShowTitle(window.scrollY > 300)
-    }
-
-    handleScroll()
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
-
   // Handle keyboard navigation
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -194,13 +194,37 @@ export function TableOfContents({ title }: { title?: string }) {
   useEffect(() => {
     if (headings.length === 0) return
 
+    let timeoutId: number | null = null
+
     const observer = new IntersectionObserver(
       (entries) => {
-        if (isScrollingProgrammatically) return
+        if (isScrollingProgrammatically) {
+          // Clear any existing timeout
+          if (timeoutId !== null) {
+            window.clearTimeout(timeoutId)
+          }
+          // Set a new timeout to allow intersection updates after scrolling
+          timeoutId = window.setTimeout(() => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                if (window.scrollY < 10) {
+                  setActiveId('')
+                  setSelectedIndex(-1)
+                } else {
+                  setActiveId(entry.target.id)
+                  const newIndex = headings.findIndex(item => item.slug === entry.target.id)
+                  if (newIndex !== -1) {
+                    setSelectedIndex(newIndex)
+                  }
+                }
+              }
+            })
+          }, 500) // Small delay to ensure scroll has completed
+          return
+        }
 
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            // Check if we're at the top of the page
             if (window.scrollY < 10) {
               setActiveId('')
               setSelectedIndex(-1)
@@ -226,7 +250,12 @@ export function TableOfContents({ title }: { title?: string }) {
       }
     })
 
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId)
+      }
+    }
   }, [headings, isScrollingProgrammatically])
 
   const getIndentClass = (level: number) => {
@@ -264,14 +293,14 @@ export function TableOfContents({ title }: { title?: string }) {
         </button> */}
         {title && (
           <span 
-            className={`font-bold text-sm text-zinc-500 dark:text-zinc-400 transition-opacity duration-700 cursor-pointer `}
+            className={`mb-2 font-bold text-sm text-zinc-500 dark:text-zinc-400 transition-opacity duration-700 cursor-pointer `}
             onClick={() => {
+              setActiveId('')
+              setSelectedIndex(-1)
               if (window.location.hash) {
                 window.history.pushState({}, '', window.location.pathname)
               }
-              window.scrollTo({ top: 0, behavior: 'smooth' })
-              setActiveId('')
-              setSelectedIndex(-1)
+              scrollToTop()
             }}
           >
             {title}
