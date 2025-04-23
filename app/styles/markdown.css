@@ -97,20 +97,38 @@ html.dark .prose {
 
 .prose h1 {
   font-weight: 400;
+  font-size: 2.1em;
+  /* letter-spacing: 0.01em; */
 }
 
 .prose h2 {
-    font-family: var(--font-serif);
+    font-family: var(--font-inter);
+    /* letter-spacing: 0.01em; */
+  font-weight: 700;
+  font-size: 1.5em;
+  margin-top: 2em;
+  margin-bottom: 1em;
+  line-height: 1.3333333;
+
 }
 
 .prose h3 {
-    font-family: var(--font-serif);
+    /* font-family: var(--font-serif); */
+  font-family: var(--font-inter);
+  font-weight: 600;
+  font-size: 1.25em;
+  margin-top: 1.6em;
+  margin-bottom: 0.6em;
+  line-height: 1.6;
 }
 
 .prose h4 {
-    font-size: 1.1875em;
-    font-weight: 400;
-    font-family: var(--font-serif);
+    font-size: 1.1em;
+    font-weight: 600;
+    font-family: var(--font-inter);
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+    line-height: 1.5;
 }
 
 .prose em {

@@ -24,16 +24,66 @@
   opacity: 0; /* Start hidden for fade in */
   visibility: hidden; /* Hide until mounted */
   transform: translateY(10px);
-  border-top: 1.2px solid var(--border-color-dark) !important;
+  /* border-top: 1.2px solid var(--border-color-dark) !important; */
 }
 
-.dark .table-of-contents {
-  border-top: 1.2px solid var(--border-color) !important;
+/* Add pseudo-element for animated border */
+.table-of-contents::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 1.2px;
+  width: 3.5ch; /* Initial width to match title */
+  opacity: 0.8;
+  background-color: var(--border-color-dark);
+  transition: width 0.7s cubic-bezier(0.25, 0.1, 0.25, 1), opacity 0.7s cubic-bezier(0.25, 0.1, 0.25, 1); /* easeOutQuart alternative */
 }
+
+.table-of-contents span {
+  color: var(--fg-deep);
+  opacity: 0.5;
+  transition: opacity 700ms 1500ms; /* Match the TOC content's delayed fade-out */
+}
+
+.dark .table-of-contents::before {
+  background-color: var(--border-color);
+}
+
+/* Sync border animation with TOC visibility */
+*:hover > .table-of-contents::before {
+  opacity: 1;
+  width: 75%;
+  transition: width 700ms 0ms, opacity 700ms 0ms;
+}
+
+*:hover > .table-of-contents span {
+  opacity: 0.8;
+  transition: opacity 700ms 0ms; /* Immediate fade-in on hover */
+}
+
+.table-of-contents span:hover {
+  opacity: 1; /* Full opacity on hover */
+  transition: opacity 200 ease; /* Immediate fade-in on hover */
+}
+
+.table-of-contents::before {
+  transition: width 700ms 1500ms, opacity 700ms 1500ms;
+  width: 3.5ch;
+}
+
+
+/* Keep border expanded when TOC is always on */
+.toc-always-on .table-of-contents::before {
+  opacity: 1;
+  width: 75%;
+}
+
+
 
 /* Initial fade in animation when mounted */
 .table-of-contents.mounted {
-  animation: tocFadeIn 700ms ease-out forwards;
+  animation: tocFadeIn 0.7s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
   visibility: visible;
 }
 
@@ -115,7 +165,7 @@
 
 /* Delayed fade out when hover is removed */
 .table-of-contents > ul {
-  transition: opacity 700ms 3000ms;  /* 5s delay before fade out */
+  transition: opacity 700ms 1500ms;  /* 5s delay before fade out */
 }
 
 *:hover > .table-of-contents > .table-of-contents-anchor,
@@ -230,16 +280,5 @@
 
 /* Title hover transition */
 .table-of-contents span {
-  transition: color 200ms ease-in-out;
+  transition:  opacity 700ms 1500ms; /* Include opacity transition with delay */
 }
-
-.table-of-contents span:hover {
-  color: rgba(0, 0, 0, 1);
-  transition: color 200ms ease-in-out;
-}
-
-/* Support for dark mode */
-.dark .table-of-contents span:hover {
-  color: rgb(229, 231, 235);
-  transition: color 200ms ease-in-out;
-} 

@@ -293,7 +293,7 @@ export function TableOfContents({ title }: { title?: string }) {
         </button> */}
         {title && (
           <span 
-            className={`mb-2 font-bold text-sm text-zinc-500 dark:text-zinc-400 transition-opacity duration-700 cursor-pointer `}
+            className={`mb-2 font-bold text-sm cursor-pointer`}
             onClick={() => {
               setActiveId('')
               setSelectedIndex(-1)

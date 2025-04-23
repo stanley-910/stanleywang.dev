@@ -11,6 +11,11 @@
   color utility to any element that depends on these defaults.
 */
 
+/* Force scrollbar to always be visible to prevent layout shifts */
+html {
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+}
 
 @layer base {
   *,
