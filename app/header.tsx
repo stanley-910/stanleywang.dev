@@ -34,7 +34,11 @@ export function Header() {
   }, [handleScroll])
 
   return (
-    <div className="lg:fixed absolute left-0 top-4 z-20 w-full lg:px-12 px-4">
+    <div 
+      className="lg:fixed absolute left-0 top-4 z-20 w-full lg:px-12 px-4 before:content-[''] before:absolute before:w-full before:-top-4 before:left-0 before:h-8"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       <div className="flex flex-row sm:items-center justify-between max-w-full">
         {/* Left side - always visible */}
         <div className="mb-0 flex-shrink-0 transition-opacity duration-200">
@@ -52,11 +56,8 @@ export function Header() {
           </TextEffect>
         </div>
         
-        {/* Hover detection wrapper */}
         <div 
           className="h-16 flex items-center"
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
         >
           {/* Right side nav - hides on scroll, reveals on hover */}
           <nav 
