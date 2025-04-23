@@ -16,19 +16,19 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     strike: ({ children }) => <span className="line-through">{children}</span>,
     h1: ({ children }) => {
       const slug = slugger.slug(children?.toString() || '')
-      return <h1 id={slug}>{children}</h1>
+      return <h1 id={slug} className="scroll-mt-[3vh]">{children}</h1>
     },
     h2: ({ children }) => {
       const slug = slugger.slug(children?.toString() || '')
-      return <h2 id={slug}>{children}</h2>
+      return <h2 id={slug} className="scroll-mt-[3vh]">{children}</h2>
     },
     h3: ({ children }) => {
       const slug = slugger.slug(children?.toString() || '')
-      return <h3 id={slug}>{children}</h3>
+      return <h3 id={slug} className="scroll-mt-[3vh]">{children}</h3>
     },
     h4: ({ children }) => {
       const slug = slugger.slug(children?.toString() || '')
-      return <h4 id={slug}>{children}</h4>
+      return <h4 id={slug} className="scroll-mt-[3vh]">{children}</h4>
     },
     
     Img: ({

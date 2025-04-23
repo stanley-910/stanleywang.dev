@@ -19,6 +19,7 @@ export function TableOfContents({ title }: { title?: string }) {
   const [activeId, setActiveId] = useState<string>('')
   const [selectedIndex, setSelectedIndex] = useState<number>(-1)
   const [isScrollingProgrammatically, setIsScrollingProgrammatically] = useState(false)
+  const [isInitialized, setIsInitialized] = useState(false)
   const scrollTimeoutRef = useRef<number | null>(null)
 
   // Handle mounting state separately
@@ -38,6 +39,11 @@ export function TableOfContents({ title }: { title?: string }) {
 
   // Scroll to heading helper
   const scrollToHeading = useCallback((slug: string | null, index: number) => {
+    // Add early return if not initialized
+    if (!isInitialized) {
+      return
+    }
+
     // Clear any existing timeout
     if (scrollTimeoutRef.current !== null) {
       window.clearTimeout(scrollTimeoutRef.current)
@@ -83,7 +89,7 @@ export function TableOfContents({ title }: { title?: string }) {
       setIsScrollingProgrammatically(false)
       scrollTimeoutRef.current = null
     }, 500)
-  }, [])
+  }, [isInitialized])
 
   // Setup headings
   useEffect(() => {
@@ -110,6 +116,7 @@ export function TableOfContents({ title }: { title?: string }) {
     }
 
     setHeadings(items)
+    setIsInitialized(true)
   }, []) // Run once on mount
 
   // Handle scroll title visibility
@@ -132,13 +139,13 @@ export function TableOfContents({ title }: { title?: string }) {
 
       if (headings.length === 0) return
 
-      if (e.key === 'j' || e.key === 'k' || e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      if (e.key === 'j' || e.key === 'k') {
         e.preventDefault()
         
         let nextIndex = selectedIndex
         const currentLevel = selectedIndex !== -1 ? headings[selectedIndex].level : null
 
-        if (e.key === 'j' || e.key === 'ArrowDown') {
+        if (e.key === 'j') {
           if (e.ctrlKey && currentLevel !== null) {
             for (let i = selectedIndex + 1; i < headings.length; i++) {
               if (headings[i].level === currentLevel) {
@@ -150,7 +157,7 @@ export function TableOfContents({ title }: { title?: string }) {
             // If at top (-1), go to first heading
             nextIndex = selectedIndex === -1 ? 0 : Math.min(selectedIndex + 1, headings.length - 1)
           }
-        } else if (e.key === 'k' || e.key === 'ArrowUp') {
+        } else if (e.key === 'k') {
           if (e.ctrlKey && currentLevel !== null) {
             for (let i = selectedIndex - 1; i >= 0; i--) {
               if (headings[i].level === currentLevel) {
@@ -208,7 +215,7 @@ export function TableOfContents({ title }: { title?: string }) {
         })
       },
       {
-        rootMargin: '-3% 0px -92% 0px' // 3-8% from the top,
+        rootMargin: '-5% 0px -92% 0px' // 3-8% from the top,
       }
     )
 

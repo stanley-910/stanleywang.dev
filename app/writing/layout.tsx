@@ -113,15 +113,10 @@ export default function LayoutBlogPost({
 
   // Add scroll to top effect when pathname changes, but not on refresh
   useEffect(() => {
-    // Get the navigation type from performance entries
-    // const navigationEntries = performance.getEntriesByType('navigation');
-    // const isRefresh = navigationEntries.length > 0 && 
-    //   (navigationEntries[0] as PerformanceNavigationTiming).type === 'reload';
-
-    // // // Only scroll to top if it's not a page refresh
-    // if (!isRefresh) {
+    // Don't scroll to top if there's a hash in the URL (anchor navigation)
+    if (!window.location.hash) {
       window.scrollTo(0, 0);
-    // }
+    }
   }, [pathname])
 
   if (isPostsPage) {
