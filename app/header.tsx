@@ -53,7 +53,7 @@ export function Header() {
             className="text-sm text-zinc-600 dark:text-zinc-500"
             delay={0.5}
           >
-            What's an LLM?
+          good at things
           </TextEffect>
         </div>
         
@@ -82,7 +82,7 @@ export function Header() {
               <span className="hidden lg:inline">writing</span>
               <BookOpenIcon className="w-4 h-4 lg:hidden" />
             </Link>
-            <span className="text-xs text-zinc-600 dark:text-zinc-400 sm:hidden lg:inline translate-y-[0.95px]">▧</span>
+            <span className="text-xs text-zinc-600 dark:text-zinc-400 hidden lg:inline translate-y-[0.95px]">▧</span>
             <Link 
               href="/projects" 
               className="text-[1.0em] font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto flex items-center"
@@ -91,7 +91,9 @@ export function Header() {
               <span className="hidden lg:inline">projects</span>
               <ClapperboardIcon className="w-4 h-4 lg:hidden" />
             </Link>
-            <span className="text-xs text-zinc-600 dark:text-zinc-400 sm:hidden lg:inline translate-y-[0.3px]">∷</span>
+              <span className="text-xs text-zinc-600 dark:text-zinc-400 hidden lg:inline translate-y-[0.3px]">
+                ∷
+              </span>
             <Link 
               href="https://sh.stanleywang.dev/"
               className="translate-y-[1px] text-[0.85em] font-mono text-zinc-600 dark:text-zinc-400 pointer-events-auto flex items-center transition-colors"
@@ -102,7 +104,7 @@ export function Header() {
               </span>
               <Terminal className="w-4 h-4 lg:hidden dark:hover:text-white hover:text-black transition-colors" />
             </Link>
-            <span className="text-xs text-zinc-600 dark:text-zinc-400 sm:hidden lg:inline translate-y-[0.95px]">▣</span>
+            <span className="text-xs text-zinc-600 dark:text-zinc-400 hidden lg:inline translate-y-[0.95px]">▣</span>
             <Link 
               href="/api/feed" 
               className="text-[1.0em] hidden lg:block font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto flex items-center"

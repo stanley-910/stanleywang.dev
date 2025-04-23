@@ -25,6 +25,7 @@ import {
 import { format } from 'date-fns'
 import { useState, useEffect } from 'react'
 // import { cn } from '@/lib/utils'
+import { AsciiArt } from '@/components/ui/ascii'
 
 const VARIANTS_CONTAINER = {
   hidden: { opacity: 0 },
@@ -226,47 +227,7 @@ export default function Personal() {
             je danse, je suis, and the time ticks slightly back
           </p> */}
           <pre className="font-mono whitespace-pre leading-[1.2] text-sm mt-2 text-zinc-600 dark:text-zinc-400">
-            {`   
-    　　　　　　*　　　　　　　　　　　　　　　　　　.              *
- .　　　　.　　　⠀ . 　　　　.          ✦⠀　  
-　　　　　　　  *⠀　　⠀  　　　　　⠀✦⠀　                           
-⠀⠀⠀.　　　　　　　　　　　　　.　　　ﾟ .　　　　　　　　　　　　　.
-                  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀                                                 
-　　　　　　*　　　　　　　　　　　.  .　　　　　　　　　　　　　. 　　✦⠀　   　　　,
-  ⠀　　　　⠀　　,  I'm Stanley Wang
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀.　　　　　 　　⠀　　　⠀.　
- 　　˚　　　⠀　⠀  　　,　　　　　　.  .  *⠀　　⠀  　　　　　⠀✦⠀　                           
-　　　　　　*　　　　　　　　　　　　　　　　　　.              *
- .　　　　.　　　⠀ . 　　　　.          ✦⠀　  
-　　　　　　　  *⠀　　⠀  　　　　　⠀✦⠀　                           
-　　　˚　　　　　　　　ﾟ　　　　　.           *⠀　　　⠀✦⠀　                           
-　.⠀　　⠀‍⠀‍⠀‍⠀‍⠀‍⠀‍⠀‍⠀‍⠀‍⠀‍⠀,
-.⠀ 　　　　　　　　　　.　　　　　　　　.  ✦⠀　   　　　,　　    　　　　　　　　.
-　　　*　　⠀.                                      welcome to my
-　　　　　⠀✦                                          website          　　.
-　　　　　.　　　　　　　　　　⠀✦ ˚　　　　　　　　　　　　　　*
-.⠀ 　　　　　　　　　　.　　　　　　　　.  ✦⠀　   　　　,　　    　　　　　　　　.
-　˚　　　　　　　　　　　　　　*
-⠀⠀⠀⠀⠀⠀.　　　　　　　　　　⠀⠀⠀✦ ⠀ ⠀　　　　　　　　　　　　　　⠀
-⠀⠀⣀⠤⢀⠀⠀⠀⣀⣀⣀⡤⠤⠤⠤⣄⣀⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⢉⠅⠊⣠⠴⠒⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠑⠲⢤⣒⠢⣄⠀⠀⠀⠀
-⡔⠁⡴⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠓⣌⢳⡀⠀⠀
-⢀⡞⠀ je danse, je suis, and⠀⠈⣷⡀⠀⠀                   ┈━═☆
-⢸  the time ticks          ⠀⠀⣽⡗⠀⠀
-⠸⡄   ⠀⠀⠀⠀⠀⠀             ⠀⠀⢠⣿⢳⣼⠄
-⠀⠱⣄⠀⠀   slightly back⠀⠀⠀⢀⣴⡿⠋⠀⡟⠀
-⠀⠀⠈⠑⠦⣤⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⣤⣴⢾⣿⣟⣀⠀⠄⠁⠀
-⠀⠀⠀⠀⠀⠙⠉⢷⣄⠀⠀⢸⣟⣿⢿⣿⡝⢝⢝⢕⢕⢕⢝⠟⠅⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠈⠓⢦⣈⣿⡅⠔⠛⠐⠐⠑⠑⠑⠁⠁⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠑⠝⢝⡆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠃⠀
-                 __  
-                / _)
-       _.----._/ /
-      /         /
-   __/ (  | (  |
-  /__.-'|_|--|_|
-`}
+            hello
           </pre>
         </div>
       </motion.section>
@@ -417,6 +378,12 @@ export default function Personal() {
         transition={TRANSITION_SECTION}
       >
         <Stars className="fill-[rgb(186,149,94)] dark:fill-[rgb(186,149,94)] transition-colors" />
+      </motion.section>
+      <motion.section
+        variants={VARIANTS_SECTION}
+        transition={TRANSITION_SECTION}
+      >
+        <AsciiArt />
       </motion.section>
     </motion.main>
   )
