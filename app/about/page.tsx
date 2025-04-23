@@ -1,7 +1,6 @@
 'use client'
 import { motion } from 'motion/react'
 import CdOut from '@/components/ui/cd-out'
-import { AsciiLoader } from '@/components/ui/ascii-loader'
 
 const VARIANTS_SECTION = {
   hidden: { opacity: 0, y: 10, filter: 'blur(8px)' },
