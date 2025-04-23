@@ -4,7 +4,8 @@ import { TextEffect } from '@/components/ui/text-effect'
 import { ThemeSwitch } from '@/components/ui/theme-switch'
 import { Terminal } from 'lucide-react'
 import { ApertureIcon } from 'lucide-react'
-import { NotepadTextIcon } from 'lucide-react'
+import { BookOpenIcon } from 'lucide-react'
+import { ClapperboardIcon } from 'lucide-react'
 import { KeyboardMusicIcon } from 'lucide-react'
 import { GitHubLogoIcon } from '@radix-ui/react-icons'
 import { RssIcon } from 'lucide-react'
@@ -61,37 +62,36 @@ export function Header() {
         >
           {/* Right side nav - hides on scroll, reveals on hover */}
           <nav 
-            className={`flex flex-row items-center space-x-3 transition-all duration-300 ${
+            className={`flex flex-row items-center lg:gap-0 gap-2 space-x-4 transition-all duration-300 ${
               (!isVisible && !isHovered) ? '-translate-y-16 opacity-0' : '-translate-y-2 opacity-100'
             }`}
           >
-            <Link 
+            {/* <Link 
               href="/about" 
               className="text-[1.0em] font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto flex items-center"
               title="cd ~/about"
             >
               <span className="hidden lg:inline">about</span>
               <KeyboardMusicIcon className="w-4 h-4 lg:hidden" />
-            </Link>
-            <span className="text-zinc-600 dark:text-zinc-400 sm:hidden lg:inline translate-y-[0.95px]">▣</span>
+            </Link> */}
             <Link 
               href="/writing" 
               className="text-[1.0em] font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto flex items-center"
               title="cd ~/writing"
             >
               <span className="hidden lg:inline">writing</span>
-              <NotepadTextIcon className="w-4 h-4 lg:hidden" />
+              <BookOpenIcon className="w-4 h-4 lg:hidden" />
             </Link>
-            <span className="text-zinc-600 dark:text-zinc-400 sm:hidden lg:inline translate-y-[0.95px]">▧</span>
+            <span className="text-xs text-zinc-600 dark:text-zinc-400 sm:hidden lg:inline translate-y-[0.95px]">▧</span>
             <Link 
               href="/projects" 
               className="text-[1.0em] font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto flex items-center"
               title="cd ~/projects"
             >
               <span className="hidden lg:inline">projects</span>
-              <ApertureIcon className="w-4 h-4 lg:hidden" />
+              <ClapperboardIcon className="w-4 h-4 lg:hidden" />
             </Link>
-            <span className="text-zinc-600 dark:text-zinc-400 sm:hidden lg:inline translate-y-[0.3px]">∷</span>
+            <span className="text-xs text-zinc-600 dark:text-zinc-400 sm:hidden lg:inline translate-y-[0.3px]">∷</span>
             <Link 
               href="https://sh.stanleywang.dev/"
               className="translate-y-[1px] text-[0.85em] font-mono text-zinc-600 dark:text-zinc-400 pointer-events-auto flex items-center transition-colors"
@@ -102,6 +102,7 @@ export function Header() {
               </span>
               <Terminal className="w-4 h-4 lg:hidden dark:hover:text-white hover:text-black transition-colors" />
             </Link>
+            <span className="text-xs text-zinc-600 dark:text-zinc-400 sm:hidden lg:inline translate-y-[0.95px]">▣</span>
             <Link 
               href="/api/feed" 
               className="text-[1.0em] hidden lg:block font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto flex items-center"

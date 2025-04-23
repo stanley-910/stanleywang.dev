@@ -24,7 +24,6 @@ import {
 } from './data'
 import { format } from 'date-fns'
 import { useState, useEffect } from 'react'
-import Image from 'next/image'
 // import { cn } from '@/lib/utils'
 
 const VARIANTS_CONTAINER = {
@@ -213,7 +212,7 @@ function MagneticSocialLink({
 export default function Personal() {
   return (
     <motion.main
-      className="space-y-12 mt-10 "
+      className="space-y-12  "
       variants={VARIANTS_CONTAINER}
       initial="hidden"
       animate="visible"
@@ -223,9 +222,52 @@ export default function Personal() {
         transition={TRANSITION_SECTION}
       >
         <div className="flex-1">
-          <p className="text-md text-zinc-600 dark:text-zinc-400">
-        je danse, je suis, and the time ticks slightly back
-          </p>
+          {/* <p className="text-md text-zinc-600 dark:text-zinc-400">
+            je danse, je suis, and the time ticks slightly back
+          </p> */}
+          <pre className="font-mono whitespace-pre leading-[1.2] text-sm mt-2 text-zinc-600 dark:text-zinc-400">
+            {`   
+    　　　　　　*　　　　　　　　　　　　　　　　　　.              *
+ .　　　　.　　　⠀ . 　　　　.          ✦⠀　  
+　　　　　　　  *⠀　　⠀  　　　　　⠀✦⠀　                           
+⠀⠀⠀.　　　　　　　　　　　　　.　　　ﾟ .　　　　　　　　　　　　　.
+                  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀                                                 
+　　　　　　*　　　　　　　　　　　.  .　　　　　　　　　　　　　. 　　✦⠀　   　　　,
+  ⠀　　　　⠀　　,  I'm Stanley Wang
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀.　　　　　 　　⠀　　　⠀.　
+ 　　˚　　　⠀　⠀  　　,　　　　　　.  .  *⠀　　⠀  　　　　　⠀✦⠀　                           
+　　　　　　*　　　　　　　　　　　　　　　　　　.              *
+ .　　　　.　　　⠀ . 　　　　.          ✦⠀　  
+　　　　　　　  *⠀　　⠀  　　　　　⠀✦⠀　                           
+　　　˚　　　　　　　　ﾟ　　　　　.           *⠀　　　⠀✦⠀　                           
+　.⠀　　⠀‍⠀‍⠀‍⠀‍⠀‍⠀‍⠀‍⠀‍⠀‍⠀‍⠀,
+.⠀ 　　　　　　　　　　.　　　　　　　　.  ✦⠀　   　　　,　　    　　　　　　　　.
+　　　*　　⠀.                                      welcome to my
+　　　　　⠀✦                                          website          　　.
+　　　　　.　　　　　　　　　　⠀✦ ˚　　　　　　　　　　　　　　*
+.⠀ 　　　　　　　　　　.　　　　　　　　.  ✦⠀　   　　　,　　    　　　　　　　　.
+　˚　　　　　　　　　　　　　　*
+⠀⠀⠀⠀⠀⠀.　　　　　　　　　　⠀⠀⠀✦ ⠀ ⠀　　　　　　　　　　　　　　⠀
+⠀⠀⣀⠤⢀⠀⠀⠀⣀⣀⣀⡤⠤⠤⠤⣄⣀⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⢉⠅⠊⣠⠴⠒⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠑⠲⢤⣒⠢⣄⠀⠀⠀⠀
+⡔⠁⡴⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠓⣌⢳⡀⠀⠀
+⢀⡞⠀ je danse, je suis, and⠀⠈⣷⡀⠀⠀                   ┈━═☆
+⢸  the time ticks          ⠀⠀⣽⡗⠀⠀
+⠸⡄   ⠀⠀⠀⠀⠀⠀             ⠀⠀⢠⣿⢳⣼⠄
+⠀⠱⣄⠀⠀   slightly back⠀⠀⠀⢀⣴⡿⠋⠀⡟⠀
+⠀⠀⠈⠑⠦⣤⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⣤⣴⢾⣿⣟⣀⠀⠄⠁⠀
+⠀⠀⠀⠀⠀⠙⠉⢷⣄⠀⠀⢸⣟⣿⢿⣿⡝⢝⢝⢕⢕⢕⢝⠟⠅⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠈⠓⢦⣈⣿⡅⠔⠛⠐⠐⠑⠑⠑⠁⠁⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠑⠝⢝⡆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠃⠀
+                 __  
+                / _)
+       _.----._/ /
+      /         /
+   __/ (  | (  |
+  /__.-'|_|--|_|
+`}
+          </pre>
         </div>
       </motion.section>
 
@@ -233,7 +275,7 @@ export default function Personal() {
         variants={VARIANTS_SECTION}
         transition={TRANSITION_SECTION}
       >
-        <Stars  variant={1}/>
+        <Stars className="fill-[rgb(186,149,94)] dark:fill-[rgb(186,149,94)] transition-colors" />
       </motion.section>
 
       <motion.section
@@ -281,19 +323,7 @@ export default function Personal() {
               key={job.id}
             >
               <Spotlight
-                className={
-
-                    job.gradient  === 'blue'
-                    ? `from-blue-900 via-blue-800 to-blue-700 blur-2xl dark:from-blue-100 dark:via-blue-200 dark:to-blue-50`
-                    : job.gradient === 'red'
-                    ? `from-red-900 via-red-800 to-red-700 blur-2xl dark:from-red-100 dark:via-red-200 dark:to-red-50`
-                    : job.gradient === 'green'
-                    ? `from-green-900 via-green-800 to-green-700 blur-2xl dark:from-green-100 dark:via-green-200 dark:to-green-50`
-                    : job.gradient === 'yellow'
-                    ? `from-yellow-900 via-yellow-800 to-yellow-700 blur-2xl dark:from-yellow-100 dark:via-yellow-200 dark:to-yellow-50`
-                    : job.gradient === 'purple'
-                    ? `from-purple-900 via-purple-800 to-purple-700 blur-2xl dark:from-purple-100 dark:via-purple-200 dark:to-purple-50`
-                    : 'from-zinc-900 via-zinc-800 to-zinc-700 blur-2xl dark:from-zinc-100 dark:via-zinc-200 dark:to-zinc-50'
+                className={'from-red-900 via-red-800 to-red-700 blur-2xl dark:from-red-100 dark:via-red-200 dark:to-red-50'
                 }
                 size={64}
               />

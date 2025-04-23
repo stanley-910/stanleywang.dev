@@ -94,3 +94,9 @@ html {
   }
 }
 
+
+
+.ascii-art {
+  font-family: monospace;
+  white-space: pre;
+}
