@@ -33,6 +33,9 @@ export function ScrollToTop() {
   }, [])
 
   const scrollToTop = useCallback(() => {
+    if (window.location.hash) {
+      window.history.pushState({}, '', window.location.pathname)
+    }
     window.scrollTo({
       top: 0,
       behavior: 'smooth'

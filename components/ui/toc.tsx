@@ -215,7 +215,7 @@ export function TableOfContents({ title }: { title?: string }) {
         })
       },
       {
-        rootMargin: '-5% 0px -92% 0px' // 3-8% from the top,
+        rootMargin: '-3% 0px -92% 0px' // 3-8% from the top,
       }
     )
 
@@ -265,7 +265,14 @@ export function TableOfContents({ title }: { title?: string }) {
         {title && (
           <span 
             className={`font-bold text-sm text-zinc-500 dark:text-zinc-400 transition-opacity duration-700 cursor-pointer `}
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            onClick={() => {
+              if (window.location.hash) {
+                window.history.pushState({}, '', window.location.pathname)
+              }
+              window.scrollTo({ top: 0, behavior: 'smooth' })
+              setActiveId('')
+              setSelectedIndex(-1)
+            }}
           >
             {title}
           </span>
