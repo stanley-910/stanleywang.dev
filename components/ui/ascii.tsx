@@ -170,7 +170,7 @@ export const AsciiArt = () => {
             {/* Placeholder for small screens (hidden by default, shown on small screens) */}
             <div className="sm:hidden">
                 {/* ASCII art for small screens */}
-                <pre className="font-mono whitespace-pre leading-[1.2] text-sm mt-2 text-zinc-600 dark:text-zinc-400">
+                <pre className="transparent-pre font-mono whitespace-pre leading-[1.2] text-sm mt-2 text-zinc-600 dark:text-zinc-400">
                     {currentAsciiSmall}
                 </pre>
             </div>
@@ -178,7 +178,7 @@ export const AsciiArt = () => {
             {/* Placeholder for medium screens (hidden by default, shown on medium screens) */}
             <div className="hidden sm:block md:hidden">
                 {/* ASCII art for medium screens */}
-                <pre className="font-mono whitespace-pre leading-[1.2] text-sm mt-2 text-zinc-600 dark:text-zinc-400">
+                <pre className="transparent-pre font-mono whitespace-pre leading-[1.2] text-sm mt-2 text-zinc-600 dark:text-zinc-400">
                     {currentAsciiMedium}
                 </pre>
             </div>
@@ -186,7 +186,7 @@ export const AsciiArt = () => {
             {/* Placeholder for large screens (shown by default, hidden on smaller screens) */}
             <div className="hidden md:block">
                 {/* ASCII art for large screens */}
-                <pre className="font-mono whitespace-pre leading-[1.2] text-sm mt-2 text-zinc-600 dark:text-zinc-400">
+                <pre className="transparent-pre font-mono whitespace-pre leading-[1.2] text-sm mt-2 text-zinc-600 dark:text-zinc-400">
                     {currentAscii}
                 </pre>
             </div>

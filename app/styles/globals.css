@@ -100,3 +100,8 @@ html {
   font-family: monospace;
   white-space: pre;
 }
+
+
+.transparent-pre {
+  background-color: transparent !important;
+}

@@ -53,8 +53,8 @@ export function Header() {
             className="text-sm text-zinc-600 dark:text-zinc-500"
             delay={0.5}
           >
-          good at things
-          </TextEffect>
+          musician : developer 
+            </TextEffect>
         </div>
         
         <div 

@@ -133,11 +133,11 @@ pre::-webkit-scrollbar {
 }
 
 .dark pre {
-  background-color: rgba(65, 65, 65, 0.1) !important;
+  background-color: rgba(65, 65, 65, 0.1) ;
 }
 
 .light pre {
-  background-color: rgba(208, 208, 208, 0.2) !important;
+  background-color: rgba(208, 208, 208, 0.2);
 }
 
 /* Make the line highlighting more specific and match the styling hierarchy */
