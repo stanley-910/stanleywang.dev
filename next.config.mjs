@@ -41,7 +41,6 @@ const withMDX = createMDX({
       [remarkGfm],
       [remarkFrontmatter],
       [remarkMath],
-
     ],
     rehypePlugins: [[rehypePrettyCode, options],
       [rehypeKatex]

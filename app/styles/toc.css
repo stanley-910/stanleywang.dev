@@ -43,7 +43,7 @@
 .table-of-contents span {
   color: var(--fg-deep);
   opacity: 0.5;
-  transition: opacity 700ms 1500ms; /* Match the TOC content's delayed fade-out */
+  transition: opacity 700ms 300ms; /* Match the TOC content's delayed fade-out */
 }
 
 .dark .table-of-contents::before {
@@ -68,7 +68,7 @@
 }
 
 .table-of-contents::before {
-  transition: width 700ms 1500ms, opacity 700ms 1500ms;
+  transition: width 700ms 300ms, opacity 700ms 300ms;
   width: 3.5ch;
 }
 
@@ -165,7 +165,7 @@
 
 /* Delayed fade out when hover is removed */
 .table-of-contents > ul {
-  transition: opacity 700ms 1500ms;  /* 5s delay before fade out */
+  transition: opacity 700ms 300ms;  /* 5s delay before fade out */
 }
 
 *:hover > .table-of-contents > .table-of-contents-anchor,
@@ -280,5 +280,5 @@
 
 /* Title hover transition */
 .table-of-contents span {
-  transition:  opacity 700ms 1500ms; /* Include opacity transition with delay */
+  transition:  opacity 700ms 300ms; /* Include opacity transition with delay */
 }

@@ -10,7 +10,6 @@ async function getPostContent(postSlug: string) {
     const slug = postSlug.split('/').pop() || ''
     const filePath = path.join(process.cwd(), 'app/writing', slug, 'page.mdx')
     
-    console.log('Reading file from:', filePath) // Debug log
     const content = await fs.readFile(filePath, 'utf-8')
     
     // Remove frontmatter (content between --- markers)
