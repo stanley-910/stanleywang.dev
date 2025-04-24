@@ -77,7 +77,7 @@ const asciiArtLight = `
 const asciiArtDarkMedium = `
                           ⠀⠀⠀⣀⣀⣀⡤⠤⠤⠤⣄⣀⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
                     ⠀⢉⠅⠊⣠⠴⠒⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠑⠲⢤⣒⠢⣄⠀⠀⠀⠀
-                    ⡔⠁⡴⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠓⣌⢳⡀⠀⠀
+     ┈━═☆            ⡔⠁⡴⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠓⣌⢳⡀⠀⠀
                     ⢀⡞⠀ je danse, je suis, and⠀⠈⣷⡀
                     ⢸  the time ticks          ⠀⠀⣽⡗
                     ⠸⡄   ⠀⠀⠀⠀⠀⠀             ⠀⠀⢠⣿⢳⣼⠄
@@ -115,7 +115,7 @@ const asciiArtLightMedium = `
 
 const asciiArtDarkSmall = `
               ⠀⠀⠀⣀⣀⣀⡤⠤⠤⠤⣄⣀⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-        ⠀⢉⠅⠊⣠⠴⠒⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠑⠲⢤⣒⠢⣄⠀⠀⠀⠀
+ ┈━═☆    ⠀⢉⠅⠊⣠⠴⠒⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠑⠲⢤⣒⠢⣄⠀⠀⠀⠀
         ⡔⠁⡴⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠓⣌⢳⡀⠀⠀
         ⢀⡞⠀ je danse, je suis, and⠀⠈⣷⡀
         ⢸  the time ticks          ⠀⠀⣽⡗
