@@ -49,7 +49,7 @@ const asciiArtLight = `
 	   (_   (_ .  _) _)                                  |
 
                                                               _
-                                       welcome to my         (  )
+                                        welcome to my        (  )
                       _, _ .              website         ( \`  ) . )
                      ( (  _ )_                           (_, _(  ,_)_)
                    (_(_  _(_ ,)
