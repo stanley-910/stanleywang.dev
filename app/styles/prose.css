@@ -67,7 +67,7 @@
 }
 .prose strong {
   color: var(--fg-deep);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .prose a code {

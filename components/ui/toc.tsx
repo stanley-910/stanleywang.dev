@@ -18,13 +18,18 @@ export function TableOfContents({ title }: { title?: string }) {
   const [activeId, setActiveId] = useState<string>('')
   const [selectedIndex, setSelectedIndex] = useState<number>(-1)
   const [isScrollingProgrammatically, setIsScrollingProgrammatically] = useState(false)
-  const [isInitialized, setIsInitialized] = useState(false)
   const scrollTimeoutRef = useRef<number | null>(null)
+  const initTimeoutRef = useRef<number | null>(null)
 
   // Handle mounting state separately
   useEffect(() => {
     setIsMounted(true)
-    return () => setIsMounted(false)
+    return () => {
+      setIsMounted(false)
+      if (initTimeoutRef.current) {
+        window.clearTimeout(initTimeoutRef.current)
+      }
+    }
   }, [])
 
   // Cleanup timeout on unmount
@@ -50,11 +55,8 @@ export function TableOfContents({ title }: { title?: string }) {
   
   // Scroll to heading helper
   const scrollToHeading = useCallback((slug: string | null, index: number) => {
-    // Add early return if not initialized
-    if (!isInitialized) {
-      return
-    }
-
+    if (!isMounted) return // Check for mounting first
+    
     // Clear any existing timeout
     if (scrollTimeoutRef.current !== null) {
       window.clearTimeout(scrollTimeoutRef.current)
@@ -100,7 +102,7 @@ export function TableOfContents({ title }: { title?: string }) {
       setIsScrollingProgrammatically(false)
       scrollTimeoutRef.current = null
     }, 500)
-  }, [isInitialized])
+  }, [isMounted]) // Only depend on isMounted
 
   // Setup headings
   useEffect(() => {
@@ -124,10 +126,9 @@ export function TableOfContents({ title }: { title?: string }) {
     if (items.length > 0) {
       const minHeadingLevel = Math.min(...items.map(item => item.level))
       setMinLevel(minHeadingLevel)
+      setHeadings(items)
+      
     }
-
-    setHeadings(items)
-    setIsInitialized(true)
   }, []) // Run once on mount
 
   // Handle keyboard navigation
