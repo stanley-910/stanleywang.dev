@@ -20,6 +20,7 @@ import { createPortal } from 'react-dom'
 import { cn } from '@/lib/utils'
 import { XIcon } from 'lucide-react'
 import useClickOutside from '@/hooks/useClickOutside'
+import Image from 'next/image'
 
 export type MorphingDialogContextType = {
   isOpen: boolean
@@ -351,6 +352,9 @@ export type MorphingDialogImageProps = {
   alt: string
   className?: string
   style?: React.CSSProperties
+  width?: number
+  height?: number
+  priority?: boolean
 }
 
 function MorphingDialogImage({
@@ -358,17 +362,27 @@ function MorphingDialogImage({
   alt,
   className,
   style,
+  width = 1920, // Default width for full-size images
+  height = 1080, // Default height, maintaining 16:9 aspect ratio
+  priority = false, // Set to true for above-the-fold images
 }: MorphingDialogImageProps) {
   const { uniqueId } = useMorphingDialog()
 
   return (
-    <motion.img
-      src={src}
-      alt={alt}
+    <motion.div
       className={cn(className)}
       layoutId={`dialog-img-${uniqueId}`}
       style={style}
-    />
+    >
+      <Image
+        src={src}
+        alt={alt}
+        width={width}
+        height={height}
+        priority={priority}
+        className="h-full w-full object-cover"
+      />
+    </motion.div>
   )
 }
 

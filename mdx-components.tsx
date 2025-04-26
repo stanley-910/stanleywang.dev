@@ -3,6 +3,7 @@ import { TableOfContents } from '@/components/ui/toc'
 import { Stars } from '@/components/ui/stars'
 import GithubSlugger from 'github-slugger'
 import { cn } from '@/lib/utils'
+import Image from 'next/image';
 export function useMDXComponents(components: MDXComponents): MDXComponents {
   const slugger = new GithubSlugger()
   

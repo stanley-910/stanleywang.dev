@@ -42,11 +42,11 @@ export function Footer() {
             interval={10}
             transition={{ duration: 0.5 }}
           >
-        <a href="https://github.com/stanley-utf8/stanley" target="_blank">
+        <a href="https://github.com/stanley-utf8/stanleywang.dev" target="_blank">
             <span>© 2025 Stanley Wang</span>
         </a>
             <a href="https://www.youtube.com/watch?v=RDp61U9zTj0" target="_blank">
-            <span>darling, don't you give up on a monday</span>
+            <span>darlin, don't you give up on a monday</span>
             </a>
           </TextLoop>
         <div className="text-xs text-zinc-500">
