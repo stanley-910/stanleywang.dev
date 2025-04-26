@@ -59,7 +59,7 @@ export const PROJECTS: Project[] = [
     link: 'https://averageosiris.itch.io/datamines',
     media: {
       type: 'video',
-      sources: ['datamines-demo.mp4']
+      sources: ['/videos/datamines-demo.mp4']
     },
     id: 'project-2',
     category: 'Game Dev'
