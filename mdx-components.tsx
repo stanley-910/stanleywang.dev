@@ -4,6 +4,38 @@ import { Stars } from '@/components/ui/stars'
 import GithubSlugger from 'github-slugger'
 import { cn } from '@/lib/utils'
 import Image from 'next/image';
+
+// Define Spotify component props
+interface SpotifyProps {
+  link: string;
+  wide?: boolean;
+  className?: string;
+}
+
+// Spotify component that converts Spotify links to embed URLs
+const Spotify = ({ link, wide = false, className }: SpotifyProps) => {
+  // Convert spotify URL to embed URL
+  const embedUrl = link.replace('spotify.com', 'spotify.com/embed');
+  
+  return (
+    <div className={cn(
+      "mx-auto my-8 w-full max-w-[350px]",
+      wide && "max-w-[650px]",
+      className
+    )}>
+      <iframe
+        src={embedUrl}
+        width="100%"
+        height={wide ? "80" : "352"}
+        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+        loading="lazy"
+        className="rounded-xl"
+        style={{ borderRadius: '12px' }}
+      />
+    </div>
+  );
+};
+
 export function useMDXComponents(components: MDXComponents): MDXComponents {
   const slugger = new GithubSlugger()
   
@@ -13,7 +45,8 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     StarDivider: ({ variant, className }: { variant?: 1 | 2 | 3, className?: string }) => (
       <Stars asHr variant={variant} className={className} />
     ),
-
+    // Add Spotify component to MDX components
+    Spotify,
     strike: ({ children }) => <span className="line-through">{children}</span>,
     h1: ({ children }) => {
       const slug = slugger.slug(children?.toString() || '')

@@ -8,8 +8,6 @@
 
 .table-of-contents {
   position: fixed;
-  /* top: 90px; */
-  top: 100px;
   bottom: 0;
   font-size: 1.1em;
   font-family: var(--font-serif);
