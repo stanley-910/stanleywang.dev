@@ -74,6 +74,7 @@ export function TableOfContents({ title }: { title?: string }) {
   const scrollToHeading = (slug: string) => {
     const element = document.getElementById(slug)
     if (element) {
+      
       const scrollMargin = Math.round(window.innerHeight * 0.03)
       element.style.scrollMarginTop = `${scrollMargin}px`
       

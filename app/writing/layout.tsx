@@ -47,7 +47,7 @@ function BlogHeader() {
         {post.title}
       </h1>
       <div className="flex flex-col">
-        <div className="flex items-center gap-3 text-sm text-zinc-500 dark:text-zinc-400">
+        <div className="flex items-center gap-2 text-[1.0rem] text-zinc-500 dark:text-zinc-400">
           <time dateTime={post.date}>
             {new Date(post.date).toLocaleDateString('en-US', {
               year: 'numeric',
@@ -55,7 +55,7 @@ function BlogHeader() {
               day: 'numeric',
             })}
           </time>
-          <span>•</span>
+          <span>·</span>
           <span>{post.readingTime}</span>
         </div>
         {/* TODO: Add tags back in */}
