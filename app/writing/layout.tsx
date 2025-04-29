@@ -33,31 +33,6 @@ const VARIANTS_SECTION = {
 const TRANSITION_SECTION = {
   duration: 0.3,
 }
-function CopyButton() {
-  const [text, setText] = useState('Copy')
-  const currentUrl = typeof window !== 'undefined' ? window.location.href : ''
-
-  useEffect(() => {
-    setTimeout(() => {
-      setText('Copy')
-    }, 2000)
-  }, [text])
-
-  return (
-    <div className="flex items-center gap-1 text-sm ">
-      <button
-        onClick={() => {
-          setText('Copied')
-          navigator.clipboard.writeText(currentUrl)
-        }}
-        className="transition-colors"
-        type="button"
-      >
-        <span className="flex items-center gap-1 duration-200 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"><TextMorph>{text}</TextMorph> URL</span>
-      </button>
-    </div>
-  )
-}
 
 function BlogHeader() {
   const pathname = usePathname()
@@ -94,7 +69,6 @@ function BlogHeader() {
             </span>
           ))} */}
         {/* </div> */}
-        <CopyButton />
       </div>
     </header>
   )
