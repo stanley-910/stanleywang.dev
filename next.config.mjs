@@ -44,7 +44,7 @@ const withMDX = createMDX({
       remarkMath,
       [remarkRehype, {
         allowDangerousHtml: true,
-        footnoteBackContent: "↑", // Force text variant with variation selector
+        footnoteBackContent: "↑", 
       }],
     ],
     rehypePlugins: [[rehypePrettyCode, options],
