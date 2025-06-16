@@ -64,7 +64,7 @@ export default function RootLayout({
           defaultTheme="system"
         >
           <div className="flex min-h-screen w-full flex-col">
-            <div className="relative mx-auto w-full max-w-[65ch] flex-1 px-4 pt-20 flex flex-col">
+            <div className="relative mx-auto w-full max-w-[45ch] sm:max-w-[65ch] flex-1 px-4 pt-20 flex flex-col">
               <BackgroundArt type="random" />
               <Header />
               <main className="flex-1">
