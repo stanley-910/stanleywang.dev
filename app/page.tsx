@@ -340,7 +340,7 @@ export default function Personal() {
                   <time dateTime={post.date}>
                     {format(new Date(post.date), 'MMMM dd, yyyy')}
                   </time>
-                  {' • '}
+                  {' · '}
                   {post.readingTime}
                 </p>
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">{post.description}</p>

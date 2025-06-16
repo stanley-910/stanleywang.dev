@@ -164,7 +164,7 @@ html.dark .prose {
   font-weight: normal;
   font-style: normal;
   line-height: 1.75em;
-  border-inline-start-width: 0.20em;
+  border-inline-start-width: 0.18em;
   /* border-inline-start-color: var(--fg-light); */
   padding: 0.5em 1em;
   margin-left: -0.5em;
@@ -173,7 +173,7 @@ html.dark .prose {
 /* Default styles for sm screens (640px) and up */
 @media (min-width: 640px) {
   .prose blockquote {
-    border-inline-start-width: 0.20em;
+    border-inline-start-width: 0.18em;
     padding: 0.5em 1em;
     margin-left: -1.1em;
   }
