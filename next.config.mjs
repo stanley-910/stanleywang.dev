@@ -38,7 +38,9 @@ const withMDX = createMDX({
         ordered: false,
         skip: 'table of contents'
       }],
-      [remarkGfm],
+      [remarkGfm, {
+        footnoteBackContent: "↩\u{FE0E}", // Use text variant of the back arrow
+      }],
       [remarkFrontmatter],
       [remarkMath],
     ],
