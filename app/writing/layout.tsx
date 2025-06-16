@@ -138,9 +138,9 @@ export default function LayoutBlogPost({
         animate="visible"
         transition={TRANSITION_SECTION}
       >
-      <div className="">
+      <div id="giscus-container">
         <Giscus
-          repo="stanley-utf8/stanley"
+          repo="stanley-utf8/stanleywang.dev"
           repoId="R_kgDOOcaodg"
           category="Writing"
           categoryId="DIC_kwDOOcaods4CpSuT"
@@ -151,7 +151,7 @@ export default function LayoutBlogPost({
           inputPosition="top"
           theme={resolvedTheme === 'dark' ? 'transparent_dark' : 'light'}
           lang="en"
-          // loading="lazy"
+          loading="lazy"
         />
       </div>
       </motion.section>
