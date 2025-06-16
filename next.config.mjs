@@ -6,6 +6,7 @@ import remarkGfm from 'remark-gfm';
 import remarkFrontmatter from 'remark-frontmatter';
 import rehypeKatex from 'rehype-katex'
 import remarkMath from 'remark-math'
+import remarkRehype from 'remark-rehype'
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -38,11 +39,13 @@ const withMDX = createMDX({
         ordered: false,
         skip: 'table of contents'
       }],
-      [remarkGfm, {
-        footnoteBackContent: "↩\u{FE0E}", // Use text variant of the back arrow
+      remarkGfm,
+      remarkFrontmatter,
+      remarkMath,
+      [remarkRehype, {
+        allowDangerousHtml: true,
+        footnoteBackContent: "↑", // Force text variant with variation selector
       }],
-      [remarkFrontmatter],
-      [remarkMath],
     ],
     rehypePlugins: [[rehypePrettyCode, options],
       [rehypeKatex]
