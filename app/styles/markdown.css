@@ -221,3 +221,29 @@ html.dark .prose {
   padding-bottom: 0.5em; 
   margin-bottom: -0.5em;
 } */
+
+/* Hide the "Footnotes" heading */
+.prose h2[id^="footnotes"] {
+  display: none;
+}
+
+/* Adjust footnote styling */
+.prose .footnotes {
+  font-size: 0.9em;
+  margin-top: 2em;
+}
+
+.prose .footnotes li {
+  margin-bottom: 0.5em;
+}
+
+.prose .footnotes p {
+  margin: 0;
+}
+
+/* Style Spotify embed */
+.prose iframe[src*="spotify"] {
+  margin: 2em 0; /* even bottom and top */
+  border-radius: 12px;
+}
+

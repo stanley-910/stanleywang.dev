@@ -226,7 +226,6 @@ export default function Personal() {
           {/* <p className="text-md text-zinc-600 dark:text-zinc-400">
             je danse, je suis, and the time ticks slightly back
           </p> */}
-          
         </div>
       </motion.section>
 

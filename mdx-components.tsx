@@ -54,6 +54,10 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     },
     h2: ({ children }) => {
       const slug = slugger.slug(children?.toString() || '')
+      // Exclude Footnotes heading from TOC
+      if (children?.toString().toLowerCase() === 'footnotes') {
+        return <h2 id={slug} className="scroll-mt-[3vh]" data-toc-exclude>{children}</h2>
+      }
       return <h2 id={slug} className="scroll-mt-[3vh]">{children}</h2>
     },
     h3: ({ children }) => {

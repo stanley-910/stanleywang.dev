@@ -114,6 +114,15 @@ export const WORK_EXPERIENCE: WorkExperience[] = [
 
 export const BLOG_POSTS: BlogPost[] = [
   {
+    title: "Improvisation on the Artist",
+    description: 'On Jack Whitten and the artistic process',
+    link: '/writing/improvisation-on-the-artist',
+    uid: 'post-2',
+    date: '2025-06-15',
+    readingTime: '12 min',
+    tags: ['Art', 'Philosophy'],
+  },
+  {
     title: "Dijkstra\'s Algorithm",
     description: 'COMP 251 Notes',
     link: '/writing/dijkstras-algorithm',

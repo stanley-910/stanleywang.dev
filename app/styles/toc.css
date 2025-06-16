@@ -280,3 +280,8 @@
 .table-of-contents span {
   transition:  opacity 700ms 300ms; /* Include opacity transition with delay */
 }
+
+/* Hide Footnotes from TOC */
+.toc a[href^="#footnotes"] {
+  display: none;
+}
