@@ -45,7 +45,7 @@ export default function AboutPage() {
         animate="visible"
         transition={TRANSITION_SECTION}
       >
-        <CdOut link="/" title="Home" />
+        <CdOut link="/" title="Home" home />
       </motion.section>
     </main>
   )
