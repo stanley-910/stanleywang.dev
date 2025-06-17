@@ -52,6 +52,7 @@
     "shiki": "^3.2.2",
     "simple-icons": "^14.12.3",
     "simplex-noise": "^4.0.3",
+    "spotify-web-api-node": "^5.0.2",
     "tailwind-merge": "^2.5.5",
     "unist-util-visit": "^5.0.0"
   },
@@ -62,6 +63,7 @@
     "@types/pixi.js": "^4.8.9",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/spotify-web-api-node": "^5.0.11",
     "eslint": "^9",
     "eslint-config-next": "15.1.1",
     "eslint-plugin-prettier": "^5.2.6",

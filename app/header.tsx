@@ -3,15 +3,15 @@ import Link from 'next/link'
 import { TextEffect } from '@/components/ui/text-effect'
 import { ThemeSwitch } from '@/components/ui/theme-switch'
 import { Terminal } from 'lucide-react'
-import { ApertureIcon } from 'lucide-react'
+// import { ApertureIcon } from 'lucide-react'
 import { BookOpenIcon } from 'lucide-react'
 import { ClapperboardIcon } from 'lucide-react'
-import { KeyboardMusicIcon } from 'lucide-react'
+// import { KeyboardMusicIcon } from 'lucide-react'
 import { GitHubLogoIcon } from '@radix-ui/react-icons'
 import { RssIcon } from 'lucide-react'
 import { useEffect, useState, useCallback } from 'react'
 import { GlitchText } from '@/components/ui/glitch-text'
-import { usePathname } from 'next/navigation'
+// import { usePathname } from 'next/navigation'
 
 export function Header() {
   const [isVisible, setIsVisible] = useState(true)
@@ -53,7 +53,7 @@ export function Header() {
             className="font-mono tracking-tighter text-xs text-zinc-600 dark:text-zinc-500"
             delay={0.5}
           >
-          twinfantasyfan
+          \\ Montreal, QC
             </TextEffect>
             {/* idea: connect this to actual spotify listening */}
         </div>

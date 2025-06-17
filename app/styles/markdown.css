@@ -170,8 +170,8 @@ html.dark .prose {
   margin-left: -0.5em;
 }
 
-/* Default styles for sm screens (640px) and up */
-@media (min-width: 640px) {
+/* Default styles for sm screens (768px) and up */
+@media (min-width: 768px) {
   .prose blockquote {
     border-inline-start-width: 0.18em;
     padding: 0.5em 1em;
@@ -254,5 +254,13 @@ html.dark .prose {
 .prose iframe[src*="spotify"] {
   margin: 2em 0; /* even bottom and top */
   border-radius: 12px;
+}
+
+/* Prevent link styling on image links */
+.prose a.no-underline {
+  border-bottom: none;
+}
+.prose a.no-underline:hover {
+  border-bottom: none;
 }
 

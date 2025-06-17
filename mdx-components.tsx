@@ -88,6 +88,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     }) => {
       return (
         <figure className="flex flex-col items-center">
+          <a href={src} target="_blank" rel="noopener noreferrer" className="no-underline">
             <img 
               title={title} 
               src={src} 
@@ -99,6 +100,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
               )}
               style={size ? { width: `${size}%`, height: 'auto' } : undefined}
             />
+          </a>
           <figcaption className="text-center font-sans">{caption}</figcaption>
         </figure>
       )

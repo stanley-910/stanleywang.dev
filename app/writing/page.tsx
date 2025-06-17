@@ -23,7 +23,7 @@ export default function PostsPage() {
           animate="visible"
           transition={TRANSITION_SECTION}
         >
-          <p className="text-lg font-serif italic mb-4 text-gray-900 dark:text-gray-100">
+          <p className="text-lg font-serif   mb-4 text-gray-900 dark:text-gray-100">
             In Writing
           </p>
           <PostsTable posts={BLOG_POSTS} />

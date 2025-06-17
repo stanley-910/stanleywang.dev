@@ -179,8 +179,8 @@ export default function ProjectsPage() {
         animate="visible"
         transition={TRANSITION_SECTION}
       >
-        <p className="text-lg font-serif italic mb-4 text-gray-900 dark:text-gray-100">
-          Projects
+          <p className="text-lg font-serif mb-4 text-gray-900 dark:text-gray-100">
+        Showcase
         </p>
         {/* <ProjectsTable projects={PROJECTS} /> */}
       </motion.section>

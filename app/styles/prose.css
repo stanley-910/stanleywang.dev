@@ -180,8 +180,8 @@
 
 
 .prose img {
-  margin-top: 2em;
-  margin-bottom: 2em;
+  margin-top: 0.5em; /* margin to text above */
+  /* margin-bottom: 1.5em; margin to caption */
 }
 .prose .photos img {
   margin-top: 0;
@@ -243,8 +243,8 @@
   color: inherit;
 }
 .prose figure {
-  margin-top: 2em;
-  margin-bottom: 2em;
+  margin-top: 1em; /* including caption */
+  margin-bottom: 1em;
 }
 .prose figure > * {
   margin-top: 0;
@@ -254,6 +254,6 @@
   color: #6b7280;
   font-size: 0.875em;
   line-height: 1.4285714;
-  margin-top: 1.5em;
+  margin-top: 0.5em;
 }
 
