@@ -28,7 +28,7 @@ export const Stars = ({ variant, className, asHr = false }: StarsProps) => {
   return (
     <div className={cn(
       "relative h-2",
-      asHr ? "w-[50px] my-8 mx-auto" : "w-12 my-12 mx-auto",
+      asHr ? "w-[50px] my-8 mx-auto" : "w-12 my-6 mx-auto",
       className
     )}>
       <svg 

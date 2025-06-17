@@ -26,6 +26,7 @@ import { format } from 'date-fns'
 import { useState, useEffect } from 'react'
 // import { cn } from '@/lib/utils'
 import { AsciiArt } from '@/components/ui/ascii'
+import { TextEffect } from '@/components/ui/text-effect'
 
 const VARIANTS_CONTAINER = {
   hidden: { opacity: 0 },
@@ -213,7 +214,7 @@ function MagneticSocialLink({
 export default function Personal() {
   return (
     <motion.main
-      className="space-y-12  "
+      className="space-y-6"
       variants={VARIANTS_CONTAINER}
       initial="hidden"
       animate="visible"
@@ -222,24 +223,36 @@ export default function Personal() {
         variants={VARIANTS_SECTION}
         transition={TRANSITION_SECTION}
       >
-        <div className="flex-1">
-          about me...
+        <div className="mt-10 flex-1">
+        <div className="text-zinc-600 dark:text-zinc-300">
+            Studying Computer Science 
+            at <b><a href="https://www.mcgill.ca" target="_blank" rel="noopener noreferrer" className="prose-link text-zinc-700 dark:text-zinc-200">McGill University</a></b>, writing software with 
+            the <b><a href="https://www.autodesk.com/ca-en/products/flow-production-tracking/overview" target="_blank" rel="noopener noreferrer" className="prose-link text-zinc-700 dark:text-zinc-200">Flow PT team</a></b> at Autodesk, 
+            and working on a few <b><Link href="/projects" className='prose-link text-zinc-700 dark:text-zinc-200'>side projects</Link></b> here and there. 
+
+            <br/><br/>
+            I'm trying to better value improvement over iteration.
+            That means prioritizing my comprehension of the work, rather than the momentum of it.
+
+            <br/><br/>
+            Outside of software, I enjoy writing music & playing any instrument I can get my hands on. 
+            You can listen to me in the raindrops that fall past your window, the flitted brushstrokes printed onto your favourite hotel paintings, 
+            and the resonance of the low E string leaving the guitar after you sit down and realize there's nothing left for you to play.
+            <br/><br/>
+            I'm not on Spotify <i>just</i> yet. 
+            <br/><br/>
+            <div className="text-sm text-zinc-500 dark:text-zinc-400">Last updated: June 17, 2025</div>
+          </div>
         </div>
       </motion.section>
+      <Stars className="fill-[rgb(186,149,94)] dark:fill-[rgb(186,149,94)] transition-colors" />
 
 
-      <motion.section
-        variants={VARIANTS_SECTION}
-          initial="hidden"
-          animate="visible"
-        transition={TRANSITION_SECTION}
-      >
-        <Stars className="fill-[rgb(186,149,94)] dark:fill-[rgb(186,149,94)] transition-colors" />
-      </motion.section>
 
       <motion.section
         variants={VARIANTS_SECTION}
         transition={TRANSITION_SECTION}
+        className="my-6"
       >
         <h3 className="mb-3 text-lg font-medium font-serif"><Link className="prose-link" href="/writing">Writing</Link></h3>
 
@@ -279,6 +292,7 @@ export default function Personal() {
       <motion.section
         variants={VARIANTS_SECTION}
         transition={TRANSITION_SECTION}
+        className="my-6"
       >
         <h3 className="mb-5 text-lg font-medium font-serif">Experience</h3>
         <div className="flex flex-col space-y-2">
@@ -326,9 +340,10 @@ export default function Personal() {
       <motion.section
         variants={VARIANTS_SECTION}
         transition={TRANSITION_SECTION}
+        className="mt-8 mb-6"
       >
-        <h3 className="mb-5 text-lg font-medium font-serif">Contact</h3>
-        <p className="mb-5 text-zinc-600 dark:text-zinc-400">
+        <h3 className="mb-5 text-lg font-medium font-serif">Connect</h3>
+        <p className="mb-6 text-zinc-600 dark:text-zinc-400">
           Please don't email me at my email. Thanks. {' '}
           <a className="underline dark:text-zinc-300" href={`mailto:${EMAIL}`}>
             {EMAIL}
@@ -343,12 +358,7 @@ export default function Personal() {
         </div>
       </motion.section>
 
-      <motion.section
-        variants={VARIANTS_SECTION}
-        transition={TRANSITION_SECTION}
-      >
         <Stars className="fill-[rgb(186,149,94)] dark:fill-[rgb(186,149,94)] transition-colors" />
-      </motion.section>
       <motion.section
         variants={VARIANTS_SECTION}
         transition={TRANSITION_SECTION}
@@ -358,3 +368,4 @@ export default function Personal() {
     </motion.main>
   )
 }
+
