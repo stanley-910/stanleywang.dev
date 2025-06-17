@@ -40,7 +40,7 @@ export default function ProjectsTable({ projects }: ProjectsTableProps) {
                 rel="noopener noreferrer"
               >
                 <div className="post-row">
-                  <p className="post-title font-serif tracking-wide text-sm">
+                  <p className="post-title font-mono tracking-tight text-sm">
                     {project.name}
                   </p>
                   <div className="post-date font-inter text-sm">

@@ -88,17 +88,17 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     }) => {
       return (
         <figure className="flex flex-col items-center">
-          <img 
-            title={title} 
-            src={src} 
-            alt={alt} 
-            className={cn(
-              "cover rounded-xl mx-auto",
-              invert && "dark:invert",
-              className
-            )}
-            style={size ? { width: `${size}%`, height: 'auto' } : undefined}
-          />
+            <img 
+              title={title} 
+              src={src} 
+              alt={alt} 
+              className={cn(
+                "cover rounded-xl mx-auto",
+                invert && "dark:invert",
+                className
+              )}
+              style={size ? { width: `${size}%`, height: 'auto' } : undefined}
+            />
           <figcaption className="text-center font-sans">{caption}</figcaption>
         </figure>
       )
