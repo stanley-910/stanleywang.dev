@@ -224,24 +224,24 @@ export default function Personal() {
         transition={TRANSITION_SECTION}
       >
         <div className="mt-10 flex-1">
-        <div className="text-zinc-600 dark:text-zinc-300">
+        <div className="prose ">
             Studying Computer Science 
-            at <b><a href="https://www.mcgill.ca" target="_blank" rel="noopener noreferrer" className="prose-link text-zinc-700 dark:text-zinc-200">McGill University</a></b>, writing software with 
-            the <b><a href="https://www.autodesk.com/ca-en/products/flow-production-tracking/overview" target="_blank" rel="noopener noreferrer" className="prose-link text-zinc-700 dark:text-zinc-200">Flow PT team</a></b> at Autodesk, 
-            and working on a few <b><Link href="/projects" className='prose-link text-zinc-700 dark:text-zinc-200'>side projects</Link></b> here and there. 
+            at <a href="https://www.mcgill.ca" target="_blank" rel="noopener noreferrer" className="prose-link">McGill University</a>, writing software with 
+            the <a href="https://www.autodesk.com/ca-en/products/flow-production-tracking/overview" target="_blank" rel="noopener noreferrer" className="prose-link">Flow PT team</a> at Autodesk, 
+            and working on a few <Link href="/projects" className="prose-link">side projects</Link> here and there. 
 
             <br/><br/>
-            I'm trying to better value improvement over iteration.
-            That means prioritizing my comprehension of the work, rather than the momentum of it.
+            Trying to better value <strong>improvement</strong> over <strong>iteration</strong>. <br/>
+            That means prioritizing the <strong><em>comprehension</em></strong> of my work, rather than the <strong><em>momentum</em></strong> of it.
 
             <br/><br/>
-            Outside of software, I enjoy writing music & playing any instrument I can get my hands on. 
-            You can listen to me in the raindrops that fall past your window, the flitted brushstrokes printed onto your favourite hotel paintings, 
-            and the resonance of the low E string leaving the guitar after you sit down and realize there's nothing left for you to play.
+            Outside of software, I enjoy writing music & playing any instrument I can get my hands on. <br/>
+            You can listen to me in the fleeting raindrops that tear past your window, the flitted brushstrokes printed onto your favourite hotel paintings, 
+            and the resonance of the low E string leaving the guitar after you realize there's nothing left for you to play.
             <br/><br/>
-            I'm not on Spotify <i>just</i> yet. 
+            I'm not on Spotify <em>just</em> yet. 
             <br/><br/>
-            <div className="text-sm text-zinc-500 dark:text-zinc-400">Last updated: June 17, 2025</div>
+            <div className="text-sm text-zinc-500 dark:text-zinc-400">Bio Last Updated: June 17, 2025</div>
           </div>
         </div>
       </motion.section>
