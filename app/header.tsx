@@ -50,10 +50,10 @@ export function Header() {
             as="p"
             preset="fade"
             per="char"
-            className="font-mono tracking-tighter text-xs text-zinc-600 dark:text-zinc-500"
+            className="font-mono tracking-tighter text-sm text-zinc-600 dark:text-zinc-500"
             delay={0.5}
           >
-          // Montréal, QC
+          Montréal, QC
             </TextEffect>
             {/* idea: connect this to actual spotify listening */}
         </div>

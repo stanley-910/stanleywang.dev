@@ -1,32 +1,21 @@
 'use client'
-import { motion, AnimatePresence } from 'motion/react'
-import { XIcon } from 'lucide-react'
-import { Spotlight } from '@/components/ui/spotlight'
-import { Magnetic } from '@/components/ui/magnetic'
-import { Stars } from '@/components/ui/stars'
-import {
-  MorphingDialog,
-  MorphingDialogTrigger,
-  MorphingDialogContent,
-  MorphingDialogClose,
-  MorphingDialogContainer,
-} from '@/components/ui/morphing-dialog'
+import { motion } from 'motion/react'
 import Link from 'next/link'
+
+import { AnimatedBackground } from '@/components/ui/animated-background'
+import { AsciiArt } from '@/components/ui/ascii'
+import { Magnetic } from '@/components/ui/magnetic'
+import { Spotlight } from '@/components/ui/spotlight'
+import { Stars } from '@/components/ui/stars'
+
 import '@/app/styles/prose.css'
 import '@/app/styles/markdown.css'
-import { AnimatedBackground } from '@/components/ui/animated-background'
-import {
-  PROJECTS,
-  WORK_EXPERIENCE,
-  BLOG_POSTS,
-  EMAIL,
-  SOCIAL_LINKS,
-} from './data'
+
+import { WORK_EXPERIENCE, BLOG_POSTS, EMAIL, SOCIAL_LINKS } from './data'
+
 import { format } from 'date-fns'
-import { useState, useEffect } from 'react'
+
 // import { cn } from '@/lib/utils'
-import { AsciiArt } from '@/components/ui/ascii'
-import { TextEffect } from '@/components/ui/text-effect'
 
 const VARIANTS_CONTAINER = {
   hidden: { opacity: 0 },
@@ -52,127 +41,6 @@ type ProjectMediaProps = {
     type: 'video' | 'images'
     sources: string[]
   }
-}
-
-function ProjectMedia({ media }: ProjectMediaProps) {
-  const [currentImageIndex, setCurrentImageIndex] = useState(0)
-
-  // Auto-advance slideshow every 3 seconds
-  useEffect(() => {
-    if (media.type === 'images' && media.sources.length > 1) {
-      const timer = setInterval(() => {
-        setCurrentImageIndex((prev) => 
-          prev === media.sources.length - 1 ? 0 : prev + 1
-        )
-      }, 3000)
-      return () => clearInterval(timer)
-    }
-  }, [media])
-
-
-  if (media.type === 'video') {
-    return (
-      <MorphingDialog
-        transition={{
-          type: 'spring',
-          bounce: 0,
-          duration: 0.3,
-        }}
-      >
-        <MorphingDialogTrigger>
-          <div className="relative w-full">
-            <video
-              src={media.sources[0]}
-              autoPlay
-              loop
-              muted
-              playsInline
-              className="aspect-video w-full cursor-zoom-in rounded-xl"
-              onClick={(e) => {
-                // Only prevent the video's default behavior
-                e.preventDefault()
-              }}
-            />
-          </div>
-        </MorphingDialogTrigger>
-        <MorphingDialogContainer>
-          <MorphingDialogContent className="relative aspect-video rounded-2xl bg-zinc-50 p-1 ring-1 ring-zinc-200/50 ring-inset dark:bg-zinc-950 dark:ring-zinc-800/50">
-            <video
-              src={media.sources[0]}
-              autoPlay
-              loop
-              muted
-              className="aspect-video h-[50vh] w-full rounded-xl md:h-[70vh]"
-            />
-          </MorphingDialogContent>
-          <MorphingDialogClose
-            className="fixed top-6 right-6 h-fit w-fit rounded-full bg-white p-1"
-            variants={{
-              initial: { opacity: 0 },
-              animate: {
-                opacity: 1,
-                transition: { delay: 0.3, duration: 0.1 },
-              },
-              exit: { opacity: 0, transition: { duration: 0 } },
-            }}
-          >
-            <XIcon className="h-5 w-5 text-zinc-500" />
-          </MorphingDialogClose>
-        </MorphingDialogContainer>
-      </MorphingDialog>
-    )
-  }
-
-  return (
-    <MorphingDialog
-      transition={{
-        type: 'spring',
-        bounce: 0,
-        duration: 0.3,
-      }}
-    >
-      <MorphingDialogTrigger>
-        <div 
-          className="relative aspect-video w-full overflow-hidden rounded-xl"
-        >
-          <AnimatePresence mode="wait">
-            <motion.img
-              key={currentImageIndex}
-              src={media.sources[currentImageIndex]}
-              alt={`Project image ${currentImageIndex + 1}`}
-              className="h-full w-full cursor-pointer object-cover"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.5 }}
-            />
-          </AnimatePresence>
-        </div>
-      </MorphingDialogTrigger>
-      <MorphingDialogContainer>
-        <MorphingDialogContent className="relative aspect-video rounded-2xl bg-zinc-50 p-1 ring-1 ring-zinc-200/50 ring-inset dark:bg-zinc-950 dark:ring-zinc-800/50">
-          <img
-            src={media.sources[currentImageIndex]}
-            alt={`Project image ${currentImageIndex + 1}`}
-            className="w-full h-full rounded-xl object-contain max-h-[80vh] max-w-[90vw]"
-          />
-        </MorphingDialogContent>
-        <MorphingDialogClose
-          className="fixed top-6 right-6 h-fit w-fit rounded-full bg-white p-1"
-          variants={{
-            initial: { opacity: 0 },
-            animate: {
-              opacity: 1,
-              transition: { delay: 0.3, duration: 0.1 },
-            },
-            exit: { opacity: 0, transition: { duration: 0 } },
-          }}
-        >
-          <XIcon className="h-5 w-5 text-zinc-500" />
-        </MorphingDialogClose>
-      </MorphingDialogContainer>
-    </MorphingDialog>
-  )
 }
 
 function MagneticSocialLink({
@@ -209,8 +77,6 @@ function MagneticSocialLink({
   )
 }
 
-
-
 export default function Personal() {
   return (
     <motion.main
@@ -224,37 +90,74 @@ export default function Personal() {
         transition={TRANSITION_SECTION}
       >
         <div className="mt-10 flex-1">
-        <div className="prose ">
-            Studying Computer Science 
-            at <a href="https://www.mcgill.ca" target="_blank" rel="noopener noreferrer" className="prose-link">McGill University</a>, writing software with 
-            the <a href="https://www.autodesk.com/ca-en/products/flow-production-tracking/overview" target="_blank" rel="noopener noreferrer" className="prose-link">Flow PT team</a> at Autodesk, 
-            and working on a few <Link href="/projects" className="prose-link">side projects</Link> here and there. 
-
-            <br/><br/>
-            Trying to better value <strong>improvement</strong> over <strong>iteration</strong>. <br/>
-            That means prioritizing the <strong><em>comprehension</em></strong> of my work, rather than the <strong><em>momentum</em></strong> of it.
-
-            <br/><br/>
-            Outside of software, I enjoy writing music & playing any instrument I can get my hands on. <br/>
-            You can listen to me in the fleeting raindrops that tear past your window, the flitted brushstrokes printed onto your favourite hotel paintings, 
-            and the resonance of the low E string leaving the guitar after you realize there's nothing left for you to play.
-            <br/><br/>
-            I'm not on Spotify <em>just</em> yet. 
-            <br/><br/>
-            <div className="text-sm text-zinc-500 dark:text-zinc-400">Bio Last Updated: June 17, 2025</div>
+          <div className="prose">
+            Studying Computer Science at{' '}
+            <a
+              href="https://www.mcgill.ca"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="prose-link"
+            >
+              McGill University
+            </a>
+            , writing software with the{' '}
+            <a
+              href="https://www.autodesk.com/ca-en/products/flow-production-tracking/overview"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="prose-link"
+            >
+              Flow PT team
+            </a>{' '}
+            at Autodesk, and working on a few{' '}
+            <Link href="/projects" className="prose-link">
+              side projects
+            </Link>{' '}
+            here and there.
+            <br />
+            <br />
+            Trying to better value <strong>improvement</strong> over{' '}
+            <strong>iteration</strong>. <br />
+            That means prioritizing the{' '}
+            <strong>
+              <em>comprehension</em>
+            </strong>{' '}
+            of my work, rather than the{' '}
+            <strong>
+              <em>momentum</em>
+            </strong>{' '}
+            of it.
+            <br />
+            <br />
+            Outside of software, I enjoy writing music & playing any instrument
+            I can get my hands on. <br />
+            You can listen to me in the fleeting raindrops that tear past your
+            window, the flitted brushstrokes printed onto your favourite hotel
+            paintings, and the resonance of the low E string leaving the guitar
+            after you realize there&apos;s nothing left for you to play.
+            <br />
+            <br />
+            I&apos;m not on Spotify <em>just</em> yet.
+            <br />
+            <br />
+            <div className="text-right text-sm text-zinc-500 dark:text-zinc-400">
+              Bio Last Updated: June 17, 2025
+            </div>
           </div>
         </div>
       </motion.section>
-      <Stars className="fill-[rgb(186,149,94)] dark:fill-[rgb(186,149,94)] transition-colors" />
-
-
+      <Stars className="fill-[rgb(186,149,94)] transition-colors dark:fill-[rgb(186,149,94)]" />
 
       <motion.section
         variants={VARIANTS_SECTION}
         transition={TRANSITION_SECTION}
         className="my-6"
       >
-        <h3 className="mb-3 text-lg font-medium font-serif"><Link className="prose-link" href="/writing">Writing</Link></h3>
+        <h3 className="mb-3 font-serif text-lg font-medium">
+          <Link className="prose-link" href="/writing">
+            Writing
+          </Link>
+        </h3>
 
         <div className="flex flex-col space-y-0">
           <AnimatedBackground
@@ -273,28 +176,36 @@ export default function Personal() {
                 href={post.link}
                 data-id={post.uid}
               >
-                <h4 className="text-md font-normal mb-1 dark:text-zinc-100">{post.title}</h4>
-                <p className="text-sm text-zinc-500 mb-1">
+                <h4 className="text-md mb-1 font-normal dark:text-zinc-100">
+                  {post.title}
+                </h4>
+                <p className="mb-1 text-sm text-zinc-500">
                   <time dateTime={post.date}>
                     {format(new Date(post.date), 'MMMM dd, yyyy')}
                   </time>
                   {' · '}
                   {post.readingTime}
                 </p>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">{post.description}</p>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                  {post.description}
+                </p>
               </Link>
             ))}
           </AnimatedBackground>
         </div>
       </motion.section>
 
-
       <motion.section
         variants={VARIANTS_SECTION}
         transition={TRANSITION_SECTION}
         className="my-6"
       >
-        <h3 className="mb-5 text-lg font-medium font-serif">Experience</h3>
+        <h3
+          className="mb-6 font-serif text-lg font-medium"
+          title="In Development"
+        >
+          <span className="prose-link">Experience</span>
+        </h3>
         <div className="flex flex-col space-y-2">
           {WORK_EXPERIENCE.map((job) => (
             <a
@@ -305,22 +216,28 @@ export default function Personal() {
               key={job.id}
             >
               <Spotlight
-                className={'from-red-900 via-red-800 to-red-700 blur-2xl dark:from-red-100 dark:via-red-200 dark:to-red-50'
+                className={
+                  'from-red-900 via-red-800 to-red-700 blur-2xl dark:from-red-100 dark:via-red-200 dark:to-red-50'
                 }
                 size={64}
               />
               <div className="relative h-full w-full rounded-[15px] bg-white p-4 dark:bg-zinc-950">
                 <div className="relative flex w-full flex-row justify-between">
                   <div>
-                    <h4 className="text-md font-normal dark:text-zinc-100 mb-1">
-                      {job.title}<span className={`text-zinc-600 dark:text-zinc-400`}> @ {job.company}</span>
+                    <h4 className="text-md mb-1 font-normal dark:text-zinc-100">
+                      {job.title}
+                      <span className={`text-zinc-600 dark:text-zinc-400`}>
+                        {' '}
+                        @ {job.company}
+                      </span>
                     </h4>
-                    <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-1">
+                    <p className="mb-1 text-sm text-zinc-500 dark:text-zinc-400">
                       {job.location}
                     </p>
                   </div>
-                  <p className="italic text-sm text-zinc-600 dark:text-zinc-400 ">
-                    {job.start}{job.end && ` - ${job.end}`}
+                  <p className="font-inter text-xs text-zinc-600 italic dark:text-zinc-400">
+                    {job.start}
+                    {job.end && ` - ${job.end}`}
                   </p>
                 </div>
                 {/* <svg className="w-10 h-10">
@@ -335,30 +252,46 @@ export default function Personal() {
         </div>
       </motion.section>
 
-
-
       <motion.section
         variants={VARIANTS_SECTION}
         transition={TRANSITION_SECTION}
         className="mt-8 mb-6"
       >
-        <h3 className="mb-5 text-lg font-medium font-serif">Connect</h3>
+        <h3 className="mb-6 font-serif text-lg font-medium">
+          <span className="prose-link" title="In Development">
+            Connect
+          </span>
+        </h3>
         <p className="mb-6 text-zinc-600 dark:text-zinc-400">
-          Please don't email me at my email. Thanks. {' '}
-          <a className="underline dark:text-zinc-300" href={`mailto:${EMAIL}`}>
+          Please don&apos;t email me at my email. Thanks. <br />
+          <br />
+          <button
+            className="prose-link cursor-pointer font-mono text-sm underline select-text dark:text-zinc-300"
+            title="Copy to clipboard"
+            onClick={() => {
+              navigator.clipboard.writeText(EMAIL)
+            }}
+          >
             {EMAIL}
+          </button>
+          <span className="mx-2">·</span>
+          <a
+            className="prose-link font-mono text-sm underline dark:text-zinc-300"
+            href="https://github.com/stanley-utf8"
+          >
+            github
+          </a>
+          <span className="mx-2">·</span>
+          <a
+            className="prose-link font-mono text-sm underline dark:text-zinc-300"
+            href="https://www.linkedin.com/in/stanley-utf8/"
+          >
+            linkedin
           </a>
         </p>
-        <div className="flex items-center justify-start space-x-3">
-          {SOCIAL_LINKS.map((link) => (
-            <MagneticSocialLink key={link.label} link={link.link}>
-              {link.label}
-            </MagneticSocialLink>
-          ))}
-        </div>
       </motion.section>
 
-        <Stars className="fill-[rgb(186,149,94)] dark:fill-[rgb(186,149,94)] transition-colors" />
+      <Stars className="fill-[rgb(186,149,94)] transition-colors dark:fill-[rgb(186,149,94)]" />
       <motion.section
         variants={VARIANTS_SECTION}
         transition={TRANSITION_SECTION}
@@ -368,4 +301,3 @@ export default function Personal() {
     </motion.main>
   )
 }
-

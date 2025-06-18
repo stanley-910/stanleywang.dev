@@ -1,8 +1,9 @@
 'use client'
 
 import { motion } from 'motion/react'
-import PostsTable from '@/components/PostsTable'
+
 import { BLOG_POSTS } from '@/app/data'
+import PostsTable from '@/components/PostsTable'
 import CdOut from '@/components/ui/cd-out'
 const VARIANTS_SECTION = {
   hidden: { opacity: 0, y: 10, filter: 'blur(8px)' },
@@ -16,14 +17,14 @@ const TRANSITION_SECTION = {
 export default function PostsPage() {
   return (
     <main className="">
-      <div className="space-y-8 prose prose-gray mt-10 dark:prose-invert">
+      <div className="prose prose-gray dark:prose-invert mt-10 space-y-8">
         <motion.section
           variants={VARIANTS_SECTION}
           initial="hidden"
           animate="visible"
           transition={TRANSITION_SECTION}
         >
-          <p className="text-lg font-serif   mb-4 text-gray-900 dark:text-gray-100">
+          <p className="mb-4 font-serif text-lg text-gray-900 dark:text-gray-100">
             In Writing
           </p>
           <PostsTable posts={BLOG_POSTS} />
@@ -39,4 +40,4 @@ export default function PostsPage() {
       </motion.section>
     </main>
   )
-} 
+}

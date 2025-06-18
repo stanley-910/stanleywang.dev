@@ -1,11 +1,12 @@
 'use client'
-import { motion, AnimatePresence } from 'motion/react'
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
 import { XIcon } from 'lucide-react'
+import { motion, AnimatePresence } from 'motion/react'
+import Image from 'next/image'
+import Link from 'next/link'
+import { useState, useEffect } from 'react'
 
 // UI Components
-import ProjectsTable from '@/components/ProjectsTable'
+import { PROJECTS } from '@/app/data'
 import CdOut from '@/components/ui/cd-out'
 import {
   MorphingDialog,
@@ -16,7 +17,6 @@ import {
 } from '@/components/ui/morphing-dialog'
 
 // Data
-import { PROJECTS } from '@/app/data'
 
 const VARIANTS_CONTAINER = {
   hidden: { opacity: 0 },
@@ -51,8 +51,8 @@ function ProjectMedia({ media }: ProjectMediaProps) {
   useEffect(() => {
     if (media.type === 'images' && media.sources.length > 1) {
       const timer = setInterval(() => {
-        setCurrentImageIndex((prev) => 
-          prev === media.sources.length - 1 ? 0 : prev + 1
+        setCurrentImageIndex((prev) =>
+          prev === media.sources.length - 1 ? 0 : prev + 1,
         )
       }, 3000)
       return () => clearInterval(timer)
@@ -121,9 +121,7 @@ function ProjectMedia({ media }: ProjectMediaProps) {
       }}
     >
       <MorphingDialogTrigger>
-        <div 
-          className="relative aspect-video w-full overflow-hidden rounded-xl"
-        >
+        <div className="relative aspect-video w-full overflow-hidden rounded-xl">
           <AnimatePresence mode="wait">
             <motion.img
               key={currentImageIndex}
@@ -140,10 +138,10 @@ function ProjectMedia({ media }: ProjectMediaProps) {
       </MorphingDialogTrigger>
       <MorphingDialogContainer>
         <MorphingDialogContent className="relative aspect-video rounded-2xl bg-zinc-50 p-1 ring-1 ring-zinc-200/50 ring-inset dark:bg-zinc-950 dark:ring-zinc-800/50">
-          <img
+          <Image
             src={media.sources[currentImageIndex]}
             alt={`Project image ${currentImageIndex + 1}`}
-            className="w-full h-full rounded-xl object-contain max-h-[80vh] max-w-[90vw]"
+            className="h-full max-h-[80vh] w-full max-w-[90vw] rounded-xl object-contain"
           />
         </MorphingDialogContent>
         <MorphingDialogClose
@@ -172,19 +170,19 @@ export default function ProjectsPage() {
       initial="hidden"
       animate="visible"
     >
-    <motion.div className="space-y-8 prose prose-gray mt-10 dark:prose-invert">
-      <motion.section
-        variants={VARIANTS_SECTION}
-        initial="hidden"
-        animate="visible"
-        transition={TRANSITION_SECTION}
-      >
-          <p className="text-lg font-serif mb-4 text-gray-900 dark:text-gray-100">
-        Showcase
-        </p>
-        {/* <ProjectsTable projects={PROJECTS} /> */}
-      </motion.section>
-    </motion.div>
+      <motion.div className="prose prose-gray dark:prose-invert mt-10 space-y-8">
+        <motion.section
+          variants={VARIANTS_SECTION}
+          initial="hidden"
+          animate="visible"
+          transition={TRANSITION_SECTION}
+        >
+          <p className="mb-4 font-serif text-lg text-gray-900 dark:text-gray-100">
+            Showcase
+          </p>
+          {/* <ProjectsTable projects={PROJECTS} /> */}
+        </motion.section>
+      </motion.div>
       <motion.section
         variants={VARIANTS_SECTION}
         initial="hidden"
@@ -200,12 +198,12 @@ export default function ProjectsPage() {
               </div>
               <div className="px-1">
                 <a
-                  className="font-mono tracking-tight text-sm group relative inline-block text-zinc-900 dark:text-zinc-50"
+                  className="group relative inline-block font-mono text-sm tracking-tight text-zinc-900 dark:text-zinc-50"
                   href={project.link}
                   target="_blank"
                 >
                   {project.name}
-                  <span className="absolute bottom-0.5 left-0 block h-[1px] w-full max-w-0 bg-zinc-900 dark:bg-zinc-400 transition-all duration-200 group-hover:max-w-full"></span>
+                  <span className="absolute bottom-0.5 left-0 block h-[1px] w-full max-w-0 bg-zinc-900 transition-all duration-200 group-hover:max-w-full dark:bg-zinc-400"></span>
                 </a>
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">
                   {project.description}
@@ -215,6 +213,14 @@ export default function ProjectsPage() {
           ))}
         </div>
       </motion.section>
+      <motion.section
+        variants={VARIANTS_SECTION}
+        initial="hidden"
+        animate="visible"
+        transition={TRANSITION_SECTION}
+      >
+        <CdOut link="/" title="Home" home />
+      </motion.section>
     </motion.main>
   )
-} 
+}
