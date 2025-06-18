@@ -116,8 +116,9 @@ export default function Personal() {
             here and there.
             <br />
             <br />
-            Trying to better value <strong>improvement</strong> over{' '}
-            <strong>iteration</strong>. <br />
+            I&apos;m trying to be better with valuing{' '}
+            <strong>improvement</strong> over <strong>iteration</strong>.{' '}
+            <br />
             That means prioritizing the{' '}
             <strong>
               <em>comprehension</em>
