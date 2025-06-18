@@ -35,7 +35,9 @@
   width: 3.5ch; /* Initial width to match title */
   opacity: 0.8;
   background-color: var(--border-color-dark);
-  transition: width 0.7s cubic-bezier(0.25, 0.1, 0.25, 1), opacity 0.7s cubic-bezier(0.25, 0.1, 0.25, 1); /* easeOutQuart alternative */
+  transition:
+    width 0.7s cubic-bezier(0.25, 0.1, 0.25, 1),
+    opacity 0.7s cubic-bezier(0.25, 0.1, 0.25, 1); /* easeOutQuart alternative */
 }
 
 .table-of-contents span {
@@ -52,7 +54,9 @@
 *:hover > .table-of-contents::before {
   opacity: 1;
   width: 75%;
-  transition: width 700ms 0ms, opacity 700ms 0ms;
+  transition:
+    width 700ms 0ms,
+    opacity 700ms 0ms;
 }
 
 *:hover > .table-of-contents span {
@@ -66,18 +70,17 @@
 }
 
 .table-of-contents::before {
-  transition: width 700ms 300ms, opacity 700ms 300ms;
+  transition:
+    width 700ms 300ms,
+    opacity 700ms 300ms;
   width: 3.5ch;
 }
-
 
 /* Keep border expanded when TOC is always on */
 .toc-always-on .table-of-contents::before {
   opacity: 1;
   width: 75%;
 }
-
-
 
 /* Initial fade in animation when mounted */
 .table-of-contents.mounted {
@@ -123,7 +126,7 @@
   border-radius: 0.25rem;
   color: #888777;
   border: 1px solid var(--bg-base);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   transition: all 400ms;
 }
 
@@ -142,7 +145,7 @@
   opacity: 0;
   margin-top: 0.25rem;
   padding-bottom: 1.25rem;
-  transition: opacity 700ms;  /* Base transition without delay */
+  transition: opacity 700ms; /* Base transition without delay */
   list-style: none;
   padding-left: 0;
   /* Hide scrollbar for different browsers while maintaining functionality */
@@ -158,12 +161,12 @@
 /* Immediate fade in on hover */
 *:hover > .table-of-contents > ul {
   opacity: 0.75;
-  transition: opacity 700ms 0ms;  /* Explicit 0ms delay for hover */
+  transition: opacity 700ms 0ms; /* Explicit 0ms delay for hover */
 }
 
 /* Delayed fade out when hover is removed */
 .table-of-contents > ul {
-  transition: opacity 700ms 300ms;  /* 5s delay before fade out */
+  transition: opacity 700ms 300ms; /* 5s delay before fade out */
 }
 
 *:hover > .table-of-contents > .table-of-contents-anchor,
@@ -233,21 +236,30 @@
 /* Dark mode styles */
 @media (prefers-color-scheme: dark) {
   .table-of-contents ul > li > a {
-  text-decoration-color: rgba(125, 125, 125, 0.7); /* Lighter underline for dark mode */
+    text-decoration-color: rgba(
+      125,
+      125,
+      125,
+      0.7
+    ); /* Lighter underline for dark mode */
   }
 }
 
 /* Support for class-based dark mode */
 .dark .table-of-contents ul > li > a {
-  text-decoration-color: rgba(125, 125, 125, 0.7); /* Lighter underline for dark mode */
+  text-decoration-color: rgba(
+    125,
+    125,
+    125,
+    0.7
+  ); /* Lighter underline for dark mode */
 }
 
 .dark .table-of-contents ul > li > a:hover {
-    opacity: 1;
-    text-decoration-color: rgba(255, 255, 255); /* Lighter hover for dark mode */
-    text-decoration-thickness: 1.2px; /* Makes the underline thicker */
+  opacity: 1;
+  text-decoration-color: rgba(255, 255, 255); /* Lighter hover for dark mode */
+  text-decoration-thickness: 1.2px; /* Makes the underline thicker */
 }
-
 
 @media (prefers-color-scheme: dark) {
   .table-of-contents ul > li > a:hover {
@@ -278,10 +290,10 @@
 
 /* Title hover transition */
 .table-of-contents span {
-  transition:  opacity 700ms 300ms; /* Include opacity transition with delay */
+  transition: opacity 700ms 300ms; /* Include opacity transition with delay */
 }
 
 /* Hide Footnotes from TOC */
-.toc a[href^="#footnotes"] {
+.toc a[href^='#footnotes'] {
   display: none;
 }

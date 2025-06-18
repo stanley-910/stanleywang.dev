@@ -4,5 +4,7 @@
         "source": "/shell/:match*",
         "destination": "https://portfolio-roan-phi-14.vercel.app//:match*"
       }
-    ]
+    ],
+    "buildCommand": "next build",
+    "ignoreCommand": "next lint"
   }

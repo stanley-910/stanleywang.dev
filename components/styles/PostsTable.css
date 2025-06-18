@@ -6,11 +6,13 @@
   --border-color: rgba(229, 231, 235, 0.3);
   --border-color-dark: rgba(55, 65, 81, 0.3);
   --border-width: 1.2px;
-  --posts-border: var(--border-color-dark);  /* Default to dark border in light theme */
+  --posts-border: var(
+    --border-color-dark
+  ); /* Default to dark border in light theme */
 }
 
 .dark {
-  --posts-border: var(--border-color);  /* Use light border in dark theme */
+  --posts-border: var(--border-color); /* Use light border in dark theme */
 }
 
 .posts-container {
@@ -21,7 +23,6 @@
   border-top: var(--border-width) solid var(--posts-border);
 }
 
-
 .posts-grid {
   display: grid;
   grid-template-columns: var(--year-width) 1fr;
@@ -30,13 +31,11 @@
   border-bottom: var(--border-width) solid var(--posts-border);
 }
 
-
 .year-column {
   /* font-size: 0.875rem; */
   color: var(--text-secondary);
   padding-top: 0.25rem;
 }
-
 
 .posts-column {
   display: flex;
@@ -93,7 +92,6 @@
   .light .posts-container {
     border-top: none;
   }
-
 
   .year-column {
     padding-bottom: 0.5rem;

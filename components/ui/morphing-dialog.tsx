@@ -1,5 +1,14 @@
 'use client'
 
+import { XIcon } from 'lucide-react'
+import {
+  motion,
+  AnimatePresence,
+  MotionConfig,
+  Transition,
+  Variant,
+} from 'motion/react'
+import Image from 'next/image'
 import React, {
   useCallback,
   useContext,
@@ -9,18 +18,10 @@ import React, {
   useRef,
   useState,
 } from 'react'
-import {
-  motion,
-  AnimatePresence,
-  MotionConfig,
-  Transition,
-  Variant,
-} from 'motion/react'
 import { createPortal } from 'react-dom'
-import { cn } from '@/lib/utils'
-import { XIcon } from 'lucide-react'
+
 import useClickOutside from '@/hooks/useClickOutside'
-import Image from 'next/image'
+import { cn } from '@/lib/utils'
 
 export type MorphingDialogContextType = {
   isOpen: boolean

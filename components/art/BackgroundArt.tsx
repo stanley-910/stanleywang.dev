@@ -1,33 +1,34 @@
 'use client'
-import { lazy, Suspense, memo } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation'
+import { lazy, Suspense, memo } from 'react'
 
-const ArtPlum = lazy(() => import('./ArtPlum'));
-const ArtCircuit = lazy(() => import('./ArtCircuit'));
+const ArtPlum = lazy(() => import('./ArtPlum'))
+const ArtCircuit = lazy(() => import('./ArtCircuit'))
 
 export type BackgroundArtProps = {
-  type?: 'dots' | 'plum' | 'circuit' | 'random';
-};
+  type?: 'dots' | 'plum' | 'circuit' | 'random'
+}
 
 // Memoize the component to prevent unnecessary re-renders
-export const BackgroundArt = memo(function BackgroundArt({ type = 'plum' }: BackgroundArtProps) {
+export const BackgroundArt = memo(function BackgroundArt({
+  type = 'plum',
+}: BackgroundArtProps) {
   // Get the current pathname
-  const pathname = usePathname();
-  
+  const pathname = usePathname()
+
   // Don't render background art on writing pages
   if (pathname?.startsWith('/writing/')) {
-    return null;
+    return null
   }
 
-  const artType = type === 'random' 
-    ? ['plum', 'circuit'][Math.floor(Math.random() * 2)]
-    : type;
+  const artType =
+    type === 'random'
+      ? ['plum', 'circuit'][Math.floor(Math.random() * 2)]
+      : type
 
   return (
     <Suspense fallback={null}>
-      {artType === 'plum' ? <ArtPlum /> :
-       <ArtCircuit />
-       }
+      {artType === 'plum' ? <ArtPlum /> : <ArtCircuit />}
     </Suspense>
-  );
-}); 
+  )
+})

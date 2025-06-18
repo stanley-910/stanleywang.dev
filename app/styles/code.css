@@ -2,7 +2,7 @@ code[data-line-numbers] {
   counter-reset: line;
 }
 
- code[data-line-numbers] > [data-line]::before {
+code[data-line-numbers] > [data-line]::before {
   counter-increment: line;
   content: counter(line);
 
@@ -15,15 +15,15 @@ code[data-line-numbers] {
   color: gray;
 }
 
-code[data-line-numbers-max-digits="2"] > [data-line]::before {
+code[data-line-numbers-max-digits='2'] > [data-line]::before {
   width: 1.25rem;
 }
 
-code[data-line-numbers-max-digits="3"] > [data-line]::before {
+code[data-line-numbers-max-digits='3'] > [data-line]::before {
   width: 1.75rem;
 }
 
-code[data-line-numbers-max-digits="4"] > [data-line]::before {
+code[data-line-numbers-max-digits='4'] > [data-line]::before {
   width: 2.25rem;
 }
 
@@ -32,8 +32,8 @@ pre {
   position: relative;
   overflow-x: auto;
   padding: 1rem;
-  scrollbar-width: none;  /* Firefox */
-  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
 
   /* white-space: pre-wrap;       /* wrap text */
   /* word-wrap: break-word;       /* break long words */
@@ -42,31 +42,31 @@ pre {
 }
 
 /* Theme switching using Shiki's CSS variables */
-code[data-theme*=" "],
-code[data-theme*=" "] span {
+code[data-theme*=' '],
+code[data-theme*=' '] span {
   color: var(--shiki-light);
   background-color: var(--shiki-light-bg);
 }
 
 /* Dark mode - System preference */
 @media (prefers-color-scheme: dark) {
-  code[data-theme*=" "],
-  code[data-theme*=" "] span {
+  code[data-theme*=' '],
+  code[data-theme*=' '] span {
     color: var(--shiki-dark);
     background-color: var(--shiki-dark-bg);
   }
 }
 
 /* Dark mode - Class-based */
-.dark code[data-theme*=" "],
-.dark code[data-theme*=" "] span {
+.dark code[data-theme*=' '],
+.dark code[data-theme*=' '] span {
   color: var(--shiki-dark);
   background-color: var(--shiki-dark-bg);
 }
 
 /* Light mode - Class-based */
-.light code[data-theme*=" "],
-.light code[data-theme*=" "] span {
+.light code[data-theme*=' '],
+.light code[data-theme*=' '] span {
   color: var(--shiki-light);
   background-color: var(--shiki-light-bg);
 }
@@ -86,11 +86,11 @@ pre::-webkit-scrollbar {
 }
 
 /* Group highlighting by ID */
-[data-line][data-highlighted-line-id="a"] {
+[data-line][data-highlighted-line-id='a'] {
   background-color: rgba(255, 200, 200, 0.1);
 }
 
-[data-line][data-highlighted-line-id="b"] {
+[data-line][data-highlighted-line-id='b'] {
   background-color: rgba(239, 13, 13, 0.791) !important;
 }
 
@@ -102,17 +102,17 @@ pre::-webkit-scrollbar {
 }
 
 /* Character group highlighting by ID */
-[data-chars-id="v"] {
+[data-chars-id='v'] {
   color: #60a5fa; /* variables - blue */
   font-weight: bold;
 }
 
-[data-chars-id="s"] {
+[data-chars-id='s'] {
   color: #34d399; /* functions - green */
   font-style: italic;
 }
 
-[data-chars-id="i"] {
+[data-chars-id='i'] {
   color: #fbbf24; /* values - yellow */
 }
 
@@ -133,7 +133,7 @@ pre::-webkit-scrollbar {
 }
 
 .dark pre {
-  background-color: rgba(65, 65, 65, 0.1) ;
+  background-color: rgba(65, 65, 65, 0.1);
 }
 
 .light pre {
@@ -142,44 +142,49 @@ pre::-webkit-scrollbar {
 
 /* Make the line highlighting more specific and match the styling hierarchy */
 code .highlighted {
-    background-color: rgba(136, 136, 136, 0.2) !important;  /* add override or else it won't show */
-    width: calc(100% + 48px);
-    display: inline-block;
-    transition: background-color 0.5s;
-    margin: 0px -24px;
-    padding: 0px 24px;
+  background-color: rgba(
+    136,
+    136,
+    136,
+    0.2
+  ) !important; /* add override or else it won't show */
+  width: calc(100% + 48px);
+  display: inline-block;
+  transition: background-color 0.5s;
+  margin: 0px -24px;
+  padding: 0px 24px;
 }
 
 .prose code .highlighted-word {
-    background-color: #8881; 
-    border: 1px solid #8885; 
-    padding: 1px 3px;
-    margin: -1px -3px;
-    border-radius: 4px;
+  background-color: #8881;
+  border: 1px solid #8885;
+  padding: 1px 3px;
+  margin: -1px -3px;
+  border-radius: 4px;
 }
 
 /* Diff styling */
 
 .diff.add {
   background-color: rgba(74, 222, 128, 0.253) !important;
-    width: calc(100% + 48px);
-    display: inline-block;
-    transition: background-color 0.5s;
-    margin: 0px -24px;
-    padding: 0px 24px;
+  width: calc(100% + 48px);
+  display: inline-block;
+  transition: background-color 0.5s;
+  margin: 0px -24px;
+  padding: 0px 24px;
 }
 
 .diff.remove {
   background-color: rgba(248, 113, 113, 0.326) !important;
-    width: calc(100% + 48px);
-    display: inline-block;
-    transition: background-color 0.5s;
-    margin: 0px -24px;
-    padding: 0px 24px;
+  width: calc(100% + 48px);
+  display: inline-block;
+  transition: background-color 0.5s;
+  margin: 0px -24px;
+  padding: 0px 24px;
 }
 
 .diff.add::before {
-  content: "+";
+  content: '+';
   color: #4ade80;
   position: absolute;
   left: 0rem;
@@ -189,7 +194,7 @@ code .highlighted {
 }
 
 .diff.remove::before {
-  content: "-";
+  content: '-';
   color: #f87171;
   position: absolute;
   left: 0rem;
@@ -207,7 +212,6 @@ code .highlighted {
   background-color: rgba(239, 68, 68, 0.05);
 }
 
-
 /* Inline code block with syntax highlighting */
 .prose :not(pre) > code[data-language] {
   background-color: rgba(170, 170, 170, 0.1) !important;
@@ -215,7 +219,15 @@ code .highlighted {
   padding: 0.2em 0.3em;
   margin: -0.2em 0;
   font-family: var(--font-mono) !important;
-  font-feature-settings: "ss01" 1, "ss02" 1, "ss03" 1, "ss04" 1, "ss05" 1, "ss06" 1, "ss07" 1, "ss08" 1;
+  font-feature-settings:
+    'ss01' 1,
+    'ss02' 1,
+    'ss03' 1,
+    'ss04' 1,
+    'ss05' 1,
+    'ss06' 1,
+    'ss07' 1,
+    'ss08' 1;
 }
 
 .dark .prose :not(pre) > code[data-language] {

@@ -1,9 +1,7 @@
 // This is the 'markdown' renderer for the blog posts, which determines layout, i.e., copying the URL, displaying text
 'use client'
 import { TextMorph } from '@/components/ui/text-morph'
-import { ScrollProgress } from '@/components/ui/scroll-progress'
-import { useEffect, useState } from 'react'
-import { BLOG_POSTS } from '@/app/data'
+
 import { usePathname } from 'next/navigation'
 import { motion } from 'motion/react'
 import '@/app/styles/prose.css'
@@ -12,8 +10,12 @@ import '@/app/styles/code.css'
 import 'katex/dist/katex.css'
 import Giscus from '@giscus/react'
 import { useTheme } from 'next-themes'
+import { useEffect, useState } from 'react'
+
+import { BLOG_POSTS } from '@/app/data'
 import PostsPage from '@/app/writing/page'
 import CdOut from '@/components/ui/cd-out'
+import { ScrollProgress } from '@/components/ui/scroll-progress'
 
 const VARIANTS_CONTAINER = {
   hidden: { opacity: 0 },
@@ -60,7 +62,7 @@ function BlogHeader() {
         </div>
         {/* TODO: Add tags back in */}
         {/* <div className="flex flex-row flex-wrap gap-2 mt-2"> */}
-          {/* {post.tags.map((tag) => (
+        {/* {post.tags.map((tag) => (
             <span 
               key={tag} 
               className="cursor-pointer text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors"
@@ -73,8 +75,6 @@ function BlogHeader() {
     </header>
   )
 }
-
-
 
 export default function LayoutBlogPost({
   children,
@@ -89,7 +89,7 @@ export default function LayoutBlogPost({
   useEffect(() => {
     // Don't scroll to top if there's a hash in the URL (anchor navigation)
     if (!window.location.hash) {
-      window.scrollTo(0, 0);
+      window.scrollTo(0, 0)
     }
   }, [pathname])
 
@@ -105,15 +105,15 @@ export default function LayoutBlogPost({
           bounce: 0,
         }}
       />
-      <main className="prose prose-gray mt-10 dark:prose-invert prose-pre:bg-transparent prose-pre:p-0">
-    <motion.main
-      className="space-y-12 mt-10 "
-      variants={VARIANTS_CONTAINER}
-      initial="hidden"
-      animate="visible"
-    >
+      <main className="prose prose-gray dark:prose-invert prose-pre:bg-transparent prose-pre:p-0 mt-10">
+        <motion.main
+          className="mt-10 space-y-12"
+          variants={VARIANTS_CONTAINER}
+          initial="hidden"
+          animate="visible"
+        >
           <BlogHeader />
-            {children}
+          {children}
         </motion.main>
       </main>
       <motion.section
@@ -138,22 +138,22 @@ export default function LayoutBlogPost({
         animate="visible"
         transition={TRANSITION_SECTION}
       >
-      <div id="giscus-container">
-        <Giscus
-          repo="stanley-utf8/stanleywang.dev"
-          repoId="R_kgDOOcaodg"
-          category="Writing"
-          categoryId="DIC_kwDOOcaods4CpSuT"
-          mapping="og:title"
-          strict="0"
-          reactionsEnabled="0"
-          emitMetadata="0"
-          inputPosition="top"
-          theme={resolvedTheme === 'dark' ? 'transparent_dark' : 'light'}
-          lang="en"
-          loading="lazy"
-        />
-      </div>
+        <div id="giscus-container">
+          <Giscus
+            repo="stanley-utf8/stanleywang.dev"
+            repoId="R_kgDOOcaodg"
+            category="Writing"
+            categoryId="DIC_kwDOOcaods4CpSuT"
+            mapping="og:title"
+            strict="0"
+            reactionsEnabled="0"
+            emitMetadata="0"
+            inputPosition="top"
+            theme={resolvedTheme === 'dark' ? 'transparent_dark' : 'light'}
+            lang="en"
+            loading="lazy"
+          />
+        </div>
       </motion.section>
     </>
   )

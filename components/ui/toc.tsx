@@ -1,6 +1,6 @@
 'use client'
-import { useEffect, useState } from 'react'
 import GithubSlugger from 'github-slugger'
+import { useEffect, useState } from 'react'
 import '@/app/styles/toc.css'
 
 interface TocItem {
@@ -18,14 +18,14 @@ export function TableOfContents({ title }: { title?: string }) {
   useEffect(() => {
     const slugger = new GithubSlugger()
     const headingElements = document.querySelectorAll('h1, h2, h3, h4')
-    
+
     const items: TocItem[] = Array.from(headingElements)
-      .filter(heading => !heading.hasAttribute('data-toc-exclude'))
+      .filter((heading) => !heading.hasAttribute('data-toc-exclude'))
       .map((heading) => {
         const level = parseInt(heading.tagName[1])
         const text = heading.textContent || ''
         const slug = slugger.slug(text)
-        
+
         if (!heading.id) {
           heading.id = slug
         }
@@ -34,7 +34,7 @@ export function TableOfContents({ title }: { title?: string }) {
       })
 
     if (items.length > 0) {
-      const minHeadingLevel = Math.min(...items.map(item => item.level))
+      const minHeadingLevel = Math.min(...items.map((item) => item.level))
       setMinLevel(minHeadingLevel)
       setHeadings(items)
     }
@@ -57,8 +57,8 @@ export function TableOfContents({ title }: { title?: string }) {
         })
       },
       {
-        rootMargin: '-3% 0px -92% 0px'
-      }
+        rootMargin: '-3% 0px -92% 0px',
+      },
     )
 
     const headingElements = document.querySelectorAll('h1, h2, h3, h4')
@@ -74,13 +74,12 @@ export function TableOfContents({ title }: { title?: string }) {
   const scrollToHeading = (slug: string) => {
     const element = document.getElementById(slug)
     if (element) {
-      
       const scrollMargin = Math.round(window.innerHeight * 0.03)
       element.style.scrollMarginTop = `${scrollMargin}px`
-      
-      element.scrollIntoView({ 
+
+      element.scrollIntoView({
         behavior: 'smooth',
-        block: 'start'
+        block: 'start',
       })
 
       // Reset scroll margin after animation
@@ -93,11 +92,16 @@ export function TableOfContents({ title }: { title?: string }) {
   const getIndentClass = (level: number) => {
     const relativeLevel = level - minLevel
     switch (relativeLevel) {
-      case 0: return 'toc-level-0'
-      case 1: return 'toc-level-1'
-      case 2: return 'toc-level-2'
-      case 3: return 'toc-level-3'
-      default: return 'toc-level-0'
+      case 0:
+        return 'toc-level-0'
+      case 1:
+        return 'toc-level-1'
+      case 2:
+        return 'toc-level-2'
+      case 3:
+        return 'toc-level-3'
+      default:
+        return 'toc-level-0'
     }
   }
 
@@ -106,20 +110,18 @@ export function TableOfContents({ title }: { title?: string }) {
   }
 
   return (
-    <nav className="ml-6 table-of-contents toc-always-on mounted" data-next-scroll-boundary>
+    <nav
+      className="table-of-contents toc-always-on mounted ml-6"
+      data-next-scroll-boundary
+    >
       {title && (
         <div className="flex items-center pt-2">
-          <span className="mb-2 font-bold text-sm">
-            {title}
-          </span>
+          <span className="mb-2 text-sm font-bold">{title}</span>
         </div>
       )}
       <ul>
         {headings.map((heading, index) => (
-          <li 
-            key={index} 
-            className={getIndentClass(heading.level)}
-          >
+          <li key={index} className={getIndentClass(heading.level)}>
             <a
               href={`#${heading.slug}`}
               onClick={(e) => {
@@ -135,4 +137,4 @@ export function TableOfContents({ title }: { title?: string }) {
       </ul>
     </nav>
   )
-} 
+}

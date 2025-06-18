@@ -10,7 +10,11 @@ interface GlitchTextProps {
   variant?: 'default' | 'blue'
 }
 
-export function GlitchText({ text, className = '', variant = 'default' }: GlitchTextProps) {
+export function GlitchText({
+  text,
+  className = '',
+  variant = 'default',
+}: GlitchTextProps) {
   const [displayText, setDisplayText] = useState(text)
   const [isHovering, setIsHovering] = useState(false)
 
@@ -22,9 +26,12 @@ export function GlitchText({ text, className = '', variant = 'default' }: Glitch
       // Glitch effect while hovering
       glitchInterval = setInterval(() => {
         setDisplayText(
-          [...text].map(() => 
-            GLITCH_CHARS[Math.floor(Math.random() * GLITCH_CHARS.length)]
-          ).join('')
+          [...text]
+            .map(
+              () =>
+                GLITCH_CHARS[Math.floor(Math.random() * GLITCH_CHARS.length)],
+            )
+            .join(''),
         )
       }, 50)
     } else if (displayText !== text) {
@@ -35,11 +42,15 @@ export function GlitchText({ text, className = '', variant = 'default' }: Glitch
           clearInterval(restoreInterval)
           return
         }
-        setDisplayText(prevText => 
-          text.slice(0, currentIdx + 1) +
-          [...text.slice(currentIdx + 1)]
-            .map(() => GLITCH_CHARS[Math.floor(Math.random() * GLITCH_CHARS.length)])
-            .join('')
+        setDisplayText(
+          (prevText) =>
+            text.slice(0, currentIdx + 1) +
+            [...text.slice(currentIdx + 1)]
+              .map(
+                () =>
+                  GLITCH_CHARS[Math.floor(Math.random() * GLITCH_CHARS.length)],
+              )
+              .join(''),
         )
         currentIdx++
       }, 50)
@@ -53,11 +64,11 @@ export function GlitchText({ text, className = '', variant = 'default' }: Glitch
 
   return (
     <span
-      className={`cursor-pointer crt-text crt-text-effect ${variant === 'blue' ? 'crt-text-blue' : ''} ${className}`}
+      className={`crt-text crt-text-effect cursor-pointer ${variant === 'blue' ? 'crt-text-blue' : ''} ${className}`}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
       {displayText}
     </span>
   )
-} 
+}

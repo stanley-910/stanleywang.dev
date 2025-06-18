@@ -4,7 +4,7 @@ export type Project = {
   link: string
   media: {
     type: 'video' | 'images'
-    sources: string[]  // Single video URL or array of image URLs
+    sources: string[] // Single video URL or array of image URLs
   }
   id: string
   category?: string
@@ -47,11 +47,11 @@ export const PROJECTS: Project[] = [
       sources: [
         '/trading-fours1.png',
         '/trading-fours2.png',
-        '/trading-fours3.png'
-      ]
+        '/trading-fours3.png',
+      ],
     },
     id: 'project-1',
-    category: 'Machine Learning'
+    category: 'Machine Learning',
   },
   {
     name: 'Datamines',
@@ -59,10 +59,10 @@ export const PROJECTS: Project[] = [
     link: 'https://averageosiris.itch.io/datamines',
     media: {
       type: 'video',
-      sources: ['/videos/datamines-demo.mp4']
+      sources: ['/videos/datamines-demo.mp4'],
     },
     id: 'project-2',
-    category: 'Game Dev'
+    category: 'Game Dev',
   },
 ]
 
@@ -76,7 +76,7 @@ export const WORK_EXPERIENCE: WorkExperience[] = [
     desc: 'EMS Team',
     link: 'https://www.autodesk.com/collections/media-entertainment/included-software',
     id: 'work-1',
-    gradient: 'blue'
+    gradient: 'blue',
   },
   {
     company: 'Beta Technologies',
@@ -87,7 +87,7 @@ export const WORK_EXPERIENCE: WorkExperience[] = [
     desc: 'Structural Team',
     link: 'https://beta.team/aircraft',
     id: 'work-2',
-    gradient: 'yellow'
+    gradient: 'yellow',
   },
   {
     company: 'McGill AI Ethics Lab',
@@ -95,10 +95,10 @@ export const WORK_EXPERIENCE: WorkExperience[] = [
     start: 'May',
     end: 'Dec 2024',
     location: '',
-    desc: 'Presented novel research at UCORE 2024, McGill\'s Undergraduate Research Symposium',
+    desc: "Presented novel research at UCORE 2024, McGill's Undergraduate Research Symposium",
     link: 'https://www.mcgill.ca/',
     id: 'work-3',
-    gradient: 'red'
+    gradient: 'red',
   },
 
   // {
@@ -114,7 +114,7 @@ export const WORK_EXPERIENCE: WorkExperience[] = [
 
 export const BLOG_POSTS: BlogPost[] = [
   {
-    title: "Improvisation on the Artist",
+    title: 'Improvisation on the Artist',
     description: 'On Jack Whitten and the artistic process',
     link: '/writing/improvisation-on-the-artist',
     uid: 'post-2',

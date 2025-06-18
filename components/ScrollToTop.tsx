@@ -1,7 +1,7 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
 import { ChevronsUp, ChevronsDown } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react'
+import { useEffect, useState, useCallback } from 'react'
 
 export function ScrollToTop() {
   const [isVisible, setIsVisible] = useState(false)
@@ -22,9 +22,9 @@ export function ScrollToTop() {
   // bottom
   useEffect(() => {
     const onScrollBottom = () => {
-      const maxScroll = 
-        document.documentElement.scrollHeight 
-        - document.documentElement.clientHeight
+      const maxScroll =
+        document.documentElement.scrollHeight -
+        document.documentElement.clientHeight
       setIsVisibleBottom(maxScroll - window.scrollY > 300)
     }
     window.addEventListener('scroll', onScrollBottom)
@@ -38,14 +38,14 @@ export function ScrollToTop() {
     }
     window.scrollTo({
       top: 0,
-      behavior: 'smooth'
+      behavior: 'smooth',
     })
   }, [])
 
   const scrollToBottom = useCallback(() => {
     window.scrollTo({
       top: document.documentElement.scrollHeight,
-      behavior: 'smooth'
+      behavior: 'smooth',
     })
   }, [])
 
@@ -53,7 +53,10 @@ export function ScrollToTop() {
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       // Ignore if user is typing in an input or textarea
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
         return
       }
 
@@ -66,8 +69,7 @@ export function ScrollToTop() {
           const scrollAmount = Math.floor(window.innerHeight * 0.8) // Increased to 80% of viewport
           window.scrollBy({
             top: scrollAmount,
-            behavior: 'smooth'
-
+            behavior: 'smooth',
           })
           return
         }
@@ -76,7 +78,7 @@ export function ScrollToTop() {
           const scrollAmount = Math.floor(window.innerHeight * 0.8) // Increased to 80% of viewport
           window.scrollBy({
             top: -scrollAmount,
-            behavior: 'smooth'
+            behavior: 'smooth',
           })
           return
         }
@@ -113,79 +115,68 @@ export function ScrollToTop() {
 
   return (
     <div className="flex flex-col gap-2">
-    <button
-      onClick={scrollToTop}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      className={`
-        fixed right-3 bottom-14 w-10 h-10 rounded-full
-        transition-all duration-300 z-50 print:hidden
-        flex items-center justify-center
-        ${isVisible ? 'opacity-30 hover:opacity-100' : 'opacity-0 pointer-events-none'}
-      `}
-    >
-      <AnimatePresence mode="wait">
-        {isHovered ? (
-          <motion.span
-            key="gg"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="font-mono text-zinc-500 dark:text-zinc-400 -translate-y-[2px]"
-          >
-            gg
-          </motion.span>
-        ) : (
-          <motion.span
-            key="up"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-          >
-            <ChevronsUp className="h-5 w-5 " />
-          </motion.span>
-        )}
-      </AnimatePresence>
-    </button>
-    <button
-      onClick={scrollToBottom}
-      onMouseEnter={() => setIsHoveredBottom(true)}
-      onMouseLeave={() => setIsHoveredBottom(false)}
-      className={`
-        fixed right-3 bottom-3 w-10 h-10 rounded-full
-        transition-all duration-300 z-50 print:hidden
-        flex items-center justify-center
-        ${isVisibleBottom ? 'opacity-30 hover:opacity-100' : 'opacity-0 pointer-events-none'}
-      `}
-    >
-      <AnimatePresence mode="wait">
-        {isHoveredBottom ? (
-          <motion.span
-            key="G"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="font-mono text-zinc-500 dark:text-zinc-400 -translate-y-[2px]"
-          >
-            G
-          </motion.span>
-        ) : (
-          <motion.span
-            key="down"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-          >
-            <ChevronsDown className="h-5 w-5 " />
-          </motion.span>
-        )}
-      </AnimatePresence>
-    </button>
+      <button
+        onClick={scrollToTop}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        className={`fixed right-3 bottom-14 z-50 flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300 print:hidden ${isVisible ? 'opacity-30 hover:opacity-100' : 'pointer-events-none opacity-0'} `}
+      >
+        <AnimatePresence mode="wait">
+          {isHovered ? (
+            <motion.span
+              key="gg"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="-translate-y-[2px] font-mono text-zinc-500 dark:text-zinc-400"
+            >
+              gg
+            </motion.span>
+          ) : (
+            <motion.span
+              key="up"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <ChevronsUp className="h-5 w-5" />
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </button>
+      <button
+        onClick={scrollToBottom}
+        onMouseEnter={() => setIsHoveredBottom(true)}
+        onMouseLeave={() => setIsHoveredBottom(false)}
+        className={`fixed right-3 bottom-3 z-50 flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300 print:hidden ${isVisibleBottom ? 'opacity-30 hover:opacity-100' : 'pointer-events-none opacity-0'} `}
+      >
+        <AnimatePresence mode="wait">
+          {isHoveredBottom ? (
+            <motion.span
+              key="G"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="-translate-y-[2px] font-mono text-zinc-500 dark:text-zinc-400"
+            >
+              G
+            </motion.span>
+          ) : (
+            <motion.span
+              key="down"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <ChevronsDown className="h-5 w-5" />
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </button>
     </div>
-
   )
-} 
+}

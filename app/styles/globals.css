@@ -27,7 +27,6 @@ html {
   }
 }
 
-
 ::selection {
   background: #8884;
 }
@@ -54,8 +53,10 @@ html {
 }
 
 .crt-text {
-  text-shadow: 0.4389924193300864px 0 1px rgba(0, 30, 255, 0.8),
-    -0.4389924193300864px 0 1px rgba(255, 0, 80, 0.3), 0 0 4px;
+  text-shadow:
+    0.4389924193300864px 0 1px rgba(0, 30, 255, 0.8),
+    -0.4389924193300864px 0 1px rgba(255, 0, 80, 0.3),
+    0 0 4px;
 }
 
 .light .crt-text {
@@ -68,8 +69,10 @@ html {
 }
 
 .crt-text-blue {
-  text-shadow: 0.4389924193300864px 0 1px rgba(0, 102, 255, 0.8),
-    -0.4389924193300864px 0 1px rgba(0, 102, 255, 0.3), 0 0 4px;
+  text-shadow:
+    0.4389924193300864px 0 1px rgba(0, 102, 255, 0.8),
+    -0.4389924193300864px 0 1px rgba(0, 102, 255, 0.3),
+    0 0 4px;
 }
 
 /* Scanlines overlay */
@@ -77,30 +80,35 @@ html {
 /* Screen flicker animation */
 @keyframes textShadow {
   0% {
-    text-shadow: 3px 0 1px rgba(0, 30, 255, 1), -3px 0 1px rgba(255, 0, 80, 0.8),
+    text-shadow:
+      3px 0 1px rgba(0, 30, 255, 1),
+      -3px 0 1px rgba(255, 0, 80, 0.8),
       0 0 4px;
   }
   20% {
-    text-shadow: 3px 0 1px rgba(0, 30, 255, 1), -3px 0 1px rgba(255, 0, 80, 0.8),
+    text-shadow:
+      3px 0 1px rgba(0, 30, 255, 1),
+      -3px 0 1px rgba(255, 0, 80, 0.8),
       0 0 4px;
   }
   50% {
-    text-shadow: 2.7928974010788217px 0 1px rgba(0, 30, 255, 0.5),
-      -2.7928974010788217px 0 1px rgba(255, 0, 80, 0.4), 0 0 4px;
+    text-shadow:
+      2.7928974010788217px 0 1px rgba(0, 30, 255, 0.5),
+      -2.7928974010788217px 0 1px rgba(255, 0, 80, 0.4),
+      0 0 4px;
   }
   90% {
-    text-shadow: 0.4389924193300864px 0 1px rgba(0, 30, 255, 0.8),
-    -0.4389924193300864px 0 1px rgba(255, 0, 80, 0.3), 0 0 4px;
+    text-shadow:
+      0.4389924193300864px 0 1px rgba(0, 30, 255, 0.8),
+      -0.4389924193300864px 0 1px rgba(255, 0, 80, 0.3),
+      0 0 4px;
   }
 }
-
-
 
 .ascii-art {
   font-family: monospace;
   white-space: pre;
 }
-
 
 .transparent-pre {
   background-color: transparent !important;

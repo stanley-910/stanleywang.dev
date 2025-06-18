@@ -3,7 +3,7 @@ import { MoonIcon, SunIcon } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useEffect, useState } from 'react'
 
-export function ThemeSwitch({className}: {className?: string}) {
+export function ThemeSwitch({ className }: { className?: string }) {
   const [mounted, setMounted] = useState(false)
   const { theme, setTheme } = useTheme()
 
@@ -12,7 +12,7 @@ export function ThemeSwitch({className}: {className?: string}) {
   }, [])
 
   if (!mounted) {
-    return <div className="w-4 h-4"></div>
+    return <div className="h-4 w-4"></div>
   }
 
   return (
@@ -23,12 +23,12 @@ export function ThemeSwitch({className}: {className?: string}) {
         aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
       >
         {theme === 'dark' ? (
-          <MoonIcon 
-            className="h-4 w-4 cursor-pointer transition-colors duration-100 hover:text-zinc-950 dark:hover:text-zinc-50" 
+          <MoonIcon
+            className="h-4 w-4 cursor-pointer transition-colors duration-100 hover:text-zinc-950 dark:hover:text-zinc-50"
             onClick={() => setTheme('light')}
           />
         ) : (
-          <SunIcon 
+          <SunIcon
             className="h-4 w-4 cursor-pointer transition-colors duration-100 hover:text-zinc-950 dark:hover:text-zinc-50"
             onClick={() => setTheme('dark')}
           />
@@ -36,4 +36,4 @@ export function ThemeSwitch({className}: {className?: string}) {
       </button>
     </div>
   )
-} 
+}

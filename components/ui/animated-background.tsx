@@ -1,5 +1,4 @@
 'use client'
-import { cn } from '@/lib/utils'
 import { AnimatePresence, Transition, motion } from 'motion/react'
 import {
   Children,
@@ -9,6 +8,8 @@ import {
   useState,
   useId,
 } from 'react'
+
+import { cn } from '@/lib/utils'
 
 export type AnimatedBackgroundProps = {
   children:

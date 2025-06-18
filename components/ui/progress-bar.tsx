@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
 
 export function ProgressBar() {
   const [visible, setVisible] = useState(false)
@@ -34,20 +34,20 @@ export function ProgressBar() {
   if (!visible) return null
 
   return (
-    <div 
-      className="fixed top-0 left-0 z-[1031] w-full pointer-events-none"
+    <div
+      className="pointer-events-none fixed top-0 left-0 z-[1031] w-full"
       role="progressbar"
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={progress}
     >
-      <div 
-        className="h-0.5 bg-zinc-600 dark:bg-zinc-400 opacity-75 transition-all duration-200 ease-out"
+      <div
+        className="h-0.5 bg-zinc-600 opacity-75 transition-all duration-200 ease-out dark:bg-zinc-400"
         style={{
           width: `${progress}%`,
-          transition: 'width 200ms ease-out'
+          transition: 'width 200ms ease-out',
         }}
       />
     </div>
   )
-} 
+}

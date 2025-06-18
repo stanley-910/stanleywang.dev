@@ -154,43 +154,54 @@ const asciiArtLightSmall = `
           /__.-'|_|--|_|  ❀𖡼.𖤣𖥧𖡼.𖤣𖥧 ⋆˚✿˖°`
 
 export const AsciiArt = () => {
-    const { theme } = useTheme()
-    const [mounted, setMounted] = useState(false)
+  const { theme } = useTheme()
+  const [mounted, setMounted] = useState(false)
 
-    useEffect(() => {
-        setMounted(true)
-    }, [])
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
-    // During server-side rendering and initial mount, use light theme as default
-    const currentAscii = !mounted ? asciiArtLight : (theme === 'dark' ? asciiArtDark : asciiArtLight)
-    const currentAsciiMedium = !mounted ? asciiArtLightMedium : (theme === 'dark' ? asciiArtDarkMedium : asciiArtLightMedium)
-    const currentAsciiSmall = !mounted ? asciiArtLightSmall : (theme === 'dark' ? asciiArtDarkSmall : asciiArtLightSmall)
-    return (
-        <div className="flex-1">
-            {/* Placeholder for small screens (hidden by default, shown on small screens) */}
-            <div className="sm:hidden">
-                {/* ASCII art for small screens */}
-                <pre className="transparent-pre font-mono whitespace-pre leading-[1.2] text-sm mt-2 text-zinc-600 dark:text-zinc-400">
-                    {currentAsciiSmall}
-                </pre>
-            </div>
+  // During server-side rendering and initial mount, use light theme as default
+  const currentAscii = !mounted
+    ? asciiArtLight
+    : theme === 'dark'
+      ? asciiArtDark
+      : asciiArtLight
+  const currentAsciiMedium = !mounted
+    ? asciiArtLightMedium
+    : theme === 'dark'
+      ? asciiArtDarkMedium
+      : asciiArtLightMedium
+  const currentAsciiSmall = !mounted
+    ? asciiArtLightSmall
+    : theme === 'dark'
+      ? asciiArtDarkSmall
+      : asciiArtLightSmall
+  return (
+    <div className="flex-1">
+      {/* Placeholder for small screens (hidden by default, shown on small screens) */}
+      <div className="sm:hidden">
+        {/* ASCII art for small screens */}
+        <pre className="transparent-pre mt-2 font-mono text-sm leading-[1.2] whitespace-pre text-zinc-600 dark:text-zinc-400">
+          {currentAsciiSmall}
+        </pre>
+      </div>
 
-            {/* Placeholder for medium screens (hidden by default, shown on medium screens) */}
-            <div className="hidden sm:block md:hidden">
-                {/* ASCII art for medium screens */}
-                <pre className="transparent-pre font-mono whitespace-pre leading-[1.2] text-sm mt-2 text-zinc-600 dark:text-zinc-400">
-                    {currentAsciiMedium}
-                </pre>
-            </div>
+      {/* Placeholder for medium screens (hidden by default, shown on medium screens) */}
+      <div className="hidden sm:block md:hidden">
+        {/* ASCII art for medium screens */}
+        <pre className="transparent-pre mt-2 font-mono text-sm leading-[1.2] whitespace-pre text-zinc-600 dark:text-zinc-400">
+          {currentAsciiMedium}
+        </pre>
+      </div>
 
-            {/* Placeholder for large screens (shown by default, hidden on smaller screens) */}
-            <div className="hidden md:block">
-                {/* ASCII art for large screens */}
-                <pre className="transparent-pre font-mono whitespace-pre leading-[1.2] text-sm mt-2 text-zinc-600 dark:text-zinc-400">
-                    {currentAscii}
-                </pre>
-            </div>
-        </div>
-    )
+      {/* Placeholder for large screens (shown by default, hidden on smaller screens) */}
+      <div className="hidden md:block">
+        {/* ASCII art for large screens */}
+        <pre className="transparent-pre mt-2 font-mono text-sm leading-[1.2] whitespace-pre text-zinc-600 dark:text-zinc-400">
+          {currentAscii}
+        </pre>
+      </div>
+    </div>
+  )
 }
-
