@@ -72,8 +72,8 @@ export default function ArtPlum() {
 
     const randomMiddle = () => Math.random() * 0.6 + 0.2
 
-    let steps: Function[] = []
-    let prevSteps: Function[] = []
+    let steps: (() => void)[] = []
+    let prevSteps: (() => void)[] = []
     let animationFrame: number
 
     const step = (

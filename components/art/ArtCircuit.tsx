@@ -38,9 +38,8 @@ export default function ArtCircuit() {
       return [x + dx, y + dy]
     }
 
-    let steps: Function[] = []
-    const possibleSteps: Function[] = []
-    let prevSteps: Function[] = []
+    let steps: (() => void)[] = []
+    let prevSteps: (() => void)[] = []
     let stopped = false
 
     // Draw a circuit branch

@@ -1,8 +1,6 @@
 import type { Metadata, Viewport } from 'next'
-
 import { Analytics } from '@vercel/analytics/react'
 
-// import { Geist, Geist_Mono } from 'next/font/google'
 // Font styles
 import '@fontsource/dm-mono'
 import './styles/fonts.css'
@@ -39,16 +37,6 @@ export const metadata: Metadata = {
     },
   },
 }
-
-// const geist = Geist({
-//   variable: '--font-geist',
-//   subsets: ['latin'],
-// })
-
-// const geistMono = Geist_Mono({
-//   variable: '--font-geist-mono',
-//   subsets: ['latin'],
-// })
 
 export default function RootLayout({
   children,
