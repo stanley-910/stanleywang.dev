@@ -93,16 +93,41 @@ html.dark .prose {
   color: var(--fg);
 }
 
+.prose h1.sans {
+  font-weight: 700;
+  font-family: var(--font-sans);
+  color: var(--fg-deeper);
+}
+
+/* mono variant */
+.prose h1.mono {
+  font-weight: 700;
+  font-family: var(--font-mono);
+  font-size: 2em;
+  letter-spacing: -0.08em;
+  color: var(--fg-deeper);
+}
+
 .prose h1 {
-  /* font-weight: 400; */
   font-family: var(--font-serif);
-  font-size: 2.25em;
-  /* letter-spacing: 0.01em; */
+  font-size: 2em;
+  letter-spacing: 0.01em;
 }
 
 .prose h2 {
-  font-family: var(--font-inter);
+  /* font-family: var(--font-inter); */
   /* letter-spacing: 0.01em; */
+  font-family: var(--font-mono);
+  letter-spacing: -0.09em;
+  font-weight: 700;
+  font-size: 1.5em;
+  margin-top: 2em;
+  margin-bottom: 1em;
+  line-height: 1.3333333;
+}
+
+.prose h2.inter {
+  font-family: var(--font-inter);
   font-weight: 700;
   font-size: 1.5em;
   margin-top: 2em;
@@ -111,7 +136,17 @@ html.dark .prose {
 }
 
 .prose h3 {
-  /* font-family: var(--font-serif); */
+  font-family: var(--font-mono);
+  letter-spacing: -0.05em;
+  color: var(--fg-deeper);
+  font-weight: 600;
+  font-size: 1.25em;
+  margin-top: 1.6em;
+  margin-bottom: 0.6em;
+  line-height: 1.6;
+}
+
+.prose h3.inter {
   font-family: var(--font-inter);
   font-weight: 600;
   font-size: 1.25em;
@@ -121,6 +156,17 @@ html.dark .prose {
 }
 
 .prose h4 {
+  font-size: 1em;
+  font-weight: 400;
+  font-family: var(--font-mono);
+  color: var(--fg-deeper);
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  line-height: 1.5;
+  letter-spacing: -0.06em;
+}
+
+.prose h4.inter {
   font-size: 1.1em;
   font-weight: 600;
   font-family: var(--font-inter);
