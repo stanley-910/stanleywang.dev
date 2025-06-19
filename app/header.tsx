@@ -191,7 +191,7 @@ export function Header() {
 
               {/* Mobile menu dropdown - anchored to hamburger button */}
               <div
-                className={`absolute top-full right-0 mt-1 w-36 rounded-lg border border-zinc-200/80 bg-white/90 px-4 py-4 shadow-lg transition-all duration-200 ease-out dark:border-zinc-800/80 dark:bg-zinc-900/90 ${
+                className={`absolute top-full right-0 mt-1 w-36 rounded-lg border border-zinc-200/80 bg-white/90 px-4 py-4 shadow-lg transition-all duration-300 ease-out dark:border-zinc-800/80 dark:bg-zinc-900/90 ${
                   isMobileMenuOpen
                     ? 'translate-x-0 opacity-100'
                     : 'pointer-events-none translate-x-4 opacity-0'
