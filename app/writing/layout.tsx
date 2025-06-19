@@ -85,7 +85,8 @@ function BlogHeader() {
               {post.tags.map((tag, index) => (
                 <span key={tag} className="font-mono text-sm tracking-tighter">
                   {tag}
-                  {index < post.tags.length - 1 &&
+                  {post.tags &&
+                    index < post.tags.length - 1 &&
                     (index === post.tags.length - 2
                       ? post.tags.length > 2
                         ? ', and '
