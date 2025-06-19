@@ -202,22 +202,22 @@ export function Header() {
                   {/* Main navigation items */}
                   <Link
                     href="/writing"
-                    className="flex items-center justify-between font-serif text-sm text-zinc-600 italic transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-white"
+                    className="flex items-center justify-between font-serif text-md text-zinc-600 italic transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-white"
                     title="cd ~/writing"
                     onClick={closeMobileMenu}
                   >
                     <span>writing</span>
-                    <BookOpenIcon className="h-3 w-3" />
+                    <BookOpenIcon className="h-4 w-4" />
                   </Link>
 
                   <Link
                     href="/projects"
-                    className="flex items-center justify-between font-serif text-sm text-zinc-600 italic transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-white"
+                    className="flex items-center justify-between font-serif text-md text-zinc-600 italic transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-white"
                     title="cd ~/projects"
                     onClick={closeMobileMenu}
                   >
                     <span>projects</span>
-                    <ClapperboardIcon className="h-3 w-3" />
+                    <ClapperboardIcon className="h-4 w-4" />
                   </Link>
 
                   {/* Bottom row with icons only */}
