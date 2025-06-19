@@ -29,7 +29,8 @@ export type BlogPost = {
   uid: string
   date: string
   readingTime: string
-  tags: string[]
+  tags?: string[]
+  edited?: string
 }
 
 type SocialLink = {
@@ -120,7 +121,7 @@ export const BLOG_POSTS: BlogPost[] = [
     uid: 'post-2',
     date: '2025-06-15',
     readingTime: '12 min',
-    tags: ['Art', 'Philosophy'],
+    tags: ['Jazz', 'Art'],
   },
   {
     title: "Dijkstra\'s Algorithm",
@@ -136,11 +137,11 @@ export const BLOG_POSTS: BlogPost[] = [
 export const SOCIAL_LINKS: SocialLink[] = [
   {
     label: 'Github',
-    link: 'https://github.com/stanley-utf8',
+    link: 'https://github.com/stanley-910',
   },
   {
     label: 'LinkedIn',
-    link: 'https://www.linkedin.com/in/stanley-utf8/',
+    link: 'https://github.com/stanley-910',
   },
 ]
 

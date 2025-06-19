@@ -49,7 +49,9 @@ function BlogHeader() {
         {post.title}
       </h1>
       <div className="flex flex-col">
-        <div className="flex items-center gap-2 text-[1.0rem] text-zinc-500 dark:text-zinc-400">
+        <div className="flex items-center gap-2 font-mono text-sm font-bold tracking-tighter text-zinc-500 dark:text-zinc-400">
+          <span>Stanley Wang</span>
+          <span>·</span>
           <time dateTime={post.date}>
             {new Date(post.date).toLocaleDateString('en-US', {
               year: 'numeric',
@@ -57,9 +59,44 @@ function BlogHeader() {
               day: 'numeric',
             })}
           </time>
+          {post.edited ? (
+            <>
+              <span>·</span>
+              <time
+                dateTime={post.edited}
+                className="text-zinc-500 dark:text-zinc-400"
+              >
+                Edited{' '}
+                {new Date(post.edited).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+              </time>
+            </>
+          ) : null}
           <span>·</span>
           <span>{post.readingTime}</span>
         </div>
+        {post.tags && (
+          <div className="mt-2 flex items-center gap-2 text-zinc-500 dark:text-zinc-400">
+            <span className="font-mono text-sm tracking-tighter">
+              [{' '}
+              {post.tags.map((tag, index) => (
+                <span key={tag} className="font-mono text-sm tracking-tighter">
+                  {tag}
+                  {index < post.tags.length - 1 &&
+                    (index === post.tags.length - 2
+                      ? post.tags.length > 2
+                        ? ', and '
+                        : ' & '
+                      : ', ')}
+                </span>
+              ))}{' '}
+              ]
+            </span>
+          </div>
+        )}
         {/* TODO: Add tags back in */}
         {/* <div className="flex flex-row flex-wrap gap-2 mt-2"> */}
         {/* {post.tags.map((tag) => (

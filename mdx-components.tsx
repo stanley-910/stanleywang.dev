@@ -1,9 +1,9 @@
 import GithubSlugger from 'github-slugger'
 import Link from 'next/link'
 
+import { ClickableHeader } from '@/components/ui/clickable-header'
 import { Stars } from '@/components/ui/stars'
 import { TableOfContents } from '@/components/ui/toc'
-import { ClickableHeader } from '@/components/ui/clickable-header'
 import { cn } from '@/lib/utils'
 
 import type { MDXComponents } from 'mdx/types'
@@ -86,9 +86,9 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
       // Exclude Footnotes heading from TOC
       if (children?.toString().toLowerCase() === 'footnotes') {
         return (
-          <ClickableHeader 
-            level={2} 
-            slug={slug} 
+          <ClickableHeader
+            level={2}
+            slug={slug}
             dataAttributes={{ 'data-toc-exclude': '' }}
           >
             {children}

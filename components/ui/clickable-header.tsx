@@ -11,21 +11,19 @@ interface ClickableHeaderProps {
 }
 
 // Client component to handle header clicks and URL hash updates
-export function ClickableHeader({ 
-  children, 
-  slug, 
-  level, 
+export function ClickableHeader({
+  children,
+  slug,
+  level,
   className = 'scroll-mt-[3vh]',
-  dataAttributes = {}
+  dataAttributes = {},
 }: ClickableHeaderProps) {
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault()
     // Update URL hash without scrolling
     window.history.pushState(null, '', `#${slug}`)
     // Smooth scroll to the element
-    document
-      .getElementById(slug)
-      ?.scrollIntoView({ behavior: 'smooth' })
+    document.getElementById(slug)?.scrollIntoView({ behavior: 'smooth' })
   }
 
   const HeaderTag = `h${level}` as keyof JSX.IntrinsicElements
@@ -45,4 +43,4 @@ export function ClickableHeader({
       </a>
     </HeaderTag>
   )
-} 
+}
