@@ -59,7 +59,7 @@ export async function GET() {
           link: WEBSITE_URL,
         },
       ],
-      category: post.tags.map((tag) => ({ name: tag })),
+      category: post.tags?.map((tag) => ({ name: tag })) || [],
     })
   }
 
