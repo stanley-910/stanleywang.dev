@@ -18,7 +18,7 @@ export function ThemeSwitch({ className }: { className?: string }) {
   return (
     <div className={` ${className}`}>
       <button
-        className="inline-flex h-7 w-4 items-center justify-center text-zinc-500 dark:text-zinc-400"
+        className="inline-flex h-4 w-4 items-center justify-center text-zinc-500 dark:text-zinc-400"
         type="button"
         aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
       >

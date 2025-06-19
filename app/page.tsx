@@ -99,8 +99,8 @@ export default function Personal() {
               className="prose-link"
             >
               McGill University
-            </a>
-            & writing software with the{' '}
+            </a>{' '}
+            and writing software with the <br />
             <a
               href="https://www.autodesk.com/ca-en/products/flow-production-tracking/overview"
               target="_blank"
@@ -109,16 +109,14 @@ export default function Personal() {
             >
               Flow PT team
             </a>{' '}
-            at Autodesk, and working on a few{' '}
-            <Link href="/projects" className="prose-link">
-              side projects
-            </Link>{' '}
-            here and there.
+            at Autodesk.
             <br />
             <br />
-            I&apos;m trying to be better with valuing{' '}
-            <strong>improvement</strong> over <strong>iteration</strong>. <br />
-            That means prioritizing the{' '}
+            I&apos;m trying to be better at valuing <strong>
+              improvement
+            </strong>{' '}
+            over <strong>iteration</strong>, and prioritize the
+            <br />
             <strong>
               <em>comprehension</em>
             </strong>{' '}
@@ -129,19 +127,17 @@ export default function Personal() {
             of it.
             <br />
             <br />
-            Outside of software, I enjoy writing music & playing any instrument
-            I can get my hands on. <br />
-            You can listen to me in the fleeting raindrops that tear past your
-            window, the flitted brushstrokes printed onto your favourite hotel
-            paintings, and the resonance of the low E string leaving the guitar
-            after you realize there&apos;s nothing left for you to play.
+            Outside of writing software{' '}
+            <span className="font-mono text-sm text-zinc-500 dark:text-zinc-500">
+              (vim)
+            </span>
+            , I enjoy playing music and spending time with my girlfriend.
             <br />
             <br />
-            I&apos;m not on Spotify <em>just</em> yet.
-            <br />
-            <br />
-            <div className="text-right text-sm text-zinc-500 dark:text-zinc-400">
-              Bio Last Updated: June 17, 2025
+            <div className="text-right font-mono text-xs text-zinc-500 dark:text-zinc-400">
+              Stanley Wang
+              <br />
+              Last Updated: June 18, 2025
             </div>
           </div>
         </div>
@@ -277,14 +273,14 @@ export default function Personal() {
           <span className="mx-2">·</span>
           <a
             className="prose-link font-mono text-sm underline dark:text-zinc-300"
-            href="https://github.com/stanley-utf8"
+            href="https://github.com/stanley-910"
           >
             github
           </a>
           <span className="mx-2">·</span>
           <a
             className="prose-link font-mono text-sm underline dark:text-zinc-300"
-            href="https://www.linkedin.com/in/stanley-utf8/"
+            href="https://www.linkedin.com/in/notstanleywang/"
           >
             linkedin
           </a>

@@ -1,9 +1,11 @@
-import type { MDXComponents } from 'mdx/types'
-import { TableOfContents } from '@/components/ui/toc'
-import { Stars } from '@/components/ui/stars'
 import GithubSlugger from 'github-slugger'
+import Link from 'next/link'
+
+import { Stars } from '@/components/ui/stars'
+import { TableOfContents } from '@/components/ui/toc'
 import { cn } from '@/lib/utils'
-import Image from 'next/image'
+
+import type { MDXComponents } from 'mdx/types'
 
 // Define Spotify component props
 interface SpotifyProps {
@@ -54,6 +56,22 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     // Add Spotify component to MDX components
     Spotify,
     strike: ({ children }) => <span className="line-through">{children}</span>,
+    // Add custom link component to handle external links
+    a: ({ href, children, ...props }) => {
+      const isExternal = href?.startsWith('http') || href?.startsWith('mailto:')
+      if (isExternal) {
+        return (
+          <a href={href} target="_blank" rel="noopener noreferrer" {...props}>
+            {children}
+          </a>
+        )
+      }
+      return href ? (
+        <Link href={href} {...props}>
+          {children}
+        </Link>
+      ) : null
+    },
     h1: ({ children }) => {
       const slug = slugger.slug(children?.toString() || '')
       return (
@@ -120,6 +138,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
             rel="noopener noreferrer"
             className="no-underline"
           >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               title={title}
               src={src}

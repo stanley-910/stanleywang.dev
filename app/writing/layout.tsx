@@ -140,7 +140,7 @@ export default function LayoutBlogPost({
       >
         <div id="giscus-container">
           <Giscus
-            repo="stanley-utf8/stanleywang.dev"
+            repo="stanley-910/stanleywang.dev"
             repoId="R_kgDOOcaodg"
             category="Writing"
             categoryId="DIC_kwDOOcaods4CpSuT"

@@ -4,6 +4,10 @@
   --border-color-dark: rgba(55, 65, 81, 0.3);
   --active-glow: rgba(0, 0, 0, 0.8);
   --active-glow-dark: rgba(255, 255, 255, 0.8);
+  --hover-underline-light: rgba(0, 0, 0, 1);
+  --hover-underline-dark: rgba(255, 255, 255, 1);
+  --inactive-underline: rgba(115, 115, 115, 0.4);
+  --inactive-underline-dark: rgba(125, 125, 125, 0.7);
 }
 
 .table-of-contents {
@@ -198,8 +202,8 @@
   opacity: 0.75;
   transition: all 200ms ease;
   text-decoration: underline;
-  text-decoration-color: rgba(115, 115, 115, 0.4);
-  text-underline-offset: 2px;
+  text-decoration-color: var(--inactive-underline);
+  text-underline-offset: 4px;
   text-decoration-thickness: 1px;
   display: inline-block;
   border-bottom: none !important;
@@ -212,7 +216,7 @@
   opacity: 1;
   font-weight: 400;
   text-decoration-color: var(--active-glow);
-  text-decoration-thickness: 1.2px;
+  text-decoration-thickness: 1px;
   transform: translateX(3px);
   text-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
 }
@@ -247,29 +251,20 @@
 
 /* Support for class-based dark mode */
 .dark .table-of-contents ul > li > a {
-  text-decoration-color: rgba(
-    125,
-    125,
-    125,
-    0.7
-  ); /* Lighter underline for dark mode */
+  text-decoration-color: var(--inactive-underline-dark);
 }
 
-.dark .table-of-contents ul > li > a:hover {
+/* Hover state for all links */
+.table-of-contents ul > li > a:hover {
   opacity: 1;
-  text-decoration-color: rgba(255, 255, 255); /* Lighter hover for dark mode */
-  text-decoration-thickness: 1.2px; /* Makes the underline thicker */
+  text-decoration-color: var(--hover-underline-light);
+  text-decoration-thickness: 1px;
 }
 
-@media (prefers-color-scheme: dark) {
-  .table-of-contents ul > li > a:hover {
-    opacity: 1;
-    text-decoration-color: rgba(0, 0, 0, 1); /* Darker hover for Light mode */
-    text-decoration-thickness: 1.5px; /* Makes the underline thicker */
-  }
+/* Dark mode hover state */
+.dark .table-of-contents ul > li > a:hover {
+  text-decoration-color: var(--hover-underline-dark);
 }
-
-/* Support for class-based dark mode */
 
 /* Dynamic indentation levels */
 .table-of-contents ul > li.toc-level-0 > a {

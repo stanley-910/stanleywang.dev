@@ -1,12 +1,10 @@
-import type { Metadata, Viewport } from 'next'
-import { Analytics } from '@vercel/analytics/react'
-
 // Font styles
 import '@fontsource/dm-mono'
 import './styles/fonts.css'
 import './styles/prose.css'
 import './styles/toc.css'
 import './styles/globals.css'
+import { Analytics } from '@vercel/analytics/react'
 import { ThemeProvider } from 'next-themes'
 
 import { BackgroundArt } from '@/components/art/BackgroundArt'
@@ -15,6 +13,8 @@ import { ProgressBar } from '@/components/ui/progress-bar'
 
 import { Footer } from './footer'
 import { Header } from './header'
+
+import type { Metadata, Viewport } from 'next'
 
 export const viewport: Viewport = {
   width: 'device-width',

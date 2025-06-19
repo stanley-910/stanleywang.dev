@@ -44,12 +44,17 @@ export function Footer() {
           transition={{ duration: 0.5 }}
         >
           <a
-            href="https://github.com/stanley-utf8/stanleywang.dev"
+            href="https://github.com/stanley-910/stanleywang.dev"
             target="_blank"
+            rel="noopener noreferrer"
           >
             <span>© 2025 Stanley Wang</span>
           </a>
-          <a href="https://www.youtube.com/watch?v=RDp61U9zTj0" target="_blank">
+          <a
+            href="https://www.youtube.com/watch?v=RDp61U9zTj0"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             <span>darlin, don&apos;t you give up on a monday</span>
           </a>
         </TextLoop>
