@@ -22,8 +22,6 @@ export function ClickableHeader({
     e.preventDefault()
     // Update URL hash without scrolling
     window.history.pushState(null, '', `#${slug}`)
-    // Smooth scroll to the element
-    document.getElementById(slug)?.scrollIntoView({ behavior: 'smooth' })
   }
 
   // Create the appropriate header element based on level
