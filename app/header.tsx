@@ -78,13 +78,13 @@ export function Header() {
   return (
     <>
       <div
-        className="absolute top-4 left-0 z-20 w-full px-4 before:absolute before:-top-4 before:left-0 before:h-8 before:w-full before:content-[''] lg:fixed lg:px-12"
+        className="pointer-events-none absolute top-4 left-0 z-20 w-full px-4 before:pointer-events-auto before:absolute before:-top-4 before:left-0 before:h-8 before:w-full before:content-[''] lg:fixed lg:px-12"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
         <div className="flex max-w-full flex-row justify-between sm:items-center">
           {/* Left side - always visible */}
-          <div className="mb-0 flex-shrink-0 transition-opacity duration-200">
+          <div className="pointer-events-auto mb-0 flex-shrink-0 transition-opacity duration-200">
             <Link
               href="/"
               className="pointer-events-auto font-serif text-2xl text-black dark:text-white"
@@ -104,13 +104,13 @@ export function Header() {
             {/* idea: connect this to actual spotify listening */}
           </div>
 
-          <div className="flex h-16 items-center">
+          <div className="pointer-events-auto flex h-16 items-center">
             {/* Desktop navigation - hidden on mobile */}
             <nav
-              className={`hidden flex-row items-center gap-2 space-x-4 transition-all duration-300 lg:flex lg:gap-0 ${
+              className={`hidden flex-row items-center gap-2 space-x-4 lg:flex lg:gap-0 ${
                 !isVisible && !isHovered
-                  ? '-translate-y-16 opacity-0'
-                  : '-translate-y-2 opacity-100'
+                  ? 'pointer-events-none -translate-y-16 opacity-0 transition-all delay-1000 duration-500'
+                  : '-translate-y-2 opacity-100 transition-all delay-0 duration-500'
               }`}
             >
               {/* <Link 
@@ -128,7 +128,7 @@ export function Header() {
               >
                 <span className="lg:inline">writing</span>
               </Link>
-              <span className="translate-y-[0.95px] text-xs text-zinc-600 dark:text-zinc-400">
+              <span className="pointer-events-none translate-y-[0.95px] text-xs text-zinc-600 dark:text-zinc-400">
                 ▧
               </span>
               <Link
@@ -138,7 +138,7 @@ export function Header() {
               >
                 <span className="lg:inline">projects</span>
               </Link>
-              <span className="translate-y-[0.3px] text-xs text-zinc-600 dark:text-zinc-400">
+              <span className="pointer-events-none translate-y-[0.3px] text-xs text-zinc-600 dark:text-zinc-400">
                 ∷
               </span>
               <a
@@ -152,7 +152,7 @@ export function Header() {
                   <GlitchText text="/bin/sh" />
                 </span>
               </a>
-              <span className="translate-y-[0.95px] text-xs text-zinc-600 dark:text-zinc-400">
+              <span className="pointer-events-none translate-y-[0.95px] text-xs text-zinc-600 dark:text-zinc-400">
                 ▣
               </span>
               <Link
@@ -202,7 +202,7 @@ export function Header() {
                   {/* Main navigation items */}
                   <Link
                     href="/writing"
-                    className="flex items-center justify-between font-serif text-md text-zinc-600 italic transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-white"
+                    className="text-md flex items-center justify-between font-serif text-zinc-600 italic transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-white"
                     title="cd ~/writing"
                     onClick={closeMobileMenu}
                   >
@@ -212,7 +212,7 @@ export function Header() {
 
                   <Link
                     href="/projects"
-                    className="flex items-center justify-between font-serif text-md text-zinc-600 italic transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-white"
+                    className="text-md flex items-center justify-between font-serif text-zinc-600 italic transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-white"
                     title="cd ~/projects"
                     onClick={closeMobileMenu}
                   >

@@ -3,6 +3,7 @@ import Link from 'next/link'
 
 import { Stars } from '@/components/ui/stars'
 import { TableOfContents } from '@/components/ui/toc'
+import { ClickableHeader } from '@/components/ui/clickable-header'
 import { cn } from '@/lib/utils'
 
 import type { MDXComponents } from 'mdx/types'
@@ -75,9 +76,9 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     h1: ({ children }) => {
       const slug = slugger.slug(children?.toString() || '')
       return (
-        <h1 id={slug} className="scroll-mt-[3vh]">
+        <ClickableHeader level={1} slug={slug}>
           {children}
-        </h1>
+        </ClickableHeader>
       )
     },
     h2: ({ children }) => {
@@ -85,31 +86,35 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
       // Exclude Footnotes heading from TOC
       if (children?.toString().toLowerCase() === 'footnotes') {
         return (
-          <h2 id={slug} className="scroll-mt-[3vh]" data-toc-exclude>
+          <ClickableHeader 
+            level={2} 
+            slug={slug} 
+            dataAttributes={{ 'data-toc-exclude': '' }}
+          >
             {children}
-          </h2>
+          </ClickableHeader>
         )
       }
       return (
-        <h2 id={slug} className="scroll-mt-[3vh]">
+        <ClickableHeader level={2} slug={slug}>
           {children}
-        </h2>
+        </ClickableHeader>
       )
     },
     h3: ({ children }) => {
       const slug = slugger.slug(children?.toString() || '')
       return (
-        <h3 id={slug} className="scroll-mt-[3vh]">
+        <ClickableHeader level={3} slug={slug}>
           {children}
-        </h3>
+        </ClickableHeader>
       )
     },
     h4: ({ children }) => {
       const slug = slugger.slug(children?.toString() || '')
       return (
-        <h4 id={slug} className="scroll-mt-[3vh]">
+        <ClickableHeader level={4} slug={slug}>
           {children}
-        </h4>
+        </ClickableHeader>
       )
     },
 

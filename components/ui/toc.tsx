@@ -23,7 +23,9 @@ export function TableOfContents({ title }: { title?: string }) {
       .filter((heading) => !heading.hasAttribute('data-toc-exclude'))
       .map((heading) => {
         const level = parseInt(heading.tagName[1])
-        const text = heading.textContent || ''
+        // Get text content and remove the hash symbol that appears in clickable headers
+        const rawText = heading.textContent || ''
+        const text = rawText.replace(/\s*#\s*$/, '').trim() // Remove trailing hash symbol with optional whitespace
         const slug = slugger.slug(text)
 
         if (!heading.id) {
