@@ -91,7 +91,7 @@ export default function Personal() {
       >
         <div className="mt-10 flex-1">
           <div className="prose">
-            Studying Computer Science at{' '}
+            Currently studying Computer Science at{' '}
             <a
               href="https://www.mcgill.ca"
               target="_blank"
@@ -100,7 +100,7 @@ export default function Personal() {
             >
               McGill University
             </a>
-            , writing software with the{' '}
+            & writing software with the{' '}
             <a
               href="https://www.autodesk.com/ca-en/products/flow-production-tracking/overview"
               target="_blank"
