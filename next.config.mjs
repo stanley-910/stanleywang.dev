@@ -58,10 +58,10 @@ const withMDX = createMDX({
       remarkMath,
       [
         remarkRehype,
-        {
-          allowDangerousHtml: true,
-          footnoteBackContent: '↑',
-        },
+        // {
+        //   allowDangerousHtml: true,
+        //   footnoteBackContent: '↑',
+        // },
       ],
     ],
     rehypePlugins: [[rehypePrettyCode, options], [rehypeKatex]],

@@ -45,7 +45,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="bg-white tracking-tight antialiased dark:bg-zinc-950">
+      <body className="bg-white antialiased dark:bg-zinc-950">
         <ProgressBar />
         <ThemeProvider
           enableSystem={true}

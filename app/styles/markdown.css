@@ -18,6 +18,11 @@
   margin: 1em 0;
 }
 
+/* Allow inline width styles to override the default 100% width */
+.cover[style*="width"] {
+  width: auto !important;
+}
+
 .prose hr {
   width: 50px;
   margin: 2em auto;
@@ -280,8 +285,11 @@ html.dark .prose {
 
 /* Adjust footnote styling */
 .prose .footnotes {
-  font-size: 0.9em;
+  font-size: 0.85em;
   margin-top: 2em;
+  font-family: var(--font-mono);
+  letter-spacing: -0.08em;
+
 }
 
 .prose .footnotes li {
@@ -290,6 +298,13 @@ html.dark .prose {
 
 .prose .footnotes p {
   margin: 0;
+}
+
+/* Hide footnote back-reference (↑) */
+.prose .footnotes .data-footnote-backref,
+.prose .footnotes a[href^="#fnref"],
+.prose .footnotes a[aria-label="Back to content"] {
+  display: none;
 }
 
 /* Style Spotify embed */
