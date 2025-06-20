@@ -46,14 +46,14 @@ function BlogHeader() {
   return (
     <header className="mb-10">
       <meta property="og:title" content={post.title} data-toc-exclude />
-      <h1 className="mb-3 text-3xl font-medium" data-toc-exclude>
+      <h1 className="mb-3" data-toc-exclude>
         {post.title}
       </h1>
       <div className="flex flex-col">
         <div className="flex flex-row items-center gap-2 font-mono text-sm tracking-tighter text-zinc-500 dark:text-zinc-400">
           {post.description}
         </div>
-        <div className="mt-3 flex items-center gap-2 font-mono text-xs font-bold tracking-tighter text-zinc-500 dark:text-zinc-400">
+        <div className="mt-3 flex items-center gap-2 font-mono text-sm font-bold tracking-tighter text-zinc-500 dark:text-zinc-400">
           <time dateTime={post.date}>
             {new Date(post.date).toLocaleDateString('en-US', {
               year: 'numeric',
@@ -82,12 +82,12 @@ function BlogHeader() {
           {post.tags && (
             <>
               <span>·</span>
-              <span className="font-mono text-xs tracking-tighter">
+              <span className="font-mono text-sm tracking-tighter">
                 [{' '}
                 {post.tags.map((tag, index) => (
                   <span
                     key={tag}
-                    className="font-mono text-xs tracking-tighter"
+                    className="font-mono text-sm tracking-tighter"
                   >
                     {tag}
                     {post.tags &&
