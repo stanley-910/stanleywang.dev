@@ -116,7 +116,7 @@ export const WORK_EXPERIENCE: WorkExperience[] = [
 export const BLOG_POSTS: BlogPost[] = [
   {
     title: 'Improvisation on the Artist',
-    description: 'On Jack Whitten and the artistic process',
+    description: 'On Jack Whitten and the adhesion of visual art & jazz.',
     link: '/writing/improvisation-on-the-artist',
     uid: 'post-2',
     date: '2025-06-15',
