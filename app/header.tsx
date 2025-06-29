@@ -32,7 +32,7 @@ export function Header() {
   const [nowPlaying, setNowPlaying] = useState<NowPlayingData | null>(null)
 
   useEffect(() => {
-    let isMounted = true;
+    let isMounted = true
 
     const fetchNowPlaying = async () => {
       try {

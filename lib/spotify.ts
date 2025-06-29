@@ -20,7 +20,6 @@ const RECENTLY_PLAYED_ENDPOINT =
  */
 export const getAccessToken = async () => {
   try {
-    console.log('Attempting to get access token...')
     const response = await fetch(TOKEN_ENDPOINT, {
       method: 'POST',
       headers: {
@@ -52,18 +51,14 @@ export const getAccessToken = async () => {
 
     // First get the raw text
     const rawText = await response.text()
-    console.log('Raw token response:', rawText)
-    
     // Then try to parse it
     let data
     try {
       data = JSON.parse(rawText)
     } catch (parseError) {
-      console.error('Failed to parse access token response:', parseError)
       throw new Error('Invalid JSON in access token response')
     }
 
-    console.log('Successfully obtained access token')
     return data
   } catch (error) {
     console.error('Error in getAccessToken:', error)
@@ -77,7 +72,6 @@ export const getAccessToken = async () => {
 export const spotifyFetch = async (endpoint: string) => {
   try {
     const { access_token } = await getAccessToken()
-    console.log('Making authenticated request to:', endpoint)
 
     const response = await fetch(endpoint, {
       headers: {
@@ -85,7 +79,6 @@ export const spotifyFetch = async (endpoint: string) => {
       },
     })
 
-    console.log('Spotify API response status:', response.status)
     return response
   } catch (error) {
     console.error('Error in spotifyFetch:', error)
@@ -99,10 +92,8 @@ export const spotifyFetch = async (endpoint: string) => {
 export const getNowPlaying = async () => {
   try {
     const response = await spotifyFetch(NOW_PLAYING_ENDPOINT)
-    console.log('Now Playing response status:', response.status)
 
     if (response.status === 204) {
-      console.log('No track currently playing')
       return null
     }
 
@@ -125,8 +116,7 @@ export const getNowPlaying = async () => {
 
     // First get the raw text
     const rawText = await response.text()
-    console.log('Raw now playing response:', rawText)
-    
+
     // Then try to parse it
     let song
     try {
@@ -136,7 +126,6 @@ export const getNowPlaying = async () => {
       return null
     }
 
-    console.log('Successfully fetched now playing data')
     return song
   } catch (error) {
     console.error('Error in getNowPlaying:', error)
