@@ -212,14 +212,7 @@ export default function Personal() {
         transition={TRANSITION_SECTION}
         className="mt-8 mb-6"
       >
-        <h3 className="mb-6 font-serif text-lg font-medium">
-          <span className="prose-link" title="In Development">
-            Connect
-          </span>
-        </h3>
-        <p className="mb-6 text-zinc-600 dark:text-zinc-400">
-          Please don&apos;t email me at my email. Thanks. <br />
-          <br />
+        <p className="flex items-center justify-center space-x-2 overflow-x-auto pb-2 whitespace-nowrap text-zinc-600 dark:text-zinc-400">
           <button
             className="prose-link cursor-pointer font-mono text-sm underline select-text dark:text-zinc-300"
             title="Copy to clipboard"
@@ -227,16 +220,16 @@ export default function Personal() {
               navigator.clipboard.writeText(EMAIL)
             }}
           >
-            {EMAIL}
+            email
           </button>
-          <span className="mx-2">·</span>
+          <span>·</span>
           <a
             className="prose-link font-mono text-sm underline dark:text-zinc-300"
             href="https://github.com/stanley-910"
           >
             github
           </a>
-          <span className="mx-2">·</span>
+          <span>·</span>
           <a
             className="prose-link font-mono text-sm underline dark:text-zinc-300"
             href="https://www.linkedin.com/in/notstanleywang/"

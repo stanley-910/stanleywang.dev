@@ -12,14 +12,39 @@ import Link from 'next/link'
 import { useEffect, useState, useCallback } from 'react'
 
 import { GlitchText } from '@/components/ui/glitch-text'
-import { TextEffect } from '@/components/ui/text-effect'
+// import { TextEffect } from '@/components/ui/text-effect'
 import { ThemeSwitch } from '@/components/ui/theme-switch'
 // import { usePathname } from 'next/navigation'
+
+type NowPlayingData = {
+  isPlaying: boolean
+  title: string
+  artist: string
+  album: string
+  albumImageUrl: string
+  songUrl: string
+}
 
 export function Header() {
   const [isVisible, setIsVisible] = useState(true)
   const [isHovered, setIsHovered] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [nowPlaying, setNowPlaying] = useState<NowPlayingData | null>(null)
+
+  useEffect(() => {
+    const fetchNowPlaying = async () => {
+      const res = await fetch('/api/spotify/now-playing')
+      const data = await res.json()
+      setNowPlaying(data)
+    }
+    fetchNowPlaying()
+
+    const interval = setInterval(() => {
+      fetchNowPlaying()
+    }, 10000)
+
+    return () => clearInterval(interval)
+  }, [])
 
   // Debounce scroll handler to reduce number of updates
   const handleScroll = useCallback(() => {
@@ -92,15 +117,30 @@ export function Header() {
             >
               Stanley Wang
             </Link>
-            <TextEffect
+            {/* <TextEffect
               as="p"
               preset="fade"
-              per="char"
-              className="font-mono text-sm tracking-tighter text-zinc-600 dark:text-zinc-500"
-              delay={0.5}
-            >
-              Montréal, QC
-            </TextEffect>
+              per="char" */}
+            <p className="font-mono leading-tight tracking-tight text-zinc-600 dark:text-zinc-500">
+              {nowPlaying?.isPlaying ? (
+                <>
+                  <span className="text-md font-mono font-bold text-zinc-900 dark:text-zinc-300">
+                    ♪{' '}
+                  </span>
+                  <a
+                    href={nowPlaying.songUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-mono text-sm transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-white"
+                    title={`${nowPlaying.title} by ${nowPlaying.artist}`}
+                  >
+                    {nowPlaying.title}
+                  </a>
+                </>
+              ) : (
+                <br />
+              )}
+            </p>
             {/* idea: connect this to actual spotify listening */}
           </div>
 
