@@ -19,46 +19,129 @@ const RECENTLY_PLAYED_ENDPOINT =
  * Get a new access token using the refresh token
  */
 export const getAccessToken = async () => {
-  const response = await fetch(TOKEN_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${basic}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: SPOTIFY_REFRESH_TOKEN,
-    }),
-  })
+  try {
+    console.log('Attempting to get access token...')
+    const response = await fetch(TOKEN_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${basic}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: SPOTIFY_REFRESH_TOKEN,
+      }),
+    })
 
-  return response.json()
+    if (!response.ok) {
+      console.error('Failed to get access token:', {
+        status: response.status,
+        statusText: response.statusText,
+      })
+      // Log the raw response text for debugging
+      const rawText = await response.text()
+      console.error('Raw error response:', rawText)
+      try {
+        const errorData = JSON.parse(rawText)
+        console.error('Error details:', errorData)
+      } catch (parseError) {
+        console.error('Could not parse error response as JSON:', parseError)
+      }
+      throw new Error('Failed to get access token')
+    }
+
+    // First get the raw text
+    const rawText = await response.text()
+    console.log('Raw token response:', rawText)
+    
+    // Then try to parse it
+    let data
+    try {
+      data = JSON.parse(rawText)
+    } catch (parseError) {
+      console.error('Failed to parse access token response:', parseError)
+      throw new Error('Invalid JSON in access token response')
+    }
+
+    console.log('Successfully obtained access token')
+    return data
+  } catch (error) {
+    console.error('Error in getAccessToken:', error)
+    throw error
+  }
 }
 
 /**
  * Make an authenticated request to Spotify API
  */
 export const spotifyFetch = async (endpoint: string) => {
-  const { access_token } = await getAccessToken()
+  try {
+    const { access_token } = await getAccessToken()
+    console.log('Making authenticated request to:', endpoint)
 
-  return fetch(endpoint, {
-    headers: {
-      Authorization: `Bearer ${access_token}`,
-    },
-  })
+    const response = await fetch(endpoint, {
+      headers: {
+        Authorization: `Bearer ${access_token}`,
+      },
+    })
+
+    console.log('Spotify API response status:', response.status)
+    return response
+  } catch (error) {
+    console.error('Error in spotifyFetch:', error)
+    throw error
+  }
 }
 
 /**
  * Get the user's currently playing track
  */
 export const getNowPlaying = async () => {
-  const response = await spotifyFetch(NOW_PLAYING_ENDPOINT)
+  try {
+    const response = await spotifyFetch(NOW_PLAYING_ENDPOINT)
+    console.log('Now Playing response status:', response.status)
 
-  if (response.status === 204 || response.status > 400) {
+    if (response.status === 204) {
+      console.log('No track currently playing')
+      return null
+    }
+
+    if (response.status > 400) {
+      console.error('Error response from Spotify:', {
+        status: response.status,
+        statusText: response.statusText,
+      })
+      // Log the raw response text for debugging
+      const rawText = await response.text()
+      console.error('Raw error response:', rawText)
+      try {
+        const errorData = JSON.parse(rawText)
+        console.error('Error details:', errorData)
+      } catch (parseError) {
+        console.error('Could not parse error response as JSON:', parseError)
+      }
+      return null
+    }
+
+    // First get the raw text
+    const rawText = await response.text()
+    console.log('Raw now playing response:', rawText)
+    
+    // Then try to parse it
+    let song
+    try {
+      song = JSON.parse(rawText)
+    } catch (parseError) {
+      console.error('Failed to parse now playing response:', parseError)
+      return null
+    }
+
+    console.log('Successfully fetched now playing data')
+    return song
+  } catch (error) {
+    console.error('Error in getNowPlaying:', error)
     return null
   }
-
-  const song = await response.json()
-  return song
 }
 
 /**

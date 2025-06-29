@@ -32,18 +32,31 @@ export function Header() {
   const [nowPlaying, setNowPlaying] = useState<NowPlayingData | null>(null)
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchNowPlaying = async () => {
-      const res = await fetch('/api/spotify/now-playing')
-      const data = await res.json()
-      setNowPlaying(data)
+      try {
+        const res = await fetch('/api/spotify/now-playing')
+        const data = await res.json()
+        if (isMounted) {
+          setNowPlaying(data)
+        }
+      } catch (error) {
+        console.error('Error fetching now playing:', error)
+      }
     }
+
+    // Initial fetch
     fetchNowPlaying()
 
-    const interval = setInterval(() => {
-      fetchNowPlaying()
-    }, 10000)
+    // Set up interval for subsequent fetches
+    const interval = setInterval(fetchNowPlaying, 30000)
 
-    return () => clearInterval(interval)
+    // Cleanup function
+    return () => {
+      isMounted = false
+      clearInterval(interval)
+    }
   }, [])
 
   // Debounce scroll handler to reduce number of updates
