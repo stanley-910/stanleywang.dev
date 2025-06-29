@@ -7,11 +7,9 @@ export const SPOTIFY_REFRESH_TOKEN = process.env.SPOTIFY_REFRESH_TOKEN || ''
 
 // Use environment variable if set, otherwise fall back to computed value
 const isDevelopment = process.env.NODE_ENV === 'development'
-export const SPOTIFY_REDIRECT_URI =
-  process.env.SPOTIFY_REDIRECT_URI ||
-  (isDevelopment
-    ? 'http://127.0.0.1:3000/api/spotify/callback'
-    : `https://${process.env.NEXT_PUBLIC_SITE_URL || 'stanleywang.dev'}/api/spotify/callback`)
+export const SPOTIFY_REDIRECT_URI = isDevelopment
+  ? 'http://127.0.0.1:3000/api/spotify/callback'
+  : process.env.SPOTIFY_REDIRECT_URI
 
 export const SPOTIFY_SCOPES = [
   'user-read-currently-playing',
