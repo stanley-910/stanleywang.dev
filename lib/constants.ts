@@ -4,7 +4,12 @@ export const WEBSITE_URL = 'https://stanleywang.dev'
 export const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || ''
 export const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET || ''
 export const SPOTIFY_REFRESH_TOKEN = process.env.SPOTIFY_REFRESH_TOKEN || ''
-export const SPOTIFY_REDIRECT_URI = 'http://127.0.0.1:3000/api/spotify/callback'
+
+// Use production URL in production, fallback to localhost for development
+const isDevelopment = process.env.NODE_ENV === 'development'
+export const SPOTIFY_REDIRECT_URI = isDevelopment
+  ? 'http://127.0.0.1:3000/api/spotify/callback'
+  : 'https://stanleywang.dev/api/spotify/callback'
 
 export const SPOTIFY_SCOPES = [
   'user-read-currently-playing',
