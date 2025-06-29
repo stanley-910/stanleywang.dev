@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server'
 
+import {
+  SPOTIFY_CLIENT_ID,
+  SPOTIFY_CLIENT_SECRET,
+  SPOTIFY_REFRESH_TOKEN,
+} from '@/lib/constants'
 import { getNowPlaying } from '@/lib/spotify'
-import { SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, SPOTIFY_REFRESH_TOKEN } from '@/lib/constants'
 
 // Cache store at module level
 interface CacheData {
@@ -21,7 +25,7 @@ export async function GET() {
     hasRefreshToken: !!SPOTIFY_REFRESH_TOKEN,
     // Log partial tokens for verification (first 4 chars)
     clientIdPrefix: SPOTIFY_CLIENT_ID.slice(0, 4),
-    refreshTokenPrefix: SPOTIFY_REFRESH_TOKEN.slice(0, 4)
+    refreshTokenPrefix: SPOTIFY_REFRESH_TOKEN.slice(0, 4),
   })
 
   // Check if we have valid cached data
@@ -65,16 +69,17 @@ export async function GET() {
 
     console.log('Cached new song data:', song)
     return NextResponse.json(song)
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in Now Playing route:', error)
     // Log the full error for debugging
     console.error('Full error details:', {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
+      error,
     })
-    
-    const errorResponse = { isPlaying: false, error: 'Failed to fetch now playing data' }
+
+    const errorResponse = {
+      isPlaying: false,
+      error: 'Failed to fetch now playing data',
+    }
     cache = {
       data: errorResponse,
       timestamp: Date.now(),
