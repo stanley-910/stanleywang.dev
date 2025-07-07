@@ -2,7 +2,7 @@
 
 import { motion } from 'motion/react'
 
-import { BLOG_POSTS, EXPERIENCE_POSTS } from '@/app/data'
+import { EXPERIENCE_POSTS } from '@/app/data'
 import PostsTable from '@/components/PostsTable'
 import CdOut from '@/components/ui/cd-out'
 import CaseStudiesTable from '@/components/CaseStudiesTable'
@@ -26,30 +26,11 @@ export default function PostsPage() {
           transition={TRANSITION_SECTION}
         >
           <p className="mb-4 font-serif text-lg text-gray-900 dark:text-gray-100">
-            In Writing
-          </p>
-          <PostsTable posts={BLOG_POSTS} />
-        </motion.section>
-        <motion.section
-          variants={VARIANTS_SECTION}
-          initial="hidden"
-          animate="visible"
-          transition={TRANSITION_SECTION}
-        >
-          <p className="mb-4 font-serif text-lg text-gray-900 dark:text-gray-100">
-            On Experience
+            Case Studies
           </p>
           <CaseStudiesTable posts={EXPERIENCE_POSTS} />
         </motion.section>
       </div>
-      <motion.section
-        variants={VARIANTS_SECTION}
-        initial="hidden"
-        animate="visible"
-        transition={TRANSITION_SECTION}
-      >
-        <CdOut link="/" title="Home" home />
-      </motion.section>
     </main>
   )
 }

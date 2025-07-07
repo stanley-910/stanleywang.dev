@@ -102,25 +102,17 @@ export const WORK_EXPERIENCE: WorkExperience[] = [
     gradient: 'red',
   },
 
-  // {
-  //   company: 'Freelance',
-  //   title: 'Front-end Developer',
-  //   start: '2017',
-  //   end: 'Present',
-  //   desc: 'I was a front-end developer',
-  //   link: 'https://ibelick.com',
-  //   id: 'work3',
-  // },
 ]
 
 export const EXPERIENCE_POSTS: ExperiencePost[] = [
   {
-    title: 'Case Study: Developing Structural Analysis Tooling for Experimental Aircraft',
+    title:
+      'Case Study: Developing Structural Analysis Tooling for Experimental Aircraft',
     description:
       'On the development of a pseudo DSL for the Finite Element Representations of Aircraft',
     link: '/experience/beta-case-study',
     uid: 'exp-1',
-    date: '2025-07-05',
+    date: '2025-07-07',
     readingTime: '15 min',
     tags: ['Software', 'Aerospace', 'Finite Element Analysis'],
   },

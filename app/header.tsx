@@ -194,6 +194,13 @@ export function Header() {
               <span className="pointer-events-none translate-y-[0.3px] text-xs text-zinc-600 dark:text-zinc-400">
                 ∷
               </span>
+              <Link
+                href="/experience"
+                className="pointer-events-auto flex items-center font-serif text-[1.0em] text-zinc-600 italic transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-white"
+                title="cd ~/experience"
+              >
+                <span className="lg:inline">experience</span>
+              </Link>
               <a
                 href="https://sh.stanleywang.dev/"
                 className="pointer-events-auto flex translate-y-[1px] items-center font-mono text-[0.85em] text-zinc-600 transition-colors dark:text-zinc-400"

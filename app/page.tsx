@@ -83,18 +83,24 @@ export default function Personal() {
             </strong>{' '}
             of it.
             <br />
-            <br />
-            Outside of writing software{' '}
+            <br />I enjoy coding{' '}
             <span className="font-mono text-sm text-zinc-500 dark:text-zinc-500">
               (vim)
             </span>
-            , I enjoy playing music and spending time with my girlfriend.
+            , playing music, spending time with my girlfriend, and walking my{' '}
+            <a
+              href="/images/personal/dogs.jpeg"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="prose-link"
+            >
+              dogs
+            </a>
+            .
             <br />
             <br />
             <div className="text-right font-mono text-xs text-zinc-500 dark:text-zinc-400">
-              <b>Stanley Wang</b>
-              <br />
-              Last Updated: June 18, 2025
+              <b>Last Updated</b>: July 7, 2025
             </div>
           </div>
         </div>
