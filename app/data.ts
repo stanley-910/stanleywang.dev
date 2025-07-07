@@ -115,7 +115,7 @@ export const WORK_EXPERIENCE: WorkExperience[] = [
 
 export const EXPERIENCE_POSTS: ExperiencePost[] = [
   {
-    title: 'Beta Technologies Case Study',
+    title: 'Case Study: Developing Structural Analysis Tooling for Experimental Aircraft',
     description:
       'On the development of a pseudo DSL for the Finite Element Representations of Aircraft',
     link: '/experience/beta-case-study',
