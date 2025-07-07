@@ -84,7 +84,6 @@ undo:1781 - Successfully undid 49 modify operations
 undo:1781 - Successfully undid 0 uncomment operations
 undo:1781 - Successfully undid 2 add operations
 undo:1781 - Successfully undid 129 move operations
-module:231 - Sequential Processing Time: 3.64 seconds
 ```
 
 This allowed the DMIG tool to apply multiple sets of changes, write the files, `undo()` back to the checkpoint, and then apply a second set of changes, all without re-parsing or cloning the model's state. Ultimately, I had transformed a **three-day tedious process** into an automated workflow that completed in **under 10 seconds** while preserving every bit of engineering context.
