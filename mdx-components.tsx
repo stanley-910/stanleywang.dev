@@ -126,6 +126,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
       invert = false,
       size,
       className,
+      lightSrc,
     }: {
       src: string
       alt: string
@@ -134,6 +135,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
       invert?: boolean
       size?: number
       className?: string
+      lightSrc?: string
     }) => {
       return (
         <figure className="flex flex-col items-center">
@@ -149,12 +151,26 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
               src={src}
               alt={alt}
               className={cn(
-                'cover mx-auto rounded-xl',
+                'cover mx-auto hidden rounded-xl dark:block',
                 invert && 'dark:invert',
                 className,
               )}
               style={size ? { width: `${size}%`, height: 'auto' } : undefined}
             />
+            {lightSrc && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                title={title}
+                src={lightSrc}
+                alt={alt}
+                className={cn(
+                  'cover mx-auto block rounded-xl dark:hidden',
+                  invert && 'invert',
+                  className,
+                )}
+                style={size ? { width: `${size}%`, height: 'auto' } : undefined}
+              />
+            )}
           </a>
           <figcaption className="text-center font-sans">{caption}</figcaption>
         </figure>

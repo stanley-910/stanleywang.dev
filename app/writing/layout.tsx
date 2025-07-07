@@ -1,16 +1,15 @@
 // This is the 'markdown' renderer for the blog posts, which determines layout, i.e., copying the URL, displaying text
 'use client'
-import { TextMorph } from '@/components/ui/text-morph'
 
-import { usePathname } from 'next/navigation'
+import Giscus from '@giscus/react'
 import { motion } from 'motion/react'
+import { usePathname } from 'next/navigation'
 import '@/app/styles/prose.css'
 import '@/app/styles/markdown.css'
 import '@/app/styles/code.css'
 import 'katex/dist/katex.css'
-import Giscus from '@giscus/react'
 import { useTheme } from 'next-themes'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 
 import { BLOG_POSTS } from '@/app/data'
 import PostsPage from '@/app/writing/page'

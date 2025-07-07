@@ -1,19 +1,17 @@
 'use client'
+import { format } from 'date-fns'
 import { motion } from 'motion/react'
 import Link from 'next/link'
 
 import { AnimatedBackground } from '@/components/ui/animated-background'
 import { AsciiArt } from '@/components/ui/ascii'
-import { Magnetic } from '@/components/ui/magnetic'
-import { Spotlight } from '@/components/ui/spotlight'
+import { JobCard } from '@/components/ui/job-card'
 import { Stars } from '@/components/ui/stars'
 
 import '@/app/styles/prose.css'
 import '@/app/styles/markdown.css'
 
-import { WORK_EXPERIENCE, BLOG_POSTS, EMAIL, SOCIAL_LINKS } from './data'
-
-import { format } from 'date-fns'
+import { WORK_EXPERIENCE, BLOG_POSTS, EMAIL } from './data'
 
 // import { cn } from '@/lib/utils'
 
@@ -163,46 +161,17 @@ export default function Personal() {
         </h3>
         <div className="flex flex-col space-y-2">
           {WORK_EXPERIENCE.map((job) => (
-            <a
-              className="relative overflow-hidden rounded-2xl bg-zinc-300/50 p-[1px] dark:bg-zinc-600/30"
-              href={job.link}
-              target="_blank"
-              rel="noopener noreferrer"
+            <JobCard
               key={job.id}
-            >
-              <Spotlight
-                className={
-                  'from-red-900 via-red-800 to-red-700 blur-2xl dark:from-red-100 dark:via-red-200 dark:to-red-50'
-                }
-                size={64}
-              />
-              <div className="relative h-full w-full rounded-[15px] bg-white p-4 dark:bg-zinc-950">
-                <div className="relative flex w-full flex-row justify-between">
-                  <div>
-                    <h4 className="text-md mb-1 font-normal dark:text-zinc-100">
-                      {job.title}
-                      <span className={`text-zinc-600 dark:text-zinc-400`}>
-                        {' '}
-                        @ {job.company}
-                      </span>
-                    </h4>
-                    <p className="mb-1 text-sm text-zinc-500 dark:text-zinc-400">
-                      {job.location}
-                    </p>
-                  </div>
-                  <p className="font-inter text-xs text-zinc-600 italic dark:text-zinc-400">
-                    {job.start}
-                    {job.end && ` - ${job.end}`}
-                  </p>
-                </div>
-                {/* <svg className="w-10 h-10">
-                  <use href={hr_handwritten_white.src} />
-                </svg> */}
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  {job.desc}
-                </p>
-              </div>
-            </a>
+              title={job.title}
+              company={job.company}
+              location={job.location}
+              start={job.start}
+              end={job.end}
+              desc={job.desc}
+              link={job.link}
+              caseStudy={job.caseStudy}
+            />
           ))}
         </div>
       </motion.section>

@@ -20,9 +20,10 @@ type WorkExperience = {
   location: string
   id: string
   gradient?: string
+  caseStudy?: string
 }
 
-export type BlogPost = {
+export type Post = {
   title: string
   description: string
   link: string
@@ -33,10 +34,8 @@ export type BlogPost = {
   edited?: string
 }
 
-type SocialLink = {
-  label: string
-  link: string
-}
+export type BlogPost = Post
+export type ExperiencePost = Post
 
 export const PROJECTS: Project[] = [
   {
@@ -85,8 +84,9 @@ export const WORK_EXPERIENCE: WorkExperience[] = [
     start: 'Winter 2025',
     end: '',
     location: '',
-    desc: 'Structural Team',
+    desc: 'Built a domain-specific library for finite element models of experimental aircraft, enabling rapid development of critical FAA certification tools.',
     link: 'https://beta.team/aircraft',
+    caseStudy: '/experience/beta-case-study',
     id: 'work-2',
     gradient: 'yellow',
   },
@@ -113,6 +113,19 @@ export const WORK_EXPERIENCE: WorkExperience[] = [
   // },
 ]
 
+export const EXPERIENCE_POSTS: ExperiencePost[] = [
+  {
+    title: 'Beta Technologies Case Study',
+    description:
+      'On the development of a pseudo DSL for the Finite Element Representations of Aircraft',
+    link: '/experience/beta-case-study',
+    uid: 'exp-1',
+    date: '2025-07-05',
+    readingTime: '15 min',
+    tags: ['Software', 'Aerospace', 'Finite Element Analysis'],
+  },
+]
+
 export const BLOG_POSTS: BlogPost[] = [
   {
     title: 'Improvisation on the Artist',
@@ -131,17 +144,6 @@ export const BLOG_POSTS: BlogPost[] = [
     date: '2025-04-21',
     readingTime: '10 min',
     tags: ['Algorithms'],
-  },
-]
-
-export const SOCIAL_LINKS: SocialLink[] = [
-  {
-    label: 'Github',
-    link: 'https://github.com/stanley-910',
-  },
-  {
-    label: 'LinkedIn',
-    link: 'https://github.com/stanley-910',
   },
 ]
 
