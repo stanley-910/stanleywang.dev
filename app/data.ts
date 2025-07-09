@@ -109,7 +109,7 @@ export const EXPERIENCE_POSTS: ExperiencePost[] = [
     title:
       'Case Study: Developing Structural Analysis Tooling for Experimental Aircraft',
     description:
-      'On the development of a pseudo DSL for the Finite Element Representations of Aircraft',
+      'On creating a pseudo-DSL for the Finite Element Representations of Aircraft',
     link: '/experience/beta-case-study',
     uid: 'exp-1',
     date: '2025-07-07',
