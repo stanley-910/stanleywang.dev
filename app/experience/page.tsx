@@ -4,6 +4,7 @@ import { motion } from 'motion/react'
 
 import { EXPERIENCE_POSTS } from '@/app/data'
 import CaseStudiesTable from '@/components/CaseStudiesTable'
+import CdOut from '@/components/ui/cd-out'
 const VARIANTS_SECTION = {
   hidden: { opacity: 0, y: 10, filter: 'blur(8px)' },
   visible: { opacity: 1, y: 0, filter: 'blur(0px)' },
@@ -13,7 +14,7 @@ const TRANSITION_SECTION = {
   duration: 0.3,
 }
 
-export default function PostsPage() {
+export default function ExperiencePage() {
   return (
     <main className="">
       <div className="prose prose-gray dark:prose-invert mt-10 space-y-8">
@@ -29,6 +30,14 @@ export default function PostsPage() {
           <CaseStudiesTable posts={EXPERIENCE_POSTS} />
         </motion.section>
       </div>
+      <motion.section
+        variants={VARIANTS_SECTION}
+        initial="hidden"
+        animate="visible"
+        transition={TRANSITION_SECTION}
+      >
+        <CdOut title="Back Home" link="/" home left display="Home" />
+      </motion.section>
     </main>
   )
 }

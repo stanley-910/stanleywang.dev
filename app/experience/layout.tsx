@@ -12,6 +12,7 @@ import { useTheme } from 'next-themes'
 import { useEffect } from 'react'
 
 import { EXPERIENCE_POSTS } from '@/app/data'
+import ExperiencePage from '@/app/experience/page'
 import CdOut from '@/components/ui/cd-out'
 import { ScrollProgress } from '@/components/ui/scroll-progress'
 
@@ -60,7 +61,7 @@ export default function ExperienceLayout({
 }) {
   const { resolvedTheme } = useTheme()
   const pathname = usePathname()
-  // const isPostsPage = pathname === '/experience'
+  const isExperiencePage = pathname === '/experience'
 
   // Add scroll to top effect when pathname changes, but not on refresh
   useEffect(() => {
@@ -70,9 +71,9 @@ export default function ExperienceLayout({
     }
   }, [pathname])
 
-  //   if (isPostsPage) {
-  //     return <ExperiencePage />
-  //   }
+  if (isExperiencePage) {
+    return <ExperiencePage />
+  }
 
   return (
     <>
