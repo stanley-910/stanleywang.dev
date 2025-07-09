@@ -93,8 +93,8 @@ export const WORK_EXPERIENCE: WorkExperience[] = [
   {
     company: 'McGill AI Ethics Lab',
     title: 'Lead Researcher',
-    start: 'May',
-    end: 'Dec 2024',
+    start: 'Fall 2024',
+    end: '',
     location: '',
     desc: "Presented novel research at UCORE 2024, McGill's Undergraduate Research Symposium",
     link: 'https://www.mcgill.ca/',

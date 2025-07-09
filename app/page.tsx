@@ -105,7 +105,12 @@ export default function Personal() {
           </div>
         </div>
       </motion.section>
-      <Stars className="fill-[rgb(186,149,94)] transition-colors dark:fill-[rgb(186,149,94)]" />
+      <motion.section
+        variants={VARIANTS_SECTION}
+        transition={TRANSITION_SECTION}
+      >
+        <Stars className="fill-[rgb(186,149,94)] transition-colors dark:fill-[rgb(186,149,94)]" />
+      </motion.section>
 
       <motion.section
         variants={VARIANTS_SECTION}
@@ -211,10 +216,25 @@ export default function Personal() {
           >
             linkedin
           </a>
+          <span>·</span>
+          <a
+            className="prose-link font-mono text-sm underline dark:text-zinc-300"
+            href="/pdfs/stanley-wang-resume.pdf"
+            target="_blank"
+            download="stanley-wang-resume.pdf"
+            rel="noopener noreferrer"
+          >
+            resume
+          </a>
         </p>
       </motion.section>
 
-      <Stars className="fill-[rgb(186,149,94)] transition-colors dark:fill-[rgb(186,149,94)]" />
+      <motion.section
+        variants={VARIANTS_SECTION}
+        transition={TRANSITION_SECTION}
+      >
+        <Stars className="fill-[rgb(185,149,94)] transition-colors dark:fill-[rgb(186,149,94)]" />
+      </motion.section>
       <motion.section
         variants={VARIANTS_SECTION}
         transition={TRANSITION_SECTION}

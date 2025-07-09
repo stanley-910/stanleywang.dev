@@ -7,6 +7,7 @@ import {
   X,
   BookOpenIcon,
   RssIcon,
+  BriefcaseIcon,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useState, useCallback } from 'react'
@@ -201,6 +202,9 @@ export function Header() {
               >
                 <span className="lg:inline">experience</span>
               </Link>
+              <span className="pointer-events-none translate-y-[0.3px] text-sm text-zinc-600 dark:text-zinc-400">
+                ····
+              </span>
               <a
                 href="https://sh.stanleywang.dev/"
                 className="pointer-events-auto flex translate-y-[1px] items-center font-mono text-[0.85em] text-zinc-600 transition-colors dark:text-zinc-400"
@@ -280,6 +284,15 @@ export function Header() {
                     <ClapperboardIcon className="h-4 w-4" />
                   </Link>
 
+                  <Link
+                    href="/experience"
+                    className="text-md flex items-center justify-between font-serif text-zinc-600 italic transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-white"
+                    title="cd ~/experience"
+                    onClick={closeMobileMenu}
+                  >
+                    <span>experience</span>
+                    <BriefcaseIcon className="h-4 w-4" />
+                  </Link>
                   {/* Bottom row with icons only */}
                   <div className="flex items-center justify-between border-t border-zinc-200/50 pt-2 dark:border-zinc-700/50">
                     <div className="flex translate-x-[3px] items-center space-x-3">

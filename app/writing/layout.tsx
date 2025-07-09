@@ -103,17 +103,6 @@ function BlogHeader() {
             </>
           )}
         </div>
-        {/* TODO: Add tags back in */}
-        {/* <div className="flex flex-row flex-wrap gap-2 mt-2"> */}
-        {/* {post.tags.map((tag) => (
-            <span 
-              key={tag} 
-              className="cursor-pointer text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors"
-            >
-              #{tag}
-            </span>
-          ))} */}
-        {/* </div> */}
       </div>
     </header>
   )
@@ -148,17 +137,31 @@ export default function LayoutBlogPost({
           bounce: 0,
         }}
       />
-      <main className="prose prose-gray dark:prose-invert prose-pre:bg-transparent prose-pre:p-0 mt-10">
-        <motion.main
-          className="mt-10 space-y-12"
-          variants={VARIANTS_CONTAINER}
+      <motion.main
+        className="prose prose-gray dark:prose-invert prose-pre:bg-transparent prose-pre:p-0 mt-10 space-y-12"
+        variants={VARIANTS_CONTAINER}
+        initial="hidden"
+        animate="visible"
+      >
+        <motion.section
+          variants={VARIANTS_SECTION}
           initial="hidden"
           animate="visible"
+          transition={TRANSITION_SECTION}
         >
           <BlogHeader />
-          {children}
-        </motion.main>
-      </main>
+        </motion.section>
+      </motion.main>
+      <motion.section
+        className="prose prose-gray dark:prose-invert prose-pre:bg-transparent prose-pre:p-0 mt-10 space-y-12"
+        variants={VARIANTS_SECTION}
+        initial="hidden"
+        animate="visible"
+        transition={TRANSITION_SECTION}
+      >
+        {children}
+      </motion.section>
+
       <motion.section
         variants={VARIANTS_SECTION}
         initial="hidden"
@@ -167,6 +170,7 @@ export default function LayoutBlogPost({
       >
         <CdOut title="In Writing" link="/writing" />
       </motion.section>
+
       <motion.section
         variants={VARIANTS_SECTION}
         initial="hidden"

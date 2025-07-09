@@ -3,8 +3,6 @@
 import { motion } from 'motion/react'
 
 import { EXPERIENCE_POSTS } from '@/app/data'
-import PostsTable from '@/components/PostsTable'
-import CdOut from '@/components/ui/cd-out'
 import CaseStudiesTable from '@/components/CaseStudiesTable'
 const VARIANTS_SECTION = {
   hidden: { opacity: 0, y: 10, filter: 'blur(8px)' },

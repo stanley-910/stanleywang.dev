@@ -84,7 +84,7 @@ export default function ExperienceLayout({
       />
 
       <motion.main
-        //   className="prose prose-gray dark:prose-invert prose-pre:bg-transparent prose-pre:p-0 mt-10 space-y-12"
+        className="prose prose-gray dark:prose-invert prose-pre:bg-transparent prose-pre:p-0 mt-10 space-y-12"
         variants={VARIANTS_CONTAINER}
         initial="hidden"
         animate="visible"
@@ -107,6 +107,7 @@ export default function ExperienceLayout({
       >
         {children}
       </motion.section>
+
       <motion.section
         variants={VARIANTS_SECTION}
         initial="hidden"
@@ -134,7 +135,7 @@ export default function ExperienceLayout({
             repo="stanley-910/stanleywang.dev"
             repoId="R_kgDOOcaodg"
             category="Experience"
-            categoryId="DIC_kwDOOcaods4CpSuT"
+            categoryId="DIC_kwDOOcaods4Cstz5"
             mapping="og:title"
             strict="0"
             reactionsEnabled="0"
