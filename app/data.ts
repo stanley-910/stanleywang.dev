@@ -101,7 +101,6 @@ export const WORK_EXPERIENCE: WorkExperience[] = [
     id: 'work-3',
     gradient: 'red',
   },
-
 ]
 
 export const EXPERIENCE_POSTS: ExperiencePost[] = [
