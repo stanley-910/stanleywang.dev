@@ -151,8 +151,8 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
               src={src}
               alt={alt}
               className={cn(
-                'cover mx-auto hidden rounded-xl dark:block',
-                invert && 'dark:invert',
+                'cover mx-auto rounded-xl',
+                lightSrc ? 'hidden dark:block' : 'block',
                 className,
               )}
               style={size ? { width: `${size}%`, height: 'auto' } : undefined}
@@ -165,7 +165,6 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
                 alt={alt}
                 className={cn(
                   'cover mx-auto block rounded-xl dark:hidden',
-                  invert && 'invert',
                   className,
                 )}
                 style={size ? { width: `${size}%`, height: 'auto' } : undefined}
