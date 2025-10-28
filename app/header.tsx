@@ -1,14 +1,6 @@
 'use client'
 import { GitHubLogoIcon } from '@radix-ui/react-icons'
-import {
-  Terminal,
-  ClapperboardIcon,
-  Menu,
-  X,
-  BookOpenIcon,
-  RssIcon,
-  BriefcaseIcon,
-} from 'lucide-react'
+import { Menu, X, RssIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useState, useCallback } from 'react'
 
@@ -266,7 +258,7 @@ export function Header() {
                   {/* Main navigation items */}
                   <Link
                     href="/writing"
-                    className="text-md flex items-center justify-end font-serif text-zinc-600 italic transition-all duration-400 hover:-translate-x-1 hover:text-black dark:text-zinc-400 dark:hover:text-white"
+                    className="text-md flex items-center justify-end font-serif text-zinc-600 italic transition-all duration-300 hover:-translate-x-1 hover:text-black dark:text-zinc-400 dark:hover:text-white"
                     title="cd ~/writing"
                     onClick={closeMobileMenu}
                   >
@@ -276,7 +268,7 @@ export function Header() {
 
                   <Link
                     href="/projects"
-                    className="text-md flex items-center justify-end font-serif text-zinc-600 italic transition-all duration-400 hover:-translate-x-1 hover:text-black dark:text-zinc-400 dark:hover:text-white"
+                    className="text-md flex items-center justify-end font-serif text-zinc-600 italic transition-all duration-300 hover:-translate-x-1 hover:text-black dark:text-zinc-400 dark:hover:text-white"
                     title="cd ~/projects"
                     onClick={closeMobileMenu}
                   >
@@ -286,7 +278,7 @@ export function Header() {
 
                   <Link
                     href="/experience"
-                    className="text-md flex items-center justify-end font-serif text-zinc-600 italic transition-all duration-400 hover:-translate-x-1 hover:text-black dark:text-zinc-400 dark:hover:text-white"
+                    className="text-md flex items-center justify-end font-serif text-zinc-600 italic transition-all duration-300 hover:-translate-x-1 hover:text-black dark:text-zinc-400 dark:hover:text-white"
                     title="cd ~/experience"
                     onClick={closeMobileMenu}
                   >
@@ -295,7 +287,7 @@ export function Header() {
                   </Link>
                   <a
                     href="https://sh.stanleywang.dev/"
-                    className="pointer-events-auto flex translate-y-[1px] items-center justify-end font-mono text-[0.85em] text-zinc-600 transition-all duration-400 hover:-translate-x-1 dark:text-zinc-400"
+                    className="pointer-events-auto flex translate-y-[1px] items-center justify-end font-mono text-[0.85em] text-zinc-600 transition-all duration-300 hover:-translate-x-1 dark:text-zinc-400"
                     title="source ~/.sshrc"
                     target="_blank"
                     rel="noopener noreferrer"

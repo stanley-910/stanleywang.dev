@@ -78,7 +78,7 @@ pre::-webkit-scrollbar {
 
 /* Line highlighting */
 [data-line][data-highlighted-line] {
-  background-color: rgba(200, 200, 255, 0.1);
+  background-color: rgba(168, 153, 132, 0.15); /* Gruvbox gray */
   width: calc(100% + 2rem);
   margin-left: -1rem;
   margin-right: -1rem;
@@ -87,33 +87,33 @@ pre::-webkit-scrollbar {
 
 /* Group highlighting by ID */
 [data-line][data-highlighted-line-id='a'] {
-  background-color: rgba(255, 200, 200, 0.1);
+  background-color: rgba(251, 73, 52, 0.15); /* Gruvbox red */
 }
 
 [data-line][data-highlighted-line-id='b'] {
-  background-color: rgba(239, 13, 13, 0.791) !important;
+  background-color: rgba(251, 73, 52, 0.3) !important; /* Gruvbox red */
 }
 
 /* Character highlighting */
 [data-highlighted-chars] {
-  /* background-color: rgba(200, 200, 255, 0.2); */
+  background-color: rgba(215, 153, 33, 0.2); /* Gruvbox yellow */
   padding: 2px;
   border-radius: 2px;
 }
 
 /* Character group highlighting by ID */
 [data-chars-id='v'] {
-  color: #60a5fa; /* variables - blue */
+  color: #83a598; /* variables - Gruvbox blue */
   font-weight: bold;
 }
 
 [data-chars-id='s'] {
-  color: #34d399; /* functions - green */
+  color: #b8bb26; /* functions - Gruvbox green */
   font-style: italic;
 }
 
 [data-chars-id='i'] {
-  color: #fbbf24; /* values - yellow */
+  color: #fabd2f; /* values - Gruvbox yellow */
 }
 
 /* Transition effects */
@@ -125,29 +125,25 @@ pre::-webkit-scrollbar {
 
 /* Dark mode adjustments */
 .dark [data-highlighted-line] {
-  background-color: rgba(200, 200, 255, 0.05);
+  background-color: rgba(168, 153, 132, 0.1); /* Gruvbox gray */
 }
 
 .dark [data-highlighted-chars] {
-  background-color: rgba(200, 200, 255, 0.1);
+  background-color: rgba(215, 153, 33, 0.15); /* Gruvbox yellow */
 }
 
 .dark pre {
-  background-color: rgba(65, 65, 65, 0.1);
+  background-color: #0000;
+  /*border: 1px solid #3c3836;*/
 }
 
 .light pre {
-  background-color: rgba(208, 208, 208, 0.2);
+  background-color: #f0f0eb;
 }
 
 /* Make the line highlighting more specific and match the styling hierarchy */
 code .highlighted {
-  background-color: rgba(
-    136,
-    136,
-    136,
-    0.2
-  ) !important; /* add override or else it won't show */
+  background-color: rgba(168, 153, 132, 0.15) !important; /* Gruvbox gray */
   width: calc(100% + 48px);
   display: inline-block;
   transition: background-color 0.5s;
@@ -156,8 +152,8 @@ code .highlighted {
 }
 
 .prose code .highlighted-word {
-  background-color: #8881;
-  border: 1px solid #8885;
+  background-color: rgba(215, 153, 33, 0.2); /* Gruvbox yellow */
+  border: 1px solid rgba(215, 153, 33, 0.4);
   padding: 1px 3px;
   margin: -1px -3px;
   border-radius: 4px;
@@ -166,7 +162,7 @@ code .highlighted {
 /* Diff styling */
 
 .diff.add {
-  background-color: rgba(74, 222, 128, 0.253) !important;
+  background-color: rgba(184, 187, 38, 0.2) !important; /* Gruvbox green */
   width: calc(100% + 48px);
   display: inline-block;
   transition: background-color 0.5s;
@@ -175,7 +171,7 @@ code .highlighted {
 }
 
 .diff.remove {
-  background-color: rgba(248, 113, 113, 0.326) !important;
+  background-color: rgba(251, 73, 52, 0.2) !important; /* Gruvbox red */
   width: calc(100% + 48px);
   display: inline-block;
   transition: background-color 0.5s;
@@ -185,7 +181,7 @@ code .highlighted {
 
 .diff.add::before {
   content: '+';
-  color: #4ade80;
+  color: #b8bb26; /* Gruvbox bright green */
   position: absolute;
   left: 0rem;
   padding-right: 0.25rem;
@@ -195,7 +191,7 @@ code .highlighted {
 
 .diff.remove::before {
   content: '-';
-  color: #f87171;
+  color: #fb4934; /* Gruvbox bright red */
   position: absolute;
   left: 0rem;
   padding-right: 0.25rem;
@@ -205,11 +201,11 @@ code .highlighted {
 
 /* Dark mode adjustments */
 .dark .diff.add {
-  background-color: rgba(16, 185, 129, 0.05);
+  background-color: rgba(184, 187, 38, 0.15); /* Gruvbox green */
 }
 
 .dark .diff.remove {
-  background-color: rgba(239, 68, 68, 0.05);
+  background-color: rgba(251, 73, 52, 0.15); /* Gruvbox red */
 }
 
 /* Inline code block with syntax highlighting */

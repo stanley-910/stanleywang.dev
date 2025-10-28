@@ -39,13 +39,18 @@
     'ss06' 1,
     'ss07' 1,
     'ss08' 1;
-  color: var(--fg-deep);
+  color: #af3a03; /* Gruvbox orange */
   font-weight: 500;
   font-size: 0.875em;
-  background-color: rgba(170, 170, 170, 0.1);
+  background-color: rgba(235, 219, 178, 0.3); /* Gruvbox fg4 */
   border-radius: 0.25rem;
   padding: 0.2em 0.3em;
   margin: -0.2em 0;
+}
+
+.dark .prose :not(pre) > code {
+  color: #fe8019; /* Gruvbox bright orange */
+  background-color: rgba(60, 56, 54, 0.6); /* Gruvbox dark2 */
 }
 
 /* Strip backticks from inline-code */

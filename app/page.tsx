@@ -55,9 +55,9 @@ export default function Personal() {
               rel="noopener noreferrer"
               className="prose-link"
             >
-              McGill University
+              McGill University.
             </a>{' '}
-            and writing software with the <br />
+            Most recently, I wrote software with the{' '}
             <a
               href="https://www.autodesk.com/ca-en/products/flow-production-tracking/overview"
               target="_blank"
@@ -66,22 +66,15 @@ export default function Personal() {
             >
               Flow PT team
             </a>{' '}
-            at Autodesk.
-            <br />
-            <br />
-            I&apos;m trying to be better at valuing <strong>
-              improvement
-            </strong>{' '}
-            over <strong>iteration</strong>, and prioritize the
-            <br />
-            <strong>
-              <em>comprehension</em>
-            </strong>{' '}
-            of my work, rather than the{' '}
-            <strong>
-              <em>momentum</em>
-            </strong>{' '}
-            of it.
+            at Autodesk and engineered structural tooling for{' '}
+            <a
+              href="https://beta.team/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="prose-link"
+            >
+              Beta Technologies.
+            </a>
             <br />
             <br />I enjoy coding{' '}
             <span className="font-mono text-sm text-zinc-500 dark:text-zinc-500">
@@ -99,8 +92,30 @@ export default function Personal() {
             .
             <br />
             <br />
+            <span className="font-mono text-sm text-zinc-500 dark:text-zinc-500">
+              Currently reading:{' '}
+              <a
+                href="https://pages.cs.wisc.edu/~remzi/OSTEP/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="prose-link"
+              >
+                Operating Systems: Three Easy Pieces
+              </a>
+              {' · '}
+              <a
+                href="https://www.goodreads.com/book/show/30962053-the-idiot"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="prose-link"
+              >
+                The Idiot
+              </a>
+            </span>
+            <br />
+            <br />
             <div className="text-right font-mono text-xs text-zinc-500 dark:text-zinc-400">
-              <b>Last Updated</b>: July 7, 2025
+              <b>Last Updated</b>: Oct 28, 2025
             </div>
           </div>
         </div>

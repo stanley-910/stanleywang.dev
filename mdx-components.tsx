@@ -123,7 +123,6 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
       alt,
       title,
       caption,
-      invert = false,
       size,
       className,
       lightSrc,

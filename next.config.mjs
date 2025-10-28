@@ -27,8 +27,8 @@ const nextConfig = {
 /** @type {import('rehype-pretty-code').Options} */
 const options = {
   theme: {
-    dark: 'catppuccin-mocha',
-    light: 'catppuccin-latte',
+    dark: 'gruvbox-dark-hard',
+    light: 'gruvbox-light-hard',
   },
   keepBackground: false,
   transformers: [

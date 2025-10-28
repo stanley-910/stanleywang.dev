@@ -13,7 +13,6 @@ import {
   MorphingDialogClose,
   MorphingDialogContainer,
 } from '@/components/ui/morphing-dialog'
-import { ESLINT_DEFAULT_DIRS } from 'next/dist/lib/constants'
 
 // Data
 

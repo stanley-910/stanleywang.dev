@@ -51,11 +51,11 @@ export function Footer() {
             <span>© 2025 Stanley Wang</span>
           </a>
           <a
-            href="https://www.youtube.com/watch?v=RDp61U9zTj0"
+            href="https://open.spotify.com/track/5UPAsUyaojOEDhVq7wqSuz?si=57b15862c69e4cad"
             target="_blank"
             rel="noopener noreferrer"
           >
-            <span>darlin, don&apos;t you give up on a monday</span>
+            <span>song rec of the week</span>
           </a>
         </TextLoop>
         <div className="text-xs text-zinc-500">
