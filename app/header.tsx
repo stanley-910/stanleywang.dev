@@ -167,8 +167,8 @@ export function Header() {
                   : '-translate-y-2 opacity-100 transition-all delay-0 duration-500'
               }`}
             >
-              {/* <Link 
-                href="/about" 
+              {/* <Link
+                href="/about"
                 className="text-[1.0em] font-serif italic text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors pointer-events-auto flex items-center"
                 title="cd ~/about"
               >
@@ -182,9 +182,9 @@ export function Header() {
               >
                 <span className="lg:inline">writing</span>
               </Link>
-              <span className="pointer-events-none translate-y-[0.95px] text-xs text-zinc-600 dark:text-zinc-400">
+              {/*<span className="pointer-events-none translate-y-[0.95px] text-xs text-zinc-600 dark:text-zinc-400">
                 ▧
-              </span>
+              </span>*/}
               <Link
                 href="/projects"
                 className="pointer-events-auto flex items-center font-serif text-[1.0em] text-zinc-600 italic transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-white"
@@ -192,9 +192,9 @@ export function Header() {
               >
                 <span className="lg:inline">projects</span>
               </Link>
-              <span className="pointer-events-none translate-y-[0.3px] text-xs text-zinc-600 dark:text-zinc-400">
+              {/*<span className="pointer-events-none translate-y-[0.3px] text-xs text-zinc-600 dark:text-zinc-400">
                 ∷
-              </span>
+              </span>*/}
               <Link
                 href="/experience"
                 className="pointer-events-auto flex items-center font-serif text-[1.0em] text-zinc-600 italic transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-white"
@@ -202,9 +202,9 @@ export function Header() {
               >
                 <span className="lg:inline">experience</span>
               </Link>
-              <span className="pointer-events-none translate-y-[0.3px] text-sm text-zinc-600 dark:text-zinc-400">
+              {/*<span className="pointer-events-none translate-y-[0.3px] text-sm text-zinc-600 dark:text-zinc-400">
                 ····
-              </span>
+              </span>*/}
               <a
                 href="https://sh.stanleywang.dev/"
                 className="pointer-events-auto flex translate-y-[1px] items-center font-mono text-[0.85em] text-zinc-600 transition-colors dark:text-zinc-400"
@@ -216,9 +216,9 @@ export function Header() {
                   <GlitchText text="/bin/sh" />
                 </span>
               </a>
-              <span className="pointer-events-none translate-y-[0.95px] text-xs text-zinc-600 dark:text-zinc-400">
+              {/*<span className="pointer-events-none translate-y-[0.95px] text-xs text-zinc-600 dark:text-zinc-400">
                 ▣
-              </span>
+              </span>*/}
               <Link
                 href="/api/feed"
                 className="pointer-events-auto flex items-center font-serif text-[1.0em] text-zinc-600 italic transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-white"
@@ -255,7 +255,7 @@ export function Header() {
 
               {/* Mobile menu dropdown - anchored to hamburger button */}
               <div
-                className={`absolute top-full right-0 mt-1 w-36 rounded-lg border border-zinc-200/80 bg-white/90 px-4 py-4 shadow-lg transition-all duration-300 ease-out dark:border-zinc-800/80 dark:bg-zinc-900/90 ${
+                className={`absolute top-full right-0 mt-1 w-32 rounded-lg border border-zinc-200/80 bg-white/90 px-4 py-4 shadow-lg transition-all duration-300 ease-out dark:border-zinc-800/80 dark:bg-zinc-900/90 ${
                   isMobileMenuOpen
                     ? 'translate-x-0 opacity-100'
                     : 'pointer-events-none translate-x-4 opacity-0'
@@ -266,37 +266,48 @@ export function Header() {
                   {/* Main navigation items */}
                   <Link
                     href="/writing"
-                    className="text-md flex items-center justify-between font-serif text-zinc-600 italic transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-white"
+                    className="text-md flex items-center justify-end font-serif text-zinc-600 italic transition-all duration-400 hover:-translate-x-1 hover:text-black dark:text-zinc-400 dark:hover:text-white"
                     title="cd ~/writing"
                     onClick={closeMobileMenu}
                   >
                     <span>writing</span>
-                    <BookOpenIcon className="h-4 w-4" />
+                    {/*<BookOpenIcon className="h-4 w-4" />*/}
                   </Link>
 
                   <Link
                     href="/projects"
-                    className="text-md flex items-center justify-between font-serif text-zinc-600 italic transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-white"
+                    className="text-md flex items-center justify-end font-serif text-zinc-600 italic transition-all duration-400 hover:-translate-x-1 hover:text-black dark:text-zinc-400 dark:hover:text-white"
                     title="cd ~/projects"
                     onClick={closeMobileMenu}
                   >
                     <span>projects</span>
-                    <ClapperboardIcon className="h-4 w-4" />
+                    {/*<ClapperboardIcon className="h-4 w-4" />*/}
                   </Link>
 
                   <Link
                     href="/experience"
-                    className="text-md flex items-center justify-between font-serif text-zinc-600 italic transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-white"
+                    className="text-md flex items-center justify-end font-serif text-zinc-600 italic transition-all duration-400 hover:-translate-x-1 hover:text-black dark:text-zinc-400 dark:hover:text-white"
                     title="cd ~/experience"
                     onClick={closeMobileMenu}
                   >
                     <span>experience</span>
-                    <BriefcaseIcon className="h-4 w-4" />
+                    {/*<BriefcaseIcon className="h-4 w-4" />*/}
                   </Link>
+                  <a
+                    href="https://sh.stanleywang.dev/"
+                    className="pointer-events-auto flex translate-y-[1px] items-center justify-end font-mono text-[0.85em] text-zinc-600 transition-all duration-400 hover:-translate-x-1 dark:text-zinc-400"
+                    title="source ~/.sshrc"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <span className="lg:inline">
+                      <GlitchText text="/bin/sh" />
+                    </span>
+                  </a>
                   {/* Bottom row with icons only */}
-                  <div className="flex items-center justify-between border-t border-zinc-200/50 pt-2 dark:border-zinc-700/50">
-                    <div className="flex translate-x-[3px] items-center space-x-3">
-                      <a
+                  <div className="flex items-center justify-center border-t border-zinc-200/50 pt-2 dark:border-zinc-700/50">
+                    <div className="flex items-center space-x-3">
+                      {/*<a
                         href="https://sh.stanleywang.dev/"
                         className="flex items-center text-zinc-600 transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-white"
                         title="source ~/.sshrc"
@@ -305,7 +316,7 @@ export function Header() {
                         onClick={closeMobileMenu}
                       >
                         <Terminal className="h-4 w-4" />
-                      </a>
+                      </a>*/}
 
                       <Link
                         href="/api/feed"
