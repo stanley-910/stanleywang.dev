@@ -37,7 +37,7 @@
 
 .prose-link {
   --fg-light: #888;
-  --fg: #555;
+  --fg: #333;
   --fg-deep: #222;
   --fg-deeper: #000;
   font-weight: inherit;
@@ -48,8 +48,8 @@
 
 .dark .prose-link {
   --fg-light: #888;
-  --fg: #bbb;
-  --fg-deep: #ddd;
+  --fg: #ccc;
+  --fg-deep: #fff;
   --fg-deeper: #fff;
 }
 
@@ -84,15 +84,15 @@ a.item:hover {
 
 html.dark .prose {
   --fg-light: #888;
-  --fg: #bbb;
-  --fg-deep: #ddd;
+  --fg: #ccc;
+  --fg-deep: #eee;
   --fg-deeper: #fff;
 }
 
 .prose {
   --fg-light: #888;
-  --fg: #555;
-  --fg-deep: #222;
+  --fg: #333;
+  --fg-deep: #111;
   --fg-deeper: #000;
 
   color: var(--fg);

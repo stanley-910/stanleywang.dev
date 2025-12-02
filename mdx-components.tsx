@@ -144,20 +144,18 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
             rel="noopener noreferrer"
             className="no-underline"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               title={title}
               src={src}
               alt={alt}
               className={cn(
-                'cover mx-auto rounded-xl',
+                'cover mx-auto rounded-xl shadow-lg',
                 lightSrc ? 'hidden dark:block' : 'block',
                 className,
               )}
               style={size ? { width: `${size}%`, height: 'auto' } : undefined}
             />
             {lightSrc && (
-              // eslint-disable-next-line @next/next/no-img-element
               <img
                 title={title}
                 src={lightSrc}

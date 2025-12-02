@@ -79,6 +79,9 @@ const eslintConfig = [
       'prefer-const': 'warn',
       'no-unused-expressions': 'warn',
       'no-unused-vars': 'off', // Turned off in favor of @typescript-eslint/no-unused-vars
+
+      // Next.js rules
+      '@next/next/no-img-element': 'off', // Disable globally - using img elements intentionally
     },
   },
 ]
