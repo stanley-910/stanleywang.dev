@@ -49,8 +49,8 @@
 }
 
 .dark .prose :not(pre) > code {
-  color: #fe8019; /* Gruvbox bright orange */
-  background-color: rgba(60, 56, 54, 0.6); /* Gruvbox dark2 */
+  color: #BA955E; /* Gruvbox bright orange */
+  background-color: rgba(60, 56, 54, 0.3); /* Gruvbox dark2 */
 }
 
 /* Strip backticks from inline-code */
