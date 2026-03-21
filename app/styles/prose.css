@@ -80,7 +80,8 @@
 }
 .prose strong {
   color: var(--fg-deep);
-  font-weight: 600;
+  /* Align prose bold text with the new medium-weight bold standard. */
+  font-weight: 500;
 }
 
 .prose a code {
@@ -250,6 +251,8 @@
 }
 .prose b {
   color: var(--fg-deep);
+  /* Ensure explicit <b> tags in MDX match <strong> weight. */
+  font-weight: 500;
 }
 .prose em {
   color: inherit;

@@ -31,6 +31,12 @@ html {
   background: #8884;
 }
 
+/* Make Tailwind Typography prose bold text use medium weight in both themes. */
+.prose {
+  --tw-prose-bold: 500;
+  --tw-prose-invert-bold: 500;
+}
+
 /* Add fade-in animation */
 @keyframes fade-in {
   from {

@@ -1,5 +1,6 @@
 import GithubSlugger from 'github-slugger'
 import Link from 'next/link'
+import type { ReactNode } from 'react'
 
 import { ClickableHeader } from '@/components/ui/clickable-header'
 import { Stars } from '@/components/ui/stars'
@@ -12,6 +13,12 @@ import type { MDXComponents } from 'mdx/types'
 interface SpotifyProps {
   link: string
   wide?: boolean
+  className?: string
+}
+
+interface QuoteProps {
+  children: ReactNode
+  mark?: boolean
   className?: string
 }
 
@@ -41,6 +48,14 @@ const Spotify = ({ link, wide = false, className }: SpotifyProps) => {
   )
 }
 
+const Quote = ({ children, mark = false, className }: QuoteProps) => {
+  return (
+    <blockquote className={cn(mark && 'quote-mark', className)}>
+      {children}
+    </blockquote>
+  )
+}
+
 export function useMDXComponents(components: MDXComponents): MDXComponents {
   const slugger = new GithubSlugger()
 
@@ -56,6 +71,8 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     }) => <Stars asHr variant={variant} className={className} />,
     // Add Spotify component to MDX components
     Spotify,
+    // Add an opt-in quote component for decorative quote-mark styling.
+    Quote,
     strike: ({ children }) => <span className="line-through">{children}</span>,
     // Add custom link component to handle external links
     a: ({ href, children, ...props }) => {
