@@ -158,7 +158,7 @@ export default function Personal() {
                 <h4 className="text-md mb-1 font-normal dark:text-zinc-100">
                   {post.title}
                 </h4>
-                <p className="mb-1 text-sm text-zinc-500">
+                <p className="mb-1 font-mono text-sm tracking-[-0.04em] text-zinc-500">
                   <time dateTime={post.date}>
                     {format(new Date(post.date), 'MMMM dd, yyyy')}
                   </time>

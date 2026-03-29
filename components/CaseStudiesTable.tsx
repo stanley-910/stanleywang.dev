@@ -32,7 +32,7 @@ export default function CaseStudiesTable({ posts }: PostsTableProps) {
       {sortedYears.map((year) => (
         <div key={year} className="posts-grid">
           {/* Year column */}
-          <div className="year-column font-inter text-[0.9em]">{year}</div>
+          <div className="year-column font-mono text-[0.9em]">{year}</div>
 
           {/* Posts column */}
           <div className="posts-column">

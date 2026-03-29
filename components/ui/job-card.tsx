@@ -52,7 +52,7 @@ export function JobCard({
                 {location}
               </p>
             </div>
-            <p className="font-inter text-xs text-zinc-600 italic dark:text-zinc-400">
+            <p className="font-mono text-xs text-zinc-600 dark:text-zinc-400">
               {start}
               {end && ` - ${end}`}
             </p>
