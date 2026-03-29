@@ -19,7 +19,7 @@
 }
 
 /* Allow inline width styles to override the default 100% width */
-.cover[style*="width"] {
+.cover[style*='width'] {
   width: auto !important;
 }
 
@@ -293,14 +293,7 @@ html.dark .prose {
 
 /* KaTeX Math Styling */
 .prose .katex-display {
-  /* For block equations ($$) */
-  /* font-size: 1.1em; */
-  /* color: var(--fg); */
-  /* margin: 1.5em 0; */
-  overflow-x: auto;
-  /* overflow-y: hidden; */
-  /* padding-top: 0.1em; */
-  /* padding-bottom: 0.1em; */
+  overflow: visible;
 }
 
 .prose .katex {
@@ -310,18 +303,13 @@ html.dark .prose {
 }
 
 .prose .katex-display > .katex {
-  /* Specifically target the block equation content */
   font-size: 1.1em;
-  /* white-space: nowrap; */
+  white-space: normal;
 }
 
-/* Add horizontal scrolling for long equations */
-/* .prose .katex-display > .katex > .katex-html {
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding-bottom: 0.5em; 
-  margin-bottom: -0.5em;
-} */
+.prose .katex-display > .base {
+  margin: 0.25em 0;
+}
 
 /* Hide the "Footnotes" heading */
 .prose h2[id^='footnotes'] {
@@ -334,7 +322,6 @@ html.dark .prose {
   margin-top: 2em;
   font-family: var(--font-mono);
   letter-spacing: -0.08em;
-
 }
 
 .prose .footnotes li {
@@ -347,8 +334,8 @@ html.dark .prose {
 
 /* Hide footnote back-reference (↑) */
 .prose .footnotes .data-footnote-backref,
-.prose .footnotes a[href^="#fnref"],
-.prose .footnotes a[aria-label="Back to content"] {
+.prose .footnotes a[href^='#fnref'],
+.prose .footnotes a[aria-label='Back to content'] {
   display: none;
 }
 
