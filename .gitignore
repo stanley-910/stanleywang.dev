@@ -42,4 +42,6 @@ next-env.d.ts
 
 .cursor/
 
+AGENTS.md
+
 # Ignore video files
