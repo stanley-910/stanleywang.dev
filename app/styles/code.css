@@ -1,3 +1,12 @@
+:root {
+  --code-fg-light: #3c3836;
+  --code-fg-dark: #ebdbb2;
+  --code-bg-light: #f0f0eb;
+  --code-bg-dark: transparent;
+  --code-border-light: rgba(0, 0, 0, 0.08);
+  --code-border-dark: rgba(255, 255, 255, 0.05);
+}
+
 code[data-line-numbers] {
   counter-reset: line;
 }
@@ -27,8 +36,8 @@ code[data-line-numbers-max-digits='4'] > [data-line]::before {
   width: 2.25rem;
 }
 
-/* Base code block styling */
-pre {
+/* Base fenced code block styling */
+pre[data-language] {
   position: relative;
   overflow-x: auto;
   padding: 1rem;
@@ -40,41 +49,53 @@ pre {
   max-width: 100%;
   border-radius: 0.5rem;
   box-sizing: border-box;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--code-border-light);
 }
 
 /* Theme switching using Shiki's CSS variables */
-code[data-theme*=' '],
-code[data-theme*=' '] span {
-  color: var(--shiki-light);
-  background-color: var(--shiki-light-bg);
+[data-rehype-pretty-code-figure] code[data-theme*=' '] {
+  color: var(--shiki-light, var(--code-fg-light)) !important;
+  background-color: transparent !important;
+}
+
+[data-rehype-pretty-code-figure] code[data-theme*=' '] span {
+  color: var(--shiki-light, var(--code-fg-light)) !important;
 }
 
 /* Dark mode - System preference */
 @media (prefers-color-scheme: dark) {
-  code[data-theme*=' '],
-  code[data-theme*=' '] span {
-    color: var(--shiki-dark);
-    background-color: var(--shiki-dark-bg);
+  [data-rehype-pretty-code-figure] code[data-theme*=' '] {
+    color: var(--shiki-dark, var(--code-fg-dark)) !important;
+    background-color: transparent !important;
+  }
+
+  [data-rehype-pretty-code-figure] code[data-theme*=' '] span {
+    color: var(--shiki-dark, var(--code-fg-dark)) !important;
   }
 }
 
 /* Dark mode - Class-based */
-.dark code[data-theme*=' '],
-.dark code[data-theme*=' '] span {
-  color: var(--shiki-dark);
-  background-color: var(--shiki-dark-bg);
+.dark [data-rehype-pretty-code-figure] code[data-theme*=' '] {
+  color: var(--shiki-dark, var(--code-fg-dark)) !important;
+  background-color: transparent !important;
+}
+
+.dark [data-rehype-pretty-code-figure] code[data-theme*=' '] span {
+  color: var(--shiki-dark, var(--code-fg-dark)) !important;
 }
 
 /* Light mode - Class-based */
-.light code[data-theme*=' '],
-.light code[data-theme*=' '] span {
-  color: var(--shiki-light);
-  background-color: var(--shiki-light-bg);
+.light [data-rehype-pretty-code-figure] code[data-theme*=' '] {
+  color: var(--shiki-light, var(--code-fg-light)) !important;
+  background-color: transparent !important;
+}
+
+.light [data-rehype-pretty-code-figure] code[data-theme*=' '] span {
+  color: var(--shiki-light, var(--code-fg-light)) !important;
 }
 
 /* Hide scrollbar */
-pre::-webkit-scrollbar {
+pre[data-language]::-webkit-scrollbar {
   display: none;
 }
 
@@ -93,7 +114,11 @@ pre::-webkit-scrollbar {
 }
 
 [data-line][data-highlighted-line-id='b'] {
-  background-color: rgba(251, 73, 52, 0.3) !important; /* Gruvbox red */
+  background-color: rgba(215, 153, 33, 0.2) !important; /* Gruvbox yellow */
+}
+
+[data-line][data-highlighted-line-id='c'] {
+  background-color: rgba(131, 165, 152, 0.18) !important; /* Gruvbox blue */
 }
 
 /* Character highlighting */
@@ -134,14 +159,14 @@ pre::-webkit-scrollbar {
   background-color: rgba(215, 153, 33, 0.15); /* Gruvbox yellow */
 }
 
-.dark pre {
-  background-color: #0000;
-  border-color: rgba(255, 255, 255, 0.05);
+.dark pre[data-language] {
+  background-color: var(--code-bg-dark);
+  border-color: var(--code-border-dark);
 }
 
-.light pre {
-  background-color: #f0f0eb;
-  border-color: rgba(0, 0, 0, 0.08);
+.light pre[data-language] {
+  background-color: var(--code-bg-light);
+  border-color: var(--code-border-light);
 }
 
 /* Make the line highlighting more specific and match the styling hierarchy */

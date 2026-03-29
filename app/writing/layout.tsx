@@ -41,6 +41,8 @@ function BlogHeader() {
 
   if (!post) return null
 
+  const tags = post.tags ?? []
+
   // margin 10 = bottom hr margin
   return (
     <header className="mb-10">
@@ -52,17 +54,18 @@ function BlogHeader() {
         <div className="flex flex-row items-center gap-2 font-mono text-sm tracking-tighter text-zinc-500 dark:text-zinc-400">
           {post.description}
         </div>
-        <div className="mt-3 flex items-center gap-2 font-mono text-sm font-bold tracking-tighter text-zinc-500 dark:text-zinc-400">
-          <time dateTime={post.date}>
-            {new Date(post.date).toLocaleDateString('en-US', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-            })}
-          </time>
+        <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5 font-mono text-sm font-bold tracking-tighter text-zinc-500 sm:gap-x-3 dark:text-zinc-400">
+          <span className="inline-flex whitespace-nowrap">
+            <time dateTime={post.date}>
+              {new Date(post.date).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })}
+            </time>
+          </span>
           {post.edited ? (
-            <>
-              <span>·</span>
+            <span className="inline-flex items-center gap-3 whitespace-nowrap before:text-zinc-500 before:content-['·'] dark:before:text-zinc-400">
               <time
                 dateTime={post.edited}
                 className="text-zinc-500 dark:text-zinc-400"
@@ -74,25 +77,24 @@ function BlogHeader() {
                   day: 'numeric',
                 })}
               </time>
-            </>
+            </span>
           ) : null}
-          <span>·</span>
-          <span>{post.readingTime}</span>
-          {post.tags && (
-            <>
-              <span>·</span>
+          <span className="inline-flex items-center gap-3 whitespace-nowrap before:text-zinc-500 before:content-['·'] dark:before:text-zinc-400">
+            <span>{post.readingTime}</span>
+          </span>
+          {tags.length > 0 ? (
+            <span className="inline-flex max-w-full min-w-0 items-start gap-2 before:text-zinc-500 before:content-['·'] sm:items-center sm:gap-3 dark:before:text-zinc-400">
               <span className="font-mono text-sm tracking-tighter">
-                [{' '}
-                {post.tags.map((tag, index) => (
+                [{` `}
+                {tags.map((tag, index) => (
                   <span
                     key={tag}
                     className="font-mono text-sm tracking-tighter"
                   >
                     {tag}
-                    {post.tags &&
-                      index < post.tags.length - 1 &&
-                      (index === post.tags.length - 2
-                        ? post.tags.length > 2
+                    {index < tags.length - 1 &&
+                      (index === tags.length - 2
+                        ? tags.length > 2
                           ? ', and '
                           : ' & '
                         : ', ')}
@@ -100,8 +102,8 @@ function BlogHeader() {
                 ))}{' '}
                 ]
               </span>
-            </>
-          )}
+            </span>
+          ) : null}
         </div>
       </div>
     </header>
