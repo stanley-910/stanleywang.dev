@@ -1,12 +1,12 @@
 ---
-title: 'RNN Minimal Code Implementation'
+title: 'Exploring a Recurrent Neural Network'
 description: 'COMP 551 Notes'
 date: '2026-03-28'
 readingTime: '14 min'
 tags: ['Machine Learning', 'RNNs']
 ---
 
-<TOC title="RNN Minimal Code Implementation" />
+<TOC title="Exploring a Recurrent Neural Network" />
 
 These notes walk through Andrej Karpathy's minimal character-level **Recurrent Neural Network (RNN)** implementation. [^1]
 
@@ -102,20 +102,20 @@ while True:
         print("----\n %s \n----" % (txt,))
 ```
 
-If the current sequence would exceed the total text length, we reset $h_{t-1}$ and start from the beginning of the dataset again.
+If the current sequence exceeds the total text length, we reset $h_{t-1}$ and start from the beginning of the dataset again.
 
 This first block samples a batch of 25 characters from the dataset:
 
 - Inputs: the indices for `data[p : p + seq_length]{:python}`
 - Targets: the indices for the next characters in `data[p + 1 : p + seq_length + 1]{:python}`
 
-That shift is the key supervision signal. At every timestep, we want the network to predict the character directly following the current one.
+At every timestep, we want the network to predict the character directly following the current one.
 
-Every 100 iterations we call `sample{:python}` to visualize the current predictive power of the RNN.
+Every 100 iterations we call `sample{:python}` to [visualize the current predictive power](#sample-function) of the RNN.
 
-We then call the loss function:
+We then call the [loss function](#loss-function):
 
-```python showLineNumbers
+```python showLineNumbers {2}#c {3}#b
     # forward seq_length characters through the net and fetch gradient
     loss, dWxh, dWhh, dWhy, dbh, dby, hprev = lossFun(inputs, targets, hprev)
     smooth_loss = smooth_loss * 0.999 + loss * 0.001
@@ -123,11 +123,11 @@ We then call the loss function:
         print("iter %d, loss: %f" % (n, smooth_loss))  # print progress
 ```
 
-Because training runs on short 25-character chunks, the raw loss from one chunk to the next is noisy. We therefore track an exponential moving average so the trend is easier to read.
+Because training runs on short 25-character chunks, the raw loss from one chunk to the next is noisy. We therefore track an [exponential moving average (EMA)](https://towardsdatascience.com/intuitive-explanation-of-exponential-moving-average-2eb9693ea4dc/) so the trend is easier to read.
 
 Conceptually, this line says: keep 99.9% of our historical average, and mix in 0.1% of the new raw loss.
 
-Lastly, we update the parameters with Adagrad:
+Lastly, we update the parameters with [Adagrad](https://optimization.cbe.cornell.edu/index.php?title=AdaGrad):
 
 ```python showLineNumbers
     # perform parameter update with Adagrad
@@ -172,19 +172,19 @@ def sample(h, seed_ix, n):
 
 Operationally, we run a forward pass on the current state of the learned parameters to get a probability distribution over the next character. We sample one index from that distribution, feed that predicted character back in as the next input, and repeat.
 
-In a standard non-recurrent neural network, if you wanted to process 25 characters, you would need 25 separate hidden layers, each with its own different set of weights.
+In a standard non-recurrent neural network (e.g. [Convolutional Neural Networks](https://en.wikipedia.org/wiki/Convolutional_neural_network)), if you wanted to process 25 characters, you would need 25 separate hidden layers, each with its own different set of weights.
 
 But in an RNN, we use the **exact same three weight matrices** `Wxh{:python}`, `Whh{:python}`, and `Why{:python}` at step 1, step 2, step 15, and step 25. This is **weight sharing**. We are trying to learn the best overall parameters to make inferences at any timestep.
 
 <Img
-  src="/images/rnn-minimal-code-implementation/forward-pass-prediction.webp"
+  src="/images/exploring-a-recurrent-neural-network/forward-pass-prediction.webp"
   alt="Diagram of the RNN hidden-state forward pass showing W_hh h_(t-1) and W_xh x_t being added to produce h_t"
   title="RNN Hidden State Forward Pass"
   caption="Computing the hidden-state forward pass with shared weights across timesteps."
   size={90}
 />
 
-Example output for predicted sequence on the first pass:
+When we first start training, we can glimpse what the RNN is currently capable of predicting:
 
 ```text
 ----
@@ -199,7 +199,7 @@ iter 0, loss: 82.395918
 ----
 ```
 
-As one might expect, it is complete gibberish with a very high loss. Around iteration `33000`, there are definite improvements:
+It's nothing to write home about, but as one might expect, we see a marked improvement down the line after **heavily minimizing our loss**:
 
 ```text
 ----
@@ -226,7 +226,6 @@ def lossFun(inputs, targets, hprev):
     hs[-1] = np.copy(hprev)
     loss = 0
 
-    ...
 ```
 
 ### Forward
@@ -260,7 +259,7 @@ y_{t} &= W_{hy}h_{t}
 \end{align*}
 $$
 
-Using the dictionaries defined at the start of the function, we cache hidden states for every timestep in the 25-step window. Backpropagation needs these cached values, while inference during sampling does not. In each iteration, gradients are computed only over that 25-character window; the next iteration advances to the next window. This is **Truncated Backpropagation Through Time**.
+Using the dictionaries defined at the start of the function, we cache hidden states for every timestep in the 25-step window. Backpropagation needs these cached values, while inference during sampling does not. In each iteration, gradients are computed only over the current 25-character window; the next iteration advances to the next window. This is **Truncated Backpropagation Through Time**.
 
 We now have the logits in `ys[t]{:python}`, which are normalized by softmax and turned into a distribution over the next character.
 
@@ -407,17 +406,7 @@ From there, the backward pass continues through `Why{:python}`, the `tanh{:pytho
 
 ## Closing Notes
 
-This entire implementation is tiny, but it captures the essential mechanics of an RNN:
-
-- one-hot encoded inputs
-- a recurrent hidden state
-- shared weights across timesteps
-- softmax predictions at each step
-- backpropagation through the unrolled sequence
-
-It is a very compact example of how sequence models work before introducing heavier machinery like LSTMs, GRUs, or attention-based models.
-
-I kinda got lazy ;P at the end and didn't wanna keep writing latex, so I decided to call it a night, but hopefully this was useful!
+I kinda got lazy at the end and didn't wanna keep writing latex, so I decided to call it a night, but hopefully this was useful ;P
 
 <StarDivider />
 

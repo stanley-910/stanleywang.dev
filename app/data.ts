@@ -119,9 +119,9 @@ export const EXPERIENCE_POSTS: ExperiencePost[] = [
 
 export const BLOG_POSTS: BlogPost[] = [
   {
-    title: 'RNN Minimal Code Implementation',
+    title: 'Exploring a Recurrent Neural Network',
     description: 'COMP 551 Notes',
-    link: '/writing/rnn-minimal-code-implementation',
+    link: '/writing/exploring-a-recurrent-neural-network',
     uid: 'post-3',
     date: '2026-03-28',
     readingTime: '14 min',
