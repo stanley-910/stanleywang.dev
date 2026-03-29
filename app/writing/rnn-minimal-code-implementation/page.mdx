@@ -1,0 +1,424 @@
+---
+title: 'RNN Minimal Code Implementation'
+description: 'COMP 551 Notes'
+date: '2026-03-28'
+readingTime: '14 min'
+tags: ['Machine Learning', 'RNNs']
+---
+
+<TOC title="RNN Minimal Code Implementation" />
+
+These notes walk through Andrej Karpathy's minimal character-level **Recurrent Neural Network (RNN)** implementation. [^1]
+
+RNNs are special 'lil guys because instead of being acyclic, they reuse the same weights across timesteps while carrying a hidden state, so each prediction can use context from previous steps. That makes them especially useful for _sequence tasks_ such as text generation, speech modeling, and frame-by-frame video classification where earlier inputs should influence later predictions.
+
+A **sequence** is just an ordered list over time: characters, words, audio frames, video frames. A **timestep** is one position in that list. At timestep $t$, the model reads $x_t$, combines it with $h_{t-1}$, and produces $h_t$ plus a prediction.
+
+Because the same update rule is reused at every step, one RNN can map many different sequence lengths using the same parameters. In this note, we use a character-level **many-to-many** mapping: each input character predicts the next one. Example: input `hello` gives shifted targets `ello...`, so each timestep contributes one prediction and one loss term.
+
+## Data I/O
+
+```python showLineNumbers
+import numpy as np
+# data I/O
+data = open('input.txt', 'r').read() # should be simple plain text file
+chars = list(set(data))
+data_size, vocab_size = len(data), len(chars)
+print("data has %d characters, %d unique." % (data_size, vocab_size))
+char_to_ix = {ch: i for i, ch in enumerate(chars)}
+ix_to_char = {i: ch for i, ch in enumerate(chars)}
+```
+
+- Read all characters in the corpus.
+- Extract the unique character set, the vocabulary.
+- Build lookup maps: character to index and index to character.
+
+```text
+Small toy example:
+
+input.txt:
+hello
+
+chars = ['h', 'e', 'l', 'o']
+data_size = 5
+vocab_size = 4
+char_to_ix = {'h': 0, 'e': 1, 'l': 2, 'o': 3}
+ix_to_char = {0: 'h', 1: 'e', 2: 'l', 3: 'o'}
+
+Larger running example:
+
+hello world is the most commonly used starter program in code today.
+it is taught world wide in many many languages which is why is it so famous.
+beginners often write it as their very first line of code.
+seeing those words print to the screen gives a great sense of accomplishment.
+from there, developers move on to more complex topics like loops and functions.
+it truly serves as the universal greeting of the programming community.
+
+data_size = 436 characters
+vocab_size = 27 unique characters
+```
+
+## Initializations
+
+```python showLineNumbers
+# hyperparameters
+hidden_size = 100  # size of hidden layer of neurons
+seq_length = 25  # number of steps to unroll the RNN for
+learning_rate = 1e-1
+
+# model parameters
+Wxh = np.random.randn(hidden_size, vocab_size) * 0.01  # input to hidden 100 x 27
+Whh = np.random.randn(hidden_size, hidden_size) * 0.01  # hidden to hidden 100 x 100
+Why = np.random.randn(vocab_size, hidden_size) * 0.01  # hidden to output 27 x 100
+bh = np.zeros((hidden_size, 1))  # hidden bias, 100 x 1
+by = np.zeros((vocab_size, 1))  # output bias, 27 x 1
+```
+
+`seq_length{:python}` is the number of steps we unroll the RNN before doing
+backpropagation. The full dataset can be much larger, so we train on chunks of
+25 characters at a time in this implementation.
+
+The weight matrices are initialized to small random values so the network starts with small, non-identical activations instead of a symmetric state.
+
+## Main Loop
+
+```python showLineNumbers
+n, p = 0, 0
+mWxh, mWhh, mWhy = np.zeros_like(Wxh), np.zeros_like(Whh), np.zeros_like(Why)
+mbh, mby = np.zeros_like(bh), np.zeros_like(by)  # memory variables for Adagrad
+smooth_loss = -np.log(1.0 / vocab_size) * seq_length  # loss at iteration 0
+while True:
+    # prepare inputs (we're sweeping from left to right in steps seq_length long)
+    if p + seq_length + 1 >= len(data) or n == 0:
+        hprev = np.zeros((hidden_size, 1))  # reset RNN memory
+        p = 0  # go from start of data
+    inputs = [char_to_ix[ch] for ch in data[p : p + seq_length]]
+    targets = [char_to_ix[ch] for ch in data[p + 1 : p + seq_length + 1]]
+
+    # sample from the model now and then
+    if n % 100 == 0:
+        sample_ix = sample(hprev, inputs[0], 200)
+        txt = "".join(ix_to_char[ix] for ix in sample_ix)
+        print("----\n %s \n----" % (txt,))
+```
+
+If the current sequence would exceed the total text length, we reset $h_{t-1}$ and start from the beginning of the dataset again.
+
+This first block samples a batch of 25 characters from the dataset:
+
+- Inputs: the indices for `data[p : p + seq_length]{:python}`
+- Targets: the indices for the next characters in `data[p + 1 : p + seq_length + 1]{:python}`
+
+That shift is the key supervision signal. At every timestep, we want the network to predict the character directly following the current one.
+
+Every 100 iterations we call `sample{:python}` to visualize the current predictive power of the RNN.
+
+We then call the loss function:
+
+```python showLineNumbers
+    # forward seq_length characters through the net and fetch gradient
+    loss, dWxh, dWhh, dWhy, dbh, dby, hprev = lossFun(inputs, targets, hprev)
+    smooth_loss = smooth_loss * 0.999 + loss * 0.001
+    if n % 100 == 0:
+        print("iter %d, loss: %f" % (n, smooth_loss))  # print progress
+```
+
+Because training runs on short 25-character chunks, the raw loss from one chunk to the next is noisy. We therefore track an exponential moving average so the trend is easier to read.
+
+Conceptually, this line says: keep 99.9% of our historical average, and mix in 0.1% of the new raw loss.
+
+Lastly, we update the parameters with Adagrad:
+
+```python showLineNumbers
+    # perform parameter update with Adagrad
+    for param, dparam, mem in zip(
+        [Wxh, Whh, Why, bh, by],
+        [dWxh, dWhh, dWhy, dbh, dby],
+        [mWxh, mWhh, mWhy, mbh, mby],
+    ):
+        mem += dparam * dparam
+        param += -learning_rate * dparam / np.sqrt(mem + 1e-8)  # adagrad update
+
+    p += seq_length  # move data pointer
+    n += 1  # iteration counter
+```
+
+## Sample Function
+
+This function acts as a preview of the RNN's current predictive power.
+
+```python showLineNumbers
+def sample(h, seed_ix, n):
+    """
+    sample a sequence of integers from the model
+    h is memory state, seed_ix is seed letter for first time step
+    """
+    x = np.zeros((vocab_size, 1))
+    x[seed_ix] = 1
+    ixes = []
+    for t in range(n):
+        h = np.tanh(np.dot(Wxh, x) + np.dot(Whh, h) + bh)
+        y = np.dot(Why, h) + by
+        p = np.exp(y) / np.sum(np.exp(y))
+        ix = np.random.choice(range(vocab_size), p=p.ravel())
+        x = np.zeros((vocab_size, 1))
+        x[ix] = 1
+        ixes.append(ix)
+    return ixes
+```
+
+- At any point during training, we can generate what the model currently predicts the sequence should look like.
+- We let it freestyle 200 characters using its current weights.
+
+Operationally, we run a forward pass on the current state of the learned parameters to get a probability distribution over the next character. We sample one index from that distribution, feed that predicted character back in as the next input, and repeat.
+
+In a standard non-recurrent neural network, if you wanted to process 25 characters, you would need 25 separate hidden layers, each with its own different set of weights.
+
+But in an RNN, we use the **exact same three weight matrices** `Wxh{:python}`, `Whh{:python}`, and `Why{:python}` at step 1, step 2, step 15, and step 25. This is **weight sharing**. We are trying to learn the best overall parameters to make inferences at any timestep.
+
+<Img
+  src="/images/rnn-minimal-code-implementation/forward-pass-prediction.webp"
+  alt="Diagram of the RNN hidden-state forward pass showing W_hh h_(t-1) and W_xh x_t being added to produce h_t"
+  title="RNN Hidden State Forward Pass"
+  caption="Computing the hidden-state forward pass with shared weights across timesteps."
+  size={90}
+/>
+
+Example output for predicted sequence on the first pass:
+
+```text
+----
+ w nkuebtakl.mx,vbrpra.wfcdvne
+r.ymdsubiugslp,ibtc.pstv
+bo khd hwp.oknypaefgius.s ksvhxfhhuy,.d bxrt
+rueto y,ic
+gfhfheui,pcxvxyx bnou,hcvrkuhtvreur.lvd,dfbcxn
+ mcblnhtellgey.avfnyyrltgeu,yot.cocposuhrc
+----
+iter 0, loss: 82.395918
+----
+```
+
+As one might expect, it is complete gibberish with a very high loss. Around iteration `33000`, there are definite improvements:
+
+```text
+----
+ taught world program in code today.
+it is taught world wide in many many languages which is why is it so famous.
+beginners print to taugr ag s theit very firse of it as their very farstaline ofveens.
+----
+iter 33000, loss: 1.283691
+----
+```
+
+## Loss Function
+
+In the loss function we compute the forward pass to get the loss, and the backward pass to compute parameter gradients.
+
+```python showLineNumbers
+def lossFun(inputs, targets, hprev):
+    """
+    inputs,targets are both list of integers.
+    hprev is Hx1 array of initial hidden state
+    returns the loss, gradients on model parameters, and last hidden state
+    """
+    xs, hs, ys, ps = {}, {}, {}, {}
+    hs[-1] = np.copy(hprev)
+    loss = 0
+
+    ...
+```
+
+### Forward
+
+```python showLineNumbers
+    # forward pass
+    for t in range(len(inputs)):
+        xs[t] = np.zeros((vocab_size, 1))  # encode in 1-of-k representation
+        xs[t][inputs[t]] = 1
+        hs[t] = np.tanh(
+            np.dot(Wxh, xs[t]) + np.dot(Whh, hs[t - 1]) + bh
+        )  # hidden state
+        ys[t] = np.dot(Why, hs[t]) + by  # unnormalized log probabilities for next chars
+        ps[t] = np.exp(ys[t]) / np.sum(np.exp(ys[t]))  # probabilities for next chars
+        loss += -np.log(ps[t][targets[t], 0])  # softmax (cross-entropy loss)
+```
+
+We receive the 25 input targets and iterate through them from left to right.
+
+- Start at `t = 0{:python}`
+- Create `xs[t]{:python}` as a zero vector
+- One-hot encode the current character index into that vector
+
+Then we compute the recurrence:
+
+$$
+\begin{align*}
+h_{t} &= \text{tanh}(W_{hh}h_{t-1} + W_{xh}x_{t}) \\
+\\
+y_{t} &= W_{hy}h_{t}
+\end{align*}
+$$
+
+Using the dictionaries defined at the start of the function, we cache hidden states for every timestep in the 25-step window. Backpropagation needs these cached values, while inference during sampling does not. In each iteration, gradients are computed only over that 25-character window; the next iteration advances to the next window. This is **Truncated Backpropagation Through Time**.
+
+We now have the logits in `ys[t]{:python}`, which are normalized by softmax and turned into a distribution over the next character.
+
+The total chunk loss is just the sum of the per-timestep prediction errors, and that accumulated loss is what drives one parameter update for the whole window.
+
+### Backward
+
+```python showLineNumbers
+    # backward pass: compute gradients going backwards
+    dWxh, dWhh, dWhy = np.zeros_like(Wxh), np.zeros_like(Whh), np.zeros_like(Why)
+    dbh, dby = np.zeros_like(bh), np.zeros_like(by)
+    dhnext = np.zeros_like(hs[0])
+    for t in reversed(range(len(inputs))):
+        dy = np.copy(ps[t])
+        dy[targets[t]] -= 1  # backprop into y
+        dWhy += np.dot(dy, hs[t].T)
+        dby += dy
+        dh = np.dot(Why.T, dy) + dhnext  # backprop into h
+        dhraw = (1 - hs[t] * hs[t]) * dh  # backprop through tanh nonlinearity
+        dbh += dhraw
+        dWxh += np.dot(dhraw, xs[t].T)
+        dWhh += np.dot(dhraw, hs[t - 1].T)
+        dhnext = np.dot(Whh.T, dhraw)
+    for dparam in [dWxh, dWhh, dWhy, dbh, dby]:
+        np.clip(dparam, -5, 5, out=dparam)  # clip to mitigate exploding gradients
+    return loss, dWxh, dWhh, dWhy, dbh, dby, hs[len(inputs) - 1]
+```
+
+We iterate backward through timesteps, propagating gradients through the unrolled network.
+
+#### Backprop Through Softmax
+
+```python
+dy = np.copy(ps[t])
+dy[targets[t]] -= 1
+```
+
+Recall that in this example we have $K = 27$ total classes, one for each unique character in the dataset.
+
+During the forward pass, at each timestep $t$, we compute logits over all classes $k \in \{1, \dots, K\}$:
+
+$$
+\hat p_{k} = \frac{\exp(y_{k})}{\sum_{j=1}^{K}\exp(y_{j})}
+\quad \text{(softmax)}
+$$
+
+If the target class index is $c = \texttt{targets}[t]$, the per-timestep loss is:
+
+$$
+L_t = -\log(\hat p_{c})
+\quad \text{(cross-entropy)}
+$$
+
+The total sequence loss accumulates across timesteps as $L = \sum_t L_t$, which is exactly what `loss += -np.log(ps[t][targets[t], 0]){:python}` computes.
+
+The generic categorical cross-entropy expression is:
+
+$$
+L = -\sum_{k=1}^{K} p_k \log(\hat p_k)
+$$
+
+Because the target distribution is one-hot, all terms vanish except the correct class term, giving us:
+
+$$
+L = -\log(\hat p_c)
+$$
+
+Now, during backprop for `dy{:python}`, we chain gradients from the loss back to the logits at timestep $t$:
+
+$$
+\begin{align*}
+\dots &\to y_t \to \hat p_t \to L_t \quad \text{(forward pass)} \\
+\\
+\dots &\gets \frac{\partial L_t}{\partial \hat p_t}
+\gets \frac{\partial \hat p_t}{\partial y_t}
+\Rightarrow \frac{\partial L_t}{\partial y_t}
+\quad \text{(backward pass for } dy\text{)}
+\end{align*}
+$$
+
+Keeping $t$ fixed and only writing class indices $k$ and $c$:
+
+**Step 01:** Gradient of the loss with respect to the softmax probability of the correct class $c$:
+
+$$
+\frac{\partial L_t}{\partial \hat p_c}
+= \frac{\partial}{\partial \hat p_c}(-\log \hat p_c)
+= -\frac{1}{\hat p_c}
+$$
+
+Only the correct-class term contributes directly to the loss because the targets are one-hot.
+
+**Step 02:** Gradient of the softmax output $\hat p_c$ with respect to logit $y_k$:
+
+The softmax Jacobian has two cases:
+
+$$
+\frac{\partial \hat p_c}{\partial y_k} =
+\begin{cases}
+\hat p_c(1 - \hat p_c), & k = c \\
+\\
+-\hat p_c \hat p_k, & k \neq c
+\end{cases}
+$$
+
+If $k$ is the target class, the gradient encourages increasing $\hat p_c$. If $k$ is not the target class, increasing $y_k$ pulls probability mass away from the target class, so the sign flips accordingly.
+
+**Step 03:** Combine the pieces with the chain rule:
+
+$$
+\frac{\partial L_t}{\partial y_k}
+= \frac{\partial L_t}{\partial \hat p_c}
+\cdot
+\frac{\partial \hat p_c}{\partial y_k}
+$$
+
+Substituting the two cases gives:
+
+$$
+\frac{\partial L_t}{\partial y_k} =
+\begin{cases}
+-\frac{1}{\hat p_c} \cdot \hat p_c(1 - \hat p_c) = \hat p_c - 1, & k = c \\
+\\
+-\frac{1}{\hat p_c} \cdot (-\hat p_c \hat p_k) = \hat p_k, & k \neq c
+\end{cases}
+$$
+
+So the target class gets $\hat p_c - 1$, and every non-target class gets $\hat p_k$. That is exactly the compact update used in code.
+
+Visually:
+
+$$
+\frac{\partial L_t}{\partial y} =
+\begin{bmatrix}
+\hat p_1 \\
+\vdots \\
+\hat p_c - 1 \\
+\vdots \\
+\hat p_K
+\end{bmatrix}
+$$
+
+From there, the backward pass continues through `Why{:python}`, the `tanh{:python}` nonlinearity, and finally the hidden-to-hidden and input-to-hidden pathways. The implementation then clips gradients to the range `[-5, 5]{:python}` to reduce the risk of exploding gradients.
+
+## Closing Notes
+
+This entire implementation is tiny, but it captures the essential mechanics of an RNN:
+
+- one-hot encoded inputs
+- a recurrent hidden state
+- shared weights across timesteps
+- softmax predictions at each step
+- backpropagation through the unrolled sequence
+
+It is a very compact example of how sequence models work before introducing heavier machinery like LSTMs, GRUs, or attention-based models.
+
+I kinda got lazy ;P at the end and didn't wanna keep writing latex, so I decided to call it a night, but hopefully this was useful!
+
+<StarDivider />
+
+[^1]: Implementation: https://gist.github.com/karpathy/d4dee566867f8291f086

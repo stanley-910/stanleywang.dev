@@ -39,6 +39,8 @@ pre {
   /* word-wrap: break-word;       /* break long words */
   max-width: 100%;
   border-radius: 0.5rem;
+  box-sizing: border-box;
+  border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 /* Theme switching using Shiki's CSS variables */
@@ -134,11 +136,12 @@ pre::-webkit-scrollbar {
 
 .dark pre {
   background-color: #0000;
-  /*border: 1px solid #3c3836;*/
+  border-color: rgba(255, 255, 255, 0.05);
 }
 
 .light pre {
   background-color: #f0f0eb;
+  border-color: rgba(0, 0, 0, 0.08);
 }
 
 /* Make the line highlighting more specific and match the styling hierarchy */

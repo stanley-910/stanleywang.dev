@@ -119,6 +119,15 @@ export const EXPERIENCE_POSTS: ExperiencePost[] = [
 
 export const BLOG_POSTS: BlogPost[] = [
   {
+    title: 'RNN Minimal Code Implementation',
+    description: 'COMP 551 Notes',
+    link: '/writing/rnn-minimal-code-implementation',
+    uid: 'post-3',
+    date: '2026-03-28',
+    readingTime: '14 min',
+    tags: ['Machine Learning', 'RNNs'],
+  },
+  {
     title: 'Improvisation on the Artist',
     description: 'On Jack Whitten and the adhesion of visual art & jazz.',
     link: '/writing/improvisation-on-the-artist',
