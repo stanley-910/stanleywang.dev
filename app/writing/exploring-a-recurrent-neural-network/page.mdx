@@ -10,7 +10,7 @@ tags: ['Machine Learning', 'RNNs']
 
 These notes walk through Andrej Karpathy's minimal character-level **Recurrent Neural Network (RNN)** implementation. [^1]
 
-RNNs are special 'lil guys because instead of being acyclic, they reuse the same weights across timesteps while carrying a hidden state, so each prediction can use context from previous steps. That makes them especially useful for _sequence tasks_ such as text generation, speech modeling, and frame-by-frame video classification where earlier inputs should influence later predictions.
+RNNs are special <Note aside="they reuse the same weights across every timestep while carrying a hidden state, so context flows forward through the sequence">'lil guys</Note> because instead of being acyclic, they reuse the same weights across timesteps while carrying a hidden state, so each prediction can use context from previous steps. That makes them especially useful for _sequence tasks_ such as text generation, speech modeling, and frame-by-frame video classification where earlier inputs should influence later predictions.
 
 A **sequence** is just an ordered list over time: characters, words, audio frames, video frames. A **timestep** is one position in that list. At timestep $t$, the model reads $x_t$, combines it with $h_{t-1}$, and produces $h_t$ plus a prediction.
 

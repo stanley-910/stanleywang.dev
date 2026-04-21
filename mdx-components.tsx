@@ -3,6 +3,7 @@ import Link from 'next/link'
 import type { ReactNode } from 'react'
 
 import { ClickableHeader } from '@/components/ui/clickable-header'
+import { Note } from '@/components/ui/note'
 import { Stars } from '@/components/ui/stars'
 import { TableOfContents } from '@/components/ui/toc'
 import { cn } from '@/lib/utils'
@@ -73,6 +74,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     Spotify,
     // Add an opt-in quote component for decorative quote-mark styling.
     Quote,
+    Note,
     strike: ({ children }) => <span className="line-through">{children}</span>,
     // Add custom link component to handle external links
     a: ({ href, children, ...props }) => {

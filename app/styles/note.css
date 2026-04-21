@@ -1,0 +1,144 @@
+/* <Note/> — inline prose primitive. Two modes: tip (hover bubble), footnote (click-expand). */
+:root {
+  --amber: #ba955e;
+  --amber-soft: rgba(186, 149, 94, 0.14);
+  --amber-border: rgba(186, 149, 94, 0.5);
+}
+
+/* ── Trigger (shared) ─────────────────────────────────────────── */
+.note-tip,
+.note-fn {
+  color: inherit;
+  text-decoration: underline dotted var(--amber);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.note-tip {
+  position: relative;
+  cursor: help;
+}
+
+.note-fn {
+  cursor: pointer;
+  text-decoration-color: var(--amber-border);
+}
+
+.note-tip:focus-visible,
+.note-fn:focus-visible {
+  outline: 1px dotted var(--amber);
+  outline-offset: 2px;
+}
+
+/* ── tip mode: hover/focus bubble ─────────────────────────────── */
+.note-tip-bubble {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 10px);
+  transform: translate(-50%, 4px);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.55;
+  background: #fff;
+  color: #555;
+  border: 1px solid var(--border-color-dark, rgba(55, 65, 81, 0.3));
+  border-radius: 8px;
+  padding: 10px 12px;
+  width: min(280px, 72vw);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+  z-index: 3;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.note-tip-bubble::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -5px;
+  transform: translateX(-50%) rotate(45deg);
+  width: 8px;
+  height: 8px;
+  background: inherit;
+  border-left: 1px solid var(--border-color-dark, rgba(55, 65, 81, 0.3));
+  border-top: 1px solid var(--border-color-dark, rgba(55, 65, 81, 0.3));
+}
+
+/* Transparent bridge across the 10px gap so the cursor can travel
+   from the trigger to the bubble without losing hover. */
+.note-tip-bubble::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -12px;
+  height: 12px;
+}
+
+.note-tip:hover .note-tip-bubble,
+.note-tip:focus .note-tip-bubble,
+.note-tip:focus-within .note-tip-bubble {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+}
+
+.dark .note-tip-bubble {
+  background: #1a1a1a;
+  color: #bbb;
+  border-color: rgba(229, 231, 235, 0.18);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+}
+
+.dark .note-tip-bubble::before {
+  border-left-color: rgba(229, 231, 235, 0.18);
+  border-top-color: rgba(229, 231, 235, 0.18);
+}
+
+/* ── footnote mode: superscript dagger + expanding aside ─────── */
+.note-fn sup {
+  color: var(--amber);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  margin-left: 1px;
+}
+
+.note-fn-aside {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: inherit;
+  background: var(--amber-soft);
+  border-left: 2px solid var(--amber);
+  padding: 0 10px;
+  border-radius: 0 4px 4px 0;
+  margin: 0 0 0 1.25em;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition:
+    max-height 250ms ease,
+    opacity 200ms ease,
+    margin 250ms ease,
+    padding 250ms ease;
+}
+
+.note-fn-aside.open {
+  max-height: 200px;
+  opacity: 0.95;
+  padding: 8px 12px;
+  margin: 10px 0 14px 1.25em;
+}
+
+/* ── Reduced motion ──────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .note-tip-bubble,
+  .note-fn-aside {
+    transition: none;
+  }
+}
