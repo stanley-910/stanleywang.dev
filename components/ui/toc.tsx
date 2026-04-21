@@ -1,10 +1,11 @@
 'use client'
 import GithubSlugger from 'github-slugger'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { BLOG_POSTS } from '@/app/data'
 import '@/app/styles/toc.css'
+import { layoutStars } from '@/lib/toc-starmap'
 
 interface TocItem {
   level: number
@@ -12,7 +13,9 @@ interface TocItem {
   slug: string
 }
 
-export type TocVariant = 'classic' | 'staffline' | 'vim'
+export type TocVariant = 'classic' | 'staffline' | 'vim' | 'constellation'
+
+const CONSTELLATION_MAX_NODES = 12
 
 const variantByTag: Record<string, TocVariant> = {
   jazz: 'staffline',
@@ -47,10 +50,19 @@ export function TableOfContents({
   const [minLevel, setMinLevel] = useState(1)
   const [activeId, setActiveId] = useState<string>('')
   const [scrollProgress, setScrollProgress] = useState(0)
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
 
   const post = BLOG_POSTS.find((p) => p.link === pathname)
-  const resolvedVariant: TocVariant =
+  const requestedVariant: TocVariant =
     variant ?? resolveVariantFromTags(post?.tags ?? [])
+
+  const shouldFallbackFromConstellation =
+    requestedVariant === 'constellation' &&
+    (headings.length > CONSTELLATION_MAX_NODES || prefersReducedMotion)
+
+  const resolvedVariant: TocVariant = shouldFallbackFromConstellation
+    ? 'staffline'
+    : requestedVariant
 
   const totalMinutes = post?.readingTime
     ? parseInt(post.readingTime, 10) || 0
@@ -118,6 +130,16 @@ export function TableOfContents({
 
     return () => observer.disconnect()
   }, [headings])
+
+  // Detect prefers-reduced-motion so constellation can fall back
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const update = () => setPrefersReducedMotion(mq.matches)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
 
   // Track scroll progress for the vim status bar
   useEffect(() => {
@@ -195,7 +217,22 @@ export function TableOfContents({
       ? ':TOC'
       : resolvedVariant === 'staffline'
         ? '§ contents'
-        : title
+        : resolvedVariant === 'constellation'
+          ? 'index'
+          : title
+
+  if (resolvedVariant === 'constellation') {
+    return (
+      <ConstellationToc
+        headings={headings}
+        activeId={activeId}
+        activeIndex={activeIndex}
+        title={variantTitle}
+        seed={pathname ?? 'default'}
+        onNav={scrollToHeading}
+      />
+    )
+  }
 
   return (
     <nav
@@ -224,6 +261,89 @@ export function TableOfContents({
           </span>
         </div>
       )}
+    </nav>
+  )
+}
+
+function ConstellationToc({
+  headings,
+  activeId,
+  activeIndex,
+  title,
+  seed,
+  onNav,
+}: {
+  headings: TocItem[]
+  activeId: string
+  activeIndex: number
+  title?: string
+  seed: string
+  onNav: (slug: string) => void
+}) {
+  const points = useMemo(
+    () => layoutStars(headings.length, seed),
+    [headings.length, seed],
+  )
+
+  return (
+    <nav
+      className="table-of-contents toc-variant-constellation toc-always-on mounted ml-6"
+      data-next-scroll-boundary
+    >
+      {title && (
+        <div className="flex items-center pt-2">
+          <span className="toc-title mb-2 text-sm font-bold">{title}</span>
+        </div>
+      )}
+      <div className="map">
+        <svg
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          {points.slice(0, -1).map((p, i) => {
+            const next = points[i + 1]
+            const isActiveEdge = i === activeIndex
+            return (
+              <line
+                key={i}
+                x1={p.x}
+                y1={p.y}
+                x2={next.x}
+                y2={next.y}
+                stroke="var(--amber)"
+                strokeOpacity={isActiveEdge ? 0.5 : 0.2}
+                strokeWidth={0.4}
+                vectorEffect="non-scaling-stroke"
+              />
+            )
+          })}
+        </svg>
+        <ul>
+          {headings.map((heading, i) => {
+            const p = points[i]
+            const isActive = activeId === heading.slug
+            return (
+              <li
+                key={heading.slug}
+                className={`node${isActive ? ' active' : ''}`}
+                style={{ left: `${p.x}%`, top: `${p.y}%` }}
+              >
+                <a
+                  href={`#${heading.slug}`}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    onNav(heading.slug)
+                  }}
+                >
+                  <span className="dot" aria-hidden="true" />
+                  <span className="lbl">{heading.text}</span>
+                </a>
+              </li>
+            )
+          })}
+        </ul>
+      </div>
     </nav>
   )
 }
