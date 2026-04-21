@@ -9,7 +9,15 @@ interface TocItem {
   slug: string
 }
 
-export function TableOfContents({ title }: { title?: string }) {
+export type TocVariant = 'classic'
+
+export function TableOfContents({
+  title,
+  variant = 'classic',
+}: {
+  title?: string
+  variant?: TocVariant
+}) {
   const [headings, setHeadings] = useState<TocItem[]>([])
   const [minLevel, setMinLevel] = useState(1)
   const [activeId, setActiveId] = useState<string>('')
@@ -113,7 +121,7 @@ export function TableOfContents({ title }: { title?: string }) {
 
   return (
     <nav
-      className="table-of-contents toc-always-on mounted ml-6"
+      className={`table-of-contents toc-variant-${variant} toc-always-on mounted ml-6`}
       data-next-scroll-boundary
     >
       {title && (
