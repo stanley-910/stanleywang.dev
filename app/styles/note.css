@@ -67,11 +67,23 @@
   border-top: 1px solid var(--border-color-dark, rgba(55, 65, 81, 0.3));
 }
 
+/* Transparent bridge across the 10px gap so the cursor can travel
+   from the trigger to the bubble without losing hover. */
+.note-tip-bubble::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -12px;
+  height: 12px;
+}
+
 .note-tip:hover .note-tip-bubble,
 .note-tip:focus .note-tip-bubble,
 .note-tip:focus-within .note-tip-bubble {
   opacity: 1;
   transform: translate(-50%, 0);
+  pointer-events: auto;
 }
 
 .dark .note-tip-bubble {
