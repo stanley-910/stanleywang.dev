@@ -292,3 +292,255 @@
 .toc a[href^='#footnotes'] {
   display: none;
 }
+
+/* ──────────────────────────────────────────────────────────────
+   Shared sidebar positioning for new variants (staffline + vim)
+   ────────────────────────────────────────────────────────────── */
+.toc-variant-staffline,
+.toc-variant-vim {
+  position: fixed;
+  left: 20px;
+  top: 120px;
+  max-height: calc(100vh - 160px);
+  z-index: 200;
+  display: none;
+  font-family: var(--font-mono);
+  color: var(--fg-deep);
+}
+
+.toc-variant-staffline.mounted,
+.toc-variant-vim.mounted {
+  animation: tocFadeIn 0.7s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+}
+
+@media (min-width: 1024px) {
+  .toc-variant-staffline,
+  .toc-variant-vim {
+    display: flex;
+    flex-direction: column;
+    width: 17ch;
+  }
+}
+
+@media (min-width: 1280px) {
+  .toc-variant-staffline,
+  .toc-variant-vim {
+    width: 25ch;
+  }
+}
+
+.toc-variant-staffline .toc-title,
+.toc-variant-vim .toc-title {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--fg-light);
+  margin-bottom: 14px;
+  font-weight: 500;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Staffline variant — jazz score
+   ────────────────────────────────────────────────────────────── */
+.toc-variant-staffline {
+  font-size: 12.5px;
+}
+
+.toc-variant-staffline ul {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 14px;
+  position: relative;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.toc-variant-staffline ul::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(
+    to bottom,
+    transparent 0,
+    var(--border-color-dark) 8px,
+    var(--border-color-dark) calc(100% - 8px),
+    transparent 100%
+  );
+}
+
+.toc-variant-staffline ul::-webkit-scrollbar {
+  display: none;
+}
+
+.toc-variant-staffline ul > li {
+  position: relative;
+  padding: 4px 0 4px 14px;
+  line-height: 1.4;
+}
+
+.toc-variant-staffline ul > li::before {
+  content: '─';
+  position: absolute;
+  left: -4px;
+  top: 4px;
+  color: var(--border-color-dark);
+  font-family: var(--font-mono);
+  line-height: 1;
+}
+
+.toc-variant-staffline ul > li > a {
+  color: var(--fg-deep);
+  opacity: 0.65;
+  font-size: 12.5px;
+  text-decoration: none;
+  border: none;
+  transition:
+    opacity 200ms ease,
+    color 200ms ease;
+}
+
+.toc-variant-staffline ul > li > a:hover {
+  opacity: 1;
+  color: var(--fg-deeper);
+  text-decoration: none;
+  border: none;
+}
+
+.toc-variant-staffline ul > li.toc-level-1 > a {
+  padding-left: 0.75rem;
+  opacity: 0.55;
+}
+
+.toc-variant-staffline ul > li.toc-level-2 > a {
+  padding-left: 1.5rem;
+  opacity: 0.45;
+  font-size: 11.5px;
+}
+
+.toc-variant-staffline ul > li.toc-level-3 > a {
+  padding-left: 2.25rem;
+  opacity: 0.4;
+  font-size: 11.5px;
+}
+
+.toc-variant-staffline ul > li > a.active {
+  color: var(--amber);
+  opacity: 1;
+}
+
+.toc-variant-staffline ul > li:has(a.active)::before {
+  content: '●';
+  color: var(--amber);
+  font-size: 10px;
+  left: -5px;
+  top: 7px;
+  line-height: 1;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Vim buffer variant — line numbers & status
+   ────────────────────────────────────────────────────────────── */
+.toc-variant-vim ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  counter-reset: ln;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.toc-variant-vim ol::-webkit-scrollbar {
+  display: none;
+}
+
+.toc-variant-vim ol > li {
+  counter-increment: ln;
+  display: flex;
+  gap: 10px;
+  padding: 1px 0;
+  line-height: 1.3;
+}
+
+.toc-variant-vim ol > li::before {
+  content: counter(ln, decimal-leading-zero);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-light);
+  opacity: 0.5;
+  min-width: 24px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.toc-variant-vim ol > li:has(a.active)::before {
+  opacity: 1;
+  color: var(--amber);
+}
+
+.toc-variant-vim ol > li > a {
+  color: var(--fg-deep);
+  opacity: 0.75;
+  font-size: 12.5px;
+  text-decoration: none;
+  border: none;
+  transition:
+    opacity 200ms ease,
+    color 200ms ease;
+}
+
+.toc-variant-vim ol > li > a:hover {
+  opacity: 1;
+  color: var(--fg-deeper);
+  text-decoration: none;
+  border: none;
+}
+
+.toc-variant-vim ol > li.toc-level-1 > a {
+  padding-left: 1rem;
+  opacity: 0.6;
+}
+
+.toc-variant-vim ol > li.toc-level-2 > a {
+  padding-left: 2rem;
+  opacity: 0.5;
+}
+
+.toc-variant-vim ol > li.toc-level-3 > a {
+  padding-left: 3rem;
+  opacity: 0.45;
+}
+
+.toc-variant-vim ol > li:has(a.active) {
+  background: var(--amber-soft);
+  margin: 0 -4px;
+  padding: 2px 4px;
+}
+
+.toc-variant-vim ol > li > a.active {
+  color: var(--fg-deeper);
+  opacity: 1;
+}
+
+.toc-variant-vim .status {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-color-dark);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--fg-light);
+  display: flex;
+  justify-content: space-between;
+}
+
+.toc-variant-vim .status b {
+  color: var(--amber);
+  font-weight: 400;
+}
