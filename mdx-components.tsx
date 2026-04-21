@@ -5,7 +5,7 @@ import type { ReactNode } from 'react'
 import { ClickableHeader } from '@/components/ui/clickable-header'
 import { Note } from '@/components/ui/note'
 import { Stars } from '@/components/ui/stars'
-import { TableOfContents } from '@/components/ui/toc'
+import { TableOfContents, type TocVariant } from '@/components/ui/toc'
 import { cn } from '@/lib/utils'
 
 import type { MDXComponents } from 'mdx/types'
@@ -191,8 +191,8 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
         </figure>
       )
     },
-    TOC: ({ title }: { title?: string }) => {
-      return <TableOfContents title={title} />
+    TOC: ({ title, variant }: { title?: string; variant?: TocVariant }) => {
+      return <TableOfContents title={title} variant={variant} />
     },
   }
 }
