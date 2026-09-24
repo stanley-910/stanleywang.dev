@@ -534,9 +534,7 @@ It is built in `parse-view.ts`:
   used to be 11 stage units, which drifted as the stage stretched. Held
   edges share the helper; group brackets and name links are in pixels
   too. Checked on the precedence preset: every endpoint lands on its box.
-- Not done from that review: routing the current name link around labels
-  (it still arcs over, and can cross, other labels), explicit label
-  metrics (`.ac button` zeroes `.ac-piece`'s padding and border), and
+- Not done from that review: explicit label metrics (`.ac button` zeroes `.ac-piece`'s padding and border), and
   dropping the late phases' separate 11/12 squeeze.
 - The parse tray shows a multiplying `*` as `×` once parsing starts
   (Stanley); a prefix `*` stays as typed.
@@ -547,11 +545,10 @@ It is built in `parse-view.ts`:
   right: "The target `i` refers to `int i;` on line 2." Loop gains 4
   steps and local variable 1; later frame links above are shifted. A
   target with no declaration becomes an unresolved step and is counted.
-- Name links are ink, not the error colour (Astra's check answer). The
-  step's own binding is drawn in full; settled ones shrink to a small
-  hook beside the use, on the side of its declaration, and hovering the
-  use or the declaration draws the arc again. This replaced the pile of
-  arcs on "Every name has a declaration".
+- Name links are ink, not the error colour (Astra's check answer). Only
+  the step's own binding is drawn, or a hovered use's or declaration's;
+  see "Name link routing" below. This replaced the pile of arcs on
+  "Every name has a declaration".
 - Scope strip (`scope-strip.tsx`, scopes from `scopesOf`): during the name
   pass, the bottom of the stage lists the scopes open at the current use,
   outermost first (`global`, then the function, then nested blocks), each
@@ -604,6 +601,34 @@ It is built in `parse-view.ts`:
     `no-require-imports` (a plain Node script).
   - Not changed: `CHAR_PX` (7.2) is ~9% wide for the 11px phone and
     late-phase font, which only widens gaps.
+
+## Name link routing (2026-09-24, uncommitted)
+
+- `link-route.ts` (Fable 5.1 extra high): an orthogonal A* over a sparse
+  grid of lines beside the label boxes and through the channels between
+  rows. Boxes are walls; crossing a tree edge costs a little, running
+  along one or crossing it shallowly costs a lot; corners are rounded.
+  A link leaves the use from its side and lands on the declaration's
+  side facing it (or its bottom, or its top off centre). `d` is always
+  `M` plus 14 cubics so motion can tween routes. With no clean route it
+  returns the old arc and `clean: false`; the page then draws nothing.
+- Wiring (`animated.tsx`, `linkRoutes`): obstacles are the frame's pieces
+  (`pieceBox`: label width at `CHAR_PX` times scale plus 3px each side, so
+  line ends sit off the letters), edges are the attached parent→child
+  ports, bounds are the tree plus 24–28px, above the scope strip while it
+  shows. Routes are cached per frame index and stage size.
+- Drawing: a 3px background halo under a 1px ink line (so it passes over
+  tree edges like a wire), drawn in with `pathLength`, and a 2px dot on
+  the declaration once the line lands. Moving on reels it back in.
+- Settled links are not drawn. Fable's design kept a 16px hook beside
+  each settled use; on the loop preset they read as stray dashes sticking
+  out of the labels (Stanley), so they were dropped. Hover still draws
+  any binding in full.
+- Checked in a visible tab (background tabs get no animation frames, so
+  exits never finish there): loop check steps 84–93 and function call
+  45–46 draw one link each, no leftovers, no console warnings, no route
+  through a label. The second `n` in `twice` runs close beside the `+`
+  edge; it doesn't touch a label.
 
 ## Open items (not started)
 
