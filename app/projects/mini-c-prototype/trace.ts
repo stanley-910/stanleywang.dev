@@ -114,6 +114,13 @@ export type Why =
   | { kind: 'parse.group'; span: Span; state: 'open' | 'closed' }
   | { kind: 'parse.close'; node: number }
   | { kind: 'parse.done'; root: number }
+  | {
+      kind: 'check.declare'
+      decl: number
+      where: 'global' | 'param' | 'local'
+      /** "the global scope", "main's scope", "the block's scope". */
+      scope: string
+    }
   | { kind: 'check.resolve'; use: number; decl: number; where: string }
   | { kind: 'check.unresolved'; use: number }
   | { kind: 'check.builtin'; use: number }

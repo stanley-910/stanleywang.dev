@@ -255,6 +255,15 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
     }
     case 'parse.done':
       return `AST is complete with ${trace.nodes.length} nodes`
+    case 'check.declare': {
+      const decl = node(w.decl)
+      const name = trace.tokens[decl.token].text
+      if (decl.kind === 'function')
+        return `The function ${code(name)} goes in ${w.scope}, so calls anywhere below it can find it.`
+      if (w.where === 'param')
+        return `The parameter ${code(decl.label)} goes in ${w.scope}.`
+      return `${code(text(trace, decl))} puts ${code(name)} in ${w.scope}.`
+    }
     case 'check.resolve': {
       const use = node(w.use),
         decl = node(w.decl)

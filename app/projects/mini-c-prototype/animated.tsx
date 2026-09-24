@@ -31,7 +31,7 @@ import { groupsOf, parentsOf, parseView } from './parse-view'
 import { compileReal, compilerLoaded, REAL_MAX_CHARS } from './real'
 import { findReference, REFERENCES } from './reference'
 import { ScopeStrip } from './scope-strip'
-import { scopesOf, withTargets } from './scopes'
+import { scopesOf, withNameSteps } from './scopes'
 import {
   buildTrace,
   colouredUpTo,
@@ -436,9 +436,9 @@ export default function AnimatedCompiler() {
   const baseTrace = useMemo(
     () =>
       reference
-        ? withTargets(replayedParse(reference.trace))
+        ? withNameSteps(replayedParse(reference.trace))
         : real?.source === source
-          ? withTargets(replayedParse(real.trace))
+          ? withNameSteps(replayedParse(real.trace))
           : buildTrace(source),
     [source, reference, real],
   )
@@ -494,6 +494,15 @@ export default function AnimatedCompiler() {
     () => trace.frames.findIndex((f) => f.why.kind === 'check.namesDone'),
     [trace],
   )
+  // The step each declaration goes into its scope; from there to the end
+  // of the name pass it keeps a tint.
+  const declaredStep = useMemo(() => {
+    const at = new Map<number, number>()
+    trace.frames.forEach((f, i) => {
+      if (f.why.kind === 'check.declare') at.set(f.why.decl, i)
+    })
+    return at
+  }, [trace])
   // Name-link routes, worked out once per step and stage size (below).
   const routeCache = useRef<{
     trace: Trace
@@ -894,6 +903,13 @@ export default function AnimatedCompiler() {
   const spread = Math.min(treeRoom / treeWidth, 3)
   const fit = Math.min(1, spread)
   const treeLeft = EDGE_PX + (treeRoom - treeWidth * spread) / 2
+  const deck = decks.get(index)
+  const intro = slide > 0 ? deck?.slides[slide - 1] : undefined
+  // On a slide the tabs show the phase it opens.
+  const shownPhase = intro && deck ? deck.phase : frame.phase
+  // The check phase lifts the tree clear of the scope strip, from its first
+  // slide on, so it doesn't jump when the name pass starts.
+  const lifted = frame.phase === 'Check' || shownPhase === 'Check'
   // Parse: unattached nodes wait in their holder's open slot (parse-view.ts).
   const working = parseView(trace, index, parents, groups, tree.at)
   const point = (id: number) => {
@@ -908,7 +924,7 @@ export default function AnimatedCompiler() {
     const y = (p.y / Math.max(1, tree.depth)) * band
     return late
       ? { x, y: 60 + y * 1.3 }
-      : frame.phase === 'Check'
+      : lifted
         ? { x, y: top + y - 110 }
         : { x, y: top + y }
   }
@@ -934,9 +950,18 @@ export default function AnimatedCompiler() {
     const w = trace.nodes[id].label.length * CHAR_PX * fit + 6
     return { x: c.x - w / 2, y: c.y - pieceHalf, w, h: pieceHalf * 2 }
   }
+  // A name with no declaration still searches: its line heads for the top
+  // of the tree, where the outermost scope is, and comes back empty.
+  const missing =
+    frame.why.kind === 'check.unresolved' &&
+    trace.root !== undefined &&
+    trace.root !== frame.why.use
+      ? { use: frame.why.use, root: trace.root }
+      : undefined
   const linkRoutes = (() => {
     const links = frame.links ?? []
-    if (!links.length || frame.phase === 'Registers') return undefined
+    if ((!links.length && !missing) || frame.phase === 'Registers')
+      return undefined
     const key = `${index}|${sceneWidth}|${sceneHeight}|${narrow}`
     const cached = routeCache.current
     if (cached?.trace === trace && cached.key === key) return cached.routes
@@ -978,6 +1003,11 @@ export default function AnimatedCompiler() {
         router.route(pieceBox(use), pieceBox(decl)),
       ]),
     )
+    if (missing)
+      routes.set(
+        `miss-${missing.use}`,
+        router.route(pieceBox(missing.use), pieceBox(missing.root)),
+      )
     routeCache.current = { trace, key, routes }
     return routes
   })()
@@ -1041,10 +1071,6 @@ export default function AnimatedCompiler() {
         : undefined
   // Hovers replace the step text in the panel rather than float on the stage,
   // so nothing on screen says the same thing twice.
-  const deck = decks.get(index)
-  const intro = slide > 0 ? deck?.slides[slide - 1] : undefined
-  // On a slide the tabs show the phase it opens.
-  const shownPhase = intro && deck ? deck.phase : frame.phase
   const statusText = error
     ? error.message
     : hoverText
@@ -1399,7 +1425,12 @@ export default function AnimatedCompiler() {
         </section>
 
         <section className="ac-stage" aria-label="Animated compiler stage">
-          <div className="ac-scene" ref={sceneRef}>
+          <div
+            className="ac-scene"
+            ref={sceneRef}
+            // When a found declaration turns green: as the line lands.
+            style={{ '--land': `${transition.duration}s` } as CSSProperties}
+          >
             <svg
               className="ac-edges"
               viewBox={`0 0 ${sceneWidth} ${sceneHeight}`}
@@ -1504,6 +1535,16 @@ export default function AnimatedCompiler() {
                       frame.focus === use || hover === use || hover === decl
                     if (!r?.clean || !full) return []
                     const d = r.d
+                    // The step's lookup goes out grey and turns green as
+                    // it lands; on the next step it fades back as it reels
+                    // in.
+                    const ok =
+                      frame.why.kind === 'check.resolve' &&
+                      frame.why.use === use
+                    const landed = {
+                      ...transition,
+                      delay: transition.duration,
+                    }
                     return [
                       <motion.path
                         key={`link-halo-${use}-${decl}`}
@@ -1526,27 +1567,95 @@ export default function AnimatedCompiler() {
                         exit={{ pathLength: 0, opacity: 0 }}
                         transition={transition}
                       />,
+                      ...(ok
+                        ? [
+                            <motion.path
+                              key={`link-ok-${use}-${decl}`}
+                              className="ac-link ok"
+                              d={d}
+                              fill="none"
+                              strokeWidth={1}
+                              initial={{ d, pathLength: 1, opacity: 0 }}
+                              animate={{
+                                d,
+                                pathLength: 1,
+                                opacity: 1,
+                                transition: landed,
+                              }}
+                              exit={{
+                                pathLength: 0,
+                                opacity: 0,
+                                transition: {
+                                  pathLength: transition,
+                                  opacity: {
+                                    ...transition,
+                                    duration: transition.duration / 2,
+                                  },
+                                },
+                              }}
+                              transition={transition}
+                            />,
+                          ]
+                        : []),
                       <motion.circle
                         key={`link-end-${use}-${decl}`}
-                        className="ac-link-end"
+                        className={`ac-link-end ${ok ? 'ok' : ''}`}
                         cx={r.end.x}
                         cy={r.end.y}
                         r={2}
                         initial={{ opacity: 0 }}
                         // The dot waits for the line to land; it leaves
                         // with it.
-                        animate={{
-                          opacity: 1,
-                          transition: {
-                            ...transition,
-                            delay: transition.duration,
-                          },
-                        }}
+                        animate={{ opacity: 1, transition: landed }}
                         exit={{ opacity: 0 }}
                         transition={transition}
                       />,
                     ]
                   })}
+                {!regView &&
+                  missing &&
+                  (() => {
+                    // No declaration: the line goes out towards the top of
+                    // the tree and reels back in with nothing.
+                    const r = linkRoutes?.get(`miss-${missing.use}`)
+                    if (!r?.clean) return null
+                    const search = {
+                      duration: transition.duration * 3,
+                      times: [0, 0.45, 0.6, 1],
+                      ease: transition.ease,
+                    }
+                    return [
+                      <motion.path
+                        key={`miss-halo-${missing.use}`}
+                        className="ac-link-halo"
+                        d={r.d}
+                        fill="none"
+                        initial={{ pathLength: 0, opacity: 1 }}
+                        animate={{
+                          pathLength: [0, 1, 1, 0],
+                          opacity: 1,
+                          transition: search,
+                        }}
+                        exit={{ opacity: 0 }}
+                        transition={transition}
+                      />,
+                      <motion.path
+                        key={`miss-${missing.use}`}
+                        className="ac-link"
+                        d={r.d}
+                        fill="none"
+                        strokeWidth={1}
+                        initial={{ pathLength: 0, opacity: 1 }}
+                        animate={{
+                          pathLength: [0, 1, 1, 0],
+                          opacity: 1,
+                          transition: search,
+                        }}
+                        exit={{ opacity: 0 }}
+                        transition={transition}
+                      />,
+                    ]
+                  })()}
               </AnimatePresence>
             </svg>
             <AnimatePresence>
@@ -1575,11 +1684,20 @@ export default function AnimatedCompiler() {
                     node.children.some(
                       (child) => !frame.attached.includes(child),
                     )
+                  const declaredAt =
+                    node === undefined ? undefined : declaredStep.get(node.id)
+                  const declared =
+                    declaredAt !== undefined &&
+                    declaredAt <= index &&
+                    index <= namesDoneAt
+                  const found =
+                    frame.why.kind === 'check.resolve' &&
+                    frame.why.decl === node?.id
                   return (
                     <motion.button
                       key={key}
                       style={{ x: '-50%', y: '-50%' }}
-                      className={`ac-piece ${node ? 'node' : 'token'} kind-${token.kind} ${focused ? 'focused' : ''} ${pending ? 'pending' : ''} ${late ? 'small' : ''} ${node && node.id === working.preview ? 'preview' : ''} ${node && working.outside.includes(node.id) ? 'outside' : ''}`}
+                      className={`ac-piece ${node ? 'node' : 'token'} kind-${token.kind} ${focused ? 'focused' : ''} ${pending ? 'pending' : ''} ${late ? 'small' : ''} ${node && node.id === working.preview ? 'preview' : ''} ${node && working.outside.includes(node.id) ? 'outside' : ''} ${declared ? 'declared' : ''} ${found ? 'found' : ''}`}
                       initial={{
                         left: '-5%',
                         top: (Math.min(tokenPoint.y, 98) / 480) * 100 + '%',

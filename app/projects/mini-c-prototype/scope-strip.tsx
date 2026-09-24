@@ -29,7 +29,17 @@ export function ScopeStrip({
   let shown: number[]
   let searched: number[] = []
   let found: number | undefined
-  if (use !== undefined) {
+  // A declaration step shows it going into its scope.
+  const at = w.kind === 'check.declare' ? w.decl : use
+  if (w.kind === 'check.declare') {
+    shown = []
+    for (let s: number | null = scopes.scopeOf(w.decl); s !== null; ) {
+      shown.unshift(s)
+      s = scopes.scopes[s].parent
+    }
+    searched = [scopes.scopeOf(w.decl)]
+    found = w.decl
+  } else if (use !== undefined) {
     shown = []
     for (let s: number | null = scopes.scopeOf(use); s !== null; ) {
       shown.unshift(s)
@@ -39,7 +49,12 @@ export function ScopeStrip({
     searched = result.path
     found = w.kind === 'check.resolve' ? w.decl : result.decl
   } else shown = scopes.scopes.map((s) => s.id)
-  const before = use === undefined ? Infinity : nodes[use].token
+  const before =
+    at === undefined
+      ? Infinity
+      : w.kind === 'check.declare'
+        ? scopes.declaredAt(w.decl)
+        : nodes[at].token
   const depth = (s: number) => {
     let d = 0
     for (
@@ -79,13 +94,22 @@ export function ScopeStrip({
             key={s}
             className={`ac-scope ${passed ? 'passed' : ''} ${hit ? 'hit' : ''} ${s === home ? 'home' : ''}`}
             style={{
-              marginLeft: use === undefined ? depth(s) * 12 : undefined,
+              marginLeft: at === undefined ? depth(s) * 12 : undefined,
             }}
           >
             <span className="ac-scope-name">{scope.label}</span>
             {decls.length === 0 && <span className="ac-scope-empty">–</span>}
             {decls.map((d) => (
-              <code key={d} className={d === found ? 'found' : ''}>
+              <code
+                key={d}
+                className={
+                  d !== found
+                    ? ''
+                    : w.kind === 'check.resolve'
+                      ? 'found ok'
+                      : 'found'
+                }
+              >
                 {nodes[d].kind === 'function'
                   ? `${nodes[d].label}()`
                   : nodes[d].label}
