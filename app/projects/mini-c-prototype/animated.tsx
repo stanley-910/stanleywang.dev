@@ -31,7 +31,7 @@ import { groupsOf, parentsOf, parseView } from './parse-view'
 import { compileReal, compilerLoaded, REAL_MAX_CHARS } from './real'
 import { findReference, REFERENCES } from './reference'
 import { ScopeStrip } from './scope-strip'
-import { scopesOf, withNameSteps } from './scopes'
+import { paramsOf, scopesOf, withNameSteps } from './scopes'
 import {
   buildTrace,
   colouredUpTo,
@@ -489,6 +489,7 @@ export default function AnimatedCompiler() {
   const parents = useMemo(() => parentsOf(trace), [trace])
   const groups = useMemo(() => groupsOf(trace.frames), [trace])
   const scopes = useMemo(() => scopesOf(trace), [trace])
+  const params = useMemo(() => paramsOf(trace), [trace])
   // The name pass ends here; the scope strip is shown up to it.
   const namesDoneAt = useMemo(
     () => trace.frames.findIndex((f) => f.why.kind === 'check.namesDone'),
@@ -943,11 +944,11 @@ export default function AnimatedCompiler() {
   }
   // Name links pathfind around the tree's labels and across its edges
   // (link-route.ts, Fable 5.1's router). A piece is exactly as wide as its
-  // label (`.ac button` has no padding) and as tall as its box; 3px more
-  // each side keeps a link's ends off the letters.
+  // label plus its 3px side padding (`.ac-piece.node`), and as tall as its
+  // box, so a link's dot sits on the border whichever side it lands on.
   const pieceBox = (id: number): Box => {
     const c = toPx(point(id))
-    const w = trace.nodes[id].label.length * CHAR_PX * fit + 6
+    const w = (trace.nodes[id].label.length * CHAR_PX + 6) * fit
     return { x: c.x - w / 2, y: c.y - pieceHalf, w, h: pieceHalf * 2 }
   }
   // A name with no declaration still searches: its line heads for the top
@@ -1485,6 +1486,40 @@ export default function AnimatedCompiler() {
                     />
                   )
                 })}
+                {!regView &&
+                  [...params].flatMap(([fn, ids]) => {
+                    // A function's parameters sit in small dashed parens,
+                    // apart from its body.
+                    const shown = ids.filter((id) => frame.nodes.includes(id))
+                    if (!shown.length) return []
+                    const half = (id: number) =>
+                      ((trace.nodes[id].label.length * CHAR_PX + 6) * fit) / 2 +
+                      4
+                    const at = shown.map((id) => toPx(point(id)))
+                    const x0 = Math.min(
+                        ...at.map((p, i) => p.x - half(shown[i])),
+                      ),
+                      x1 = Math.max(...at.map((p, i) => p.x + half(shown[i])))
+                    const y0 = Math.min(...at.map((p) => p.y)) - pieceHalf - 3,
+                      y1 = Math.max(...at.map((p) => p.y)) + pieceHalf + 3
+                    const my = (y0 + y1) / 2
+                    return [
+                      `M ${x0 + 4} ${y0} Q ${x0 - 4} ${my}, ${x0 + 4} ${y1}`,
+                      `M ${x1 - 4} ${y0} Q ${x1 + 4} ${my}, ${x1 - 4} ${y1}`,
+                    ].map((d, i) => (
+                      <motion.path
+                        key={`params-${fn}-${i}`}
+                        className="ac-params"
+                        d={d}
+                        fill="none"
+                        strokeWidth={1}
+                        initial={{ d, opacity: 0 }}
+                        animate={{ d, opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={transition}
+                      />
+                    ))
+                  })}
                 {working.group &&
                   (() => {
                     // Brackets around the group being read, solid once its

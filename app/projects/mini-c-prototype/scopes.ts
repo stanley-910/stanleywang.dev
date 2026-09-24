@@ -234,3 +234,17 @@ const isParam = (trace: Trace, decl: number) => {
   const body = trace.tokens.findIndex((t, i) => i > fn.token && t.text === '{')
   return trace.nodes[decl].token < body
 }
+
+/** Each function's parameters, in order: the declarations before its `{`. */
+export function paramsOf(trace: Trace): Map<number, number[]> {
+  const out = new Map<number, number[]>()
+  for (const n of trace.nodes) {
+    if (n.kind !== 'function') continue
+    const body = trace.tokens.findIndex((t, i) => i > n.token && t.text === '{')
+    const params = n.children.filter(
+      (c) => trace.nodes[c].kind === 'declare' && trace.nodes[c].token < body,
+    )
+    if (params.length) out.set(n.id, params)
+  }
+  return out
+}
