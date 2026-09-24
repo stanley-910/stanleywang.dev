@@ -125,6 +125,14 @@ const roleWord: Record<string, string> = {
 
 /** The sentence behind a frame: what was decided and why. */
 export function explain(trace: Trace, frame: Frame, titled = true): string {
+  const said = explainStep(trace, frame, titled)
+  // A group seals on the step that finished it.
+  return frame.sealed?.length
+    ? `${said} The ${code(')')} closes the group, so it goes on as one piece.`
+    : said
+}
+
+function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
   const w: Why = frame.why
   const node = (id: number) => trace.nodes[id]
   const src = (id: number) => code(text(trace, node(id)))
@@ -195,10 +203,16 @@ export function explain(trace: Trace, frame: Frame, titled = true): string {
     }
     case 'parse.precedence': {
       const child = src(w.child)
+      // `a = b = c`: the second `=` wins because `=` groups right to left
+      // (its right side is read one level lower), not because it is tighter.
+      if (w.relation === 'tighter' && w.incoming === '=' && w.pending === '=')
+        return `Another ${code('=')}: assignment groups right to left, so ${child} joins the new ${code('=')} first. The earlier ${code('=')} keeps waiting for the result.`
       if (w.relation === 'tighter')
         return `${code(w.incoming)} binds tighter than ${code(w.pending)}, so ${child} joins ${code(w.incoming)} first. ${code(w.pending)} keeps waiting.`
       if (w.relation === 'equal')
-        return `Two ${code(w.pending)} in a row bind equally. The earlier one closes first, so grouping runs left to right.`
+        return w.pending === w.incoming
+          ? `Two ${code(w.pending)} in a row bind equally. The earlier one closes first, so grouping runs left to right.`
+          : `${code(w.incoming)} binds as tightly as ${code(w.pending)}. The earlier one closes first, so grouping runs left to right.`
       return `${code(w.incoming)} binds less tightly than ${code(w.pending)}, so ${code(w.pending)} closes first. Its result becomes the left input of ${code(w.incoming)}.`
     }
     case 'parse.group':
@@ -222,9 +236,9 @@ export function explain(trace: Trace, frame: Frame, titled = true): string {
         case 'declare':
           return `${code(text(trace, n))} is complete.`
         case 'function':
-          return `${code(n.label)} is complete. Its body holds ${kids.length} ${kids.length === 1 ? 'item' : 'items'}.`
+          return `${code(n.label)} is complete.`
         case 'block':
-          return `The block closes with ${kids.length} ${kids.length === 1 ? 'item' : 'items'} inside.`
+          return 'The block closes.'
         case 'while':
           return 'The loop closes over its condition and body.'
         case 'if':
@@ -240,7 +254,7 @@ export function explain(trace: Trace, frame: Frame, titled = true): string {
       }
     }
     case 'parse.done':
-      return `The tree is complete: ${trace.nodes.length} nodes for the whole program. Nothing has run; this is only structure.`
+      return `AST is complete with ${trace.nodes.length} nodes`
     case 'check.resolve': {
       const use = node(w.use),
         decl = node(w.decl)
@@ -251,7 +265,9 @@ export function explain(trace: Trace, frame: Frame, titled = true): string {
         w.where === 'param'
           ? 'in the parameters'
           : `on line ${line(trace, decl)}`
-      return `This ${code(name)} refers to ${code(text(trace, decl))} ${where}.`
+      // An assignment's target, resolved before its value.
+      const which = use.kind === 'assign' ? 'The target' : 'This'
+      return `${which} ${code(name)} refers to ${code(text(trace, decl))} ${where}.`
     }
     case 'check.unresolved': {
       const use = node(w.use)
@@ -289,7 +305,11 @@ export function explain(trace: Trace, frame: Frame, titled = true): string {
             return `${shown} computes ${describe(n)} of ${code(ins.args[0])} and ${code(ins.args[1])} into ${code(ins.dest ?? '')}. Both inputs were emitted before this line.`
         }
       }
-      return explainMips(trace, n, run)
+      const dead = run.find((i) => i.dead)
+      const said = explainMips(trace, n, run)
+      return dead
+        ? `${said} ${run.length === 1 ? 'It' : code(dead.text ?? dead.op)} never runs: the jump before it always leaves first, so the register allocator drops it.`
+        : said
     }
     case 'emit.prologue': {
       const n = node(w.node)
@@ -524,15 +544,90 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
         'program encoded into the structure of the tree itself!',
     },
     {
-      title: 'Toking (Abstract Syntax) Trees',
+      title: 'The Problem with Precedence',
       body:
         'This solves interesting problems like precedence. How do you make ' +
         "sure the code that is generated correctly PEMDAS's something like " +
         '`2 - 4 * 2`? If you just generated code left to right, you run into ' +
         'issues like `(2 - 4) * 2`. Continue to see how an AST fixes that.',
     },
+    {
+      title: 'The Problem with Precedence',
+      // Stanley's aside; the parenthetical, "infix" and the last clause are
+      // filled in at his request.
+      body:
+        'Aside: My IRL implementation uses a handwritten recursive-descent ' +
+        'parser (meaning each rule of the grammar is its own function, ' +
+        'which calls the functions for the rules inside it), but when ' +
+        'dealing with infix expressions, I shift to a ' +
+        '[Pratt parser](https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html) ' +
+        'implementation, which uses a *precedence table* to give each ' +
+        'operator a binding power, so tighter operators like `*` end up ' +
+        'deeper in the tree than looser ones like `+`, and get computed first.',
+    },
+  ],
+  // The real SemanticAnalyzer runs NameAnalyzer, then TypeAnalyzer; the type
+  // slide opens the second pass (STEP_SLIDES).
+  Check: [
+    {
+      title: 'Correct Grammar, Wrong Program',
+      // Stanley's copy; "out" read "our", and the list follows the real
+      // pass order at his request.
+      body:
+        "Now that we've made our AST, how do we know it actually represents " +
+        'a well-formed program? Just because it adheres structurally to ' +
+        'proper grammar, it could still be meaningless (`x = "hello" * true;`, ' +
+        "calling a function that doesn't exist, `break` outside a loop). This " +
+        'phase will check for well-formed programs by conducting semantic ' +
+        'analysis, name resolution and scoping, and type analysis.',
+    },
+    {
+      title: 'Semantic Analysis',
+      body:
+        "Semantic analysis finds everything the grammar can't express, and " +
+        'it enriches the AST with the information later phases need.',
+    },
+    {
+      title: 'Name Resolution and Scoping',
+      body:
+        'First pass: the compiler walks the tree with a **symbol table**, ' +
+        'opening a new scope for each function and block. Each declaration ' +
+        'goes into the current scope, and each use of a name is linked to the ' +
+        'nearest declaration it can see. A name with no declaration, or one ' +
+        'declared twice in the same scope, is an error.',
+    },
   ],
 }
+
+/**
+ * Slides that open a pass partway through a phase. Each sits on the frame
+ * before the first one `starts` picks, and only if there is one: a program
+ * that fails name resolution never reaches the type slide.
+ */
+export const STEP_SLIDES: {
+  phase: Frame['phase']
+  starts: (frame: Frame, previous: Frame) => boolean
+  slides: Slide[]
+}[] = [
+  {
+    phase: 'Check',
+    starts: (frame, previous) =>
+      frame.why.kind === 'check.type' &&
+      previous.why.kind === 'check.namesDone',
+    slides: [
+      {
+        title: 'Type Analysis',
+        body:
+          'Second pass: with every name linked to its declaration, the ' +
+          "compiler works out each expression's type from the bottom up and " +
+          "checks it fits where it's used: `*` needs `int` operands, a call's " +
+          "arguments must match the function's parameters, and `return` must " +
+          "match the function's return type. It also catches `break` and " +
+          '`continue` outside a loop.',
+      },
+    ],
+  },
+]
 
 /** A token's class as shown on the page; "name" reads as "identifier". */
 export const tokenKind = (token: Token): TokenClass => {

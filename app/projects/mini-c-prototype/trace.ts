@@ -38,6 +38,9 @@ export type Instruction = {
   text?: string
   fn?: number
   labels?: string[]
+  // no path reaches it (the jump after a `return` inside `if` or `while`),
+  // so the allocator's control-flow graph leaves it out
+  dead?: boolean
 }
 // The real allocator's working, recorded per function by the compiler's
 // test utility: one CFG block per instruction, liveness sweep by sweep,
@@ -155,6 +158,9 @@ export type Frame = {
   allocationCount: number
   // Check phase, compiler traces only: [use node, declaration node]
   links?: [number, number][]
+  // Parse: groups whose `)` this step reads. A group seals on the step that
+  // finished what is inside it, not on a step of its own.
+  sealed?: Span[]
 }
 export type Trace = {
   tokens: Token[]
@@ -336,13 +342,11 @@ export function buildTrace(source: string): Trace {
         const close = take(')')
         result.nodes[id].start = t.start
         result.nodes[id].end = close.end
-        push(
-          'Parse',
-          `The group is one piece now: ${text(id)}`,
-          close,
-          { kind: 'parse.group', span: result.nodes[id], state: 'closed' },
-          id,
-        )
+        const last = result.frames[result.frames.length - 1]
+        const span = { start: t.start, end: close.end }
+        last.consumed = [...consumed]
+        last.sealed = [...(last.sealed ?? []), span]
+        last.span = span
         return id
       }
       if (!t || !['number', 'name'].includes(t.kind))
@@ -368,17 +372,21 @@ export function buildTrace(source: string): Trace {
         if (!t || prec === undefined) break
         if (prec <= limit) {
           // Only reached with an operator waiting on the left, so holder is set.
+          // + and - bind equally, so either closes a waiting one.
+          const equal = binding[holder === '×' ? '*' : (holder ?? '')] === prec
           push(
             'Parse',
-            glyph(t.text) === holder
-              ? `Another ${holder}: the one already waiting closes first, left to right`
-              : `${glyph(t.text)} binds no tighter than ${holder}, so ${holder} closes first`,
+            !equal
+              ? `${glyph(t.text)} binds no tighter than ${holder}, so ${holder} closes first`
+              : glyph(t.text) === holder
+                ? `Another ${holder}: the one already waiting closes first, left to right`
+                : `${glyph(t.text)} binds as tightly as ${holder}, so ${holder} closes first, left to right`,
             t,
             {
               kind: 'parse.precedence',
               pending: holder ?? '',
               incoming: glyph(t.text),
-              relation: glyph(t.text) === holder ? 'equal' : 'looser',
+              relation: equal ? 'equal' : 'looser',
               child: left,
             },
           )
@@ -795,37 +803,85 @@ export function treePositions(
   depth: number
   levels: number
 } {
-  const at: Record<number, { x: number; y: number }> = {}
-  const span: Record<number, number> = {}
-  let depth = 0
-  const measure = (id: number): number => {
-    const n = trace.nodes[id]
-    const kids = n.children.reduce((sum, c) => sum + measure(c), 0)
-    span[id] = Math.max(labelWidth(n) + gap, kids)
-    return span[id]
+  // A tidy tree (Reingold–Tilford, with labels as wide as they are): each
+  // subtree is laid out alone, its siblings are pushed right until no row of
+  // one comes within `gap` of the other's, and a parent sits midway between
+  // its first and last child. Unary chains stay vertical and binary branches
+  // mirror, with no clamping (GPT-6 Astra's review,
+  // docs/handoffs/2026-09-24-tree-drawing-astra-answer.md).
+  type Shape = {
+    // x of every node relative to the subtree's root
+    x: Map<number, number>
+    // leftmost and rightmost label edge on each row below the root, root first
+    left: number[]
+    right: number[]
+    rows: Map<number, number>
   }
-  const place = (id: number, left: number, level: number) => {
+  // Places shapes left to right, packed by their rows; returns each offset.
+  const pack = (shapes: Shape[]) => {
+    const left: number[] = []
+    const right: number[] = []
+    const offsets = shapes.map((shape) => {
+      let offset = 0
+      if (right.length)
+        shape.left.forEach((l, d) => {
+          if (d < right.length) offset = Math.max(offset, right[d] + gap - l)
+        })
+      shape.left.forEach((l, d) => {
+        if (d >= left.length) left[d] = l + offset
+        right[d] = shape.right[d] + offset
+      })
+      return offset
+    })
+    return { offsets, left, right }
+  }
+  const layout = (id: number): Shape => {
     const n = trace.nodes[id]
-    depth = Math.max(depth, level)
-    at[id] = { x: left + span[id] / 2, y: level }
-    const kids = n.children.reduce((sum, c) => sum + span[c], 0)
-    let x = left + (span[id] - kids) / 2
-    for (const c of n.children) {
-      place(c, x, level + 1)
-      x += span[c]
+    const half = labelWidth(n) / 2
+    const shape: Shape = {
+      x: new Map([[id, 0]]),
+      left: [-half],
+      right: [half],
+      rows: new Map([[id, 0]]),
     }
+    if (!n.children.length) return shape
+    const kids = n.children.map(layout)
+    const { offsets, left, right } = pack(kids)
+    const mid = (offsets[0] + offsets[offsets.length - 1]) / 2
+    kids.forEach((kid, i) => {
+      for (const [k, x] of kid.x) shape.x.set(k, x + offsets[i] - mid)
+      for (const [k, d] of kid.rows) shape.rows.set(k, d + 1)
+    })
+    left.forEach((l, d) => {
+      shape.left[d + 1] = l - mid
+      shape.right[d + 1] = right[d] - mid
+    })
+    return shape
   }
   const childIds = new Set(trace.nodes.flatMap((n) => n.children))
   const roots =
     trace.root === undefined
       ? trace.nodes.filter((n) => !childIds.has(n.id)).map((n) => n.id)
       : [trace.root]
-  let width = 0
-  for (const id of roots) {
-    measure(id)
-    place(id, width, 0)
-    width += span[id]
-  }
+  const shapes = roots.map(layout)
+  const { offsets } = pack(shapes)
+  const at: Record<number, { x: number; y: number }> = {}
+  let lo = Infinity,
+    hi = -Infinity,
+    depth = 0
+  shapes.forEach((shape, i) => {
+    for (const [id, x] of shape.x) {
+      const row = shape.rows.get(id) ?? 0
+      at[id] = { x: x + offsets[i], y: row }
+      depth = Math.max(depth, row)
+      const half = labelWidth(trace.nodes[id]) / 2
+      lo = Math.min(lo, at[id].x - half)
+      hi = Math.max(hi, at[id].x + half)
+    }
+  })
+  if (lo === Infinity) return { at, width: 1, depth: 0, levels: 0 }
+  for (const id in at) at[id].x += gap / 2 - lo
+  const width = hi - lo + gap
   // A row gap grows with the most edges one parent in the row above sends to
   // one side, since those leave at nearly the same angle and blur together.
   // Two children keep the base gap; the growth stops at 1.6x, however many.
@@ -842,104 +898,6 @@ export function treePositions(
   for (const g of rowGap) rowY.push(rowY[rowY.length - 1] + g)
   for (const id in at) at[id].y = rowY[at[id].y]
   return { at, width: Math.max(1, width), depth: rowY[depth], levels: depth }
-}
-
-const OPS: Record<string, string> = {
-  '+': 'ADD',
-  '-': 'SUB',
-  '×': 'MUL',
-  '*': 'MUL',
-  '/': 'DIV',
-  '%': 'MOD',
-  '<': 'LT',
-  '>': 'GT',
-  '<=': 'LE',
-  '>=': 'GE',
-  '==': 'EQ',
-  '!=': 'NE',
-  '&&': 'AND',
-  '||': 'OR',
-}
-
-// The tree as ASTPrinter would print it at this frame: a child prints as soon
-// as it is on screen, even while its parent is still waiting to close, and
-// anything not yet read is an ellipsis. Works for toy and compiler traces.
-export function partialSExpression(trace: Trace, frame: Frame): string {
-  if (trace.root === undefined) return '…'
-  const text = (n: AstNode) => (trace.text ?? '').slice(n.start, n.end)
-  const typed = (label: string) => {
-    const at = label.indexOf(' ')
-    return [label.slice(0, at).toUpperCase(), label.slice(at + 1)]
-  }
-  const child = (n: AstNode, i: number): string => {
-    const id = n.children[i]
-    return id !== undefined && frame.nodes.includes(id) ? print(id) : '…'
-  }
-  const all = (n: AstNode, from = 0) =>
-    n.children.slice(from).map((_, i) => child(n, i + from))
-  const print = (id: number): string => {
-    const n = trace.nodes[id]
-    switch (n.kind) {
-      case 'program':
-        return `Program(${all(n).join(',')})`
-      case 'function': {
-        const params = n.children.filter((c) => {
-          const p = trace.nodes[c]
-          return p.kind === 'declare' && !text(p).endsWith(';')
-        })
-        const [type] = typed(
-          trace.text
-            ? trace.text.slice(n.start, n.start + 4).trim() + ' '
-            : 'int ',
-        )
-        const head = [type, n.label, ...params.map((c) => print(c))]
-        const body = n.children
-          .filter((c) => !params.includes(c))
-          .map((c) => (frame.nodes.includes(c) ? print(c) : '…'))
-        return `FunDef(${head.join(',')},Block(${body.join(',')}))`
-      }
-      case 'declare': {
-        const [type, name] = typed(n.label)
-        return `VarDecl(${type},${name})`
-      }
-      case 'assign':
-        return `ExprStmt(Assign(VarExpr(${n.label.replace(' =', '')}),${child(n, 0)}))`
-      case 'return':
-        return n.children.length ? `Return(${child(n, 0)})` : 'Return()'
-      case 'binary':
-        return n.label === '='
-          ? `Assign(${child(n, 0)},${child(n, 1)})`
-          : `BinOp(${child(n, 0)},${OPS[n.label] ?? n.label},${child(n, 1)})`
-      case 'unary':
-        return n.label === '-'
-          ? `BinOp(IntLiteral(0),SUB,${child(n, 0)})`
-          : `${n.label}(${child(n, 0)})`
-      case 'number':
-        return n.label.startsWith("'")
-          ? `ChrLiteral(${n.label.slice(1, -1)})`
-          : n.label.startsWith('"')
-            ? `StrLiteral(${n.label.slice(1, -1)})`
-            : `IntLiteral(${n.label})`
-      case 'name':
-        return `VarExpr(${n.label})`
-      case 'while':
-        return `While(${child(n, 0)},${child(n, 1)})`
-      case 'if':
-        return `If(${all(n).join(',')})`
-      case 'block':
-        return `Block(${all(n).join(',')})`
-      case 'call':
-        return `FunCallExpr(${[n.label.replace('()', ''), ...all(n)].join(',')})`
-      case 'statement':
-        return `ExprStmt(${child(n, 0)})`
-      default:
-        return `${n.label}(${all(n).join(',')})`
-    }
-  }
-  const root = trace.nodes[trace.root]
-  if (!frame.nodes.includes(root.id)) return '…'
-  const out = print(root.id)
-  return root.kind === 'function' ? `Program(${out})` : out
 }
 
 // Renders the sketch's tree in the real compiler's ASTPrinter notation so the
