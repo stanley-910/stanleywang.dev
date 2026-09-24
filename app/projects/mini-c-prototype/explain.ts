@@ -494,6 +494,38 @@ export const LEXEMES: Record<Token['kind'], string[]> = {
   number: ['[0-9]+'],
 }
 
+/**
+ * Text-only slides between the welcome (frame 0) and the first token. Checked
+ * against lexer/Tokeniser.java: whitespace and comments are skipped, `<` peeks
+ * one character for `<=`, and a word is read whole before the keyword check.
+ */
+export const INTRO_SLIDES = [
+  {
+    title: 'Step 1: the lexer',
+    body:
+      'Before anything else, the compiler sees your code as one long string ' +
+      'of characters. The lexer walks it left to right and cuts it into ' +
+      'tokens: the smallest pieces that mean something, like `while`, `sum`, ' +
+      '`<` and `3`.',
+  },
+  {
+    title: 'Whitespace is dropped',
+    body:
+      'Spaces, newlines and comments only separate tokens, so the lexer ' +
+      'skips them: `i<3` and `i < 3` give the same three tokens. When a ' +
+      'character could start a longer token it peeks one ahead, so `<=` is ' +
+      'one token, not `<` then `=`.',
+  },
+  {
+    title: 'Each token gets a class',
+    body:
+      'A run of letters is read as one word, then checked against the ' +
+      'keyword list: `while` is a keyword, `sum` is an identifier. Digits ' +
+      'make a number, and anything else is a symbol. The parser only looks ' +
+      'at these classes. Step on to watch it happen.',
+  },
+]
+
 /** A token's class as shown on the page; "name" reads as "identifier". */
 export const tokenKind = (token: Token) =>
   token.kind === 'name' ? 'identifier' : token.kind

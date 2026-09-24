@@ -16,6 +16,7 @@ import {
   nodeHover,
   registerHover,
   tokenKind,
+  INTRO_SLIDES,
   LEXEMES,
 } from './explain'
 import { findReference, REFERENCES } from './reference'
@@ -371,6 +372,8 @@ export default function AnimatedCompiler() {
     [trace],
   )
   const [step, setStep] = useState(0)
+  // Frame 0 is the welcome; the intro slides sit between it and frame 1.
+  const [slide, setSlide] = useState(0)
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState(1)
   const [hover, setHover] = useState<number | null>(null)
@@ -418,18 +421,36 @@ export default function AnimatedCompiler() {
     (target: number) => {
       setPlaying(false)
       clearHover()
+      setSlide(0)
       setStep(Math.max(0, Math.min(last, target)))
     },
     [last, clearHover],
   )
+  // Stepping walks through the intro slides at frame 0 before frame 1, and
+  // stepping back from frame 1 lands on the last slide.
   const move = useCallback(
-    (delta: number) => seek(index + delta),
-    [seek, index],
+    (delta: number) => {
+      if (
+        index === 0 &&
+        slide + delta >= 0 &&
+        slide + delta <= INTRO_SLIDES.length
+      ) {
+        setPlaying(false)
+        clearHover()
+        setSlide(slide + delta)
+      } else if (index === 1 && delta < 0) {
+        seek(0)
+        setSlide(INTRO_SLIDES.length)
+      } else seek(index + delta)
+    },
+    [seek, index, slide, clearHover],
   )
   const play = useCallback(() => {
     setEditing(false)
     clearHover()
     if (end) setStep(0)
+    // Space compiles straight away; the slides are for stepping.
+    setSlide(0)
     setPlaying((p) => !p)
   }, [end, clearHover])
   const jumpPhase = useCallback(
@@ -538,6 +559,7 @@ export default function AnimatedCompiler() {
   const update = (text: string) => {
     setSource(text)
     setStep(0)
+    setSlide(0)
     setPlaying(false)
     clearHover()
   }
@@ -661,16 +683,19 @@ export default function AnimatedCompiler() {
         : undefined
   // Hovers replace the step text in the panel rather than float on the stage,
   // so nothing on screen says the same thing twice.
+  const intro = index === 0 && slide > 0 ? INTRO_SLIDES[slide - 1] : undefined
   const statusText = error
     ? error.message
     : hoverText
       ? 'hover'
-      : index === 0
-        ? 'press space to compile your code!'
-        : frame.why.kind === 'token'
-          ? `Token: \`${trace.tokens[frame.why.token].text}\``
-          : frame.title
-  const noteText = hoverText ?? explain(trace, frame)
+      : intro
+        ? intro.title
+        : index === 0
+          ? 'press space to compile your code!'
+          : frame.why.kind === 'token'
+            ? `Token: \`${trace.tokens[frame.why.token].text}\``
+            : frame.title
+  const noteText = hoverText ?? intro?.body ?? explain(trace, frame)
   // A token step lists every lexeme in its class under the explanation.
   const stepToken =
     !hoverText && !error && frame.why.kind === 'token'
@@ -834,6 +859,21 @@ export default function AnimatedCompiler() {
                 <Prose text={noteText} />
               )}
             </div>
+            {index === 0 && (
+              <div className="ac-note-foot">
+                <button
+                  type="button"
+                  className="ac-slides"
+                  aria-label="Skip intro"
+                  onClick={() => seek(1)}
+                >
+                  <span className="count">
+                    {slide}/{INTRO_SLIDES.length}
+                  </span>
+                  <span className="skip">skip</span>
+                </button>
+              </div>
+            )}
           </section>
         </section>
 
@@ -1177,7 +1217,10 @@ export default function AnimatedCompiler() {
           {playing ? 'pause' : 'play'}
         </button>
         <span className="ac-step">
-          <button onClick={() => move(-1)} disabled={index === 0}>
+          <button
+            onClick={() => move(-1)}
+            disabled={index === 0 && slide === 0}
+          >
             <kbd>h</kbd>
           </button>
           <button onClick={() => move(1)} disabled={index === last}>
