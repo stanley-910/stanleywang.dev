@@ -92,6 +92,10 @@ export type Backend = {
 export type Why =
   | { kind: 'ready' }
   | { kind: 'token'; token: number }
+  // Detailed lexer mode (detail.ts): one character of a token read, `next`
+  // set on its last one; whitespace or a comment skipped between tokens.
+  | { kind: 'lex.char'; token: number; at: number; next?: string }
+  | { kind: 'lex.skip'; start: number; end: number; comment: boolean }
   | { kind: 'parse.read'; token: number }
   | { kind: 'parse.node'; node: number }
   | { kind: 'parse.take'; parent: number; role: string; child: number }
