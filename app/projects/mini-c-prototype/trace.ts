@@ -793,6 +793,7 @@ export function treePositions(
   at: Record<number, { x: number; y: number }>
   width: number
   depth: number
+  levels: number
 } {
   const at: Record<number, { x: number; y: number }> = {}
   const span: Record<number, number> = {}
@@ -825,7 +826,22 @@ export function treePositions(
     place(id, width, 0)
     width += span[id]
   }
-  return { at, width: Math.max(1, width), depth }
+  // A row gap grows with the most edges one parent in the row above sends to
+  // one side, since those leave at nearly the same angle and blur together.
+  // Two children keep the base gap; the growth stops at 1.6x, however many.
+  const rowGap = Array.from({ length: depth }, () => 1)
+  for (const n of trace.nodes) {
+    const p = at[n.id]
+    if (!p || p.y >= depth) continue
+    const left = n.children.filter((c) => at[c].x < p.x - 1).length
+    const right = n.children.filter((c) => at[c].x > p.x + 1).length
+    const side = Math.max(left, right)
+    rowGap[p.y] = Math.max(rowGap[p.y], 1 + Math.min(0.6, (side - 1) * 0.2))
+  }
+  const rowY = [0]
+  for (const g of rowGap) rowY.push(rowY[rowY.length - 1] + g)
+  for (const id in at) at[id].y = rowY[at[id].y]
+  return { at, width: Math.max(1, width), depth: rowY[depth], levels: depth }
 }
 
 const OPS: Record<string, string> = {

@@ -144,7 +144,7 @@ Treat the note as guidance on what not to include, not only a one-frame fix.
   shown on the frame before the phase's first step, so URLs and frame numbers
   are unchanged. The lexer has one (Stanley's "Where do we start?" over a
   lexeme/category table), between the welcome and the first token; the parser
-  has two, both headed "Abstract Syntax Trees" (Stanley's text: why tokens
+  has two, both headed "Toking (Abstract Syntax) Trees" (Stanley's text: why tokens
   aren't enough, then precedence with `2 - 4 * 2` vs `(2 - 4) * 2`), between
   the last token and the first parse step. l/j step into a phase's slides, h/k from its first step lands on
   the last slide, Space plays straight past them, and clicking a phase tab
@@ -181,6 +181,38 @@ Treat the note as guidance on what not to include, not only a one-frame fix.
 - Phase tabs are names only, no 01-05 numbers: lexer, parser, check, emit,
   regs (was tokens, parse). The welcome title is capitalised: "Press space to compile
   your code!".
+
+- Edges stay late (decided): a tree edge appears when the parser returns the
+  child to its parent (`frame.attached`). An "early edges" switch that drew
+  it as soon as both ends existed was tried and scrapped.
+- Step titles are off by default, as a flag while Stanley reads without
+  them: "[ ] step titles" in the "?" menu, `?titles=on`. The welcome, slides
+  and errors keep their header. Without titles a token step's body names the
+  token ("`;` is a delimiter.") instead of only its class.
+- Play waits for the real compiler: while a typed program is compiling, the
+  play button is disabled and reads "loading compiler…" (first compile,
+  downloading the 535 KB `compiler.js`) or "compiling…". Space does nothing
+  until then, so the real trace can't replace a playing one and restart it.
+- Real compiler errors read as sentences: `BrowserTrace.java` captures what
+  the lexer and parser print and returns `{log, trace}`; `compilerError` in
+  `explain.ts` turns the first line into e.g. "Expected `;` but found `=` on
+  line 2." and highlights that token (was "Parsing failed (1 errors)" over
+  the whole program). The error frame body says "The compiler stops at its
+  first error. Fix it in the editor and it runs again."
+- Parser slides are titled "Toking (Abstract Syntax) Trees" (Stanley's).
+- Registers tie-break differs from the JVM in the browser; accepted as long
+  as the allocation is correct.
+- Tree row height follows fan-out (Stanley: four edges off one side of
+  `main` blurred together). `treePositions` gives each row gap
+  `1 + min(0.6, (side - 1) * 0.2)`, where `side` is the most children any
+  parent in the row above has on one side of it. Two or three children keep
+  the old gap. The extra height is added to the tree (it starts higher),
+  not taken from other rows, up to 60 view units; past that all rows squeeze,
+  so 100 declarations cost at most 1.6x on one row.
+- Token card fix: clicking a second token used to pop its card open with no
+  transition. Focus leaving the first token ran `clearHover` on blur, which
+  unmounted the card between mousedown and click. Blur now ignores focus
+  moving to another stage piece.
 
 Open questions for Stanley, not yet decided:
 
@@ -317,10 +349,12 @@ presentation.
   `Register.Virtual`/`Label` intern tables are made public so `BrowserTrace`
   clears them before each compile (a JVM run gets a fresh process).
 - `real.ts` runs each compile in a fresh module worker: 1,200-char cap before
-  it runs, 2 s timeout that terminates the worker, and abort when the source
-  changes. The page tries it 250 ms after typing stops for any source that
-  isn't a preset; the teaching compiler covers the wait and any failure
-  (missing file, timeout, exception), with a console warning.
+  it runs, 2 s timeout (counted once `compiler.js` has loaded) that terminates
+  the worker, and abort when the source changes. The page tries it 250 ms
+  after typing stops for any source that isn't a preset; the teaching compiler
+  covers the wait and any failure (missing file, timeout, exception), with a
+  console warning. Its error banner is held back until the real compiler has
+  answered or failed, and an arriving real trace restarts at frame 0.
 - Checked against the six presets in Node: tokens, tree, check lines and every
   emitted instruction match the JVM exactly, 1-40 ms per program. Only the
   Registers phase differs: `Register.Virtual` has identity `hashCode`, so the

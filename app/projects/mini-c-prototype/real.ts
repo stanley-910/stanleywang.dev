@@ -1,3 +1,5 @@
+import { compilerError } from './explain'
+
 import type { Trace } from './trace'
 
 // The real compiler, compiled to JavaScript by TeaVM (browser/build.sh), run
@@ -9,9 +11,12 @@ import type { Trace } from './trace'
 const SCRIPT = '/mini-c/compiler.js'
 export const REAL_MAX_CHARS = 1200
 const TIMEOUT_MS = 2000
+// Set once compiler.js has loaded in any worker; later loads hit the cache.
+export let compilerLoaded = false
 
 const workerSource = (url: string) => `
 import { trace } from ${JSON.stringify(url)}
+postMessage({ ready: true })
 onmessage = (event) => {
   try {
     postMessage({ ok: true, json: trace(event.data) })
@@ -31,7 +36,15 @@ export const compileReal = (source: string, signal: AbortSignal) =>
       type: 'text/javascript',
     })
     const blobUrl = URL.createObjectURL(blob)
-    const worker = new Worker(blobUrl, { type: 'module' })
+    let worker: Worker
+    try {
+      worker = new Worker(blobUrl, { type: 'module' })
+    } catch (error) {
+      URL.revokeObjectURL(blobUrl)
+      reject(error)
+      return
+    }
+    let timer: ReturnType<typeof setTimeout> | undefined
     const done = () => {
       clearTimeout(timer)
       worker.terminate()
@@ -42,10 +55,6 @@ export const compileReal = (source: string, signal: AbortSignal) =>
       done()
       reject(new Error(message))
     }
-    const timer = setTimeout(
-      () => fail(`timed out after ${TIMEOUT_MS} ms`),
-      TIMEOUT_MS,
-    )
     const abort = () => fail('aborted')
     signal.addEventListener('abort', abort)
     worker.onerror = (event) => {
@@ -53,11 +62,36 @@ export const compileReal = (source: string, signal: AbortSignal) =>
       fail(event.message || `could not load ${SCRIPT}`)
     }
     worker.onmessage = (
-      event: MessageEvent<{ ok: boolean; json?: string; error?: string }>,
+      event: MessageEvent<{
+        ready?: boolean
+        ok?: boolean
+        json?: string
+        error?: string
+      }>,
     ) => {
+      // The timeout starts once compiler.js has loaded, so a slow first
+      // download isn't cut off (and restarted cold) on every compile.
+      if (event.data.ready) {
+        compilerLoaded = true
+        timer = setTimeout(
+          () => fail(`timed out after ${TIMEOUT_MS} ms`),
+          TIMEOUT_MS,
+        )
+        return
+      }
       done()
-      if (event.data.ok && event.data.json)
-        resolve(JSON.parse(event.data.json) as Trace)
+      // {log, trace}: log is what the compiler printed (BrowserTrace.java).
+      const out =
+        event.data.ok && event.data.json
+          ? (JSON.parse(event.data.json) as { log: string; trace: Trace })
+          : undefined
+      const trace = out?.trace
+      if (trace?.error) {
+        // "Parsing failed (1 errors)" becomes the printed error, in words.
+        const printed = compilerError(out?.log ?? '', source)
+        if (printed) trace.error = printed
+      }
+      if (trace?.frames?.length) resolve(trace)
       else reject(new Error(event.data.error ?? 'compiler failed'))
     }
     worker.postMessage(source)

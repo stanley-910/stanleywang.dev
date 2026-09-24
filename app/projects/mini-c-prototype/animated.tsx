@@ -24,7 +24,7 @@ import {
   matchTable,
   type TokenClass,
 } from './explain'
-import { compileReal } from './real'
+import { compileReal, compilerLoaded, REAL_MAX_CHARS } from './real'
 import { findReference, REFERENCES } from './reference'
 import {
   buildTrace,
@@ -115,7 +115,9 @@ function StepNote({ text, token }: { text: string; token?: Token }) {
 // it becomes is marked.
 function CharTable({ read, final }: { read: string; final?: TokenClass }) {
   return (
-    <table className="ac-char-table" aria-label="Token classes">
+    // aria-hidden: it sits in the live step note, and the sentence above it
+    // already says what matches.
+    <table className="ac-char-table" aria-hidden="true">
       <tbody>
         {matchTable(read, final).map((row) => (
           <tr key={row.cls} className={row.match}>
@@ -381,23 +383,14 @@ export default function AnimatedCompiler() {
   const [real, setReal] = useState<{ source: string; trace: Trace } | null>(
     null,
   )
-  useEffect(() => {
-    if (reference) return
-    const abort = new AbortController()
-    const timer = setTimeout(() => {
-      compileReal(source, abort.signal).then(
-        (trace) => setReal({ source, trace }),
-        (error: Error) => {
-          if (error.message !== 'aborted')
-            console.warn('real compiler:', error.message)
-        },
-      )
-    }, 250)
-    return () => {
-      clearTimeout(timer)
-      abort.abort()
-    }
-  }, [source, reference])
+  // The last source the real compiler gave up on; until then the teaching
+  // compiler's errors are held back, as the real trace may replace them.
+  const [realFailed, setRealFailed] = useState<string | null>(null)
+  const realPending =
+    !reference &&
+    real?.source !== source &&
+    realFailed !== source &&
+    source.length <= REAL_MAX_CHARS
   // Presets play the compiler's recorded frames.
   const baseTrace = useMemo(
     () =>
@@ -407,7 +400,9 @@ export default function AnimatedCompiler() {
   )
   // Detailed lexer mode reads a character per step instead of a token.
   const [detailed, setDetailed] = useState(false)
-  // The footer's "?" menu, which holds the detailed-lexer switch.
+  // Step titles over the explanation; off while Stanley reads without them.
+  const [titles, setTitles] = useState(false)
+  // The footer's "?" menu, which holds the view switches.
   const [moreOpen, setMoreOpen] = useState(false)
   const moreRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -436,13 +431,13 @@ export default function AnimatedCompiler() {
     for (const f of trace.frames) {
       if (f.why.kind !== 'token') continue
       const token = trace.tokens[f.why.token]
-      const text = explain(trace, f)
+      const text = explain(trace, f, titles)
       const seen = best.get(tokenKind(token))
       if (!seen || text.length > seen.text.length)
         best.set(tokenKind(token), { text, token })
     }
     return [...best.values()]
-  }, [trace])
+  }, [trace, titles])
   // The longest-worded character step, sized in the same way.
   const tallestCharStep = useMemo(() => {
     let best: { text: string; read: string } | undefined
@@ -512,6 +507,30 @@ export default function AnimatedCompiler() {
     setHoverIns(null)
     setHoverVr(null)
   }, [])
+  useEffect(() => {
+    if (reference) return
+    const abort = new AbortController()
+    const timer = setTimeout(() => {
+      compileReal(source, abort.signal).then(
+        (trace) => {
+          // A different trace: start it from the top, as an edit does.
+          setReal({ source, trace })
+          setStep(0)
+          setSlide(0)
+          clearHover()
+        },
+        (error: Error) => {
+          if (error.message === 'aborted') return
+          setRealFailed(source)
+          console.warn('real compiler:', error.message)
+        },
+      )
+    }, 250)
+    return () => {
+      clearTimeout(timer)
+      abort.abort()
+    }
+  }, [source, reference, clearHover])
   // Hover waits a beat so passing the pointer over the diagram stays quiet.
   const hoverSoon = useCallback((node: number | undefined, token: number) => {
     if (hoverTimer.current) clearTimeout(hoverTimer.current)
@@ -548,13 +567,15 @@ export default function AnimatedCompiler() {
     [seek, index, slide, clearHover, decks],
   )
   const play = useCallback(() => {
+    // The real trace would replace this one mid-play and restart it.
+    if (realPending) return
     setEditing(false)
     clearHover()
     if (end) setStep(0)
     // Space compiles straight away; the slides are for stepping.
     setSlide(0)
     setPlaying((p) => !p)
-  }, [end, clearHover])
+  }, [end, clearHover, realPending])
   const jumpPhase = useCallback(
     (phase: (typeof phases)[number]) => {
       // Phases after the lexer open on their first slide.
@@ -586,6 +607,7 @@ export default function AnimatedCompiler() {
     )
     if (example) setSource(example.source)
     if (q.get('lexer') === 'detailed') setDetailed(true)
+    if (q.get('titles') === 'on') setTitles(true)
     const at = Number(q.get('frame'))
     if (at > 0) setStep(at)
     setLinked(true)
@@ -598,9 +620,11 @@ export default function AnimatedCompiler() {
     else url.searchParams.delete('example')
     if (detailed) url.searchParams.set('lexer', 'detailed')
     else url.searchParams.delete('lexer')
+    if (titles) url.searchParams.set('titles', 'on')
+    else url.searchParams.delete('titles')
     url.searchParams.set('frame', String(index))
     window.history.replaceState(null, '', url)
-  }, [linked, playing, reference, index, detailed])
+  }, [linked, playing, reference, index, detailed, titles])
 
   useEffect(() => {
     if (!playing) return
@@ -753,12 +777,16 @@ export default function AnimatedCompiler() {
   const point = (id: number) => {
     const p = tree.at[id] ?? { x: tree.width / 2, y: tree.depth }
     const x = (treeLeft + p.x * (late ? 11 / 12 : 1) * spread) * unit
-    const y = 210 + (p.y / Math.max(1, tree.depth)) * 235
+    // A plain row keeps its height; crowded rows (see treePositions) add
+    // to the tree, up to 60 more, starting it higher. Past that it squeezes.
+    const band = Math.min((tree.depth / Math.max(1, tree.levels)) * 235, 295)
+    const top = 210 - (band - 235) / 2
+    const y = (p.y / Math.max(1, tree.depth)) * band
     return late
-      ? { x, y: 60 + (y - 210) * 1.3 }
+      ? { x, y: 60 + y * 1.3 }
       : frame.phase === 'Check'
-        ? { x, y: y - 110 }
-        : { x, y }
+        ? { x, y: top + y - 110 }
+        : { x, y: top + y }
   }
   const owners = new Map(frame.nodes.map((id) => [trace.nodes[id].token, id]))
   const shownInstructions = trace.instructions.slice(0, frame.instructionCount)
@@ -814,7 +842,15 @@ export default function AnimatedCompiler() {
           : frame.why.kind === 'token'
             ? `Token: \`${trace.tokens[frame.why.token].text}\``
             : frame.title
-  const noteText = hoverText ?? intro?.body ?? explain(trace, frame)
+  const noteText =
+    hoverText ??
+    intro?.body ??
+    (error
+      ? 'The compiler stops at its first error. Fix it in the editor and it runs again.'
+      : explain(trace, frame, titles))
+  // Without step titles, only the welcome, slides and errors keep a header.
+  const showTitle =
+    titles || !!error || (!!intro && !hoverText) || (index === 0 && !hoverText)
   // A token step lists every lexeme in its class under the explanation.
   const stepToken =
     !hoverText && !error && !intro && frame.why.kind === 'token'
@@ -998,9 +1034,9 @@ export default function AnimatedCompiler() {
               />
             </div>
           </div>
-          {trace.error && (
+          {trace.error && !realPending && (
             <button className="ac-diag" onClick={() => seek(last)}>
-              <span>error</span> {trace.error.message}
+              <span>error</span> <Prose text={trace.error.message} />
             </button>
           )}
           <section
@@ -1008,11 +1044,13 @@ export default function AnimatedCompiler() {
             aria-label="Current step"
             aria-live={playing ? 'off' : 'polite'}
           >
-            <div className="ac-bar">
-              <span className="ac-note-title">
-                <Prose text={statusText} />
-              </span>
-            </div>
+            {showTitle && (
+              <div className="ac-bar">
+                <span className="ac-note-title">
+                  <Prose text={statusText} />
+                </span>
+              </div>
+            )}
             <div className="ac-note-body">
               {frame.phase === 'Tokens' ? (
                 // Hidden layers hold the tallest step of each token class in
@@ -1207,7 +1245,13 @@ export default function AnimatedCompiler() {
                       }
                       onMouseLeave={clearHover}
                       onFocus={() => hoverSoon(node?.id, token.id)}
-                      onBlur={clearHover}
+                      onBlur={(e) => {
+                        // Moving to another piece is not leaving: clearing
+                        // here unmounted the card between mousedown and
+                        // click, so a clicked card popped open unanimated.
+                        const to = e.relatedTarget as Element | null
+                        if (!to?.closest('.ac-piece')) clearHover()
+                      }}
                       onClick={() => {
                         setPlaying(false)
                         if (node) setHover(node.id)
@@ -1425,9 +1469,19 @@ export default function AnimatedCompiler() {
       </div>
 
       <footer className="ac-keys" aria-label="Controls">
-        <button onClick={play} className={playing ? 'on' : ''}>
+        <button
+          onClick={play}
+          className={playing ? 'on' : ''}
+          disabled={realPending}
+        >
           <kbd>spc</kbd>
-          {playing ? 'pause' : 'play'}
+          {realPending
+            ? compilerLoaded
+              ? 'compiling…'
+              : 'loading compiler…'
+            : playing
+              ? 'pause'
+              : 'play'}
         </button>
         <span className="ac-step">
           <button
@@ -1478,6 +1532,15 @@ export default function AnimatedCompiler() {
               >
                 <span aria-hidden="true">{detailed ? '[x]' : '[ ]'}</span>
                 detailed lexer
+              </button>
+              <button
+                type="button"
+                role="menuitemcheckbox"
+                aria-checked={titles}
+                onClick={() => setTitles((t) => !t)}
+              >
+                <span aria-hidden="true">{titles ? '[x]' : '[ ]'}</span>
+                step titles
               </button>
             </div>
           )}

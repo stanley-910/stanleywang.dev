@@ -2,8 +2,10 @@ package util;
 
 import gen.asm.Label;
 import gen.asm.Register;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import org.teavm.jso.JSExport;
 
@@ -24,8 +26,30 @@ public final class BrowserTrace {
     try (FileOutputStream out = new FileOutputStream(file)) {
       out.write(source.getBytes(StandardCharsets.UTF_8));
     }
+    // The lexer and parser print their errors ("Parsing error: expected (SC)
+    // found (ASSIGN) at 2:9") instead of recording them, so keep what they
+    // print and hand it back beside the trace.
+    PrintStream saved = System.out;
+    ByteArrayOutputStream log = new ByteArrayOutputStream();
+    System.setOut(new PrintStream(log, true, StandardCharsets.UTF_8));
     ParseTrace t = new ParseTrace();
-    t.run(file);
-    return t.toJson("program.c");
+    try {
+      t.run(file);
+    } finally {
+      System.setOut(saved);
+    }
+    return "{\"log\": " + quote(log.toString(StandardCharsets.UTF_8)) + ", \"trace\": "
+        + t.toJson("program.c") + "}";
+  }
+
+  private static String quote(String s) {
+    StringBuilder sb = new StringBuilder("\"");
+    for (char c : s.toCharArray()) {
+      if (c == '"' || c == '\\') sb.append('\\').append(c);
+      else if (c == '\n') sb.append("\\n");
+      else if (c < 0x20) sb.append(String.format("\\u%04x", (int) c));
+      else sb.append(c);
+    }
+    return sb.append('"').toString();
   }
 }

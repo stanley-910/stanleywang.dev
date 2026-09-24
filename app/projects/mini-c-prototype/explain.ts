@@ -124,7 +124,7 @@ const roleWord: Record<string, string> = {
 }
 
 /** The sentence behind a frame: what was decided and why. */
-export function explain(trace: Trace, frame: Frame): string {
+export function explain(trace: Trace, frame: Frame, titled = true): string {
   const w: Why = frame.why
   const node = (id: number) => trace.nodes[id]
   const src = (id: number) => code(text(trace, node(id)))
@@ -138,9 +138,13 @@ export function explain(trace: Trace, frame: Frame): string {
         'run on any machine!\u00a0Enjoy.\n\n– Stanley'
       )
     case 'token': {
-      // The token is in the header; the body names its class above the list.
-      const kind = tokenKind(trace.tokens[w.token])
-      return kind[0].toUpperCase() + kind.slice(1)
+      // With step titles the token is in the header and the body names its
+      // class above the list; without, the body names both.
+      const token = trace.tokens[w.token]
+      const kind = tokenKind(token)
+      return titled
+        ? kind[0].toUpperCase() + kind.slice(1)
+        : `${code(token.text)} is ${article(kind)}.`
     }
     case 'lex.char':
       return readStep(trace.tokens[w.token], w.at, w.next)
@@ -511,7 +515,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
   ],
   Parse: [
     {
-      title: 'Abstract Syntax Trees',
+      title: 'Toking (Abstract Syntax) Trees',
       body:
         "Great. Now what? As you can imagine, this isn't enough to output " +
         'machine code. To get us one step closer, the **Parser** takes the ' +
@@ -520,7 +524,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
         'program encoded into the structure of the tree itself!',
     },
     {
-      title: 'Abstract Syntax Trees',
+      title: 'Toking (Abstract Syntax) Trees',
       body:
         'This solves interesting problems like precedence. How do you make ' +
         "sure the code that is generated correctly PEMDAS's something like " +
@@ -639,4 +643,116 @@ export function nodeHover(trace: Trace, frame: Frame, node: AstNode): string {
       ? `${what} · holds ${held} · still needs ${missing} more`
       : `${what} · waiting for ${node.children.length} ${node.children.length === 1 ? 'input' : 'inputs'}`
   return `${what} · holds ${held}`
+}
+
+// The real lexer and parser print their errors rather than record them
+// ("Parsing error: expected (SC|COMMA) found (ASSIGN) at 2:9"); browser/
+// BrowserTrace.java hands that log back. Read its first error as a sentence,
+// pointing at the token it names.
+const CATEGORY_TEXT: Record<string, string> = {
+  IDENTIFIER: 'a name',
+  INT_LITERAL: 'a number',
+  CHAR_LITERAL: 'a character',
+  STRING_LITERAL: 'a string',
+  EOF: 'the end of the program',
+  ASSIGN: '`=`',
+  LBRA: '`{`',
+  RBRA: '`}`',
+  LPAR: '`(`',
+  RPAR: '`)`',
+  LSBR: '`[`',
+  RSBR: '`]`',
+  SC: '`;`',
+  COMMA: '`,`',
+  INCLUDE: '`#include`',
+  LOGAND: '`&&`',
+  LOGOR: '`||`',
+  EQ: '`==`',
+  NE: '`!=`',
+  LT: '`<`',
+  GT: '`>`',
+  LE: '`<=`',
+  GE: '`>=`',
+  PLUS: '`+`',
+  MINUS: '`-`',
+  ASTERISK: '`*`',
+  DIV: '`/`',
+  REM: '`%`',
+  AND: '`&`',
+  DOT: '`.`',
+  INVALID: 'an unknown character',
+}
+// Keywords and types print as their own word: INT is `int`.
+const categoryText = (cat: string) =>
+  CATEGORY_TEXT[cat] ?? (/^[A-Z]+$/.test(cat) ? code(cat.toLowerCase()) : cat)
+
+export function compilerError(
+  log: string,
+  source: string,
+): (Span & { message: string }) | undefined {
+  const line = log
+    .split('\n')
+    .find((l) => /^(Lexing|Parsing) error:/.test(l))
+    ?.trim()
+  if (!line) return undefined
+  const at = /at (\d+):(\d+)/.exec(line)
+  const row = at ? Number(at[1]) : undefined
+  const lineStart =
+    row === undefined
+      ? 0
+      : source
+          .split('\n')
+          .slice(0, row - 1)
+          .join('\n').length + (row > 1 ? 1 : 0)
+  const where = row === undefined ? '' : ` on line ${row}`
+  // Columns are 1-based, but tolerate 0-based, as ParseTrace does.
+  const spanOf = (text: string) => {
+    if (!at) return { start: 0, end: source.length }
+    const col = Number(at[2])
+    const start = [col - 1, col]
+      .map((c) => lineStart + c)
+      .find((s) => text !== '' && source.startsWith(text, s))
+    if (start === undefined) {
+      const s = Math.min(source.length, lineStart + Math.max(0, col - 1))
+      return { start: s, end: Math.min(source.length, s + 1) }
+    }
+    return { start, end: start + text.length }
+  }
+  const parse =
+    /^Parsing error: expected \((.*)\) found \((\w+)(?:\((.*)\))?\)/.exec(line)
+  if (parse) {
+    const [, expected, cat, data] = parse
+    const found =
+      cat === 'EOF'
+        ? 'the end of the program'
+        : data !== undefined
+          ? code(data)
+          : categoryText(cat)
+    const text =
+      cat === 'EOF'
+        ? ''
+        : (data ?? CATEGORY_TEXT[cat]?.replace(/`/g, '') ?? cat.toLowerCase())
+    const span =
+      cat === 'EOF'
+        ? { start: source.length, end: source.length }
+        : spanOf(text)
+    return {
+      ...span,
+      message: `Expected ${joinOr(expected.split('|').map(categoryText))} but found ${found}${where}.`,
+    }
+  }
+  const unknown = /^Lexing error: unrecognised character \((.)\)/.exec(line)
+  if (unknown)
+    return {
+      ...spanOf(unknown[1]),
+      message: `${code(unknown[1])} isn't a character Mini-C knows${where}.`,
+    }
+  // Anything else: the compiler's own words, without the prefix or position.
+  const rest = line
+    .replace(/^(Lexing|Parsing) error:\s*/, '')
+    .replace(/\s*(at\s*)?\d+:\d+$/, '')
+  return {
+    ...spanOf(''),
+    message: `${rest.charAt(0).toUpperCase()}${rest.slice(1)}${where}.`,
+  }
 }
