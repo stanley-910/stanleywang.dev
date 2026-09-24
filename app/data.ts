@@ -2,9 +2,12 @@ export type Project = {
   name: string
   description: string
   link: string
-  media: {
+  slug: string
+  media?: {
     type: 'video' | 'images'
     sources: string[] // Single video URL or array of image URLs
+    alt?: string
+    fit?: 'cover' | 'contain'
   }
   id: string
   category?: string
@@ -39,7 +42,78 @@ export type ExperiencePost = Post
 
 export const PROJECTS: Project[] = [
   {
+    name: 'Eastwatch',
+    slug: 'eastwatch',
+    description:
+      'A Night’s Watch for coding agents. Named after Eastwatch-by-the-Sea from Game of Thrones, it turns issue-board actions into resumable AI coding sessions, with a TUI to keep watch over the fleet.',
+    link: '/projects/eastwatch',
+    // Add a TUI screenshot here when one is ready.
+    id: 'eastwatch',
+    category: 'Developer Tools',
+  },
+  {
+    name: 'pi-talk',
+    slug: 'pi-talk',
+    description:
+      'A voice for Pi. Streams assistant responses as speech on macOS, with pause, resume, and playback-speed controls.',
+    link: '/projects/pi-talk',
+    id: 'pi-talk',
+    category: 'Developer Tools',
+  },
+  {
+    name: 'Lovebox',
+    slug: 'lovebox',
+    description:
+      'A little window into someone else’s day. A Raspberry Pi touchscreen for messages, shared drawings, moods, and music across the distance.',
+    link: '/projects/lovebox',
+    media: {
+      type: 'images',
+      sources: ['/images/projects/lovebox-home.png'],
+      fit: 'contain',
+      alt: 'Lovebox’s retro-terminal home screen with messages, clocks, weather, and shared status.',
+    },
+    id: 'lovebox',
+    category: 'Personal Projects',
+  },
+  {
+    name: 'Mini Compiler',
+    slug: 'mini-compiler',
+    description:
+      'From a C-like language to MIPS: parsing, type checking, code generation, and graph-colouring register allocation. Walkthrough in progress.',
+    link: '/projects/mini-compiler',
+    id: 'mini-compiler',
+    category: 'Systems',
+  },
+  {
+    name: 'OS Sim',
+    slug: 'os-sim',
+    description:
+      'A teaching shell in C exploring process scheduling, demand paging, and multithreaded execution. Writeup in progress.',
+    link: '/projects/os-sim',
+    id: 'os-sim',
+    category: 'Systems',
+  },
+  {
+    name: 'Chani',
+    slug: 'chani',
+    description:
+      'A TCP chatroom in OCaml. Terminal clients connect to an asynchronous Lwt server that broadcasts messages to the room.',
+    link: '/projects/chani',
+    id: 'chani',
+    category: 'Systems',
+  },
+  {
+    name: 'Dictate',
+    slug: 'dictate',
+    description:
+      'Press a hotkey, speak, and paste at your cursor. Offline macOS dictation with Cohere Transcribe running locally through transcribe.cpp and Metal.',
+    link: '/projects/dictate',
+    id: 'dictate',
+    category: 'Developer Tools',
+  },
+  {
     name: 'Trading Fours',
+    slug: 'trading-fours',
     description: 'recommending music.',
     link: 'https://www.youtube.com/watch?v=sx5btkY24hQ',
     media: {
@@ -55,6 +129,7 @@ export const PROJECTS: Project[] = [
   },
   {
     name: 'Datamines',
+    slug: 'datamines',
     description: "reggie's got a long day ahead of him.",
     link: 'https://averageosiris.itch.io/datamines',
     media: {

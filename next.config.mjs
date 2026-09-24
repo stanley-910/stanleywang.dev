@@ -15,6 +15,20 @@ import remarkRehype from 'remark-rehype'
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Temporary redirects keep these slugs available for future project pages.
+  async redirects() {
+    return [
+      ['eastwatch', 'https://github.com/stanley-910/eastwatch'],
+      ['pi-talk', 'https://github.com/stanley-910/pi-talk'],
+      ['lovebox', 'https://github.com/stanley-910/lovebox'],
+      ['chani', 'https://github.com/stanley-910/chani'],
+      ['dictate', 'https://github.com/stanley-910/dictate'],
+    ].map(([slug, destination]) => ({
+      source: `/projects/${slug}`,
+      destination,
+      permanent: false,
+    }))
+  },
   pageExtensions: ['js', 'jsx', 'ts', 'tsx', 'md', 'mdx'],
   // Disable ESLint during production builds
   eslint: {
