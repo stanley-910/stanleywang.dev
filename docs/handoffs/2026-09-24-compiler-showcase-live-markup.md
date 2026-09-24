@@ -144,7 +144,7 @@ Treat the note as guidance on what not to include, not only a one-frame fix.
   shown on the frame before the phase's first step, so URLs and frame numbers
   are unchanged. The lexer has one (Stanley's "Where do we start?" over a
   lexeme/category table), between the welcome and the first token; the parser
-  has two, both headed "Toking (Abstract Syntax) Trees" (Stanley's text: why tokens
+  has two, headed "Toking (Abstract Syntax) Trees" then "The Problem with Precedence" (Stanley's text: why tokens
   aren't enough, then precedence with `2 - 4 * 2` vs `(2 - 4) * 2`), between
   the last token and the first parse step. l/j step into a phase's slides, h/k from its first step lands on
   the last slide, Space plays straight past them, and clicking a phase tab
@@ -174,10 +174,10 @@ Treat the note as guidance on what not to include, not only a one-frame fix.
   keyword list wins over identifier (Stanley: identifier is only a potential
   match until the word ends with no other match). Toggling keeps the place (`origin` maps frames
   between the two lists); `?lexer=detailed` restores it. Character steps
-  play at 160 ms. A hidden layer with the longest character step keeps the
-  panel one height. The sizing layers (token and character) apply only on
-  lexer steps, never on the welcome or a slide, so turning the mode on
-  doesn't make a slide's box tall.
+  play at 160 ms. The token sizing layers apply only on lexer steps, never
+  on the welcome or a slide. The character-step and parse-step sizing
+  layers were removed: with the canvas fixed they only made the note tall
+  and cut the source short (Stanley: shrink when it isn't needed).
 - Phase tabs are names only, no 01-05 numbers: lexer, parser, check, emit,
   regs (was tokens, parse). The welcome title is capitalised: "Press space to compile
   your code!".
@@ -186,8 +186,8 @@ Treat the note as guidance on what not to include, not only a one-frame fix.
   child to its parent (`frame.attached`). An "early edges" switch that drew
   it as soon as both ends existed was tried and scrapped.
 - Step titles are off by default, as a flag while Stanley reads without
-  them: "[ ] step titles" in the "?" menu, `?titles=on`. The welcome, slides
-  and errors keep their header. Without titles a token step's body names the
+  them: "[ ] step titles" in the "?" menu, `?titles=on`. The welcome and
+  slides keep their header. Without titles a token step's body names the
   token ("`;` is a delimiter.") instead of only its class.
 - Play waits for the real compiler: while a typed program is compiling, the
   play button is disabled and reads "loading compiler…" (first compile,
@@ -199,7 +199,62 @@ Treat the note as guidance on what not to include, not only a one-frame fix.
   line 2." and highlights that token (was "Parsing failed (1 errors)" over
   the whole program). The error frame body says "The compiler stops at its
   first error. Fix it in the editor and it runs again."
-- Parser slides are titled "Toking (Abstract Syntax) Trees" (Stanley's).
+- Parser slides: 1 "Toking (Abstract Syntax) Trees", 2 "The Problem with
+  Precedence", 3 the same title, Stanley's aside on recursive descent plus a
+  Pratt parser for infix expressions (links matklad's "Simple but Powerful
+  Pratt Parsing"). I filled the parenthetical, "infix" and the last clause
+  at his request. His draft said tighter operators end up *higher* in the
+  AST; they end up deeper, so it says that. `Prose` now renders
+  `[text](url)` links (`.prose-link`) and `*italic*`.
+- Check slides follow the real `SemanticAnalyzer`, which runs `NameAnalyzer`
+  then `TypeAnalyzer` (break/continue/return context is checked in the type
+  pass). Before the first check step: 1 "Correct Grammar, Wrong Program"
+  (Stanley's intro; "out" fixed to "our", list reordered to pass order),
+  2 "Semantic Analysis" (his sentence), 3 "Name Resolution and Scoping"
+  (my draft). "Type Analysis" (my draft) sits between "Every name has a
+  declaration" and the first type step, via `STEP_SLIDES`: slides that open
+  a pass mid-phase, placed only if the pass is reached, so a program that
+  fails name resolution never shows it. The teaching compiler interleaves
+  names and types, so it gets no type slide.
+- The stage alone sets the work row's height. `.ac-editor` is `height: 0;
+  min-height: 100%`, the source is `flex: 0 1 236px` with a three-row floor,
+  and the note is `flex: 1 0.001 auto`, so a long slide grows up into the
+  source (which scrolls) instead of stretching the canvas and rescaling the
+  tree. Past the source's floor the note body scrolls. Mobile (one column)
+  keeps the old fixed 132px source.
+- The canvas fills the window: `.ac-scene` is `clamp(420px, 100dvh -
+  210px, 860px)` (380px floor under 900px wide), 210px being the site
+  header, tabs, stage bar and keys. At 763px tall that is 553px and the keys
+  end 25px above the bottom. The editor bar and error chip don't shrink
+  (the bar was squeezed by a tall note), and the source re-scrolls to the
+  active line when it's resized, not only when the span moves.
+- The note's top border (`.ac-split`) drags to set the source height,
+  kept in localStorage (`mini-c-split`); double-click resets to automatic,
+  and arrow keys move it a line at a time when focused. The note keeps at
+  least ~72px. Hidden on mobile.
+- Stage SVGs (`.ac-edges`, `.ac-graph`) draw in scene pixels (viewBox =
+  measured scene size) instead of stretching 680 × 480 with
+  `preserveAspectRatio="none"`. The stretched, non-scaling stroke made
+  motion's `pathLength` dash measure in the wrong space, so long sideways
+  edges stopped ~12% short of their child (Stanley spotted it on `main`'s
+  edges); interference-graph lines had the same bug.
+- The error chip under the source is one line with an ellipsis; hovering a
+  cut message scrolls it to the end once (class `scrolling` set on
+  mouseenter) and stays there until the pointer leaves, which resets it.
+  It starts as soon as you hover, at about 150 px/s (at least 1 s). It
+  used to wait about 0.7 s, then loop back and forth. Its tag is `.ac-diag-tag` (the old
+  `.ac-diag span` rule painted every span as a badge once the message
+  rendered code). No native tooltip; the scroll shows the whole message. The tag is plain
+  "error" in `--err`, weight 600, same size as the message (was a small
+  uppercase badge); the message keeps the panel's text colour. The chip
+  rule is `.ac button.ac-diag`, since `.ac button` reset its padding and
+  border. Error frames have no step header: the chip says it all, and the
+  body says "The compiler stops at its first error. …".
+- Stepping, the slider and phase jumps also wait for the real trace, not
+  just play.
+- `partialSExpression` and its `OPS` table are deleted (reference panel
+  gone). `toSExpression` / `prettySExpression` stay: `check-trace.cjs`
+  uses them to assert the teaching compiler's trees match the presets.
 - Registers tie-break differs from the JVM in the browser; accepted as long
   as the allocation is correct.
 - Tree row height follows fan-out (Stanley: four edges off one side of
@@ -214,14 +269,55 @@ Treat the note as guidance on what not to include, not only a one-frame fix.
   unmounted the card between mousedown and click. Blur now ignores focus
   moving to another stage piece.
 
+- Detailed parser mode (2026-09-24, removed the same day): a "[ ] detailed
+  parser" option showed the parser's call stack, a precedence table cut at
+  the current limit, and one step per `parseExpr` call. Stanley found it
+  unreadable for visitors; the tree now shows the decisions instead (see
+  "Precedence in the tree" below), so the mode, `Frame.stack`/`compare`,
+  `parse.call` and their sentences are gone, and `?parser=detailed` is
+  ignored. The shadow parser it needed stays, in `parse-replay.ts`, for the
+  rebuilt parse steps below.
+- Parse steps rebuilt for compiler traces (2026-09-24). ParseTrace.java's
+  replay (compiler repo test utility, not the parser) decides what an
+  incoming operator closes by comparing node ends that are still growing, so
+  chains came out wrong. In `4 - n + 2 * 3 - n` the last `-` "bound tighter
+  than ×" and closed before `×` and `+` did (Stanley's markup). In
+  `-x * (2 + y) - f(1)`, `×` closed before the group's `)`. The compiler
+  repo stays untouched, so `replayParse` in `parse-replay.ts` (was
+  `parse-detail.ts`) rebuilds the
+  parse steps from the shadow parser's own order, using the recorded
+  tree's nodes and ParseTrace's titles and step kinds. Presets and typed
+  programs both go through it (`replayedParse` on the base trace). If the
+  shadow can't follow a program or leaves a node unshown, the recorded steps
+  stay. On all six presets the rebuilt steps match the recorded ones:
+  kinds, titles, spans, focus, and visible and attached nodes. Two
+  deliberate differences:
+  - an assignment statement's node now appears when its `=` is read, not
+    at its target name, so the `=` leaves the token tray as `sum =` appears
+    (Stanley: the `=` was still in the tray);
+  - a node inside parentheses keeps its unbracketed span until the `)` is
+    read (the recorded tree stores the widened one), peeled one pair at a
+    time, so `((4 + 2))` closes twice: `(4 + 2)`, then `((4 + 2))`;
+  - an assignment appears at its `=` token and closes by being the pending
+    assignment, not by token, so `(x) = 1` (built at `(`) closes; a group
+    with no node of its own, like `(x)` there, shows no group steps. The
+    fallback to the recorded steps now also requires every opened node to
+    have closed.
+- Copy (Stanley, 2026-09-24): the last parse step reads "AST is complete
+  with N nodes", his wording as written, with no final period. "Its body
+  holds 6 items" and "The block closes with 1 item inside" lost their
+  counts, since "items" meant declarations and statements and read as
+  vague: "`main` is complete." and "The block closes." On that last step
+  every edge is lit, not only the root's (which the focus rule lit before).
+
 Open questions for Stanley, not yet decided:
 
 - The step panel's header and body often say nearly the same thing (08: "×
   binds tighter than +, so i goes to × first" vs "× binds tighter than +, so i
   joins × first. + keeps waiting."). Drop the header, or make it a short label?
 - Removing the reference panel removed the on-page check that the sketch's tree
-  matches the real compiler's. `partialSExpression`, `prettySExpression`,
-  `toSExpression` in `trace.ts` are now unused but kept.
+  matches the real compiler's; `check-trace.cjs` still asserts it for the
+  presets.
 
 ## Desktop setup
 
@@ -250,30 +346,30 @@ Keys: space play, h/k back, l/j forward, r restart, 1–5 jump to phase, e edit,
 | State | Link | Then |
 | --- | --- | --- |
 | 13 check · resolve | `?example=loop&frame=84` | |
-| 14 check · names done | `?example=loop&frame=89` | |
-| 15 check · types | `?example=loop&frame=90` | |
+| 14 check · names done | `?example=loop&frame=93` | |
+| 15 check · types | `?example=loop&frame=94` | |
 | 16 check · unresolved name | `?example=unresolved+name&frame=21` | |
 | 17 check · error end | `?example=unresolved+name&frame=22` | |
-| 18 emit · prologue | `?example=loop&frame=93` | |
-| 19 emit · instructions | `?example=loop&frame=104` | |
-| 20 emit · epilogue | `?example=loop&frame=119` | |
-| 21 emit · hover instruction | `?example=loop&frame=119` | hover the 15th instruction |
-| 22 regs · cfg | `?example=loop&frame=120` | |
-| 23 regs · liveness sweep 1 | `?example=loop&frame=121` | |
-| 24 regs · liveness last sweep | `?example=loop&frame=123` | |
-| 25 regs · interference | `?example=loop&frame=124` | |
-| 26 regs · simplify start | `?example=loop&frame=125` | |
-| 27 regs · simplify mid | `?example=loop&frame=138` | |
-| 28 regs · select start | `?example=loop&frame=148` | |
-| 29 regs · select mid | `?example=loop&frame=160` | |
-| 30 regs · done | `?example=loop&frame=171` | |
-| 31 regs · hover register | `?example=loop&frame=171` | hover v16 |
+| 18 emit · prologue | `?example=loop&frame=97` | |
+| 19 emit · instructions | `?example=loop&frame=108` | |
+| 20 emit · epilogue | `?example=loop&frame=123` | |
+| 21 emit · hover instruction | `?example=loop&frame=123` | hover the 15th instruction |
+| 22 regs · cfg | `?example=loop&frame=124` | |
+| 23 regs · liveness sweep 1 | `?example=loop&frame=125` | |
+| 24 regs · liveness last sweep | `?example=loop&frame=127` | |
+| 25 regs · interference | `?example=loop&frame=128` | |
+| 26 regs · simplify start | `?example=loop&frame=129` | |
+| 27 regs · simplify mid | `?example=loop&frame=142` | |
+| 28 regs · select start | `?example=loop&frame=152` | |
+| 29 regs · select mid | `?example=loop&frame=164` | |
+| 30 regs · done | `?example=loop&frame=175` | |
+| 31 regs · hover register | `?example=loop&frame=175` | hover v16 |
 | 32 regs · two functions | `?example=function+call&frame=70` | |
 | 33 ui · playing 2x | `?example=loop&frame=60` | `=` twice, space |
 | 34 ui · about open | `?example=loop&frame=83` | open "about" |
 | 36–38 custom | none | paste the program below, press 3 / 5 / play to end |
 | 39 custom · error | none | paste the error program below, play to end |
-| 40–41 mobile | `?example=loop&frame=83`, `frame=171` | 390 px wide |
+| 40–41 mobile | `?example=loop&frame=83`, `frame=175` | 390 px wide |
 
 Custom program (36–38):
 
@@ -368,6 +464,146 @@ presentation.
   already renames every class, method and field (`ParseTrace`, `Tokeniser`
   etc. don't appear); only string literals such as error messages stay
   readable, which he accepted. No extra obfuscation.
+
+## Precedence in the tree (prototype, 2026-09-24)
+
+Stanley found the detailed parser view (call stack, precedence table)
+unreadable for visitors and asked for the decision to show in the tree.
+GPT-6 Astra (xhigh, via `codex exec`) proposed a "held operand" treatment;
+prompt and answer are in `docs/handoffs/2026-09-24-parse-visual-astra-*.md`.
+It is built in `parse-view.ts`:
+
+- The finished layout is the target. A shown node that isn't attached yet
+  sits in the open slot of its nearest shown ancestor, with a dashed edge
+  (`.ac-held`). After `4 +`, `2` waits where the right side of `+` goes;
+  `4 - n` waits in `return`'s slot until the outer operators appear, then
+  moves down as one piece.
+- A "tighter" step shows the incoming operator a step early at its slot
+  (dashed box, `.preview`), and the operand moves under it then.
+- One cue word beside one node (`.ac-cue`): `held` (a read operand whose
+  next step is a decision), `tighter`, `left first` (equal levels),
+  `× first` (looser), `prefix first`, `right first` (chained `=`).
+- Parentheses draw faint brackets around the group while it is read,
+  solid once its `)` is read, gone once the piece is attached.
+- No "one piece" step (Stanley, 2026-09-24): it only repeated the step
+  before, which had already finished the group's subtree. The `)` now
+  seals the group on that step (`Frame.sealed`, set by both the replay and
+  the teaching compiler): the brackets go solid, the code highlight covers
+  the brackets, and the note adds "The `)` closes the group, so it goes on
+  as one piece." `((4 + 2))` seals both groups on one step. Recorded
+  traces that fall back unrebuilt keep their closing step, without the
+  cue.
+- Fixes found on the way (Astra and the Fable review both flagged them):
+  `+` after `-` was "looser"; it is now "equal" (level, not symbol), with
+  its own wording, in both the replay and the teaching compiler. Inside
+  a group, argument or index the replay no longer claims the inner
+  operator "binds tighter" than one waiting outside (the limit starts
+  over, so there is no contest); that step is dropped. Presets still
+  rebuild identically.
+- Pieces have no border at all (`.ac button { border: 0 }` beats
+  `.ac-piece`), so the old dashed "pending" style never showed; the
+  preview sets its border explicitly.
+- The incoming operator on a "left first" or "× first" step is lit in the
+  token tray: the tray lights the token at the step's span, which for
+  those steps is the incoming operator, so this needed no new code.
+- While a group is read, operators waiting outside it are muted
+  (`.outside`): only unfinished binary or unary operators outside the
+  group, not finished ones.
+- Astra's empty-circle socket was not built; the dashed held edge says
+  the same thing.
+- The call-stack view is removed (Astra's advice); see "Detailed parser
+  mode" above.
+- Tree layout (Stanley, 2026-09-24): a parent sat centred over its whole
+  span, so in `4 + 2 * 3` the edge to `4` was twice as long as the one to
+  `×`. `treePositions` now puts a parent midway between its first and last
+  child, clamped inside its own span.
+
+## Tree layout and check names (2026-09-24)
+
+- Tree layout: GPT-6 Astra reviewed layout and edges
+  (`docs/handoffs/2026-09-24-tree-drawing-astra-*.md`). `treePositions` is
+  now a tidy tree: each subtree laid out alone, siblings packed by their
+  rows' label edges plus the 14-unit gap, a parent midway between its
+  first and last child. Unary chains are vertical and binary branches
+  mirror with no clamp (the midpoint + clamp version tilted
+  `return → +`). The loop tree is about a fifth narrower. Row gaps and
+  the parse slot shifts are unchanged.
+- Edge ports are worked out in pixels: an edge leaves a parent's box at
+  its bottom centre and reaches the child's at its top centre, the box
+  being 22px (20px when small or under 640px wide) times its scale. They
+  used to be 11 stage units, which drifted as the stage stretched. Held
+  edges share the helper; group brackets and name links are in pixels
+  too. Checked on the precedence preset: every endpoint lands on its box.
+- Not done from that review: routing the current name link around labels
+  (it still arcs over, and can cross, other labels), explicit label
+  metrics (`.ac button` zeroes `.ac-piece`'s padding and border), and
+  dropping the late phases' separate 11/12 squeeze.
+- The parse tray shows a multiplying `*` as `×` once parsing starts
+  (Stanley); a prefix `*` stays as typed.
+- Assignment targets are resolved (`withTargets` in `scopes.ts`, compiler
+  traces only). The recorder has no node for a target (the tree folds it
+  into `i =`), but NameAnalyzer resolves it, target before value, so each
+  target gets a resolve step in source order, before the uses on its
+  right: "The target `i` refers to `int i;` on line 2." Loop gains 4
+  steps and local variable 1; later frame links above are shifted. A
+  target with no declaration becomes an unresolved step and is counted.
+- Name links are ink, not the error colour (Astra's check answer). The
+  step's own binding is drawn in full; settled ones shrink to a small
+  hook beside the use, on the side of its declaration, and hovering the
+  use or the declaration draws the arc again. This replaced the pile of
+  arcs on "Every name has a declaration".
+- Scope strip (`scope-strip.tsx`, scopes from `scopesOf`): during the name
+  pass, the bottom of the stage lists the scopes open at the current use,
+  outermost first (`global`, then the function, then nested blocks), each
+  with what has been declared in it so far. Scopes follow NameAnalyzer: a
+  function's parameters and top-level declarations share one scope; each
+  nested block has its own. The lookup is shown in one step: scopes
+  searched without a match are dashed, the match is inverted, `outer` when
+  it was found outside the use's own scope, `not found` (error colour) or
+  `built-in` at the end. On the pass's last step every scope is listed.
+  It fades out when the type pass starts.
+
+- Fable 5.1 review (2026-09-24) fixes: target links carry on past the
+  name pass when the recorder wrote no `links` (a program whose only names
+  are targets); an undeclared target retitles "n names have no
+  declaration" and, when no recorded use is unresolved, replaces the
+  recorder's generic "Semantic analysis failed" with "“y” has no
+  declaration." at the target; target titles say "in the parameters" for
+  parameters; a forward function declaration (`declare` "FunDecl f")
+  makes the definition visible from its token, as NameAnalyzer links calls
+  to the definition (`declaredAt`); chained `=` is "groups right to left"
+  with the cue `right first`, not "binds tighter". Rejected: the claim
+  that hooks hide behind 7px piece padding and that tidy-tree boxes touch
+  (`.ac button` zeroes the padding and border; labels are text-wide).
+- The rest of that review, fixed page-side:
+  - The recorder (`src/test/util/ParseTrace.java`, bundled into
+    compiler.js; the compiler itself was fine, checked with MARS: `1 0 300
+    7`) threw on two kinds of program. Fixed there with Stanley's OK
+    (2026-09-24; ParseTrace.java is untracked in the compiler repo, backup
+    of the old one in this session's scratchpad `cc/ParseTrace.java.orig`)
+    and compiler.js rebuilt with the unchanged `browser/build.sh`:
+    - A `return` inside `if`/`while` leaves a jump no path reaches
+      (`j f_epilogue` then `j label_3_end`). `pruneUnreachable` drops its
+      CFG block, and the recorder paired instructions with blocks by count.
+      It now pairs them by block id (ids number every instruction and
+      survive pruning) and writes `"dead": true` on the unreached one. The
+      page strikes it through with "never runs", and its emit note adds
+      "It never runs: the jump before it always leaves first, so the
+      register allocator drops it."
+    - An INVALID token (`$`) had no lexeme. It is now the text the lexer
+      read or the one character at its position; the lexer's own error
+      follows, which the page already words: "`$` isn't a character Mini-C
+      knows on line 1."
+  - Pieces were keyed by token, so an expression statement (`expr`) and
+    its first operand, both anchored at `x` in `x + 1;` (or `f` in
+    `f(2);`), showed one piece. A node sharing its token now gets its own
+    (`pieces`, keyed `node-<id>`).
+  - The shadow parser's per-rule `call` events are gone; one
+    `declarations` event marks where the program node opens.
+    `check-trace.cjs` is prettier-formatted and exempt from
+    `no-require-imports` (a plain Node script).
+  - Not changed: `CHAR_PX` (7.2) is ~9% wide for the 11px phone and
+    late-phase font, which only widens gaps.
 
 ## Open items (not started)
 

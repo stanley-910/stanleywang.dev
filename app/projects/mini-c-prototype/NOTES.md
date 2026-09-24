@@ -191,6 +191,8 @@ The reference panel's s-expression is now built frame by frame from the same
 node and attachment state as the diagram (`partialSExpression` in trace.ts):
 a waiting operator prints as `BinOp(IntLiteral(4),ADD,…)` until its right side
 attaches. From the end of Parse onward it is the compiler's own ASTPrinter line.
+(The reference panel and `partialSExpression` were removed later; see the
+handoff doc.)
 
 ## Step explanations and hover cards (2026-09-22)
 

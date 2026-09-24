@@ -134,7 +134,17 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  /* The stage alone sets the row height: a taller note grows up into the
+     source, which scrolls, instead of stretching the canvas. */
+  height: 0;
+  min-height: 100%;
+  overflow: hidden;
   border-right: 1px solid var(--line);
+}
+/* Only the source gives way when the note grows. */
+.ac-editor > .ac-bar,
+.ac-editor > .ac-diag {
+  flex: none;
 }
 .ac-bar {
   display: flex;
@@ -231,7 +241,8 @@
   position: relative;
   display: grid;
   grid-template-columns: 34px 1fr;
-  height: 236px;
+  flex: 0 1 236px;
+  min-height: calc(var(--row) * 3 + 8px);
   overflow: auto;
   scrollbar-width: thin;
   cursor: text;
@@ -317,32 +328,88 @@
   color: inherit;
   background: var(--line);
 }
-.ac-diag {
-  display: block;
+/* .ac button would reset the padding and border; the message keeps the
+   panel's text colour, only the tag is red. */
+.ac button.ac-diag {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
   width: 100%;
   padding: 6px 10px;
   border-top: 1px solid var(--line);
   text-align: left;
-  color: var(--err);
-  white-space: normal;
+  white-space: nowrap;
 }
-.ac-diag span {
+.ac-diag-tag {
+  flex: none;
+  color: var(--err);
+  font-weight: 600;
+}
+/* One line, cut with an ellipsis; hovering a cut message scrolls it. */
+.ac-diag-msg {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Inline until it scrolls: an inline-block would vanish behind the ellipsis. */
+.ac-diag-msg.scrolling {
+  text-overflow: clip;
+}
+.ac-diag-msg.scrolling > span {
   display: inline-block;
-  margin-right: 8px;
-  padding: 0 4px;
-  color: var(--bg);
-  background: var(--err);
-  font-size: 10px;
-  text-transform: uppercase;
+  animation: ac-diag-scroll var(--scroll, 2s) ease-in-out forwards;
+}
+/* One pass to the end, where it stays until the pointer leaves. */
+@keyframes ac-diag-scroll {
+  to {
+    transform: translateX(var(--shift, 0));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ac-diag-msg.scrolling > span {
+    animation: none;
+  }
+  .ac-diag-msg {
+    white-space: normal;
+  }
 }
 
 /* Step panel: what the current frame did and why. */
+.ac-source[data-sized='true'] {
+  flex: 0 0 var(--source-h);
+}
 .ac-note {
+  position: relative;
   display: flex;
-  flex: 1;
+  /* Barely shrinks, so the source gives way first; past its floor the note
+     body scrolls. */
+  flex: 1 0.001 auto;
   flex-direction: column;
   min-height: 0;
   border-top: 1px solid var(--line);
+}
+/* The note's top border, draggable. */
+.ac-split {
+  position: absolute;
+  top: -4px;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  height: 7px;
+  cursor: row-resize;
+  touch-action: none;
+}
+.ac-split:hover,
+.ac-split:focus-visible,
+.ac-split:active {
+  outline: none;
+  background: linear-gradient(
+    transparent 3px,
+    var(--muted) 3px,
+    var(--muted) 4px,
+    transparent 4px
+  );
 }
 .ac-note-title {
   overflow: hidden;
@@ -450,7 +517,9 @@
 .ac-scene {
   position: relative;
   flex: 1 1 auto;
-  height: 420px;
+  /* Fills the window under the site header, tabs and footer keys (about
+     210px together), within a floor and a ceiling. */
+  height: clamp(420px, calc(100dvh - 210px), 860px);
   overflow: hidden;
   background-image: linear-gradient(var(--line) 1px, transparent 1px);
   background-size: 100% 22px;
@@ -470,9 +539,82 @@
   color: var(--ink);
   overflow: visible;
 }
-.ac-link {
-  stroke: var(--err);
+/* Parse: a shown node not yet attached, and the group being read. */
+.ac-held {
+  stroke: var(--muted);
+  stroke-dasharray: 2 3;
+}
+.ac-group {
+  stroke: var(--muted);
   stroke-dasharray: 3 3;
+}
+.ac-group.closed {
+  stroke: var(--ink);
+  stroke-dasharray: none;
+}
+/* Check: the scopes open at the current name, outermost first. */
+.ac-scopes-wrap {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 12px;
+  z-index: 3;
+  pointer-events: none;
+}
+.ac-scopes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 11px;
+  line-height: 18px;
+}
+.ac-scope {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  transition:
+    border-color 0.2s,
+    opacity 0.2s;
+}
+.ac-scope-name {
+  color: var(--muted);
+}
+.ac-scope-empty {
+  color: var(--faint);
+}
+.ac-scope code {
+  padding: 0 3px;
+  color: var(--ink);
+}
+.ac-scope code.found {
+  color: var(--bg);
+  background: var(--ink);
+}
+.ac-scope.home,
+.ac-scope.hit {
+  border-color: var(--muted);
+}
+.ac-scope.passed {
+  border-style: dashed;
+}
+.ac-scope small {
+  font-size: 11px;
+  color: var(--ink);
+}
+.ac-scope small.err {
+  color: var(--err);
+}
+/* A name bound to its declaration; the error colour is kept for errors. */
+.ac-link {
+  stroke: var(--ink);
 }
 .ac-piece {
   position: absolute;
@@ -509,6 +651,19 @@
   background: var(--ink);
   color: var(--bg);
 }
+/* An operator shown a step early, where it will sit. */
+.ac-piece.node.preview,
+.ac-piece.node.preview.focused {
+  border-width: 1px;
+  border-style: dashed;
+  border-color: var(--ink);
+  background: var(--bg);
+  color: var(--ink);
+}
+/* An operator outside the group being read: nothing inside competes with it. */
+.ac-piece.node.outside {
+  color: var(--muted);
+}
 /* Kind label under the lexeme being read. */
 .ac-piece small {
   position: absolute;
@@ -517,6 +672,15 @@
   transform: translateX(-50%);
   font-size: 10px;
   color: var(--muted);
+}
+/* Parse cue ("tighter", "left first", ...), beside its node. */
+.ac-piece small.ac-cue {
+  top: 50%;
+  left: 100%;
+  transform: translate(6px, -50%);
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--ink);
 }
 .ac-piece.small {
   height: 20px;
@@ -706,7 +870,7 @@
     grid-template-columns: 270px minmax(0, 1fr);
   }
   .ac-scene {
-    height: 380px;
+    height: clamp(380px, calc(100dvh - 210px), 860px);
   }
 }
 @media (max-width: 640px) {
@@ -730,11 +894,18 @@
     grid-template-columns: 1fr;
   }
   .ac-editor {
+    height: auto;
+    min-height: 0;
     border-right: 0;
     border-bottom: 1px solid var(--line);
   }
-  .ac-source {
+  .ac-source,
+  .ac-source[data-sized='true'] {
+    flex: none;
     height: 132px;
+  }
+  .ac-split {
+    display: none;
   }
   .ac-note-body {
     min-height: 88px;
@@ -834,6 +1005,10 @@
   color: var(--faint);
   align-self: center;
 }
+.ac-ins.dead code {
+  color: var(--faint);
+  text-decoration: line-through;
+}
 .ac-ins.changed small {
   color: var(--ink);
 }
@@ -884,7 +1059,6 @@
   color: var(--ink);
 }
 
-/* Footer "?" menu, bottom right beside the timeline. */
 .ac-more {
   position: relative;
 }

@@ -19,13 +19,18 @@ import {
   registerHover,
   tokenKind,
   PHASE_SLIDES,
+  STEP_SLIDES,
   type Slide,
   lexemesOf,
   matchTable,
   type TokenClass,
 } from './explain'
+import { replayedParse } from './parse-replay'
+import { groupsOf, parentsOf, parseView } from './parse-view'
 import { compileReal, compilerLoaded, REAL_MAX_CHARS } from './real'
 import { findReference, REFERENCES } from './reference'
+import { ScopeStrip } from './scope-strip'
+import { scopesOf, withTargets } from './scopes'
 import {
   buildTrace,
   colouredUpTo,
@@ -48,12 +53,16 @@ const HOVER_DELAY = 250
 // Stage geometry: pieces live in a 680 × 480 viewBox stretched over the scene,
 // but their text is fixed-size CSS pixels, so layout works in pixels.
 const VIEW_W = 680
+const VIEW_H = 480
 const CHAR_PX = 7.2
 const EDGE_PX = 24
 // Advance of one character in the 11px token card.
 const CARD_CHAR_PX = 6.6
 // Line height of the source editor; matches --row on .ac-source.
 const SOURCE_ROW = 19
+// A dragged source height, kept per browser.
+const SPLIT_KEY = 'mini-c-split'
+const SPLIT_MIN = SOURCE_ROW * 3 + 8
 const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number]
 // Fill colours for the interference graph, one per physical register in use.
 const INK = [
@@ -67,25 +76,42 @@ const INK = [
   '#65a30d',
 ]
 
+// Outside code: [text](url) links, **bold**, and *italic* (letters on both
+// inner edges, so a lone `*` operator in prose stays literal).
+const INLINE = /(\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|\*[A-Za-z][^*]*[A-Za-z]\*)/
+
 // Explanation strings mark code with backticks.
 function Prose({ text }: { text: string }) {
   return (
     <>
-      {text
-        .split('`')
-        .map((part, i) =>
-          i % 2 ? (
-            <code key={i}>{part}</code>
-          ) : (
-            <span key={i}>
-              {part
-                .split('**')
-                .map((run, j) =>
-                  j % 2 ? <strong key={j}>{run}</strong> : run,
-                )}
-            </span>
-          ),
-        )}
+      {text.split('`').map((part, i) =>
+        i % 2 ? (
+          <code key={i}>{part}</code>
+        ) : (
+          <span key={i}>
+            {part.split(INLINE).map((run, j) => {
+              const link = /^\[([^\]]+)\]\(([^)]+)\)$/.exec(run)
+              if (link)
+                return (
+                  <a
+                    key={j}
+                    className="prose-link"
+                    href={link[2]}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {link[1]}
+                  </a>
+                )
+              if (/^\*\*.+\*\*$/.test(run))
+                return <strong key={j}>{run.slice(2, -2)}</strong>
+              if (/^\*.+\*$/.test(run))
+                return <em key={j}>{run.slice(1, -1)}</em>
+              return run
+            })}
+          </span>
+        ),
+      )}
     </>
   )
 }
@@ -134,6 +160,18 @@ function CharTable({ read, final }: { read: string; final?: TokenClass }) {
       </tbody>
     </table>
   )
+}
+
+// Detailed lexer mode inserts steps. `toBase` maps its frames back to the
+// plain trace's, so switching the mode keeps the place.
+function layered(
+  base: Trace,
+  source: string,
+  lexer: boolean,
+): { trace: Trace; toBase: (number | null)[] } {
+  if (!lexer) return { trace: base, toBase: base.frames.map((_, i) => i) }
+  const { trace, origin } = detailTrace(base, source)
+  return { trace, toBase: origin }
 }
 
 const INDENT = '  '
@@ -391,11 +429,16 @@ export default function AnimatedCompiler() {
     real?.source !== source &&
     realFailed !== source &&
     source.length <= REAL_MAX_CHARS
-  // Presets play the compiler's recorded frames.
+  // Presets play the compiler's recorded frames, with the parse steps
+  // rebuilt in the parser's own order (parse-replay.ts says why) and a name
+  // step for each assignment target (scopes.ts).
   const baseTrace = useMemo(
     () =>
-      reference?.trace ??
-      (real?.source === source ? real.trace : buildTrace(source)),
+      reference
+        ? withTargets(replayedParse(reference.trace))
+        : real?.source === source
+          ? withTargets(replayedParse(real.trace))
+          : buildTrace(source),
     [source, reference, real],
   )
   // Detailed lexer mode reads a character per step instead of a token.
@@ -420,11 +463,11 @@ export default function AnimatedCompiler() {
       document.removeEventListener('keydown', escape)
     }
   }, [moreOpen])
-  const detail = useMemo(
-    () => detailTrace(baseTrace, source),
-    [baseTrace, source],
+  const view = useMemo(
+    () => layered(baseTrace, source, detailed),
+    [baseTrace, source, detailed],
   )
-  const trace = detailed ? detail.trace : baseTrace
+  const trace = view.trace
   // The longest-worded token step of each class, for sizing the step panel.
   const tallestTokenSteps = useMemo(() => {
     const best = new Map<string, { text: string; token: Token }>()
@@ -438,26 +481,33 @@ export default function AnimatedCompiler() {
     }
     return [...best.values()]
   }, [trace, titles])
-  // The longest-worded character step, sized in the same way.
-  const tallestCharStep = useMemo(() => {
-    let best: { text: string; read: string } | undefined
-    for (const f of trace.frames) {
-      if (f.why.kind !== 'lex.char') continue
-      const text = explain(trace, f)
-      if (!best || text.length > best.text.length) {
-        const t = trace.tokens[f.why.token]
-        best = { text, read: t.text.slice(0, f.why.at - t.start + 1) }
-      }
-    }
-    return best
-  }, [trace])
   const tree = useMemo(
     () => treePositions(trace, (n) => n.label.length * CHAR_PX + 2),
     [trace],
   )
+  const parents = useMemo(() => parentsOf(trace), [trace])
+  const groups = useMemo(() => groupsOf(trace.frames), [trace])
+  const scopes = useMemo(() => scopesOf(trace), [trace])
+  // The name pass ends here; the scope strip is shown up to it.
+  const namesDoneAt = useMemo(
+    () => trace.frames.findIndex((f) => f.why.kind === 'check.namesDone'),
+    [trace],
+  )
+  // Once parsing starts, a `*` that multiplies waits in the tray as the `×`
+  // the tree will show; a prefix `*` stays as typed.
+  const times = useMemo(
+    () =>
+      new Set(
+        trace.nodes
+          .filter((n) => n.kind === 'binary' && n.label === '×')
+          .map((n) => n.token),
+      ),
+    [trace],
+  )
   const [step, setStep] = useState(0)
   // A phase's slides sit on the frame before its first step (the lexer's on
-  // the welcome); `slide` counts through them, 0 meaning the frame itself.
+  // the welcome), and a pass's before its first step; `slide` counts through
+  // them, 0 meaning the frame itself.
   const [slide, setSlide] = useState(0)
   const decks = useMemo(() => {
     const at = new Map<number, { phase: Phase; slides: Slide[] }>()
@@ -467,6 +517,12 @@ export default function AnimatedCompiler() {
       )
       if (first > 0 && slides)
         at.set(first - 1, { phase: phase as Phase, slides })
+    }
+    for (const { phase, starts, slides } of STEP_SLIDES) {
+      const first = trace.frames.findIndex(
+        (f, i) => i > 0 && f.phase === phase && starts(f, trace.frames[i - 1]),
+      )
+      if (first > 0 && !at.has(first - 1)) at.set(first - 1, { phase, slides })
     }
     return at
   }, [trace.frames])
@@ -481,10 +537,44 @@ export default function AnimatedCompiler() {
   const [editing, setEditing] = useState(false)
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  // The source's height once its border with the note has been dragged;
+  // null lets the note grow up into it as it needs.
+  const [sourceHeight, setSourceHeight] = useState<number | null>(null)
+  const drag = useRef<{ y: number; height: number; max: number } | null>(null)
+  useEffect(() => {
+    try {
+      const saved = Number(localStorage.getItem(SPLIT_KEY))
+      if (saved > 0) setSourceHeight(saved)
+    } catch {}
+  }, [])
+  const saveSplit = (height: number | null) => {
+    setSourceHeight(height)
+    try {
+      if (height === null) localStorage.removeItem(SPLIT_KEY)
+      else localStorage.setItem(SPLIT_KEY, String(Math.round(height)))
+    } catch {}
+  }
+  // The note keeps at least a few lines under the dragged border.
+  const splitRange = () => {
+    const pane = scrollRef.current
+    const editor = pane?.parentElement
+    if (!pane || !editor) return null
+    const above = pane.getBoundingClientRect().top
+    const bottom = editor.getBoundingClientRect().bottom
+    return {
+      height: pane.getBoundingClientRect().height,
+      max: Math.max(SPLIT_MIN, bottom - above - 72),
+    }
+  }
+  const clampSplit = (height: number, max: number) =>
+    Math.min(max, Math.max(SPLIT_MIN, height))
   const textRef = useRef<HTMLTextAreaElement>(null)
   const instructionRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<HTMLDivElement>(null)
   const [sceneWidth, setSceneWidth] = useState(VIEW_W)
+  const [sceneHeight, setSceneHeight] = useState(VIEW_H)
+  // The phone layout's smaller pieces (animated.css, max-width 640px).
+  const [narrow, setNarrow] = useState(false)
   const reduced = useReducedMotion()
   const index = Math.min(step, trace.frames.length - 1)
   const frame = trace.frames[index]
@@ -542,17 +632,20 @@ export default function AnimatedCompiler() {
 
   const seek = useCallback(
     (target: number) => {
+      // Like play, stepping waits for the real trace, which starts at 0.
+      if (realPending) return
       setPlaying(false)
       clearHover()
       setSlide(0)
       setStep(Math.max(0, Math.min(last, target)))
     },
-    [last, clearHover],
+    [last, clearHover, realPending],
   )
   // Stepping walks through a phase's slides before its first step, and
   // stepping back from that step lands on the last slide.
   const move = useCallback(
     (delta: number) => {
+      if (realPending) return
       const deck = decks.get(index)
       const before = decks.get(index - 1)
       if (deck && slide + delta >= 0 && slide + delta <= deck.slides.length) {
@@ -564,7 +657,7 @@ export default function AnimatedCompiler() {
         setSlide(before.slides.length)
       } else seek(index + delta)
     },
-    [seek, index, slide, clearHover, decks],
+    [seek, index, slide, clearHover, decks, realPending],
   )
   const play = useCallback(() => {
     // The real trace would replace this one mid-play and restart it.
@@ -579,7 +672,10 @@ export default function AnimatedCompiler() {
   const jumpPhase = useCallback(
     (phase: (typeof phases)[number]) => {
       // Phases after the lexer open on their first slide.
-      const deck = [...decks].find(([, d]) => d.phase === phase)
+      // The phase's own deck is its earliest; later ones open its passes.
+      const deck = [...decks]
+        .sort(([a], [b]) => a - b)
+        .find(([, d]) => d.phase === phase)
       if (deck && phase !== 'Tokens') {
         seek(deck[0])
         setSlide(1)
@@ -620,6 +716,8 @@ export default function AnimatedCompiler() {
     else url.searchParams.delete('example')
     if (detailed) url.searchParams.set('lexer', 'detailed')
     else url.searchParams.delete('lexer')
+    // Detailed parser mode is gone; old links drop its parameter.
+    url.searchParams.delete('parser')
     if (titles) url.searchParams.set('titles', 'on')
     else url.searchParams.delete('titles')
     url.searchParams.set('frame', String(index))
@@ -672,20 +770,28 @@ export default function AnimatedCompiler() {
   useEffect(() => {
     const scene = sceneRef.current
     if (!scene) return
-    const observer = new ResizeObserver(([entry]) =>
-      setSceneWidth(entry.contentRect.width || VIEW_W),
-    )
+    const observer = new ResizeObserver(([entry]) => {
+      setSceneWidth(entry.contentRect.width || VIEW_W)
+      setSceneHeight(entry.contentRect.height || VIEW_H)
+      setNarrow(window.matchMedia('(max-width: 640px)').matches)
+    })
     observer.observe(scene)
     return () => observer.disconnect()
   }, [])
 
+  // Keep the active line third from the top, and again whenever the source
+  // is resized (a tall note shrinks it mid-token).
   useEffect(() => {
     const pane = scrollRef.current
-    if (pane && !editing)
-      pane.scrollTop = Math.max(
-        0,
-        (source.slice(0, activeSpan.start).split('\n').length - 3) * SOURCE_ROW,
-      )
+    if (!pane || editing) return
+    const row = source.slice(0, activeSpan.start).split('\n').length
+    const scroll = () => {
+      pane.scrollTop = Math.max(0, (row - 3) * SOURCE_ROW)
+    }
+    scroll()
+    const observer = new ResizeObserver(scroll)
+    observer.observe(pane)
+    return () => observer.disconnect()
   }, [activeSpan.start, source, editing])
 
   useEffect(() => {
@@ -762,6 +868,13 @@ export default function AnimatedCompiler() {
     return { x: 172 + Math.cos(a) * radius, y: 235 + Math.sin(a) * radius }
   }
   const parsed = frame.phase !== 'Tokens'
+  // Stage points to scene pixels. The SVGs draw in pixels rather than
+  // stretching the 680 × 480 box: a stretched, non-scaling stroke measured
+  // pathLength in the wrong space, so long edges stopped short.
+  const toPx = (p: { x: number; y: number }) => ({
+    x: (p.x * sceneWidth) / VIEW_W,
+    y: (p.y * sceneHeight) / VIEW_H,
+  })
   const transition = {
     duration: reduced ? 0 : 0.42 / speed,
     ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
@@ -774,8 +887,12 @@ export default function AnimatedCompiler() {
   const spread = Math.min(treeRoom / treeWidth, 3)
   const fit = Math.min(1, spread)
   const treeLeft = EDGE_PX + (treeRoom - treeWidth * spread) / 2
+  // Parse: unattached nodes wait in their holder's open slot (parse-view.ts).
+  const working = parseView(trace, index, parents, groups, tree.at)
   const point = (id: number) => {
-    const p = tree.at[id] ?? { x: tree.width / 2, y: tree.depth }
+    const at = tree.at[id] ?? { x: tree.width / 2, y: tree.depth }
+    const shift = working.shift.get(id)
+    const p = shift ? { x: at.x + shift.x, y: at.y + shift.y } : at
     const x = (treeLeft + p.x * (late ? 11 / 12 : 1) * spread) * unit
     // A plain row keeps its height; crowded rows (see treePositions) add
     // to the tree, up to 60 more, starting it higher. Past that it squeezes.
@@ -788,7 +905,41 @@ export default function AnimatedCompiler() {
         ? { x, y: top + y - 110 }
         : { x, y: top + y }
   }
-  const owners = new Map(frame.nodes.map((id) => [trace.nodes[id].token, id]))
+  // Edges meet a node's box at its top and bottom centre. Ports are worked
+  // out in pixels, where the box's height is (22px, 20px when small or on
+  // a phone, times the node's scale); in stage units they drifted as the
+  // stage stretched.
+  const pieceHalf = ((late || narrow ? 20 : 22) * fit) / 2
+  const edgePath = (from: number, to: number) => {
+    const p = toPx(point(from)),
+      q = toPx(point(to))
+    const y0 = p.y + pieceHalf,
+      y1 = q.y - pieceHalf
+    const mid = (y0 + y1) / 2
+    return `M ${p.x} ${y0} C ${p.x} ${mid}, ${q.x} ${mid}, ${q.x} ${y1}`
+  }
+  const shownNodes =
+    working.preview === undefined
+      ? frame.nodes
+      : [...frame.nodes, working.preview]
+  const owners = new Map(shownNodes.map((id) => [trace.nodes[id].token, id]))
+  // Stage pieces: every token read so far, as its node once it has one. A
+  // node sharing its token with another (an expression statement and its
+  // first operand, both anchored at `x` in `x + 1;`) gets a piece of its own.
+  const pieces: { token: Token; nodeId?: number; key: string }[] = [
+    ...trace.tokens.slice(0, frame.tokenCount).map((token) => ({
+      token,
+      nodeId: owners.get(token.id),
+      key: `token-${token.id}`,
+    })),
+    ...shownNodes
+      .filter((id) => owners.get(trace.nodes[id].token) !== id)
+      .map((id) => ({
+        token: trace.tokens[trace.nodes[id].token],
+        nodeId: id,
+        key: `node-${id}`,
+      })),
+  ]
   const shownInstructions = trace.instructions.slice(0, frame.instructionCount)
   const tokenPoints: Record<number, { x: number; y: number }> = {}
   let tokenX = 20,
@@ -848,9 +999,10 @@ export default function AnimatedCompiler() {
     (error
       ? 'The compiler stops at its first error. Fix it in the editor and it runs again.'
       : explain(trace, frame, titles))
-  // Without step titles, only the welcome, slides and errors keep a header.
+  // Without step titles, only the welcome and slides keep a header; an
+  // error is already spelled out in the chip above.
   const showTitle =
-    titles || !!error || (!!intro && !hoverText) || (index === 0 && !hoverText)
+    titles || (!!intro && !hoverText) || (index === 0 && !hoverText && !error)
   // A token step lists every lexeme in its class under the explanation.
   const stepToken =
     !hoverText && !error && !intro && frame.why.kind === 'token'
@@ -870,13 +1022,14 @@ export default function AnimatedCompiler() {
   // Hidden layers size the panel for the tallest lexer step, but only on the
   // steps themselves: the welcome and slides keep their own height.
   const sizing = !intro && index > 0
-  // Toggling the mode keeps the place: the same token step in the other list.
-  const toggleDetail = () => {
-    if (detailed) {
-      const next = detail.origin.findIndex((o, i) => i >= index && o !== null)
-      setStep(next >= 0 ? (detail.origin[next] ?? 0) : 0)
-    } else setStep(Math.max(0, detail.origin.indexOf(index)))
-    setDetailed(!detailed)
+  // Switching a mode keeps the place: the same recorded step in the new
+  // list (from an inserted step, the recorded one after it).
+  const switchLexer = (lexer: boolean) => {
+    const at = view.toBase.findIndex((o, i) => i >= index && o !== null)
+    const base = at >= 0 ? view.toBase[at] : 0
+    const next = layered(baseTrace, source, lexer)
+    setStep(Math.max(0, next.toBase.indexOf(base)))
+    setDetailed(lexer)
     setPlaying(false)
     clearHover()
   }
@@ -975,6 +1128,12 @@ export default function AnimatedCompiler() {
           <div
             className="ac-source"
             data-editing={editing}
+            data-sized={sourceHeight !== null}
+            style={
+              sourceHeight === null
+                ? undefined
+                : ({ '--source-h': `${sourceHeight}px` } as CSSProperties)
+            }
             ref={scrollRef}
             onClick={(e) => {
               if (e.target === e.currentTarget) textRef.current?.focus()
@@ -1035,8 +1194,28 @@ export default function AnimatedCompiler() {
             </div>
           </div>
           {trace.error && !realPending && (
-            <button className="ac-diag" onClick={() => seek(last)}>
-              <span>error</span> <Prose text={trace.error.message} />
+            <button
+              className="ac-diag"
+              onClick={() => seek(last)}
+              onMouseEnter={(e) => {
+                // One line; on hover a long message scrolls to its end and stays.
+                const msg = e.currentTarget.lastElementChild as HTMLElement
+                const over = msg.scrollWidth - msg.clientWidth
+                msg.style.setProperty('--shift', `${-over}px`)
+                // About 150px/s, at least 1s.
+                msg.style.setProperty('--scroll', `${Math.max(1, over / 150)}s`)
+                msg.classList.toggle('scrolling', over > 0)
+              }}
+              onMouseLeave={(e) =>
+                e.currentTarget.lastElementChild?.classList.remove('scrolling')
+              }
+            >
+              <span className="ac-diag-tag">error</span>
+              <span className="ac-diag-msg">
+                <span>
+                  <Prose text={trace.error.message} />
+                </span>
+              </span>
             </button>
           )}
           <section
@@ -1044,6 +1223,40 @@ export default function AnimatedCompiler() {
             aria-label="Current step"
             aria-live={playing ? 'off' : 'polite'}
           >
+            {/* Drag the border to size the source; double-click resets. */}
+            <div
+              className="ac-split"
+              role="separator"
+              aria-orientation="horizontal"
+              aria-label="Resize source"
+              tabIndex={0}
+              onPointerDown={(e) => {
+                const range = splitRange()
+                if (!range) return
+                e.preventDefault()
+                e.currentTarget.setPointerCapture(e.pointerId)
+                drag.current = { y: e.clientY, ...range }
+              }}
+              onPointerMove={(e) => {
+                const d = drag.current
+                if (d)
+                  setSourceHeight(clampSplit(d.height + e.clientY - d.y, d.max))
+              }}
+              onPointerUp={() => {
+                if (drag.current) saveSplit(sourceHeight)
+                drag.current = null
+              }}
+              onDoubleClick={() => saveSplit(null)}
+              onKeyDown={(e) => {
+                if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
+                e.preventDefault()
+                e.stopPropagation()
+                const range = splitRange()
+                if (!range) return
+                const step = e.key === 'ArrowUp' ? -SOURCE_ROW : SOURCE_ROW
+                saveSplit(clampSplit(range.height + step, range.max))
+              }}
+            />
             {showTitle && (
               <div className="ac-bar">
                 <span className="ac-note-title">
@@ -1090,12 +1303,6 @@ export default function AnimatedCompiler() {
                       </table>
                     )}
                   </div>
-                  {sizing && detailed && tallestCharStep && (
-                    <div className="ac-note-layer ghost" aria-hidden="true">
-                      <Prose text={tallestCharStep.text} />
-                      <CharTable read={tallestCharStep.read} />
-                    </div>
-                  )}
                   {(sizing ? tallestTokenSteps : []).map((v) => (
                     <div
                       key={tokenKind(v.token)}
@@ -1132,21 +1339,17 @@ export default function AnimatedCompiler() {
           <div className="ac-scene" ref={sceneRef}>
             <svg
               className="ac-edges"
-              preserveAspectRatio="none"
-              viewBox="0 0 680 480"
+              viewBox={`0 0 ${sceneWidth} ${sceneHeight}`}
               aria-hidden="true"
             >
               <AnimatePresence>
                 {!regView &&
                   frame.nodes.flatMap((id) => {
-                    const n = trace.nodes[id],
-                      p = point(id)
+                    const n = trace.nodes[id]
                     return n.children
                       .filter((child) => frame.attached.includes(child))
                       .map((child) => {
-                        const q = point(child)
-                        const r = 11 * fit
-                        const d = `M ${p.x} ${p.y + r} C ${p.x} ${(p.y + q.y) / 2}, ${q.x} ${(p.y + q.y) / 2}, ${q.x} ${q.y - r}`
+                        const d = edgePath(id, child)
                         return (
                           <motion.path
                             key={`${id}-${child}`}
@@ -1154,12 +1357,16 @@ export default function AnimatedCompiler() {
                             fill="none"
                             stroke="currentColor"
                             strokeWidth={1}
-                            vectorEffect="non-scaling-stroke"
                             initial={{ d, pathLength: 0, opacity: 0 }}
                             animate={{
                               d,
                               pathLength: 1,
-                              opacity: frame.focus === id ? 1 : 0.45,
+                              // The finished tree is lit throughout.
+                              opacity:
+                                frame.focus === id ||
+                                frame.why.kind === 'parse.done'
+                                  ? 1
+                                  : 0.45,
                             }}
                             exit={{ pathLength: 0, opacity: 0 }}
                             transition={transition}
@@ -1167,12 +1374,85 @@ export default function AnimatedCompiler() {
                         )
                       })
                   })}
+                {working.held.map(([holder, id]) => {
+                  // A dashed socket: shown, not yet attached.
+                  const d = edgePath(holder, id)
+                  return (
+                    <motion.path
+                      key={`held-${holder}-${id}`}
+                      className="ac-held"
+                      d={d}
+                      fill="none"
+                      strokeWidth={1}
+                      initial={{ d, opacity: 0 }}
+                      animate={{ d, opacity: 0.5 }}
+                      exit={{ opacity: 0 }}
+                      transition={transition}
+                    />
+                  )
+                })}
+                {working.group &&
+                  (() => {
+                    // Brackets around the group being read, solid once its
+                    // `)` is read.
+                    const g = working.group
+                    const ids = g.nodes.length ? g.nodes : [g.slot]
+                    // All in pixels, so the brackets keep their shape
+                    // however the stage is stretched.
+                    const half = (id: number) =>
+                      (trace.nodes[id].label.length * CHAR_PX * fit) / 2 + 12
+                    const at = ids.map((id) => toPx(point(id)))
+                    const xs = at.flatMap((p, i) => [
+                      p.x - half(ids[i]),
+                      p.x + half(ids[i]),
+                    ])
+                    const ys = at.map((p) => p.y)
+                    const x0 = Math.min(...xs),
+                      x1 = Math.max(...xs)
+                    const y0 = Math.min(...ys) - pieceHalf - 8,
+                      y1 = Math.max(...ys) + pieceHalf + 8
+                    const my = (y0 + y1) / 2
+                    const left = `M ${x0 + 5} ${y0} Q ${x0 - 5} ${my}, ${x0 + 5} ${y1}`
+                    const right = `M ${x1 - 5} ${y0} Q ${x1 + 5} ${my}, ${x1 - 5} ${y1}`
+                    return [left, right].map((d, i) => (
+                      <motion.path
+                        key={`group-${i}`}
+                        className={`ac-group ${g.closed ? 'closed' : ''}`}
+                        d={d}
+                        fill="none"
+                        strokeWidth={1}
+                        initial={{ d, opacity: 0 }}
+                        animate={{ d, opacity: g.closed ? 0.9 : 0.5 }}
+                        exit={{ opacity: 0 }}
+                        transition={transition}
+                      />
+                    ))
+                  })()}
                 {!regView &&
                   (frame.links ?? []).map(([use, decl]) => {
                     const p = point(use),
                       q = point(decl)
-                    const lift = 28 + Math.abs(p.x - q.x) * 0.12
-                    const d = `M ${p.x} ${p.y - 11} C ${p.x} ${p.y - 11 - lift}, ${q.x} ${q.y - 11 - lift}, ${q.x} ${q.y - 11}`
+                    // The step's own binding is drawn in full, from the top
+                    // of the use to the top of its declaration. A settled
+                    // one shrinks to a hook beside the use, on the side of
+                    // its declaration, clear of the edge arriving on top;
+                    // hovering either end draws it in full again.
+                    const full =
+                      frame.focus === use || hover === use || hover === decl
+                    const a = toPx(p),
+                      b = toPx(q)
+                    const lift = 28 + Math.abs(a.x - b.x) * 0.12
+                    const lean = Math.sign(b.x - a.x) || -1
+                    const top = a.y - pieceHalf,
+                      end = b.y - pieceHalf
+                    const side =
+                      a.x +
+                      lean *
+                        ((trace.nodes[use].label.length * CHAR_PX * fit) / 2 +
+                          4)
+                    const d = full
+                      ? `M ${a.x} ${top} C ${a.x} ${top - lift}, ${b.x} ${end - lift}, ${b.x} ${end}`
+                      : `M ${side} ${a.y + 3} C ${side} ${a.y - 3}, ${side + lean * 2} ${a.y - 7}, ${side + lean * 7} ${a.y - 7}`
                     return (
                       <motion.path
                         key={`link-${use}-${decl}`}
@@ -1180,13 +1460,11 @@ export default function AnimatedCompiler() {
                         d={d}
                         fill="none"
                         strokeWidth={1}
-                        vectorEffect="non-scaling-stroke"
                         initial={{ d, pathLength: 0, opacity: 0 }}
                         animate={{
                           d,
                           pathLength: 1,
-                          opacity:
-                            frame.focus === use || hover === use ? 1 : 0.55,
+                          opacity: full ? 1 : 0.6,
                         }}
                         exit={{ pathLength: 0, opacity: 0 }}
                         transition={transition}
@@ -1197,8 +1475,7 @@ export default function AnimatedCompiler() {
             </svg>
             <AnimatePresence>
               {!regView &&
-                trace.tokens.slice(0, frame.tokenCount).map((token) => {
-                  const nodeId = owners.get(token.id)
+                pieces.map(({ token, nodeId, key }) => {
                   const node =
                     nodeId === undefined ? undefined : trace.nodes[nodeId]
                   const consumed = frame.consumed.includes(token.id)
@@ -1224,9 +1501,9 @@ export default function AnimatedCompiler() {
                     )
                   return (
                     <motion.button
-                      key={`token-${token.id}`}
+                      key={key}
                       style={{ x: '-50%', y: '-50%' }}
-                      className={`ac-piece ${node ? 'node' : 'token'} kind-${token.kind} ${focused ? 'focused' : ''} ${pending ? 'pending' : ''} ${late ? 'small' : ''}`}
+                      className={`ac-piece ${node ? 'node' : 'token'} kind-${token.kind} ${focused ? 'focused' : ''} ${pending ? 'pending' : ''} ${late ? 'small' : ''} ${node && node.id === working.preview ? 'preview' : ''} ${node && working.outside.includes(node.id) ? 'outside' : ''}`}
                       initial={{
                         left: '-5%',
                         top: (Math.min(tokenPoint.y, 98) / 480) * 100 + '%',
@@ -1266,11 +1543,32 @@ export default function AnimatedCompiler() {
                           : `Token ${token.text}, ${tokenKind(token)}`
                       }
                     >
-                      {node ? node.label : token.text}
+                      {node
+                        ? node.label
+                        : parsed && times.has(token.id)
+                          ? '×'
+                          : token.text}
                       {!parsed && focused && <small>{tokenKind(token)}</small>}
+                      {node && working.cue?.node === node.id && (
+                        <small className="ac-cue">{working.cue.text}</small>
+                      )}
                     </motion.button>
                   )
                 })}
+            </AnimatePresence>
+            <AnimatePresence>
+              {frame.phase === 'Check' && index <= namesDoneAt && (
+                <motion.div
+                  key="scopes"
+                  className="ac-scopes-wrap"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={transition}
+                >
+                  <ScopeStrip trace={trace} scopes={scopes} frame={frame} />
+                </motion.div>
+              )}
             </AnimatePresence>
             {hoverTok && cardAt && cardBox && (
               <motion.div
@@ -1315,8 +1613,7 @@ export default function AnimatedCompiler() {
             {graphFn && (
               <svg
                 className="ac-graph"
-                viewBox="0 0 680 480"
-                preserveAspectRatio="none"
+                viewBox={`0 0 ${sceneWidth} ${sceneHeight}`}
                 aria-label="Interference graph"
               >
                 <AnimatePresence>
@@ -1328,13 +1625,12 @@ export default function AnimatedCompiler() {
                       return (
                         <motion.line
                           key={`ig-${a}-${b}`}
-                          x1={p.x}
-                          y1={p.y}
-                          x2={q.x}
-                          y2={q.y}
+                          x1={(p.x * sceneWidth) / VIEW_W}
+                          y1={(p.y * sceneHeight) / VIEW_H}
+                          x2={(q.x * sceneWidth) / VIEW_W}
+                          y2={(q.y * sceneHeight) / VIEW_H}
                           stroke="currentColor"
                           strokeWidth={1}
-                          vectorEffect="non-scaling-stroke"
                           initial={{ pathLength: 0, opacity: 0 }}
                           animate={{
                             pathLength: 1,
@@ -1418,7 +1714,7 @@ export default function AnimatedCompiler() {
                             : undefined))
                     return (
                       <motion.div
-                        className={`ac-ins ${current ? 'current' : ''} ${changed.has(i) ? 'changed' : ''}`}
+                        className={`ac-ins ${current ? 'current' : ''} ${changed.has(i) ? 'changed' : ''} ${ins.dead ? 'dead' : ''}`}
                         key={`instruction-${i}`}
                         initial={{ opacity: 0, x: -12 }}
                         animate={{ opacity: 1, x: 0 }}
@@ -1433,6 +1729,7 @@ export default function AnimatedCompiler() {
                         {live?.[i] && (
                           <small>{live[i].out.join(' ') || '·'}</small>
                         )}
+                        {ins.dead && <small>never runs</small>}
                       </motion.div>
                     )
                   })}
@@ -1486,11 +1783,14 @@ export default function AnimatedCompiler() {
         <span className="ac-step">
           <button
             onClick={() => move(-1)}
-            disabled={index === 0 && slide === 0}
+            disabled={realPending || (index === 0 && slide === 0)}
           >
             <kbd>h</kbd>
           </button>
-          <button onClick={() => move(1)} disabled={index === last}>
+          <button
+            onClick={() => move(1)}
+            disabled={realPending || index === last}
+          >
             <kbd>l</kbd>step
           </button>
         </span>
@@ -1508,6 +1808,7 @@ export default function AnimatedCompiler() {
           min={0}
           max={last}
           value={index}
+          disabled={realPending}
           style={
             { '--p': `${last ? (index / last) * 100 : 0}%` } as CSSProperties
           }
@@ -1528,7 +1829,7 @@ export default function AnimatedCompiler() {
                 type="button"
                 role="menuitemcheckbox"
                 aria-checked={detailed}
-                onClick={toggleDetail}
+                onClick={() => switchLexer(!detailed)}
               >
                 <span aria-hidden="true">{detailed ? '[x]' : '[ ]'}</span>
                 detailed lexer
