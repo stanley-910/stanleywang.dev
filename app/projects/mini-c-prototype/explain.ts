@@ -294,6 +294,51 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
         ? `The return expression has type ${code(w.type)}, matching the function's ${code(w.expected)}.`
         : `${src(w.node)} has type ${code(w.type)}.`
     }
+    case 'check.expr': {
+      const n = node(w.node)
+      if (!w.ok) {
+        const bad = w.bad == null ? undefined : node(w.bad)
+        const got = bad && w.typed.find(([id]) => id === bad.id)?.[1]
+        if (!bad || !w.expected)
+          return `${src(w.node)} doesn't type-check, so the compiler stops here.`
+        if (n.kind === 'call')
+          return `${code(n.label)} needs ${code(w.expected)} here, but ${src(bad.id)} is ${code(got ?? '?')}. The compiler stops here.`
+        return ['==', '!='].includes(n.label)
+          ? `${code(n.label)} needs both sides to have the same type, but ${src(bad.id)} is ${code(got ?? '?')}, not ${code(w.expected)}. The compiler stops here.`
+          : `${code(n.label)} needs ${code(w.expected)} on both sides, but ${src(bad.id)} is ${code(got ?? '?')}. The compiler stops here.`
+      }
+      if (n.kind === 'call')
+        return n.children.length
+          ? `The ${n.children.length === 1 ? 'argument matches' : 'arguments match'} the parameters, so ${src(w.node)} has the function's return type, ${code(w.type)}.`
+          : `${src(w.node)} has the function's return type, ${code(w.type)}.`
+      if (n.kind === 'binary' || n.kind === 'unary') {
+        const sides = n.kind === 'unary' ? 'Its operand is' : 'Both sides are'
+        return ['<', '>', '<=', '>=', '==', '!=', '&&', '||'].includes(n.label)
+          ? `${sides} ${code('int')}, so ${src(w.node)} checks out. A comparison gives ${code('int')}: 1 for true, 0 for false.`
+          : `${sides} ${code('int')}, so ${src(w.node)} is ${code(w.type)} too.`
+      }
+      return `${src(w.node)} has type ${code(w.type)}.`
+    }
+    case 'check.fits': {
+      const value = src(w.value)
+      if (w.rule === 'assign') {
+        const target = code(trace.tokens[node(w.node).token].text)
+        return w.ok
+          ? `${target} is ${code(w.expected)} and ${value} is ${code(w.type)}, so the assignment fits.`
+          : `${target} is ${code(w.expected)}, but ${value} is ${code(w.type)}. The compiler stops here.`
+      }
+      if (w.rule === 'condition') {
+        const what = code(node(w.node).label)
+        return w.ok
+          ? `The condition ${value} is ${code('int')}, as ${what} needs.`
+          : `A ${what} condition must be ${code('int')}, but ${value} is ${code(w.type)}. The compiler stops here.`
+      }
+      return w.ok
+        ? `The return value ${value} is ${code(w.type)}, matching what the function promises.`
+        : `The function promises ${code(w.expected)}, but ${value} is ${code(w.type)}. The compiler stops here.`
+    }
+    case 'check.typesDone':
+      return 'Every expression has a type, and each one fits where it is used. The tree is ready for code generation.'
     case 'check.namesDone':
       return w.unresolved === 0
         ? 'Every name has a declaration. Each use is now tied to the place it was declared.'
@@ -621,8 +666,9 @@ export const STEP_SLIDES: {
   {
     phase: 'Check',
     starts: (frame, previous) =>
-      frame.why.kind === 'check.type' &&
-      previous.why.kind === 'check.namesDone',
+      ['check.type', 'check.expr', 'check.fits', 'check.typesDone'].includes(
+        frame.why.kind,
+      ) && previous.why.kind === 'check.namesDone',
     slides: [
       {
         title: 'Type Analysis',

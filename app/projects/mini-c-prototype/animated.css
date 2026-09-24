@@ -751,6 +751,70 @@
   font-size: 11px;
   color: var(--ink);
 }
+/* Type pass: a node's type, beside it. */
+.ac-piece small.ac-type {
+  top: 50%;
+  left: 100%;
+  transform: translate(5px, -50%);
+  padding: 0 3px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 13px;
+  white-space: nowrap;
+}
+.ac-piece small.ac-type.new {
+  animation: ac-type-in 0.25s var(--delay, 0s) both;
+}
+/* An operator's operands, on the step it takes their types. */
+.ac-piece small.ac-type.input {
+  border-color: var(--muted);
+  color: var(--ink);
+}
+/* What a return must match (`main: int`), for the step that checks it. */
+.ac-piece small.ac-type.need {
+  border-style: dashed;
+  border-color: var(--muted);
+  color: var(--ink);
+}
+/* A value and what it must fit: green once the check lands. */
+.ac-piece small.ac-type.ok {
+  animation: ac-type-ok 0.25s var(--land, 0.42s) both;
+}
+.ac-piece small.ac-type.new.ok {
+  animation:
+    ac-type-in 0.25s var(--delay, 0s) both,
+    ac-type-ok 0.25s var(--land, 0.42s) both;
+}
+.ac-piece small.ac-type.bad {
+  border-color: var(--err);
+  color: var(--err);
+}
+.ac-piece small.ac-type.unknown {
+  border-style: dashed;
+  color: var(--muted);
+}
+@keyframes ac-type-in {
+  from {
+    opacity: 0;
+    transform: translate(0, -50%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(5px, -50%);
+  }
+}
+@keyframes ac-type-ok {
+  from {
+    border-color: var(--muted);
+    color: var(--ink);
+  }
+  to {
+    border-color: var(--ok);
+    color: var(--ok);
+  }
+}
 .ac-piece.small {
   height: 20px;
   line-height: 18px;
