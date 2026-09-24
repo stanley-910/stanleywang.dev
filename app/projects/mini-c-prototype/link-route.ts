@@ -22,28 +22,9 @@
 // declaration are free, so a route turns at the box, not a little way
 // along the row. The winner gets quarter circles at the corners.
 //
-// Output. `d` is always `M` plus exactly SEGMENTS cubics (`C`), the unused
-// ones collapsed to the end point, so motion can tween any two routes and a
-// route to its `hook`, the first 16px of itself. Tweening two routes with a
-// different number of bends matches cubics by index, so the middle frames
-// wobble for the 0.4s of the transition but land right; the usual case
-// (full route ↔ its hook, or one arc ↔ another) tweens cleanly. Without a
-// clean route it returns the old lifted arc with `clean: false`.
-//
-// Styling proposal (CSS is in the handoff report, not here):
-// - The step's link: 1px solid ink, drawn in with pathLength over the
-//   normal transition, from the use to the declaration. Under it a 3px
-//   background-coloured copy of the same path (a halo), so where the link
-//   crosses a tree edge it visibly passes over it, like a wire.
-// - The declaration end lands on the box border and gets a 2px ink dot with
-//   a 1px background ring, popping in when the draw-in ends. The use end
-//   has no marker: the focused piece is already inverted, and the wire
-//   simply leaves its border.
-// - A settled link keeps `hook`: the first 16px of its own route (out of the
-//   side, one rounded turn), at 0.6 opacity, so it points the way the link
-//   went. Since `d` and `hook` have the same shape, moving on reels the
-//   route back into its hook and hovering pays it out again.
-// - No dashes, no arrowheads; the error colour stays for errors.
+// Output uses cubics with rounded corners. A crowded grid retries with
+// less clearance; if no route exists, the caller still draws the lifted
+// arc (`clean: false`) so the binding never silently disappears.
 
 export type Pt = { x: number; y: number }
 export type Box = { x: number; y: number; w: number; h: number }
@@ -51,10 +32,9 @@ export type Box = { x: number; y: number; w: number; h: number }
 export type Edge = { from: Pt; to: Pt }
 
 export type Route = {
-  /** `M` + SEGMENTS cubics, in pixels. */
+  /** Cubics in pixels, padded to at least SEGMENTS commands. */
   d: string
-  /** The first 16px of `d` (out and round the first corner), same command
-   * shape, for a settled link. */
+  /** The first 16px of `d`, out and round the first corner. */
   hook: string
   /** Where the route meets the use's border. */
   start: Pt
@@ -73,6 +53,8 @@ export type RouteOptions = {
   radius?: number
   /** Tree edges to cross squarely rather than run along. */
   edges?: Edge[]
+  /** Stage panels to avoid, without treating them as rows of nodes. */
+  walls?: Box[]
   /** Room the route may use; defaults to the boxes' extent plus a margin. */
   bounds?: Box
 }
@@ -286,7 +268,7 @@ export function linkRouter(obstacles: Box[], opts: RouteOptions = {}) {
     channel = Math.min(channel, top - bottom)
   }
   const clearY = Math.max(
-    2,
+    opts.clearance?.y === 0 ? 0 : 2,
     Math.min(opts.clearance?.y ?? 6, (channel - 3) / 2),
   )
   const bounds = opts.bounds ?? {
@@ -327,6 +309,13 @@ export function linkRouter(obstacles: Box[], opts: RouteOptions = {}) {
       y1: b.y + b.h + clearY,
     }
   })
+  for (const b of opts.walls ?? [])
+    rects.push({
+      x0: b.x - 4,
+      y0: b.y - 4,
+      x1: b.x + b.w + 4,
+      y1: b.y + b.h + 4,
+    })
   const edgePieces = (opts.edges ?? []).flatMap(pieces)
   const vLines = new Map<number, Line>()
   const hLines = new Map<number, Line>()
@@ -342,7 +331,10 @@ export function linkRouter(obstacles: Box[], opts: RouteOptions = {}) {
 
   const baseXs: number[] = [bounds.x, bounds.x + bounds.w]
   const baseYs: number[] = [bounds.y, bounds.y + bounds.h]
-  for (const r of rects) baseXs.push(r.x0, r.x1)
+  for (const r of rects) {
+    baseXs.push(r.x0, r.x1)
+    baseYs.push(r.y0, r.y1)
+  }
   rows.forEach((row, i) => {
     baseYs.push(row[0].y + row[0].h / 2)
     for (let k = 1; k < row.length; k++) {
@@ -412,7 +404,8 @@ export function linkRouter(obstacles: Box[], opts: RouteOptions = {}) {
     const lo = Math.min(a, b) + EPS,
       hi = Math.max(a, b) - EPS
     for (let i = 0; i < rects.length; i++) {
-      if (own.some((k) => same(k, obstacles[i]))) continue
+      if (i < obstacles.length && own.some((k) => same(k, obstacles[i])))
+        continue
       const r = rects[i]
       const inside = vertical
         ? at > r.x0 + EPS && at < r.x1 - EPS
@@ -436,11 +429,24 @@ export function linkRouter(obstacles: Box[], opts: RouteOptions = {}) {
     const tc = { x: to.x + to.w / 2, y: to.y + to.h / 2 }
     const lean = Math.sign(tc.x - fc.x) || -1
     const fallback = (): Route => {
+      // A crowded row may have room for the wire but not its clearance.
+      if (clearX > 0 || clearY > 0) {
+        const tight = linkRouter(obstacles, {
+          ...opts,
+          clearance: { x: 0, y: 0 },
+          radius: 0,
+        }).route(from, to)
+        if (tight.clean) return tight
+      }
       const lift = 28 + Math.abs(fc.x - tc.x) * 0.12
       const a = { x: fc.x, y: from.y },
         b = { x: tc.x, y: to.y }
       const d = cubics(a, [
-        [{ x: a.x, y: a.y - lift }, { x: b.x, y: b.y - lift }, b],
+        [
+          { x: a.x, y: Math.max(bounds.y, a.y - lift) },
+          { x: b.x, y: Math.max(bounds.y, b.y - lift) },
+          b,
+        ],
       ])
       return {
         d,
@@ -603,7 +609,6 @@ export function linkRouter(obstacles: Box[], opts: RouteOptions = {}) {
     points.push(port.at)
     const poly = simplify(points)
     const bends = poly.length - 2
-    if (bends + 1 + bends > SEGMENTS) return fallback()
     const full = rounded(poly, radius)
     return {
       d: cubics(poly[0], full),
@@ -728,7 +733,7 @@ const n = (v: number) => (Math.round(v * 100) / 100).toString()
 const cubics = (start: Pt, list: Cubic[]) => {
   let at = start
   const parts = [`M ${n(start.x)} ${n(start.y)}`]
-  for (let i = 0; i < SEGMENTS; i++) {
+  for (let i = 0; i < Math.max(SEGMENTS, list.length); i++) {
     const c = list[i] ?? [at, at, at]
     parts.push(
       `C ${n(c[0].x)} ${n(c[0].y)}, ${n(c[1].x)} ${n(c[1].y)}, ${n(c[2].x)} ${n(c[2].y)}`,

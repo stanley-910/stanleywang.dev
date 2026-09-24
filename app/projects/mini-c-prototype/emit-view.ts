@@ -1,11 +1,13 @@
 // The emit phase in blocks (Astra's emit answer, 2026-09-24): instead of a
-// step per AST node, a leaf's instructions (a literal, a name's load, an
-// assignment's target address) join the step of the operation that uses
-// them, when that operation comes next. A leaf that waits for a sibling's
-// work keeps its own step, so the viewer sees it held beside its parent.
+// step per AST node, the pieces an operation uses (a literal, a name's load,
+// an assignment's target address) arrive together in one step when they
+// come one after another. The operation keeps a step of its own, where their
+// registers travel up into it (Stanley: the funnelling went by too fast when
+// it shared their step). A piece that waits for a sibling's work keeps its
+// own step, so the viewer sees it held beside its parent.
 import { parentsOf } from './parse-view'
 
-import type { Frame, Instruction, Trace } from './trace'
+import type { Frame, Trace } from './trace'
 
 export type EmitPart = { node: number; from: number; to: number }
 
@@ -30,6 +32,14 @@ export function withEmitBlocks(trace: Trace): Trace {
   const frames = trace.frames
   const out: Frame[] = []
   let parts: { frame: Frame; part: EmitPart }[] = []
+  // The operation a piece feeds: the assignment itself for a target
+  // address, else the parent node; not a piece, undefined.
+  const ownerOf = (at: number) => {
+    const why = frames[at]?.why
+    if (why?.kind !== 'emit.instr') return undefined
+    if (isTargetAddress(trace, frames, at)) return why.node
+    return isLeaf(trace, why.node) ? parents.get(why.node) : undefined
+  }
   frames.forEach((frame, i) => {
     const w = frame.why
     if (w.kind !== 'emit.instr') {
@@ -37,25 +47,9 @@ export function withEmitBlocks(trace: Trace): Trace {
       return
     }
     parts.push({ frame, part: { node: w.node, from: w.from, to: w.to } })
-    const target = isTargetAddress(trace, frames, i)
-    const joins = target || isLeaf(trace, w.node)
-    // The operation this piece feeds: the assignment itself for a target
-    // address, else the parent node.
-    const owner = target ? w.node : parents.get(w.node)
-    let next = i + 1
-    while (
-      next < frames.length &&
-      frames[next].why.kind === 'emit.instr' &&
-      (isLeaf(trace, (frames[next].why as { node: number }).node) ||
-        isTargetAddress(trace, frames, next))
-    )
-      next++
-    const after = frames[next]?.why
-    const fed =
-      after?.kind === 'emit.instr' &&
-      owner !== undefined &&
-      after.node === owner
-    if (joins && fed) return
+    // Pieces join while the next one feeds the same operation.
+    const owner = ownerOf(i)
+    if (owner !== undefined && ownerOf(i + 1) === owner) return
     const first = parts[0].part
     out.push({
       ...frame,
@@ -65,22 +59,4 @@ export function withEmitBlocks(trace: Trace): Trace {
     parts = []
   })
   return { ...trace, frames: out }
-}
-
-/**
- * The value each emitted node leaves behind, and whether it is an address
- * (an assignment's target, `addi vN,$fp,-8`) or a value.
- */
-export function resultOf(
-  instructions: Instruction[],
-  part: EmitPart,
-  target: boolean,
-): { reg: string; address: boolean } | null {
-  const run = instructions.slice(part.from, part.to + 1)
-  if (target) {
-    const address = run.find((ins) => ins.dest?.startsWith('v'))
-    return address?.dest ? { reg: address.dest, address: true } : null
-  }
-  const last = [...run].reverse().find((ins) => ins.dest?.startsWith('v'))
-  return last?.dest ? { reg: last.dest, address: false } : null
 }
