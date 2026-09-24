@@ -34,6 +34,79 @@
 .ac *::after {
   box-sizing: border-box;
 }
+/* Scrollbars: a dashed rail like a waiting parse edge, which stays to show
+   a pane scrolls, and a solid thumb that glows like the timeline's playhead,
+   shown only while the pane is hovered or focused. Chrome ignores these once
+   scrollbar-width or scrollbar-color is set, so those are Firefox only. */
+.ac ::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+.ac ::-webkit-scrollbar-track {
+  background: repeating-linear-gradient(
+      to bottom,
+      var(--line) 0 2px,
+      transparent 2px 5px
+    )
+    center / 1px 100% no-repeat;
+}
+.ac ::-webkit-scrollbar-track:horizontal {
+  background: repeating-linear-gradient(
+      to right,
+      var(--line) 0 2px,
+      transparent 2px 5px
+    )
+    center / 100% 1px no-repeat;
+}
+.ac ::-webkit-scrollbar-thumb {
+  --thumb: transparent;
+  --glow: transparent;
+  --from: 3px;
+  --to: 6px;
+  background: linear-gradient(
+      to right,
+      transparent calc(var(--from) - 1px),
+      var(--glow) var(--from),
+      var(--thumb) var(--from) var(--to),
+      var(--glow) var(--to),
+      transparent calc(var(--to) + 1px)
+    )
+    center / 100% calc(100% - 4px) no-repeat;
+}
+.ac ::-webkit-scrollbar-thumb:horizontal {
+  background: linear-gradient(
+      to bottom,
+      transparent calc(var(--from) - 1px),
+      var(--glow) var(--from),
+      var(--thumb) var(--from) var(--to),
+      var(--glow) var(--to),
+      transparent calc(var(--to) + 1px)
+    )
+    center / calc(100% - 4px) 100% no-repeat;
+}
+.ac :hover::-webkit-scrollbar-thumb,
+.ac :focus-within::-webkit-scrollbar-thumb {
+  --thumb: var(--ink);
+  --glow: color-mix(in srgb, var(--ink) 22%, transparent);
+}
+.ac ::-webkit-scrollbar-thumb:hover,
+.ac ::-webkit-scrollbar-thumb:active {
+  --from: 2px;
+  --to: 7px;
+}
+.ac ::-webkit-scrollbar-corner {
+  background: transparent;
+}
+@supports not selector(::-webkit-scrollbar) {
+  .ac * {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+  .ac :hover,
+  .ac :focus-within {
+    scrollbar-color: var(--muted) transparent;
+  }
+}
 .ac button {
   font: inherit;
   color: inherit;
@@ -127,8 +200,10 @@
 
 /* Workspace: editor column and stage. */
 .ac-work {
+  --editor-w: 330px;
+  position: relative;
   display: grid;
-  grid-template-columns: 330px minmax(0, 1fr);
+  grid-template-columns: var(--editor-w) minmax(0, 1fr);
   border: 1px solid var(--line);
   background: color-mix(in srgb, var(--bg) 90%, transparent);
 }
@@ -243,10 +318,11 @@
   position: relative;
   display: grid;
   grid-template-columns: 34px 1fr;
-  flex: 0 1 236px;
+  /* Gives way long before the note does (see .ac-note). */
+  flex: 0 1000 236px;
   min-height: calc(var(--row) * 3 + 8px);
   overflow: auto;
-  scrollbar-width: thin;
+  scrollbar-gutter: stable;
   cursor: text;
 }
 .ac-gutter {
@@ -396,12 +472,37 @@
 .ac-note {
   position: relative;
   display: flex;
-  /* Barely shrinks, so the source gives way first; past its floor the note
-     body scrolls. */
-  flex: 1 0.001 auto;
+  /* The source gives way first (its shrink factor is 1000 times this);
+     once it is at its floor, or sized by the split, the note shrinks and
+     its body scrolls. A factor below 1 would absorb only that fraction of
+     the overflow, which clipped the note. */
+  flex: 1 1 auto;
   flex-direction: column;
   min-height: 0;
   border-top: 1px solid var(--line);
+}
+/* The editor's right border, draggable. */
+.ac-colsplit {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--editor-w) - 4px);
+  z-index: 3;
+  width: 7px;
+  cursor: col-resize;
+  touch-action: none;
+}
+.ac-colsplit:hover,
+.ac-colsplit:focus-visible,
+.ac-colsplit:active {
+  outline: none;
+  background: linear-gradient(
+    90deg,
+    transparent 3px,
+    var(--muted) 3px,
+    var(--muted) 4px,
+    transparent 4px
+  );
 }
 /* The note's top border, draggable. */
 .ac-split {
@@ -514,9 +615,15 @@
 .ac-note-body {
   white-space: pre-line;
   flex: 1;
+  /* Shrinks below its text when the source is dragged tall, or the scope
+     tree grows, and scrolls; three lines stay in view. */
+  min-height: calc(3lh + 16px);
   overflow: auto;
-  scrollbar-width: thin;
-  padding: 8px 10px;
+  /* The rail's room is kept whether or not the text overflows, so the
+     wrap doesn't change when it does; the rail stands in for the right
+     padding. */
+  scrollbar-gutter: stable;
+  padding: 8px 3px 8px 10px;
   color: var(--ink);
   line-height: 1.45;
 }
@@ -570,37 +677,25 @@
   stroke: var(--ink);
   stroke-dasharray: none;
 }
-/* Check: the scopes open at the current name, outermost first. */
-.ac-scopes-wrap {
-  position: absolute;
-  left: 16px;
-  right: 16px;
-  bottom: 12px;
-  z-index: 3;
-  pointer-events: none;
-}
+/* Check: the scopes open at the current name, in the note card, each
+   indented under the one around it on a rail. */
+/* The step text above gives way first (its basis is 0); this scrolls only
+   once that is down to its floor. */
 .ac-scopes {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: 11px;
-  line-height: 18px;
+  flex: 0 1 auto;
+  min-height: 48px;
+  overflow: auto;
+  scrollbar-gutter: stable;
+  padding: 8px 3px 10px 10px;
+  border-top: 1px solid var(--line);
+  line-height: 20px;
 }
 .ac-scope {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 2px 8px;
-  padding: 3px 8px;
-  border: 1px solid var(--line);
-  background: var(--bg);
-  transition:
-    border-color 0.2s,
-    opacity 0.2s;
+  margin: 0 0 0 3px;
+  padding: 0 0 0 11px;
+  list-style: none;
+  border-left: 1px solid var(--line);
+  transition: border-color 0.2s;
 }
 .ac-scope-name {
   color: var(--muted);
@@ -623,21 +718,24 @@
 }
 .ac-scope.home,
 .ac-scope.hit {
-  border-color: var(--muted);
+  border-left-color: var(--muted);
 }
+/* Looked in, not found there. */
 .ac-scope.passed {
-  border-style: dashed;
+  border-left-style: dashed;
+  border-left-color: var(--muted);
 }
 .ac-scope small {
-  font-size: 11px;
+  font-size: inherit;
   color: var(--ink);
 }
 .ac-scope small.err {
   color: var(--err);
 }
+/* The name itself reads as code, apart from the error around it. */
 .ac-scope small code {
-  padding: 0;
-  color: inherit;
+  margin-right: 2px;
+  color: var(--ink);
 }
 /* A name bound to its declaration: grey on the way out, green once a
    lookup lands; the error colour is kept for errors. A background halo
@@ -727,7 +825,14 @@
 }
 .ac-piece.node.found:not(.focused) {
   background: color-mix(in srgb, var(--ok) 32%, transparent);
-  transition: background-color 0.25s var(--land, 0.42s);
+  transition:
+    background-color 0.25s var(--land, 0.42s),
+    border-color 0.25s var(--land, 0.42s);
+}
+/* A use is outlined, pointing at its filled declaration. */
+.ac-piece.node.found.use:not(.focused) {
+  border-color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 8%, var(--bg));
 }
 /* An operator outside the group being read: nothing inside competes with it. */
 .ac-piece.node.outside {
@@ -828,12 +933,173 @@
   top: 12px;
   max-height: calc(100% - 24px);
   overflow: auto;
-  scrollbar-width: thin;
+  scrollbar-gutter: stable;
   line-height: var(--row);
 }
 .ac-asm .ac-label {
   margin-bottom: 4px;
 }
+/* Emit in blocks: the assembly as columns (number, op, operands) at the
+   editor's size and row, on its own ground so the stage's 22px rules don't
+   run through its 19px rows. */
+.ac-asm.blocks {
+  right: 176px;
+  padding-bottom: 12px;
+  background: var(--bg);
+  font-size: 12px;
+  line-height: 19px;
+}
+.ac-asm.blocks .ac-label {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0;
+  padding: 0 0 4px 34px;
+  background: var(--bg);
+}
+.ac-asm.blocks .ac-ins {
+  display: grid;
+  grid-template-columns: 34px 7ch minmax(0, 1fr);
+  gap: 0;
+  padding: 0;
+}
+.ac-asm.blocks .ac-ins > span {
+  padding-right: 8px;
+  color: var(--faint);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.ac-asm.blocks .ac-ins b {
+  font-weight: 400;
+}
+/* The current block: a wash and a bar, not an inverted slab. */
+.ac-asm.blocks .ac-ins.current {
+  background: var(--wash);
+  color: var(--ink);
+  box-shadow: inset 2px 0 var(--ink);
+}
+.ac-asm.blocks .ac-ins.current > span {
+  color: var(--ink);
+  opacity: 1;
+}
+.ac-asm-head,
+.ac-asm-label {
+  overflow: hidden;
+  padding-left: 34px;
+  color: var(--muted);
+  white-space: pre;
+  text-overflow: ellipsis;
+}
+.ac-asm-head {
+  margin-top: 4px;
+}
+.ac-asm-label.fn {
+  font-weight: 600;
+}
+/* pushRegisters/popRegisters: placeholders, dashed like everything else
+   on the page that isn't settled yet. */
+.ac-asm .ac-hold {
+  grid-column: 2 / 4;
+  justify-self: start;
+  align-self: center;
+  padding: 0 3px;
+  border: 1px dashed var(--muted);
+  color: var(--muted);
+  line-height: 15px;
+}
+
+/* Too narrow for the tree beside the assembly and the stack: the editor's
+   highlight carries the source instead. */
+.ac-scene.treeless .ac-edges,
+.ac-scene.treeless .ac-piece {
+  visibility: hidden;
+}
+
+/* The stack column: one word per row, high addresses at the top. */
+.ac-stack {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 156px;
+  font-size: 11px;
+}
+.ac-stack .ac-label {
+  padding: 0 0 4px 34px;
+}
+.ac-stack-body {
+  position: relative;
+  margin: 0 34px;
+}
+.ac-stack-cell {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+  transform-origin: top;
+  transition:
+    border-color 0.3s var(--delay, 0s),
+    background-color 0.3s var(--delay, 0s);
+}
+.dark .ac-stack-cell {
+  border-color: #3f3f46;
+}
+.ac-stack-cell small {
+  font-size: 10px;
+  color: var(--faint);
+}
+/* The caller's words, above this frame. */
+.ac-stack-cell.caller {
+  color: var(--muted);
+}
+.ac-stack-cell.edge {
+  border-top-color: var(--ink) !important;
+}
+.ac-stack-cell.saved {
+  border-style: dashed;
+  border-color: var(--muted) !important;
+  color: var(--muted);
+}
+/* Outlined when read, tinted when written, as its instruction arrives. */
+.ac-stack-cell.read {
+  z-index: 1;
+  border-color: var(--ink) !important;
+}
+.ac-stack-cell.write {
+  z-index: 1;
+  border-color: var(--ok) !important;
+  background: color-mix(in srgb, var(--ok) 28%, var(--bg));
+}
+.ac-stack-ptr {
+  position: absolute;
+  top: 0;
+  height: 19px;
+  line-height: 19px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.ac-stack-ptr.fp {
+  right: 100%;
+  padding-right: 3px;
+}
+.ac-stack-ptr.sp {
+  left: 100%;
+  padding-left: 3px;
+}
+.ac-stack-ptr.fp::after {
+  content: ' ›';
+  color: var(--muted);
+}
+.ac-stack-ptr.sp::before {
+  content: '‹ ';
+  color: var(--muted);
+}
+
 .ac-ins {
   display: flex;
   gap: 10px;
@@ -1000,7 +1266,7 @@
     width: calc(100vw - 32px);
   }
   .ac-work {
-    grid-template-columns: 270px minmax(0, 1fr);
+    --editor-w: 270px;
   }
   .ac-scene {
     height: clamp(380px, calc(100dvh - 210px), 860px);
@@ -1037,7 +1303,8 @@
     flex: none;
     height: 132px;
   }
-  .ac-split {
+  .ac-split,
+  .ac-colsplit {
     display: none;
   }
   .ac-note-body {
@@ -1061,6 +1328,13 @@
     right: 6px;
     top: 8px;
     font-size: 10.5px;
+  }
+  /* No room for the stack column on a phone. */
+  .ac-asm.blocks {
+    right: 6px;
+  }
+  .ac-stack {
+    display: none;
   }
   .ac-stage {
     order: -1;
@@ -1144,6 +1418,11 @@
 }
 .ac-ins.changed small {
   color: var(--ink);
+}
+/* A register the sets leave out (`$fp`), added by a later sweep. */
+.ac-ins small i {
+  font-style: normal;
+  font-weight: 600;
 }
 .ac-ins.current small {
   color: var(--bg);
