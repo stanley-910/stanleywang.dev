@@ -442,10 +442,13 @@ export function instructionLine(ins: Trace['instructions'][number]): string {
 }
 
 /**
- * Every lexeme the real Mini-C tokeniser accepts, by page token class (from
- * lexer/Token.java's Category enum in the coursework compiler).
+ * Every lexeme the real Mini-C tokeniser accepts, by page token class. The
+ * classes follow the groups in lexer/Token.java's Category enum (coursework
+ * compiler); `.` (its own "struct member access" group there) sits with the
+ * operators. The lexer itself gives each lexeme its own category (PLUS, SC,
+ * ...), so these groups are for reading, not something it outputs.
  */
-export const LEXEMES: Record<Token['kind'], string[]> = {
+export const LEXEMES = {
   keyword: [
     'int',
     'void',
@@ -463,36 +466,17 @@ export const LEXEMES: Record<Token['kind'], string[]> = {
     'new',
     '#include',
   ],
-  symbol: [
-    '=',
-    '{',
-    '}',
-    '(',
-    ')',
-    '[',
-    ']',
-    ';',
-    ',',
-    '&&',
-    '||',
-    '==',
-    '!=',
-    '<',
-    '>',
-    '<=',
-    '>=',
-    '+',
-    '-',
-    '*',
-    '/',
-    '%',
-    '&',
-    '.',
-  ],
+  operator: ['+', '-', '*', '/', '%', '&', '.'],
+  comparison: ['==', '!=', '<', '>', '<=', '>='],
+  logical: ['&&', '||'],
+  delimiter: ['{', '}', '(', ')', '[', ']', ';', ','],
+  assignment: ['='],
   // No fixed list: the token's pattern, as a regex of Token.java's rule.
-  name: ['[A-Za-z_][A-Za-z0-9_]*'],
+  identifier: ['[A-Za-z_][A-Za-z0-9_]*'],
   number: ['[0-9]+'],
-}
+} satisfies Record<string, string[]>
+
+export type TokenClass = keyof typeof LEXEMES
 
 /**
  * Text-only slides between the welcome (frame 0) and the first token. Checked
@@ -521,14 +505,24 @@ export const INTRO_SLIDES = [
     body:
       'A run of letters is read as one word, then checked against the ' +
       'keyword list: `while` is a keyword, `sum` is an identifier. Digits ' +
-      'make a number, and anything else is a symbol. The parser only looks ' +
-      'at these classes. Step on to watch it happen.',
+      'make a number. Punctuation is an operator (`+`), a comparison ' +
+      '(`<`), a delimiter (`;`) and so on. The parser works from these, ' +
+      'not the raw text. Step on to watch it happen.',
   },
 ]
 
 /** A token's class as shown on the page; "name" reads as "identifier". */
-export const tokenKind = (token: Token) =>
-  token.kind === 'name' ? 'identifier' : token.kind
+export const tokenKind = (token: Token): TokenClass => {
+  if (token.kind === 'name') return 'identifier'
+  if (token.kind !== 'symbol') return token.kind
+  const group = (Object.keys(LEXEMES) as TokenClass[]).find((c) =>
+    LEXEMES[c].includes(token.text),
+  )
+  return group ?? 'operator'
+}
+
+/** The lexemes in a token's page class. */
+export const lexemesOf = (token: Token) => LEXEMES[tokenKind(token)]
 
 /** Hover card for a tree node, describing only what is attached so far. */
 export function nodeHover(trace: Trace, frame: Frame, node: AstNode): string {
