@@ -178,8 +178,11 @@ Treat the note as guidance on what not to include, not only a one-frame fix.
   on the welcome or a slide. The character-step and parse-step sizing
   layers were removed: with the canvas fixed they only made the note tall
   and cut the source short (Stanley: shrink when it isn't needed).
-- Phase tabs are names only, no 01-05 numbers: lexer, parser, check, emit,
-  regs (was tokens, parse). The welcome title is capitalised: "Press space to compile
+- Phase tabs are names only, no 01-05 numbers: lexer, parser, semantics,
+  types, emit, regs (was tokens, parse; check split into its two passes on
+  2026-09-24). Semantics and types are both the Check phase: `tabs` in
+  `animated.tsx` marks types active from the Type Analysis slide on (the
+  same test as `typing`), and the types tab opens on that slide. The welcome title is capitalised: "Press space to compile
   your code!".
 
 - Edges stay late (decided): a tree edge appears when the parser returns the
@@ -341,7 +344,7 @@ left on. Presets: `precedence`, `parentheses`, `function call`, `loop`,
 playback, custom programs and the mobile width are not in the URL; set them by
 hand as listed.
 
-Keys: space play, h/k back, l/j forward, r restart, 1–5 jump to phase, e edit, -/+ speed.
+Keys: space play, h/k back, l/j forward, r restart, 1–6 jump to a tab, e edit, -/+ speed.
 
 | State | Link | Then |
 | --- | --- | --- |
@@ -655,8 +658,9 @@ It is built in `parse-view.ts`:
   router's boxes match it, so a link's dot sits on the border whichever
   side it lands on. Before, the router padded 3px on the sides only, so
   side landings floated off the box and top/bottom ones sat on it.
-- A function's parameters sit in small dashed parens (`.ac-params`,
-  `paramsOf` in `scopes.ts`), set apart from its body statements.
+- A function's parameters sat in small dashed parens (`.ac-params`); removed
+  at Stanley's request, since the body's own `{ }` node already sets them
+  apart.
 - A function's body is now its own `{ }` node, as in the compiler's AST
   (`FunDef` has `params` and a `Block`; `ASTPrinter` prints it). The
   recorder used to flatten it into the function node; `ParseTrace.decl`
@@ -706,7 +710,10 @@ call, one per statement check, instead of one per expression.
   (`typeBadge`, `.ac-type`). New ones fade in, an operator's own after its
   operands'; a checked value and what it must fit go green when the check
   lands; a return shows a dashed `main: int` (what its function promises)
-  for its step, while a condition's rule (`int`) is only in the step text,
+  on its step and keeps it after, settled (red if it failed); a function
+  shows its own type, `(int) → int`, from the pass's first step inside it
+  (`functionType`: the tokens before its name and its parameters' types),
+  so the end of the pass has every function annotated; a condition's rule (`int`) is only in the step text,
   since `needs int` beside `while` read as if the loop were an int; a
   mismatch shows `char[3] ≠ int` in the error colour and the operator
   `unknown`. The type pass lays the tree out with room for each badge
@@ -724,10 +731,13 @@ call, one per statement check, instead of one per expression.
 ## Emit in blocks and the stack column (2026-09-24)
 
 - Emit plays in blocks by default (`withEmitBlocks`, `emit-view.ts`, from
-  Astra's emit answer): a leaf's instructions (a literal, a name's load, an
-  assignment's target address) join the step of the operation that uses
-  them when that operation comes next; a leaf that waits for a sibling's
-  work keeps its own step. The more menu's `[x]` toggle, or `?emit=log`,
+  Astra's emit answer): the pieces an operation uses (a literal, a name's
+  load, an assignment's target address) arrive together in one step when
+  they come one after another, and the operation gets a step of its own,
+  where their register badges travel up into it (Stanley: sharing their
+  step, the funnelling went by too fast). They first joined the
+  operation's step. A piece that waits for a sibling's work keeps its own
+  step. The more menu's `[x]` toggle, or `?emit=log`,
   shows the old step per node; switching keeps the place (the first step
   of the other view that has emitted at least as much).
 - The stage puts the tree, the assembly and a stack column side by side
@@ -799,6 +809,75 @@ Step 1 of the Opus liveness answer
 - Parse and check put the tree at one height, just under the token tray
   (it used to start near mid-stage in parse and jump up in check).
 
+## Check review fixes (2026-09-24, compiler-check-fixes)
+
+These replace the delayed green tint, lingering type-pass links and note-card
+scope tree above. Changes are in the September 24 worktree, uncommitted.
+
+- Parse/check height: `packTray` and `treeRows` in `stage-layout.ts` reserve
+  the full visible token tray, even as tokens leave it. `point` starts the
+  tree below that band in both phases and fits the bottom inside the stage.
+  A four-row tray no longer covers `main`.
+- Name links live in `NameLinks` (`name-links.tsx`), mounted afresh per
+  program/step, outside the tree's `AnimatePresence`. Back/forward cannot
+  reuse an exiting path's finished draw. The Type Analysis slide and every
+  type step remove the links immediately, including hovered ones. On
+  `namesDone` they draw, hold three seconds after the last path lands, then
+  fade over 250 ms; play waits for this too. Reduced motion shows the final
+  links without a timer, until the next step. An unresolved search stays
+  fully drawn under reduced motion rather than ending invisibly.
+- A resolve draws one green line while its declaration lights, with a short
+  dot fade at the end. No delayed green copy. The editor marks only the
+  current use's identifier (dark green) and its declaration's identifier
+  (bright green), including a forward declaration. The tree's use keeps a
+  quiet green outline; it now uses an inset shadow, since `.ac button`
+  resets borders. Name tints no longer wait for the link to land or persist
+  onto the type slide.
+- `linkRoutes` caches the binding list and scope-panel geometry as well as
+  step/size/trace. Resolve frames supply their own binding even if `links`
+  is missing; `withNameSteps` also carries those pairs to the completed pass.
+  Duplicate pairs are collapsed. The router retries crowded rows with no
+  extra clearance, has room around the panel, and keeps clean paths longer
+  than the old six-bend limit. If it still cannot find a clean path, the
+  lifted arc is drawn with its halo; it can cross labels, but never silently
+  drops the binding. Route checks exercise two such narrow custom-loop cases.
+- Link `d` and dot coordinates update directly on resize. Piece positions
+  and tree-edge geometry also snap on resize; only step changes animate
+  their travel. A resize does not restart a link's draw or its three-second
+  hold.
+- Scopes behave like a locals panel. The scope containing the current name
+  is shown by weight, not a label (Stanley): its name (or its function's
+  `main()`) bold and bright, its rail 2px ink, its rows bright; the scopes
+  around it dimmer. It says `empty` (draft) if it has no declarations yet.
+  Empty non-current scopes are omitted. Rows grow and shrink in and out
+  (motion, height and opacity) and rails and colours ease, so the list
+  keeps continuity between steps; a newly opened scope's rows grow in too
+  (no `initial={false}`, which had them pop).
+  `ScopeTree` now sits on the stage; `scopePanelBox` chooses the largest
+  clear corner against the completed tree's piece boxes, with a stable
+  bottom-corner tie-break. The same program/layout always picks the same
+  corner, whether reached by playing or seeking. Its corner sets its width;
+  it is as tall as its rows (a bottom corner's panel grows up from the
+  edge) and only scrolls past the stage's height. It is a wall for the
+  link router. If every corner
+  is occupied it uses the least overlapping small corner. The note's
+  scope-only three-line minimum is removed; its source-drag scrolling fix
+  stays.
+- Verification: TypeScript, ESLint, Prettier, `check-trace.cjs` and the new
+  `check-names.cjs`, since moved to `scripts/mini-c-check-names.cjs` and run
+  with `npm run check:mini-c` (160 routes, six presets plus the custom loop, five stage
+  sizes, missing binding lists, current/empty scope markup and fallback
+  rendering). Astra's whole-directory Prettier run also rewrote 12 recorded
+  JSON traces and four Markdown files with no real change (and broke inline
+  code in `review/fable-review.md`); those were reverted before merging.
+  Checked in the browser after the merge (Claude): loop 46 (the root sits
+  below the tray), 92–94 forward and back (one link per step, pair tints,
+  editor marks, scope panel lower left), 97–99 (all nine links land, hold
+  about 3s and fade by 5s; none on the Type Analysis slide; back to 98
+  redraws them), function call 50–55 (scope rows, current scope). Not yet
+  checked: a narrow stage, dragging the editor divider, reduced motion, and
+  the loop with `int n;` added.
+
 ## Page chrome (2026-09-24)
 
 - About text is Stanley's: "This simulation was built by bundling my
@@ -811,11 +890,81 @@ Step 1 of the Opus liveness answer
   and the note `1 1 auto`.
 - Scrollbars (all panes): a 1px dashed rail like a waiting parse edge,
   shown only where a pane scrolls, and a glowing 3px thumb like the
-  timeline's playhead, shown only while the pane is hovered or focused
-  (5px under the pointer). The panes keep the rail's room
+  timeline's playhead (5px under the pointer). The thumb shows only while
+  the pane is scrolled by hand (wheel, touch) or the pointer is on the
+  scrollbar, not on hover of the pane, focus, or when a step scrolls the
+  pane itself: `animated.tsx` sets `data-reveal` on the pane for a moment
+  (an attribute, so a render doesn't clear it). Chrome repaints the thumb
+  when it changes. The panes keep the rail's room
   (`scrollbar-gutter: stable`), so text doesn't rewrap when it overflows.
   Chrome ignores `::-webkit-scrollbar` once `scrollbar-width` or
   `scrollbar-color` is set, so those are in a Firefox-only `@supports`.
+- The options menu's `scrollbars` item turns them off (`.ac.bare`, saved in
+  localStorage): no scrollbar to drag, panes scroll by wheel, touch or
+  keys, and the dashed rail stays as a hint. The pane draws it itself in a
+  9px transparent right border, and only while it overflows: its colour
+  comes from a `scroll(self)` timeline animation, which is inactive on a
+  pane that can't scroll.
+
+## Register badges (2026-09-24)
+
+First of the agreed Registers items (Astra's emit answer).
+
+- `reg-badges.ts` finds, for each virtual register, the node that writes it
+  and the first instruction outside that node's own run that reads it. A
+  register read only inside its own run (a name's address, loaded from on
+  the next line) gets no badge. It is an address when every read uses it
+  as a memory operand, `0(v8)`; the teaching compiler's lines have no text,
+  so its badges are all values.
+- In the Emit phase a badge waits just right of its node and flashes green
+  as its row arrives. It is drawn like a type badge (thin `--line` border,
+  page background, muted text): dashed when it holds an address, and lit
+  like an operator's input types (`--muted` border, `--ink` text) while it
+  travels to the node that reads it. Stanley found the earlier filled and
+  outlined boxes ugly beside the type badges. On the step
+  that reads it, it rides the child edge up into the reading node, timed to
+  that row, over 1.5 step durations, then goes; the operation's result
+  badge waits for its inputs to arrive. A register read by its own node (an assignment's
+  target address at its store) just fades. `badgesAt` works each step out
+  from the instruction count, so seeking and reduced motion land on the
+  same state.
+- Late phases lay the tree out with room for each node's register, as the
+  type pass does for types, and the badge shrinks with the tree, so it
+  never covers a neighbour. The cost: on the emit stage the whole program
+  shrinks into a third of the width (loop: about 45% at 1440px), so badges
+  are as small as the labels. Focusing the tree on the current statement
+  (Astra: the active statement's subtree, with a faint path up to `main`)
+  is what would make them readable.
+- Checked on loop 115–127 and function call 62–68 against Astra's frame
+  table: `v8` waits by `sum =` from 117 to its store at 121; `v9` and `v14`
+  wait beside `sum` and `×` until `+` reads them at 120; `v5` goes straight
+  into `twice()`, then `v6` waits there for the return.
+
+## Registers phase: the allocator's stack (2026-09-24)
+
+Stanley found the Registers phase ugly (filled saturated pills, labels
+inline in the listing) and asked for the stack being popped to be shown,
+since it is what makes k-colouring make sense.
+
+- The listing uses the emit blocks' layout (`.ac-asm.listing` shares the
+  `.blocks` rules): labels on their own rows, then number, op and operands
+  in columns, the current line as a wash and a bar. Live-after sets take a
+  fourth column.
+- Graph nodes are pieces like the tree's. A coloured node takes its
+  physical register's colour softened toward the ink (`--c`, `--tint`),
+  with the register as a type-style badge below; the current node is
+  inverted, filled with its colour on the step it is coloured; a spilled
+  one is dashed red.
+- The allocator's stack sits in an open-topped box at the stage's left
+  edge, sized for the deepest the function's stack gets. Simplify (and a
+  spill candidate, dashed) flies the register from its place in the graph
+  onto the top; the node stays as a dashed ghost and its edges fade. Select
+  pops the top back to its node, which then takes its colour. The stack is
+  worked out from the colouring steps up to the current one, so seeking
+  lands on the same state. The ring moved right (centre x 198, horizontal
+  radius at most 100) to make room.
+- Checked on function call 76–86 (push `v2 v1 v4 v0 v3`, pop in reverse)
+  and loop 150–165 (23 deep, rows shrink to fit) at 960x600.
 
 ## Open items (not started)
 
@@ -826,8 +975,8 @@ Step 1 of the Opus liveness answer
   its labels become unreadable. It needs a different arrangement there (tree
   above the list, or tree hidden), not more scaling.
 - ParseTrace mishandles casts and `return`; the sketch rejects read-before-assign.
-- Registers, agreed order: register badges on the emit tree (Astra's core
-  idea), then branch arrows and the `jal` preview; then the liveness
+- Registers, agreed order: register badges on the emit tree (done, above;
+  physical names in the Registers phase still to come), then branch arrows and the `jal` preview; then the liveness
   gutter bars with the `$fp` lane, block brackets, the 5-box CFG, the
   pressure strip and a k=3 spill mode (Opus liveness and pressure answers).
 - Stanley to rewrite the draft slides and the `reg.cfg` note.
