@@ -314,6 +314,18 @@
 .ac-text mark.err {
   background: var(--err);
 }
+/* A name found: goes green once the link reaches its declaration. */
+.ac-text mark.ok {
+  animation: ac-found 0.25s var(--land, 0.42s) both;
+}
+@keyframes ac-found {
+  from {
+    background: var(--ink);
+  }
+  to {
+    background: var(--ok);
+  }
+}
 /* Detailed lexer: characters read so far underlined, the current one a block,
    skipped whitespace a faint band. */
 .ac-text mark.reading {
@@ -623,6 +635,10 @@
 .ac-scope small.err {
   color: var(--err);
 }
+.ac-scope small code {
+  padding: 0;
+  color: inherit;
+}
 /* A name bound to its declaration: grey on the way out, green once a
    lookup lands; the error colour is kept for errors. A background halo
    under the step's link lifts it over the tree's edges, and a dot marks
@@ -702,6 +718,11 @@
     background-color 0.6s,
     color 0.15s,
     border-color 0.15s;
+}
+/* A name with no declaration keeps a faint red tint. */
+.ac-piece.node.missing:not(.focused) {
+  background: color-mix(in srgb, var(--err) 24%, transparent);
+  transition: background-color 0.6s;
 }
 .ac-piece.node.declared.found:not(.focused) {
   background: color-mix(in srgb, var(--ok) 32%, transparent);

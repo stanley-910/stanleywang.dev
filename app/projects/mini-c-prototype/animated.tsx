@@ -504,6 +504,15 @@ export default function AnimatedCompiler() {
     })
     return at
   }, [trace])
+  // The step a name was found to have no declaration; from there on, in
+  // the check phase, it keeps a red tint.
+  const missingStep = useMemo(() => {
+    const at = new Map<number, number>()
+    trace.frames.forEach((f, i) => {
+      if (f.why.kind === 'check.unresolved') at.set(f.why.use, i)
+    })
+    return at
+  }, [trace])
   // Name-link routes, worked out once per step and stage size (below).
   const routeCache = useRef<{
     trace: Trace
@@ -1251,13 +1260,25 @@ export default function AnimatedCompiler() {
                         <mark className="cursor">{source[cursor]}</mark>
                       </>
                     ) : (
+                      // Keyed by step so a lookup's landing replays on the
+                      // next name even when the class doesn't change.
                       <mark
+                        key={index}
                         className={
-                          error
-                            ? 'err'
-                            : frame.why.kind === 'lex.skip' && !hovering
-                              ? 'skip'
-                              : ''
+                          hoverNode || hoverTok
+                            ? ''
+                            : error || frame.why.kind === 'check.unresolved'
+                              ? 'err'
+                              : frame.why.kind === 'check.resolve'
+                                ? 'ok'
+                                : frame.why.kind === 'lex.skip'
+                                  ? 'skip'
+                                  : ''
+                        }
+                        style={
+                          {
+                            '--land': `${transition.duration}s`,
+                          } as CSSProperties
                         }
                       >
                         {source.slice(activeSpan.start, activeSpan.end)}
@@ -1558,7 +1579,7 @@ export default function AnimatedCompiler() {
                     ))
                   })()}
                 {!regView &&
-                  (frame.links ?? []).flatMap(([use, decl]) => {
+                  (frame.links ?? []).flatMap(([use, decl], i) => {
                     // Only the step's own binding is drawn (Stanley: hooks
                     // left on settled ones read as stray dashes), over a
                     // halo so it passes over the tree's edges, with a dot
@@ -1566,10 +1587,20 @@ export default function AnimatedCompiler() {
                     // the name or its declaration draws it again. A route
                     // that can't clear the labels isn't drawn.
                     const r = linkRoutes?.get(`${use}-${decl}`)
+                    // Once the name pass is done, every use links to its
+                    // declaration at once, one after another.
+                    const all = frame.why.kind === 'check.namesDone'
                     const full =
-                      frame.focus === use || hover === use || hover === decl
+                      all ||
+                      frame.focus === use ||
+                      hover === use ||
+                      hover === decl
                     if (!r?.clean || !full) return []
                     const d = r.d
+                    const drawn = {
+                      ...transition,
+                      delay: all ? i * transition.duration * 0.25 : 0,
+                    }
                     // The step's lookup goes out grey and turns green as
                     // it lands; on the next step it fades back as it reels
                     // in.
@@ -1578,7 +1609,7 @@ export default function AnimatedCompiler() {
                       frame.why.use === use
                     const landed = {
                       ...transition,
-                      delay: transition.duration,
+                      delay: drawn.delay + transition.duration,
                     }
                     return [
                       <motion.path
@@ -1587,7 +1618,12 @@ export default function AnimatedCompiler() {
                         d={d}
                         fill="none"
                         initial={{ d, pathLength: 0, opacity: 1 }}
-                        animate={{ d, pathLength: 1, opacity: 1 }}
+                        animate={{
+                          d,
+                          pathLength: 1,
+                          opacity: 1,
+                          transition: drawn,
+                        }}
                         exit={{ pathLength: 0, opacity: 0 }}
                         transition={transition}
                       />,
@@ -1598,7 +1634,12 @@ export default function AnimatedCompiler() {
                         fill="none"
                         strokeWidth={1}
                         initial={{ d, pathLength: 0, opacity: 1 }}
-                        animate={{ d, pathLength: 1, opacity: 1 }}
+                        animate={{
+                          d,
+                          pathLength: 1,
+                          opacity: 1,
+                          transition: drawn,
+                        }}
                         exit={{ pathLength: 0, opacity: 0 }}
                         transition={transition}
                       />,
@@ -1728,11 +1769,17 @@ export default function AnimatedCompiler() {
                   const found =
                     frame.why.kind === 'check.resolve' &&
                     frame.why.decl === node?.id
+                  const missingAt =
+                    node === undefined ? undefined : missingStep.get(node.id)
+                  const missing =
+                    missingAt !== undefined &&
+                    missingAt <= index &&
+                    frame.phase === 'Check'
                   return (
                     <motion.button
                       key={key}
                       style={{ x: '-50%', y: '-50%' }}
-                      className={`ac-piece ${node ? 'node' : 'token'} kind-${token.kind} ${focused ? 'focused' : ''} ${pending ? 'pending' : ''} ${late ? 'small' : ''} ${node && node.id === working.preview ? 'preview' : ''} ${node && working.outside.includes(node.id) ? 'outside' : ''} ${declared ? 'declared' : ''} ${found ? 'found' : ''}`}
+                      className={`ac-piece ${node ? 'node' : 'token'} kind-${token.kind} ${focused ? 'focused' : ''} ${pending ? 'pending' : ''} ${late ? 'small' : ''} ${node && node.id === working.preview ? 'preview' : ''} ${node && working.outside.includes(node.id) ? 'outside' : ''} ${declared ? 'declared' : ''} ${found ? 'found' : ''} ${missing ? 'missing' : ''}`}
                       initial={{
                         left: '-5%',
                         top: (Math.min(tokenPoint.y, 98) / 480) * 100 + '%',

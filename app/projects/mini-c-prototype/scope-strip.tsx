@@ -78,17 +78,13 @@ export function ScopeStrip({
         const hit = found !== undefined && decls.includes(found)
         const passed = searched.includes(s) && !hit
         const cue =
-          use === undefined
+          use === undefined || hit
             ? undefined
-            : hit
-              ? s === home
-                ? undefined
-                : 'outer'
-              : w.kind === 'check.unresolved' && s === last
-                ? 'not found'
-                : w.kind === 'check.builtin' && s === last
-                  ? 'built-in'
-                  : undefined
+            : w.kind === 'check.unresolved' && s === last
+              ? 'not found'
+              : w.kind === 'check.builtin' && s === last
+                ? 'built-in'
+                : undefined
         return (
           <li
             key={s}
@@ -115,8 +111,13 @@ export function ScopeStrip({
                   : nodes[d].label}
               </code>
             ))}
-            {cue && (
-              <small className={cue === 'not found' ? 'err' : ''}>{cue}</small>
+            {cue === 'not found' && use !== undefined ? (
+              // Which name wasn't found, not just that one wasn't.
+              <small className="err">
+                <code>{nameOf(use)}</code> not found
+              </small>
+            ) : (
+              cue && <small>{cue}</small>
             )}
           </li>
         )

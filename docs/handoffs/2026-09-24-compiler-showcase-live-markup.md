@@ -345,31 +345,31 @@ Keys: space play, h/k back, l/j forward, r restart, 1–5 jump to phase, e edit,
 
 | State | Link | Then |
 | --- | --- | --- |
-| 13 check · resolve | `?example=loop&frame=87` | |
-| 14 check · names done | `?example=loop&frame=96` | |
-| 15 check · types | `?example=loop&frame=97` | |
-| 16 check · unresolved name | `?example=unresolved+name&frame=22` | |
-| 17 check · error end | `?example=unresolved+name&frame=23` | |
-| 18 emit · prologue | `?example=loop&frame=100` | |
-| 19 emit · instructions | `?example=loop&frame=111` | |
-| 20 emit · epilogue | `?example=loop&frame=126` | |
-| 21 emit · hover instruction | `?example=loop&frame=126` | hover the 15th instruction |
-| 22 regs · cfg | `?example=loop&frame=127` | |
-| 23 regs · liveness sweep 1 | `?example=loop&frame=128` | |
-| 24 regs · liveness last sweep | `?example=loop&frame=130` | |
-| 25 regs · interference | `?example=loop&frame=131` | |
-| 26 regs · simplify start | `?example=loop&frame=132` | |
-| 27 regs · simplify mid | `?example=loop&frame=145` | |
-| 28 regs · select start | `?example=loop&frame=155` | |
-| 29 regs · select mid | `?example=loop&frame=167` | |
-| 30 regs · done | `?example=loop&frame=178` | |
-| 31 regs · hover register | `?example=loop&frame=178` | hover v16 |
-| 32 regs · two functions | `?example=function+call&frame=73` | |
-| 33 ui · playing 2x | `?example=loop&frame=60` | `=` twice, space |
-| 34 ui · about open | `?example=loop&frame=83` | open "about" |
+| 13 check · resolve | `?example=loop&frame=89` | |
+| 14 check · names done | `?example=loop&frame=98` | |
+| 15 check · types | `?example=loop&frame=99` | |
+| 16 check · unresolved name | `?example=unresolved+name&frame=24` | |
+| 17 check · error end | `?example=unresolved+name&frame=25` | |
+| 18 emit · prologue | `?example=loop&frame=102` | |
+| 19 emit · instructions | `?example=loop&frame=113` | |
+| 20 emit · epilogue | `?example=loop&frame=128` | |
+| 21 emit · hover instruction | `?example=loop&frame=128` | hover the 15th instruction |
+| 22 regs · cfg | `?example=loop&frame=129` | |
+| 23 regs · liveness sweep 1 | `?example=loop&frame=130` | |
+| 24 regs · liveness last sweep | `?example=loop&frame=132` | |
+| 25 regs · interference | `?example=loop&frame=133` | |
+| 26 regs · simplify start | `?example=loop&frame=134` | |
+| 27 regs · simplify mid | `?example=loop&frame=147` | |
+| 28 regs · select start | `?example=loop&frame=157` | |
+| 29 regs · select mid | `?example=loop&frame=169` | |
+| 30 regs · done | `?example=loop&frame=180` | |
+| 31 regs · hover register | `?example=loop&frame=180` | hover v16 |
+| 32 regs · two functions | `?example=function+call&frame=77` | |
+| 33 ui · playing 2x | `?example=loop&frame=61` | `=` twice, space |
+| 34 ui · about open | `?example=loop&frame=85` | open "about" |
 | 36–38 custom | none | paste the program below, press 3 / 5 / play to end |
 | 39 custom · error | none | paste the error program below, play to end |
-| 40–41 mobile | `?example=loop&frame=83`, `frame=178` | 390 px wide |
+| 40–41 mobile | `?example=loop&frame=85`, `frame=180` | 390 px wide |
 
 Custom program (36–38):
 
@@ -656,10 +656,25 @@ It is built in `parse-view.ts`:
   side landings floated off the box and top/bottom ones sat on it.
 - A function's parameters sit in small dashed parens (`.ac-params`,
   `paramsOf` in `scopes.ts`), set apart from its body statements.
-- The recorder flattens a function's body into the function node
-  (`ParseTrace.decl` adds `blockContents(f.block)`); the compiler's
-  `FunDef` has `params` and a `Block`. Nested blocks keep their `{ }`
-  node.
+- A function's body is now its own `{ }` node, as in the compiler's AST
+  (`FunDef` has `params` and a `Block`; `ASTPrinter` prints it). The
+  recorder used to flatten it into the function node; `ParseTrace.decl`
+  now makes a block node for it (compiler repo, uncommitted there; backup
+  of the previous version in the session scratchpad). All six reference
+  traces were regenerated with `tests/showcase/trace.sh` and
+  `compiler.js` rebuilt. Against the old traces the only change is the
+  new node (two per function-call trace) and its two parse frames per
+  function; instruction attribution, check, emit and register frames are
+  identical, and the page's parse replay still matches the recorder.
+  `scopesOf` keeps a function's body block in the function's scope, as
+  NameAnalyzer does. State table frames are shifted.
+- A name with no declaration keeps a faint red tint (`.missing`) from its
+  step to the end of the check phase, and the scope strip's cue names
+  it: "`missing` not found".
+- "Every name has a declaration" draws every use's link at once, each a
+  quarter draw-time after the last, and reels them in on the next step.
+  Links cover variables and function calls, which is what the recorder
+  resolves; struct types aren't recorded as links yet.
 
 ## Open items (not started)
 
