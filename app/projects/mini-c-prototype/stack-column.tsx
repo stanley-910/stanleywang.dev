@@ -18,6 +18,7 @@ export function StackColumn({
   duration,
   still,
   step,
+  at,
 }: {
   frame: StackFrame | undefined
   /** Instructions shown so far. */
@@ -30,6 +31,8 @@ export function StackColumn({
   duration: number
   still: boolean
   step: number
+  /** Top left in the scene, when it sits in the tree's half. */
+  at?: { x: number; y: number }
 }) {
   if (!frame) return null
   const done = Math.min(frame.last + 1, count) - frame.first
@@ -100,7 +103,11 @@ export function StackColumn({
     )
   }
   return (
-    <div className="ac-stack" aria-label="Stack frame">
+    <div
+      className="ac-stack"
+      aria-label="Stack frame"
+      style={at && { left: at.x, top: at.y, right: 'auto' }}
+    >
       <div className="ac-label">; stack</div>
       <div className="ac-stack-body" style={{ height: y(lowest) + row }}>
         {words.map((addr) => {
@@ -113,8 +120,13 @@ export function StackColumn({
             ? addr === pose.saved
             : block.some((p) => p.saved === addr)
           const touch = touched.filter((t) => t.addr === addr).pop()
+          // Signed, since they count from `$fp`: +8, 0, −4.
           const offset =
-            pose.fp === null ? '' : String(addr - pose.fp).replace('-', '−')
+            pose.fp === null
+              ? ''
+              : addr - pose.fp > 0
+                ? `+${addr - pose.fp}`
+                : String(addr - pose.fp).replace('-', '−')
           // Keyframes: in when its instruction's row arrives, out when the
           // one that frees it does.
           const inAt = appears === null ? 0 : delayOf(frame.first + appears)

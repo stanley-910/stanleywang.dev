@@ -116,7 +116,7 @@
 .ac.bare * {
   scrollbar-width: none;
 }
-.ac.bare :is(.ac-source, .ac-note-body, .ac-asm, .ac-scopes) {
+.ac.bare :is(.ac-source, .ac-note-body, .ac-asm) {
   border-right: 9px solid transparent;
   /* Longhands, so a pane's own background colour stays. */
   background-image: repeating-linear-gradient(
@@ -130,12 +130,6 @@
   background-origin: border-box;
   animation: ac-rail both;
   animation-timeline: scroll(self);
-}
-/* The scope panel keeps its frame; its rail sits inside, in the padding. */
-.ac.bare .ac-scopes {
-  border-right: 1px solid var(--line);
-  padding-right: 17px;
-  background-origin: padding-box;
 }
 @keyframes ac-rail {
   from,
@@ -426,14 +420,16 @@
 .ac-text mark.err {
   background: var(--err);
 }
-/* The lookup's pair: a quiet use and a bright declaration. */
+/* The lookup's pair, as on the stage: an outlined use and its filled
+   declaration. */
 .ac-text mark.ok.use {
   color: var(--ink);
   background: color-mix(in srgb, var(--ok) 8%, var(--bg));
+  box-shadow: inset 0 0 0 1px var(--ok);
 }
 .ac-text mark.ok.decl {
-  color: var(--bg);
-  background: var(--ok);
+  color: var(--ink);
+  background: color-mix(in srgb, var(--ok) 32%, transparent);
 }
 /* Detailed lexer: characters read so far underlined, the current one a block,
    skipped whitespace a faint band. */
@@ -707,26 +703,13 @@
 }
 /* Check: a compact locals panel in a free stage corner. */
 .ac-scopes {
-  position: absolute;
-  z-index: 3;
-  box-sizing: border-box;
-  /* Sized to its rows; it scrolls only past the stage's height. */
-  overflow: hidden auto;
-  padding: 8px;
-  border: 1px solid var(--line);
-  background: var(--bg);
   line-height: 20px;
   white-space: nowrap;
 }
-/* A header bar, as the editor has. */
-.ac-scopes-head {
-  margin: -8px -8px 6px;
-  padding: 0 8px;
-  border-bottom: 1px solid var(--line);
-  color: var(--ink);
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 26px;
+/* What a declaration makes: var, function or struct. */
+.ac-scope-kind {
+  margin-left: 8px;
+  color: var(--faint);
 }
 .ac-scope {
   margin: 0 0 0 3px;
@@ -735,8 +718,7 @@
   border-left: 1px solid var(--line);
   transition:
     border-color 0.3s,
-    border-left-width 0.3s,
-    padding-left 0.3s;
+    box-shadow 0.3s;
 }
 .ac-scope > li {
   overflow: hidden;
@@ -752,10 +734,10 @@
   color: var(--ink);
   font-weight: 600;
 }
+/* The bold rail is a shadow on the 1px border, so rows never shift. */
 .ac-scope.home {
-  border-left-width: 2px;
   border-left-color: var(--ink);
-  padding-left: 10px;
+  box-shadow: inset 1px 0 0 var(--ink);
 }
 .ac-scope-empty {
   color: var(--faint);
@@ -808,6 +790,12 @@
 }
 .ac-link.ok {
   stroke: var(--ok);
+}
+/* The name pass walking the tree to the next name: a brighter pass over
+   the edges it follows. */
+.ac-walk path {
+  stroke: var(--ink);
+  stroke-width: 2;
 }
 .ac-link-halo {
   stroke: var(--bg);
@@ -909,6 +897,22 @@
   font-size: 10px;
   color: var(--muted);
 }
+/* A landing node's class, moved off the edges around it. */
+.ac-piece small.ac-class.right {
+  top: 50%;
+  left: 100%;
+  transform: translate(6px, -50%);
+}
+.ac-piece small.ac-class.left {
+  top: 50%;
+  right: 100%;
+  left: auto;
+  transform: translate(-6px, -50%);
+}
+.ac-piece small.ac-class.above {
+  top: auto;
+  bottom: 24px;
+}
 /* Parse cue ("tighter", "left first", ...), beside its node. */
 .ac-piece small.ac-cue {
   top: 50%;
@@ -939,7 +943,8 @@
   border-color: var(--muted);
   color: var(--ink);
 }
-/* What a return must match (`main: int`), for the step that checks it. */
+/* What a return must match (its function's return type), for the step
+   that checks it. */
 .ac-piece small.ac-type.need {
   border-style: dashed;
   border-color: var(--muted);
@@ -953,6 +958,13 @@
   animation:
     ac-type-in 0.25s var(--delay, 0s) both,
     ac-type-ok 0.25s var(--land, 0.42s) both;
+}
+/* A function's signature on its return's check: only `→ int` lights. */
+.ac-piece small.ac-type.returns-ok .returns {
+  animation: ac-type-ok-text 0.25s var(--land, 0.42s) both;
+}
+.ac-piece small.ac-type.returns-bad .returns {
+  color: var(--err);
 }
 .ac-piece small.ac-type.bad {
   border-color: var(--err);
@@ -970,6 +982,14 @@
   to {
     opacity: 1;
     transform: translate(5px, -50%);
+  }
+}
+@keyframes ac-type-ok-text {
+  from {
+    color: var(--muted);
+  }
+  to {
+    color: var(--ok);
   }
 }
 @keyframes ac-type-ok {
@@ -1044,6 +1064,10 @@
   line-height: 19px;
 }
 .ac-asm.blocks {
+  right: 12px;
+}
+/* Without the tree, the stack column takes the right edge. */
+.ac-scene.treeless .ac-asm.blocks {
   right: 176px;
 }
 .ac-asm:is(.blocks, .listing) .ac-label {
@@ -1087,6 +1111,15 @@
   color: var(--ink);
   opacity: 1;
 }
+/* The line under the pointer; its source is marked in the editor. */
+.ac-asm.blocks .ac-ins.hover {
+  box-shadow: inset 0 0 0 1px var(--muted);
+}
+.ac-asm.blocks .ac-ins.current.hover {
+  box-shadow:
+    inset 2px 0 var(--ink),
+    inset 0 0 0 1px var(--muted);
+}
 .ac-asm.listing .ac-ins.current small {
   color: var(--muted);
   opacity: 1;
@@ -1118,6 +1151,116 @@
   border: 1px dashed var(--muted);
   color: var(--muted);
   line-height: 15px;
+}
+
+/* Live ranges right of the assembly: a lane per virtual register from
+   the line that writes it to its last read, dashed while a read is still
+   to come; the current block's are in ink. */
+.ac-lanes {
+  position: absolute;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+.ac-lane {
+  color: var(--faint);
+  transition: color 0.2s;
+}
+.ac-lane.lit {
+  color: var(--ink);
+}
+/* Registers: the lane of a value with a physical register, in its colour. */
+.ac-lane.tinted {
+  color: color-mix(in srgb, var(--c) 70%, var(--ink));
+}
+.ac-lane line {
+  stroke: currentColor;
+  stroke-width: 1;
+}
+.ac-lane line.open {
+  stroke-dasharray: 3 2;
+}
+.ac-lane circle {
+  fill: currentColor;
+}
+.ac-lane text {
+  fill: currentColor;
+  font-size: 10px;
+  dominant-baseline: central;
+}
+
+/* A register under focus: its lane and the lines it lives through stay;
+   the rest go faint (a filter, since motion owns their opacity). Its name
+   is underlined where it appears, green where it is written, inverted on
+   the line its lifecycle is at. */
+.ac-lane.off {
+  opacity: 0.25;
+}
+.ac-lane.focus {
+  color: var(--ink);
+}
+.ac-lane text {
+  pointer-events: auto;
+  cursor: pointer;
+}
+.ac-lane circle.stage {
+  fill: var(--ink);
+  stroke: var(--bg);
+  stroke-width: 1.5;
+}
+.ac-asm.blocks :is(.ac-ins, .ac-asm-label, .ac-asm-head) {
+  transition: filter 0.2s;
+}
+.ac-asm.blocks.reg-focus :is(.ac-ins:not(.live), .ac-asm-label, .ac-asm-head) {
+  filter: opacity(0.3);
+}
+.ac-asm.blocks.reg-focus .ac-ins.stage {
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+.ac-arg {
+  cursor: pointer;
+}
+.ac-arg.focus {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.ac-arg.focus.def {
+  color: var(--ok);
+}
+.ac-arg.focus.stage {
+  background: var(--ink);
+  color: var(--bg);
+  text-decoration: none;
+}
+.ac-arg.focus.def.stage {
+  background: var(--ok);
+}
+.ac-reg[data-vr] {
+  pointer-events: auto;
+  cursor: pointer;
+}
+.ac-reg.off {
+  filter: opacity(0.3);
+}
+.ac-reg.focus {
+  z-index: 3;
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--bg);
+}
+.ac-reg.focus.def {
+  border-color: var(--ok);
+  background: var(--ok);
+}
+.ac-reg.focus.dies {
+  border-style: dashed;
+  background: var(--bg);
+  color: var(--ink);
+}
+.ac-piece.life {
+  outline: 1px dashed var(--muted);
+  outline-offset: 2px;
 }
 
 /* Too narrow for the tree beside the assembly and the stack: the editor's
@@ -1257,10 +1400,9 @@
   background: var(--line);
 }
 
-/* Card beside a clicked or hovered token. */
+/* Card under a clicked or hovered token or node. */
 .ac-hover {
   position: absolute;
-  transform: translateY(16px);
   padding: 6px 10px;
   border: 1px solid var(--line);
   background: var(--bg);
@@ -1385,20 +1527,22 @@
   }
 }
 @media (max-width: 640px) {
+  /* One row: the phases from the left, scrolling if they must; about
+     keeps the right end. */
   .ac-top {
-    flex-wrap: wrap;
-    gap: 8px 14px;
+    gap: 14px;
   }
   .ac-phases {
-    order: 3;
-    width: 100%;
+    flex: 1 1 0;
+    min-width: 0;
     margin-left: 0;
     gap: 8px;
     overflow-x: auto;
   }
+  .ac-about {
+    flex: none;
+  }
   .ac-about > div {
-    left: 0;
-    right: auto;
     width: min(340px, calc(100vw - 32px));
   }
   .ac-work {
@@ -1408,7 +1552,6 @@
     height: auto;
     min-height: 0;
     border-right: 0;
-    border-bottom: 1px solid var(--line);
   }
   .ac-source,
   .ac-source[data-sized='true'] {
@@ -1448,9 +1591,10 @@
   .ac-stack {
     display: none;
   }
+  /* Stacked, a heavier rule tells the stage from the editor below. */
   .ac-stage {
     order: -1;
-    border-bottom: 1px solid var(--line);
+    border-bottom: 3px solid var(--line);
   }
   .ac-keys {
     flex-wrap: wrap;

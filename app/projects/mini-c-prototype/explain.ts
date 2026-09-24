@@ -157,7 +157,7 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
       const kind = tokenKind(token)
       return titled
         ? kind[0].toUpperCase() + kind.slice(1)
-        : `${code(token.text)} is ${article(kind)}.`
+        : `${code(token.text)} is ${article(kind)}`
     }
     case 'lex.char':
       return readStep(trace.tokens[w.token], w.at, w.next)
@@ -170,32 +170,48 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
       return `${code(t.text)} ${tokenRole(t)}. No node is built from it alone.`
     }
     case 'parse.node': {
+      // DRAFT, on Stanley's template: what the token started as, the one
+      // piece of structure that decides it, and what it becomes. The kind
+      // named at the end is the one lit in the list under the note.
       const n = node(w.node)
+      const tok = trace.tokens[n.token]
+      const parent = trace.nodes.find((p) => p.children.includes(n.id))
       switch (n.kind) {
         case 'number':
-          return `${code(n.label)} becomes an integer literal node. A literal is complete on its own.`
+          return `${code(n.label)} started as a number, and a number is already a whole value, so it becomes a number expression.`
         case 'name':
-          return `${code(n.label)} becomes a name reference. Which declaration it means is settled later, in check.`
-        case 'declare':
-          return `${code(text(trace, n))} declares ${code(trace.tokens[n.token].text)}. Nothing is computed here; it only creates a name.`
+          return `${code(n.label)} started as an identifier, and with no ${code('(')} after it, it names a value, so it becomes a name expression.`
+        case 'declare': {
+          const where =
+            parent?.kind === 'function'
+              ? `in ${code(parent.label)}'s parameter list`
+              : parent?.kind === 'program'
+                ? 'outside any function'
+                : 'at the top of a block'
+          return nodeKind(n).kind === 'variable'
+            ? `${code(n.label)} (a type, then an identifier) ${where} becomes a variable declaration.`
+            : `${code(n.label)} becomes a ${nodeKind(n).kind} declaration.`
+        }
         case 'return':
-          return 'A return node opens. It stays dashed until its value is read.'
+          return `${code('return')} started as a keyword, and at the start of a statement it opens a return statement.`
         case 'assign':
-          return `An assignment into ${code(trace.tokens[n.token].text)} opens. It stays dashed until the value on the right is read.`
+          return `${code(tok.text)} started as an identifier, but the ${code('=')} after it makes it the target of an assignment expression.`
         case 'function':
-          return `${code(n.label)} becomes a function node. Its parameters and body come next.`
+          return `${code(n.label)} started as an identifier, but a type, a name and a ${code('(')} can only begin a function, so it becomes a function declaration.`
         case 'block':
-          return 'A block opens: declarations first, then statements.'
+          return parent?.kind === 'function'
+            ? `${code('{')} started as a delimiter, and after ${code(parent.label)}'s parameters it opens the body, a block statement.`
+            : `${code('{')} started as a delimiter, and where a statement goes it opens a block statement.`
         case 'while':
-          return 'A while node opens. It needs a condition and a body.'
+          return `${code('while')} started as a keyword, and at the start of a statement it opens a while statement.`
         case 'if':
-          return 'An if node opens. It needs a condition and one or two branches.'
+          return `${code('if')} started as a keyword, and at the start of a statement it opens an if statement.`
         case 'call':
-          return `A call to ${code(trace.tokens[n.token].text)} opens. Its arguments are read next.`
+          return `${code(tok.text)} started as an identifier, but the ${code('(')} after it makes it a call expression.`
         case 'unary':
-          return `${code(n.label)} in front of a value is negation. It needs one operand.`
+          return `${code(n.label)} started as an operator, but with no value before it, it applies to what follows: an operator expression.`
         case 'program':
-          return 'The program is a list of declarations, read one after another.'
+          return `${code('global')} holds the top-level declarations, read one after another.`
         default:
           return `${code(n.label)} becomes a ${describe(n)} node.`
       }
@@ -204,7 +220,8 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
       return `${src(w.child)} becomes the ${roleWord[w.role] ?? w.role} of ${code(node(w.parent).label)}.`
     case 'parse.wait': {
       const op = node(w.node)
-      return `${code(op.label)} takes ${src(w.child)} as its left input and now needs the right one. Until then it is dashed.`
+      // DRAFT, on the parse.node template.
+      return `${code(op.label)} started as an operator, and with ${src(w.child)} before it, it becomes an operator expression that waits, dashed, for its right side.`
     }
     case 'parse.precedence': {
       const child = src(w.child)
@@ -370,8 +387,9 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
         }
       }
       const dead = run.find((i) => i.dead)
-      const said =
-        w.parts && w.parts.length > 1
+      const said = w.of
+        ? explainLine(trace, n, w.of, w.from)
+        : w.parts && w.parts.length > 1
           ? explainBlock(trace, w.parts)
           : explainMips(trace, n, run)
       return dead
@@ -380,6 +398,7 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
     }
     case 'emit.prologue': {
       const n = node(w.node)
+      if (w.of) return explainFrameLine(trace, n, w.of, w.from)
       const run = trace.instructions.slice(w.from, w.to + 1)
       // Space for locals is the last move of $sp after $fp is set; the
       // earlier ones make room for the saved $fp and $ra.
@@ -397,6 +416,7 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
     }
     case 'emit.epilogue': {
       const n = node(w.node)
+      if (w.of) return explainFrameLine(trace, n, w.of, w.from)
       const run = trace.instructions.slice(w.from, w.to + 1)
       const exits = run.some((i) => i.op === 'syscall')
       return `${code(n.label)} is done. It puts ${code('$sp')} and ${code('$fp')} back the way the caller left them, then ${exits ? 'exits with a system call' : `jumps back to the caller with ${code('jr $ra')}`}.`
@@ -453,6 +473,9 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
       const st = trace.backend?.functions[w.fn]?.colouring.steps[w.step]
       const k = trace.backend?.k ?? 0
       if (!st) return 'A register with few neighbours is set aside.'
+      // DRAFT: a batch of pushes (regs-view.ts).
+      if (w.from !== undefined)
+        return `The other ${w.step - w.from + 1} go on the stack the same way: each overlaps fewer than ${k} others.`
       if (!st.degree)
         return `${code(st.vr)} overlaps nothing that is still in the graph, so any register will do. It is set aside on a stack.`
       return `${code(st.vr)} overlaps ${st.degree} ${st.degree === 1 ? 'other' : 'others'}, fewer than the ${k} registers available, so it is sure to get one. It is set aside on a stack and its edges come off the graph.`
@@ -465,6 +488,20 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
       const st = trace.backend?.functions[w.fn]?.colouring.steps[w.step]
       if (!st) return 'A register comes off the stack and takes a colour.'
       const forbidden = st.forbidden ?? []
+      // DRAFT: pops that reused a register, then the one that stops play.
+      const reused = w.from === undefined ? 0 : w.step - w.from
+      const before = reused
+        ? `${reused} ${reused === 1 ? 'register reuses' : 'registers reuse'} one already given out. `
+        : ''
+      // A register no earlier pop took is a new one; else it is reused.
+      const steps = trace.backend?.functions[w.fn]?.colouring.steps ?? []
+      const fresh = !steps
+        .slice(0, w.step)
+        .some((p) => p.op === 'select' && p.colour === st.colour)
+      if (reused)
+        return !fresh || forbidden.length === 0
+          ? `${before}${code(st.vr)} takes ${code(st.colour ?? '')}.`
+          : `${before}${code(st.vr)} overlaps values in ${forbidden.map(code).join(', ')}, so it needs ${code(st.colour ?? '')}.`
       if (forbidden.length === 0)
         return `${code(st.vr)} comes off the stack. None of its neighbours holds a register yet, so it takes the first one, ${code(st.colour ?? '')}.`
       return `${code(st.vr)} comes off the stack. Its neighbours hold ${forbidden.map(code).join(', ')}, so it takes the next free one, ${code(st.colour ?? '')}.`
@@ -476,7 +513,7 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
     case 'reg.done':
       if (w.fn === undefined)
         return 'Every temporary now has a physical register. Reuse kept the count small.'
-      return `${w.used} real ${w.used === 1 ? 'register' : 'registers'} cover every virtual one${w.spills ? `, with ${w.spills} spilled to memory` : ''}. Values that never overlap share a register.`
+      return `${w.used} real ${w.used === 1 ? 'register covers' : 'registers cover'} every virtual one${w.spills ? `, with ${w.spills} spilled to memory` : ''}. Values that never overlap share a register.`
   }
 }
 
@@ -530,6 +567,128 @@ function explainBlock(
   return `${listed[0].toUpperCase()}${listed.slice(1)}.`
 }
 
+// Line by line (emit-view.ts), DRAFT copy: a short sentence per line of a
+// node's run, saying what the line is for rather than repeating it.
+function explainLine(
+  trace: Trace,
+  n: AstNode,
+  of: { from: number; to: number },
+  at: number,
+): string {
+  const run = trace.instructions.slice(of.from, of.to + 1)
+  const k = at - of.from
+  const ins = run[k]
+  const jal = run.findIndex((i) => i.op === 'jal')
+  if (jal >= 0) {
+    const callee = code(trace.tokens[n.token].text)
+    if (k === jal)
+      return `${code('jal')} jumps into ${callee} and keeps the way back in ${code('$ra')}.`
+    if (k > jal)
+      return ins.op === 'lw'
+        ? `Back from ${callee}, the result is read into ${code(ins.dest ?? '')}.`
+        : 'What the call pushed comes off the stack.'
+    if (ins.op === 'sw')
+      return `The argument ${code(ins.args[0] ?? '')} goes into it.`
+    return run[k + 1]?.op === 'jal'
+      ? 'A word for the result, which the function writes before it returns.'
+      : 'A word on the stack for an argument.'
+  }
+  switch (n.kind) {
+    case 'name': {
+      if (ins.op === 'lw')
+        return `Then the word at that address, into ${code(ins.dest ?? '')}.`
+      const offset = Number(/,(-?\d+)$/.exec(ins.text ?? '')?.[1] ?? 0)
+      // A name loaded again in the same function: the compiler reloads it
+      // on every use.
+      const again = trace.instructions
+        .slice(0, of.from)
+        .some(
+          (i) =>
+            i.fn === ins.fn &&
+            i.op === 'lw' &&
+            i.node !== null &&
+            trace.nodes[i.node].kind === 'name' &&
+            trace.nodes[i.node].label === n.label,
+        )
+      if (again)
+        return `${code(n.label)} again, from the same slot. The compiler loads a name each time it is used, even twice in a row.`
+      return `${code(n.label)}'s slot, ${Math.abs(offset)} bytes ${offset < 0 ? 'below' : 'above'} ${code('$fp')}, was fixed when the prologue laid out the frame. First its address.`
+    }
+    case 'binary':
+      if (ins.op === 'mult')
+        return `MIPS puts a product in a special register, ${code('lo')}.`
+      if (ins.op === 'mflo')
+        return `${code('mflo')} copies it into ${code(ins.dest ?? '')}.`
+      break
+    case 'return':
+      return ins.op === 'j'
+        ? "Then a jump to the function's exit code."
+        : "The value goes into the frame's return slot, where the caller reads it."
+  }
+  return k === 0 ? explainMips(trace, n, run) : `Then ${code(ins.text ?? '')}.`
+}
+
+// Line by line, DRAFT copy: one line of a prologue or epilogue.
+function explainFrameLine(
+  trace: Trace,
+  n: AstNode,
+  of: { from: number; to: number },
+  at: number,
+): string {
+  const run = trace.instructions.slice(of.from, of.to + 1)
+  const k = at - of.from
+  const t = run[k].text ?? run[k].op
+  const fn = code(n.label)
+  if (t === 'pushRegisters')
+    return 'A placeholder: the allocator decides later which registers to save here.'
+  if (t === 'popRegisters')
+    return `${fn} is done. The registers saved at the start come back here.`
+  if (t === 'sw $fp,0($sp)')
+    return "The caller's frame pointer is saved in it, to put back at the end."
+  if (t === 'addiu $fp,$sp,0')
+    return `${code('$fp')} now marks this frame. Everything in it sits a fixed distance from ${code('$fp')}, while ${code('$sp')} keeps moving.`
+  if (t.startsWith('sw $ra'))
+    return `${code('$ra')}, the address to return to, is saved.`
+  if (t.startsWith('lw $ra')) return 'The return address comes back.'
+  if (t.startsWith('lw $fp')) return "The caller's frame pointer comes back."
+  if (t === 'jr $ra') return `${code('jr $ra')} returns to the caller.`
+  if (t === 'li $v0,10')
+    return `${fn} has no caller to return to. System call 10 ends the program.`
+  if (t === 'syscall') return 'The program ends.'
+  if (t.startsWith('addi $sp,$fp'))
+    return `${code('$sp')} goes back to where the caller left it.`
+  if (k === 0)
+    return `${fn} starts by building its stack frame. First, a word for the caller's frame pointer.`
+  if (run[k + 1]?.text?.startsWith('sw $ra'))
+    return 'A word for the return address.'
+  // The last move of $sp makes room for the locals, which the function's
+  // lines address below $fp.
+  const words = -Number(t.split(',').pop()) / 4
+  const locals = new Set<string>()
+  const fnRun = trace.instructions.filter((i) => i.fn === run[k].fn)
+  for (const i of fnRun) {
+    const offset = /\$fp,(-\d+)$/.exec(i.text ?? '')?.[1]
+    const owner = i.node === null ? undefined : trace.nodes[i.node]
+    if (offset && owner && (owner.kind === 'name' || owner.kind === 'assign'))
+      locals.add(owner.label.replace(/\s*=$/, ''))
+  }
+  const named = [...locals].map(code)
+  // The compiler lays out locals below a word it keeps for `$ra`
+  // (MemAllocCodeGen). `main` never saves `$ra`, so that word stays empty;
+  // any other function pushed `$ra` already, so its frame ends a word low.
+  const spare = words - named.length
+  const savedRa = run.some((i) => i.text?.startsWith('sw $ra'))
+  const room = named.length ? `Room for ${list(named)}` : ''
+  if (spare !== 1) return room ? `${room}.` : `${fn} has no locals.`
+  if (!savedRa)
+    return room
+      ? `${room}. The word at ${code('-4')} stays empty: the compiler keeps it for ${code('$ra')}, which ${fn} never saves.`
+      : `One word, left empty: the compiler keeps it for ${code('$ra')}, which ${fn} never saves.`
+  return room
+    ? `${room}, and one word never used: the compiler counts ${code('$ra')}'s slot again.`
+    : `One word, never used: ${fn} has no locals, but the compiler counts ${code('$ra')}'s slot again.`
+}
+
 /** Sentence for one run of real MIPS from one node. */
 function explainMips(trace: Trace, n: AstNode, run: Instruction[]): string {
   const src = code(text(trace, n).replace(/\s+/g, ' '))
@@ -543,8 +702,18 @@ function explainMips(trace: Trace, n: AstNode, run: Instruction[]): string {
     return `The call: the arguments are pushed on the stack, ${line(jal as Instruction)} jumps into the function, and the result is read back from the stack into ${code(last.dest ?? '')} once it returns.`
   }
   switch (n.kind) {
-    case 'number':
-      return `${line(first)} loads the literal ${code(n.label)} into ${code(first.dest ?? '')}, a fresh virtual register. There is no limit on these yet.`
+    case 'number': {
+      // Said once per function: every value gets a register of its own.
+      const earlier = trace.instructions
+        .slice(0, trace.instructions.indexOf(first))
+        .some(
+          (i) =>
+            i.fn === first.fn && i.op === 'li' && /^v\d+$/.test(i.dest ?? ''),
+        )
+      return earlier
+        ? `The literal ${code(n.label)} goes into ${code(first.dest ?? '')}.`
+        : `The literal ${code(n.label)} goes into ${code(first.dest ?? '')}, a fresh virtual register. There is no limit on these yet.`
+    }
     case 'name':
       if (ops.includes('lw'))
         return `${code(n.label)} lives in the stack frame. ${line(first)} works out its address and ${line(last)} loads the value into ${code(last.dest ?? '')}.`
@@ -555,18 +724,18 @@ function explainMips(trace: Trace, n: AstNode, run: Instruction[]): string {
         return `${line(first)} computes the ${op}. MIPS keeps the product in a special register, so ${line(last)} copies it into ${code(last.dest ?? '')}.`
       if (first.op === 'slt' || first.op === 'sltu')
         return `${line(first)} sets ${code(first.dest ?? '')} to 1 when ${code(first.args[0])} is below ${code(first.args[1])}, else 0. That value is what the loop tests.`
-      return `${line(first)} does the ${op} of ${code(first.args[0])} and ${code(first.args[1])} into ${code(first.dest ?? '')}. Both inputs were computed on earlier lines: children come before parents.`
+      return `The ${op} of ${code(first.args[0])} and ${code(first.args[1])} goes into ${code(first.dest ?? '')}. Both sides were computed on the lines above: children come before parents.`
     }
     case 'assign':
       if (ops.includes('sw'))
-        return `${line(last)} stores the value into ${code(name(n.label))}'s slot in the frame, at the address computed earlier.`
-      return `The assignment needs the address of ${code(name(n.label))} before the value: ${line(first)} computes it, then the right-hand side is evaluated.`
+        return `The value goes into ${code(name(n.label))}'s slot, at the address worked out first.`
+      return `An assignment works out where ${code(name(n.label))} lives before the value on the right, so its address comes first.`
     case 'return':
       return `${line(first)} writes the value into the frame's return slot, and ${line(last)} skips to the function's exit code.`
     case 'while':
       if (ops.includes('beqz'))
-        return `${line(first)} leaves the loop when the condition is 0. Otherwise the body follows.`
-      return `${line(first)} jumps back to the top to test the condition again.`
+        return `${code('beqz')} leaves the loop when the condition is 0. Otherwise the body follows.`
+      return `${code('j')} goes back to the top to test the condition again.`
     default:
       return `${run.map(line).join(', ')} ${run.length === 1 ? 'is' : 'are'} emitted for ${src}.`
   }
@@ -922,6 +1091,108 @@ export const tokenKind = (token: Token): TokenClass => {
 /** The lexemes in a token's page class. */
 export const lexemesOf = (token: Token) => LEXEMES[tokenKind(token)]
 
+// A node's card, as a token's: its class in the grammar, opening to the
+// kinds in that class (the compiler's Decl, Stmt and Expr subclasses, in
+// its src/java/ast).
+export const NODE_KINDS = {
+  global: ['global'],
+  declaration: ['variable', 'function', 'prototype', 'struct', 'class'],
+  statement: [
+    'block',
+    'while',
+    'if',
+    'return',
+    'continue',
+    'break',
+    'expression',
+  ],
+  expression: [
+    'number',
+    'character',
+    'string',
+    'name',
+    'call',
+    'operator',
+    'assignment',
+    'index',
+    'field',
+    'value at',
+    'address of',
+    'sizeof',
+    'cast',
+    'new',
+    'method call',
+  ],
+}
+export type NodeClass = keyof typeof NODE_KINDS
+
+// ParseTrace.java names what it collapses by class: `StructTypeDecl s`,
+// `FunDecl f`, `ArrayAccess`, and so on.
+const DECL_KINDS: Record<string, string> = {
+  StructTypeDecl: 'struct',
+  FunDecl: 'prototype',
+  ClassDecl: 'class',
+}
+const EXPR_KINDS: Record<string, string> = {
+  ArrayAccess: 'index',
+  FieldAccess: 'field',
+  ValueAt: 'value at',
+  AddressOf: 'address of',
+  SizeOf: 'sizeof',
+  Typecast: 'cast',
+  NewInstance: 'new',
+  InstanceFunCall: 'method call',
+}
+
+/** A node's class and its kind within it. */
+export function nodeKind(node: AstNode): { cls: NodeClass; kind?: string } {
+  switch (node.kind) {
+    case 'program':
+      return { cls: 'global', kind: 'global' }
+    case 'function':
+      return { cls: 'declaration', kind: 'function' }
+    case 'declare':
+      return {
+        cls: 'declaration',
+        kind: DECL_KINDS[node.label.split(' ')[0]] ?? 'variable',
+      }
+    case 'block':
+    case 'while':
+    case 'if':
+    case 'return':
+      return { cls: 'statement', kind: node.kind }
+    case 'statement':
+      return {
+        cls: 'statement',
+        kind: node.label === 'expr' ? 'expression' : node.label,
+      }
+    case 'number':
+      return {
+        cls: 'expression',
+        kind: node.label.startsWith("'")
+          ? 'character'
+          : node.label.startsWith('"')
+            ? 'string'
+            : 'number',
+      }
+    case 'name':
+      return { cls: 'expression', kind: 'name' }
+    case 'call':
+      return { cls: 'expression', kind: 'call' }
+    case 'assign':
+      return { cls: 'expression', kind: 'assignment' }
+    case 'binary':
+      return {
+        cls: 'expression',
+        kind: node.label === '=' ? 'assignment' : 'operator',
+      }
+    case 'unary':
+      return { cls: 'expression', kind: 'operator' }
+    default:
+      return { cls: 'expression', kind: EXPR_KINDS[node.label] }
+  }
+}
+
 // Classes written as a rule rather than a list.
 const PATTERNS: Partial<Record<TokenClass, RegExp>> = {
   identifier: /^[A-Za-z_][A-Za-z0-9_]*$/,
@@ -995,27 +1266,6 @@ function readStep(token: Token, at: number, next?: string): string {
   return fits.length > 0
     ? `${code(read)} could still become ${joinOr(fits)}.`
     : `${code(read)} is not in any table yet; it is part of ${article(tokenKind(token))}.`
-}
-
-/** Hover card for a tree node, describing only what is attached so far. */
-export function nodeHover(trace: Trace, frame: Frame, node: AstNode): string {
-  const kids = node.children.filter((c) => frame.attached.includes(c))
-  const missing = node.children.length - kids.length
-  const held = kids.map((c) => code(text(trace, trace.nodes[c]))).join(', ')
-  const what = `${code(node.label)} · ${describe(node)}`
-  if (node.kind === 'number') return `${what} · complete`
-  if (node.kind === 'name') {
-    const link = (frame.links ?? []).find(([use]) => use === node.id)
-    return link
-      ? `${what} · refers to ${code(text(trace, trace.nodes[link[1]]))}`
-      : `${what} · declaration not yet checked`
-  }
-  if (!node.children.length) return what
-  if (missing > 0)
-    return held
-      ? `${what} · holds ${held} · still needs ${missing} more`
-      : `${what} · waiting for ${node.children.length} ${node.children.length === 1 ? 'input' : 'inputs'}`
-  return `${what} · holds ${held}`
 }
 
 // The real lexer and parser print their errors rather than record them

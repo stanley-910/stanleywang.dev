@@ -966,14 +966,188 @@ since it is what makes k-colouring make sense.
 - Checked on function call 76–86 (push `v2 v1 v4 v0 v3`, pop in reverse)
   and loop 150–165 (23 deep, rows shrink to fit) at 960x600.
 
+## Emit: live-range lanes and row hover (2026-09-24, uncommitted)
+
+- `lanes.ts` works out each virtual register's range (the line that writes
+  it to its last read, per function) and packs them into columns over the
+  whole program, so a lane keeps its column as rows arrive; a column is
+  reused only after the lane before it has ended, not on the same line.
+  Peaks: 3 for function call, 4 for loop.
+- `emit-lanes.tsx` draws them in an SVG inside the blocks pane, just past
+  the longest operands (or as far right as a narrow pane allows): a dot
+  and the `vN` name on the writing line, a tick on each read, dashed while
+  a read is still to come. The current block's registers, and those of the
+  row under the pointer, are in ink; the rest faint. Row centres are
+  measured (`data-row`), since labels and comments sit between rows. Lanes
+  grow with the block's rows (linear, from the row stagger).
+- `emitTree` now leaves room for the lanes (`34 + (9 + longest operands)
+  ch + lanes`), so at 960 wide the tree is hidden as before and at 1280 it
+  shows.
+- Hovering an assembly row outlines it, marks its source in the editor and
+  lights its registers' lanes; the note keeps the step's text.
+- Checked on function call 64–65 and loop 123–126 at 1280x720, and loop at
+  820x700.
+- Fable's emit review (`2026-09-24-emit-intuition-fable-answer.md`) places
+  lanes as a fourth grid column in the pane; this build is equivalent. Its
+  regs half (recolouring by `$t`, growing upward per sweep) is not built.
+
+## Emit: register focus (2026-09-24, uncommitted)
+
+- Hover a `vN` in the emit blocks (an operand, a lane's tag, or a register
+  badge on the tree) to focus it. `regFocus` in `animated.tsx` holds
+  `{key: 'fn:vr', pinned, stage, at}`; `at` is the step it was picked on,
+  so any step change, or play, drops it without an effect.
+- Its lifecycle is the lane's `[def, ...reads]`, cut to the rows shown so
+  far. Rows outside `def..last` fade (`filter: opacity`, since motion owns
+  `opacity`); its name is underlined in each line, green where written,
+  inverted on the current stage's line; other lanes and badges fade; a dot
+  rides its lane.
+- On the tree, a `.ac-reg.focus` badge sits beside the writing node, then
+  under each reading node in line order (dashed on the last read). The
+  stage's node takes the piece focus and the editor highlight; every node
+  on the lifecycle gets a dashed outline (`.life`).
+- Hover plays it once (900ms a stage / speed). A click pins it: h/j/k/l and
+  ←/→ then loop the lifecycle instead of stepping; Escape, a click on
+  anything that isn't a register, or a second click on it unpins.
+- The note says where it is in its life (draft copy, `focusText`).
+- The operand spans are `.ac-arg`: `.ac-vr` was already the Registers
+  listing's register chip (absolute-positioned).
+- Checked at 1280x720 on function call 69 (`v5`: `li` → `sw`; `v6` from
+  its tree badge; `v5` from its lane tag) and loop 130 (`v8`: 17 → 26).
+
+## Node card on the stage (2026-09-24, uncommitted)
+
+- Hovering a tree node no longer rewrites the note (Stanley: it "invades
+  the text card"). It gets the lexer's card instead, under the node: its
+  class (`program`, `declaration`, `statement`, `expression`). A click
+  opens it to every kind in that class with this node's kind inverted.
+- `NODE_KINDS` and `nodeKind` in `explain.ts` map ParseTrace's node kinds
+  and labels to those classes and kinds (e.g. `declare` "FunDecl f" →
+  declaration/prototype, `expr` "ArrayAccess" → expression/index).
+- A name or call the checks have linked adds a muted line, `declared int n
+  · line 1` (draft copy), from the same `bindings` the link arrows use.
+- The token and node cards share one `card` object in `animated.tsx`;
+  `nodeHover` in `explain.ts` is gone.
+- Checked at 1280x720: function call 35 (parse, `int n`), 55 (check,
+  `twice()` open with `call` inverted), 69 (emit tree), 12 (lexer card).
+
+## Layout, line-by-line emit, name pass and Registers stops (2026-09-24, uncommitted)
+
+- **Narrow layout (stacked, ≤640px).** `about` sits top right; the stage has
+  a 3px bottom rule so it reads apart from the editor below.
+- **Emit in two columns.** The tree keeps its check-phase layout (not
+  `small`) on the left, up to 60% of the stage (`asmLeft` in
+  `animated.tsx`); the assembly and lanes keep the room they need on the
+  right. The stack sits in whichever corner of the tree's side covers the
+  least of the tree (`stackAt`, a 16px margin). Under 260px of tree room the
+  scene goes `treeless` and the stack returns beside the assembly. Loop's
+  tree is at 0.92 scale at 1280×720 (was about 0.5). `compact` replaces
+  `late` for the small, flat tree, which Registers and treeless emit still
+  use.
+- **Line by line is the default** (`withEmitLines`, `emit-view.ts`): a step
+  per instruction, prologue and epilogue included; a split step keeps its
+  node's run in `why.of`. "emit in blocks" in the `?` menu switches back;
+  `?emit=blocks` in the URL. The old per-node log view is gone (old
+  `emit=log` links open line by line). Per-line notes are DRAFT copy:
+  `explainLine` and `explainFrameLine` in `explain.ts`. Frame numbers moved:
+  function call is now 123 frames, loop about 166.
+- **Pacing.** Play holds an emit step for its rows, plus 0.63s when a line
+  reads a register (badge travel), plus a beat (`emitHold`). About 1.3s on
+  a reading line at 1×, 0.68s otherwise.
+- **Parse root.** `program` reads `global` (renamed in `replayedParse`) and
+  no longer takes token 0, so `int twice` keeps its `int` in the tray.
+- **Lexer note** drops its period (`` `int` is a type ``).
+- **Name pass.** The scope tree moved from the stage into the note card:
+  header "Declarations per scope", the tree in place of the sentence
+  (`scopeCard`). Each declaration has `var`, `function` or `struct` beside it
+  in faint text. The bold rail is an inset shadow, so rows no longer jump
+  when the current scope changes. `scope-panel.ts` is deleted, and its corner
+  checks are dropped from `scripts/mini-c-check-names.cjs`.
+- **Walk trail.** Before a lookup draws, the edges from the last name
+  looked at up to the common ancestor and down to this one light in turn
+  (`walk`, `.ac-walk`, 0.14s an edge at 1×), then the link draws
+  (`NameLinks` `delay`). Play holds for the walk.
+- **Source marks.** A declaration is marked as type plus name (`int n`),
+  on declare and resolve steps; a use is outlined like its piece.
+- **Hover links everywhere the tree shows.** Hovering a linked name or
+  declaration draws its links in types and emit too (`hoverLinked`). A
+  node's card sits below, above, right or left of it, whichever crosses no
+  drawn link and covers the fewest pieces (`cardPlace`).
+- **Registers in stops** (`regs-view.ts`, from Astra's answer
+  `2026-09-24-regs-redesign-astra-answer.md`): the first push alone, then the
+  rest of the pushes in one step; the pops batched up to each pop that takes
+  a register no one has had yet, plus the last pop. Loop goes from 51 to 13
+  frames. Batched notes are DRAFT.
+- **Lanes in Registers.** Emit's lanes stay beside the listing (hidden on
+  liveness sweeps, which use that column) and take their register's ring
+  colour once picked. At a stop the ring keeps only the current register's
+  edges; the rest fade to 0.1.
+- **Taken from Astra, deferred:** a focused neighbour graph in place of the
+  ring, one assembly pane mounted across emit and Registers, growing lanes
+  backwards per sweep, and "try 3 registers" (the spill rewrite is not
+  recorded yet).
+
+## Return checks and frame notes (2026-09-24, uncommitted)
+
+- A return's badge is just its function's return type (`int`, was
+  `main: int`). On its check the function's `→ int` turns green with it
+  (`returns-ok`), so the match reads without the name.
+- The locals note says why a word goes unused (DRAFT). `MemAllocCodeGen`
+  lays out locals below a word it keeps for `$ra`. `main` never saves `$ra`,
+  so the word at `-4` stays empty. Other functions have already pushed
+  `$ra` in the prologue, so the `addiu $sp` counts that slot again and the
+  frame ends one word low. That is a quirk in the coursework compiler, not
+  the page.
+- A name's address line says its slot was fixed when the prologue laid out
+  the frame (DRAFT). The offset is `VarDecl.fpOffset`, set by
+  `MemAllocCodeGen` before the body is emitted; the use reaches it through
+  the declaration the name pass linked.
+
+## Review round: name pass and types (2026-09-24, uncommitted)
+
+- `global` is no longer lit on its parse step's token (`int`): a token
+  lights only on steps with no node in focus.
+- The walk is one eased stroke (sine in and out) over at least 0.5s; each
+  edge draws its slice of the curve (`walkEdge`).
+- Type pass: the tree keeps the check layout. Row by row, a node moves
+  right only if its label and badge would hit the one to its left, taking
+  its subtree along. The whole tree slides left only when a badge would
+  pass the stage edge (`typedShift`). Function call moves nothing; loop
+  slides 41px once near the end. The old approach made room for every
+  badge up front and stretched it with the layout's spread (up to 3×).
+- Node cards: the "declared … · line N" line is gone. The root's card has
+  no list, so a click doesn't move it.
+- Hover links past the name pass show only the hovered node's links
+  (`hoverOnly`). Before this, the types slide sits on the name pass's last
+  step, which draws every link.
+- Narrow layout: `about` shares the tabs' row; the tabs scroll sideways
+  below about 400px.
+
+## Parse categories and lookup timing (2026-09-24, uncommitted)
+
+- Parse notes follow Stanley's template (DRAFT): what the token started
+  as, the one piece of structure that decides it, and what it becomes
+  (`parse.node` and `parse.wait` in `explain.ts`). The kind named at the
+  end matches the list item lit below the note.
+- As a node lands (`parse.node`, `parse.wait`; not the root) its class
+  (`declaration`, `statement`, `expression`) shows under it on the stage,
+  as a token's class does in the lexer, and the class's kinds list under
+  the note with its own lit (`landing`).
+- The class label picks its side (`landingSpot`): below, else right, left
+  or above, whichever crosses no edge drawn that step and no other piece;
+  the right is skipped when the node has a parse cue there. Operators
+  waiting for their right side go right; the rest stay below.
+- Lookup timing is set from `main` → `twice()`, which Stanley liked. The
+  walk takes 0.5s for three edges, a third of that per edge for shorter
+  hops, and adds 0.14s an edge past three. The link draws at the speed of
+  that link (341px in 0.42s at 1×, at least 0.15s), measured along the
+  route (`routeLength` in `name-links.tsx`, within 1% of the browser's).
+
 ## Open items (not started)
 
 - Remove the TEMP Figma capture `<script>` in `page.tsx` once Figma is done with.
 - Mobile layout needs a pass (40–41).
-- Emit/regs on a narrow stage: the tree only gets the left ~46% beside the
-  instruction list, so on a ~380px stage it scales to about a quarter size and
-  its labels become unreadable. It needs a different arrangement there (tree
-  above the list, or tree hidden), not more scaling.
+- Registers on a narrow stage still squeezes the ring beside the listing.
 - ParseTrace mishandles casts and `return`; the sketch rejects read-before-assign.
 - Registers, agreed order: register badges on the emit tree (done, above;
   physical names in the Registers phase still to come), then branch arrows and the `jal` preview; then the liveness

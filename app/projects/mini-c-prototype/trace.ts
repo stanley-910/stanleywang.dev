@@ -160,9 +160,23 @@ export type Why =
       to: number
       // In blocks (emit-view.ts): the nodes whose steps this one covers.
       parts?: { node: number; from: number; to: number }[]
+      // Line by line (emit-view.ts): the node's whole run, this line in it.
+      of?: { from: number; to: number }
     }
-  | { kind: 'emit.prologue'; node: number; from: number; to: number }
-  | { kind: 'emit.epilogue'; node: number; from: number; to: number }
+  | {
+      kind: 'emit.prologue'
+      node: number
+      from: number
+      to: number
+      of?: { from: number; to: number }
+    }
+  | {
+      kind: 'emit.epilogue'
+      node: number
+      from: number
+      to: number
+      of?: { from: number; to: number }
+    }
   | { kind: 'emit.value'; node: number; v: string }
   // toy allocator (typed programs)
   | { kind: 'reg.assign'; v: string; r: string }
@@ -178,9 +192,22 @@ export type Why =
       busiest: string
       degree: number
     }
-  | { kind: 'reg.simplify'; fn: number; step: number; at: number | null }
+  // `from`: the first step of a run merged into this one (regs-view.ts).
+  | {
+      kind: 'reg.simplify'
+      fn: number
+      step: number
+      at: number | null
+      from?: number
+    }
   | { kind: 'reg.spillCandidate'; fn: number; step: number; at: number | null }
-  | { kind: 'reg.select'; fn: number; step: number; at: number | null }
+  | {
+      kind: 'reg.select'
+      fn: number
+      step: number
+      at: number | null
+      from?: number
+    }
   | { kind: 'reg.spill'; fn: number; step: number; at: number | null }
   | { kind: 'reg.done'; fn?: number; used?: number; spills?: number }
 
