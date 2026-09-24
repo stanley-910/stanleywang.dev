@@ -17,7 +17,7 @@ import {
   registerHover,
   tokenKind,
   INTRO_SLIDES,
-  LEXEMES,
+  lexemesOf,
 } from './explain'
 import { findReference, REFERENCES } from './reference'
 import {
@@ -75,7 +75,7 @@ function Prose({ text }: { text: string }) {
 // A token step: its sentence, then every lexeme in its class, the token's own
 // lexeme highlighted.
 function StepNote({ text, token }: { text: string; token?: Token }) {
-  const lexemes = token ? LEXEMES[token.kind] : []
+  const lexemes = token ? lexemesOf(token) : []
   return (
     <>
       <Prose text={text} />
@@ -356,14 +356,14 @@ export default function AnimatedCompiler() {
   )
   // The longest-worded token step of each class, for sizing the step panel.
   const tallestTokenSteps = useMemo(() => {
-    const best = new Map<Token['kind'], { text: string; token: Token }>()
+    const best = new Map<string, { text: string; token: Token }>()
     for (const f of trace.frames) {
       if (f.why.kind !== 'token') continue
       const token = trace.tokens[f.why.token]
       const text = explain(trace, f)
-      const seen = best.get(token.kind)
+      const seen = best.get(tokenKind(token))
       if (!seen || text.length > seen.text.length)
-        best.set(token.kind, { text, token })
+        best.set(tokenKind(token), { text, token })
     }
     return [...best.values()]
   }, [trace])
@@ -847,7 +847,7 @@ export default function AnimatedCompiler() {
                   </div>
                   {tallestTokenSteps.map((v) => (
                     <div
-                      key={v.token.kind}
+                      key={tokenKind(v.token)}
                       className="ac-note-layer ghost"
                       aria-hidden="true"
                     >
@@ -1039,7 +1039,7 @@ export default function AnimatedCompiler() {
                         aria-label="Lexemes in this class"
                         style={{ width: openWidth - 22 }}
                       >
-                        {LEXEMES[hoverTok.kind].map((lexeme) => (
+                        {lexemesOf(hoverTok).map((lexeme) => (
                           <li
                             key={lexeme}
                             className={

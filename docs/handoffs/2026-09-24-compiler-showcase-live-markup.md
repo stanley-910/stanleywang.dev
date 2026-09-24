@@ -75,6 +75,12 @@ Treat the note as guidance on what not to include, not only a one-frame fix.
   just the class ("Symbol") above the lexeme list, with no role sentence
   (explain.ts case `token`). Step-panel headers are not underlined and render
   backtick code.
+- Token classes follow the groups in `lexer/Token.java` instead of one
+  "symbol" class: keyword, identifier, number, operator (`+ - * / % & .`),
+  comparison (`== != < > <= >=`), logical (`&& ||`), delimiter
+  (`{ } ( ) [ ] ; ,`) and assignment (`=`). `tokenKind` derives the class
+  from the lexeme; `LEXEMES` is keyed by it. The lexer itself gives every
+  lexeme its own category (PLUS, SC, ...); the groups are for reading.
 - Name tokens are called "identifier" everywhere on the page (card, kind label,
   aria label, step text), via `tokenKind` in `explain.ts`. An identifier's card
   is "identifier" over its regex.
