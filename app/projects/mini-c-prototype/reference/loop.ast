@@ -1,0 +1,1 @@
+Program(FunDef(INT,main,Block(VarDecl(INT,i),VarDecl(INT,sum),ExprStmt(Assign(VarExpr(i),IntLiteral(0))),ExprStmt(Assign(VarExpr(sum),IntLiteral(0))),While(BinOp(VarExpr(i),LT,IntLiteral(3)),Block(ExprStmt(Assign(VarExpr(sum),BinOp(VarExpr(sum),ADD,VarExpr(i)))),ExprStmt(Assign(VarExpr(i),BinOp(VarExpr(i),ADD,IntLiteral(1)))))),Return(VarExpr(sum)))))

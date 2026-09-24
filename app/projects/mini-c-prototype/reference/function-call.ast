@@ -1,0 +1,1 @@
+Program(FunDef(INT,twice,VarDecl(INT,n),Block(Return(BinOp(VarExpr(n),ADD,VarExpr(n))))),FunDef(INT,main,Block(Return(FunCallExpr(twice,IntLiteral(6))))))

@@ -1,0 +1,1459 @@
+Review this concrete throwaway animated compiler UI for frontend visual and interaction design only. Do not edit or implement. User requested Claude 5.1 Fable with xhigh effort as a cross reviewer; primary implementer owns trace mechanisms. Be candid and bounded: identify at most 6 material improvements, prioritized, with precise selectors/components and suggested changes. No generic praise. Design goals: source editor left, coherent animated stage right; token highlighting to tokens to AST, then codegen/registers. Little redundant copy. Motion 11.15.0. Existing portfolio shell is serif/monospace, neutral green dark/light. Screenshot not available; distinguish code-based inferences from visually verified claims. No private compiler source is included.
+
+FILE: app/projects/mini-c-prototype/animated.tsx
+'use client'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+
+import { buildTrace, instructionText, treePositions } from './trace'
+import './animated.css'
+
+const examples = [
+  { name: 'Precedence', source: 'int main() {\n  return 4 + 2 * 3;\n}' },
+  { name: 'Parentheses', source: 'int main() {\n  return (4 + 2) * 3;\n}' },
+  {
+    name: 'Local variable',
+    source: 'int main() {\n  int x;\n  x = 4 + 2;\n  return x * 3;\n}',
+  },
+  { name: 'Unresolved name', source: 'int main() {\n  return missing + 1;\n}' },
+]
+const phases = ['Tokens', 'Parse', 'Check', 'Emit', 'Registers'] as const
+export default function AnimatedCompiler() {
+  const [source, setSource] = useState(examples[0].source)
+  const trace = useMemo(() => buildTrace(source), [source])
+  const positions = useMemo(() => treePositions(trace), [trace])
+  const [step, setStep] = useState(0)
+  const [playing, setPlaying] = useState(false)
+  const [speed, setSpeed] = useState(1)
+  const [hover, setHover] = useState<number | null>(null)
+  const [editing, setEditing] = useState(false)
+  const sourceRef = useRef<HTMLPreElement>(null)
+  const reduced = useReducedMotion()
+  const index = Math.min(step, trace.frames.length - 1)
+  const frame = trace.frames[index]
+  const end = index === trace.frames.length - 1
+  const error = end ? trace.error : undefined
+  const hoverNode = hover === null ? undefined : trace.nodes[hover]
+  const activeSpan = hoverNode || error || frame.span
+  const move = useCallback(
+    (delta: number) => {
+      setPlaying(false)
+      setStep((s) => Math.max(0, Math.min(trace.frames.length - 1, s + delta)))
+    },
+    [trace.frames.length],
+  )
+  const play = useCallback(() => {
+    setEditing(false)
+    if (end) setStep(0)
+    setPlaying((p) => !p)
+  }, [end])
+  useEffect(() => {
+    if (!playing) return
+    if (end) {
+      setPlaying(false)
+      return
+    }
+    const timer = setTimeout(
+      () => setStep((s) => s + 1),
+      (frame.phase === 'Tokens' ? 430 : 720) / speed,
+    )
+    return () => clearTimeout(timer)
+  }, [playing, end, index, speed, frame.phase])
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (
+        event.target instanceof Element &&
+        event.target.closest(
+          'input,textarea,select,button,summary,[contenteditable]',
+        )
+      )
+        return
+      if (event.code === 'Space') {
+        event.preventDefault()
+        play()
+      }
+      if (event.key === 'j') {
+        event.preventDefault()
+        move(-1)
+      }
+      if (event.key === 'k') {
+        event.preventDefault()
+        move(1)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [move, play])
+  useEffect(() => {
+    sourceRef.current
+      ?.querySelector('mark')
+      ?.scrollIntoView({
+        block: 'nearest',
+        inline: 'nearest',
+        behavior: 'instant',
+      })
+  }, [activeSpan.start])
+  const update = (text: string) => {
+    setSource(text)
+    setStep(0)
+    setPlaying(false)
+    setHover(null)
+  }
+  const late = frame.phase === 'Emit' || frame.phase === 'Registers'
+  const parsed = frame.phase !== 'Tokens'
+  const transition = {
+    duration: reduced ? 0 : 0.48 / speed,
+    ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
+  }
+  const point = (id: number) => {
+    const p = positions[id] || { x: 340, y: 300 }
+    return late ? { x: 25 + p.x * 0.43, y: 70 + (p.y - 210) * 1.3 } : p
+  }
+  const owners = new Map(frame.nodes.map((id) => [trace.nodes[id].token, id]))
+  const shownInstructions = trace.instructions.slice(0, frame.instructionCount)
+  const line = source.slice(0, activeSpan.start).split('\n').length
+  return (
+    <section className="animated-compiler">
+      <header className="ac-heading">
+        <h1>Watch a program become a machine’s instructions.</h1>
+        <details>
+          <summary>About this sketch ↗</summary>
+          <p>
+            Local throwaway prototype. This original teaching compiler accepts
+            one int main(), local int declarations, assignments, return,
+            positive integer literals, +, −, *, and parentheses. No loops,
+            calls, execution, or private compiler connection. Output is abstract
+            pseudo-assembly; register assignment has no hardware limit.
+          </p>
+          <p>
+            Space: play/pause · J/K: step · arrows: compare layouts.
+            Reduced-motion preferences are respected.
+          </p>
+        </details>
+      </header>
+      <div className="ac-workspace">
+        <section className="ac-editor">
+          <div className="ac-toolbar">
+            <span>main.c</span>
+            <select
+              aria-label="Animated example"
+              value={examples.findIndex((e) => e.source === source)}
+              onChange={(e) => {
+                const example = examples[Number(e.target.value)]
+                if (example) update(example.source)
+              }}
+            >
+              <option value={-1} disabled>
+                Custom
+              </option>
+              {examples.map((e, i) => (
+                <option key={e.name} value={i}>
+                  {e.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="ac-source" data-editing={editing}>
+            {!editing && (
+              <pre ref={sourceRef} aria-label="Highlighted source">
+                <code>
+                  {source.slice(0, activeSpan.start)}
+                  <mark className={error ? 'ac-error-mark' : ''}>
+                    {source.slice(activeSpan.start, activeSpan.end)}
+                  </mark>
+                  {source.slice(activeSpan.end)}
+                </code>
+              </pre>
+            )}
+            <textarea
+              aria-label="Edit C source"
+              value={source}
+              spellCheck={false}
+              onFocus={() => {
+                setEditing(true)
+                setPlaying(false)
+              }}
+              onBlur={() => setEditing(false)}
+              onChange={(e) => update(e.target.value)}
+            />
+          </div>
+          <div className="ac-source-footer">
+            <span>
+              {editing
+                ? 'Editing · trace resets on change'
+                : `L${line} · ${trace.tokens.length} tokens`}
+            </span>
+            <button
+              onClick={() => {
+                const field = document.querySelector<HTMLTextAreaElement>(
+                  '.ac-source textarea',
+                )
+                field?.focus()
+              }}
+            >
+              Edit source ↗
+            </button>
+          </div>
+        </section>
+        <section className="ac-stage" aria-label="Animated compiler stage">
+          <div className="ac-phases">
+            {phases.map((phase, i) => (
+              <button
+                key={phase}
+                className={frame.phase === phase ? 'active' : ''}
+                disabled={!trace.frames.some((f) => f.phase === phase)}
+                onClick={() => {
+                  setPlaying(false)
+                  setStep(trace.frames.findIndex((f) => f.phase === phase))
+                }}
+              >
+                <span>0{i + 1}</span>
+                {phase}
+              </button>
+            ))}
+          </div>
+          <div className="ac-scene-wrap">
+            <div className="ac-scene">
+              <div className="ac-grid" />
+              <AnimatePresence>
+                {index === 0 && (
+                  <motion.div
+                    className="ac-invitation"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    <span className="ac-orbit">↗</span>
+                    <button onClick={play}>
+                      Follow the first token <span>▶</span>
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              <svg
+                className="ac-edges"
+                viewBox="0 0 680 480"
+                aria-hidden="true"
+              >
+                <AnimatePresence>
+                  {frame.nodes.flatMap((id) => {
+                    const n = trace.nodes[id],
+                      p = point(id)
+                    return n.children
+                      .filter((child) => frame.nodes.includes(child))
+                      .map((child) => {
+                        const q = point(child)
+                        return (
+                          <motion.path
+                            key={`${id}-${child}`}
+                            d={`M ${p.x} ${p.y + 14} C ${p.x} ${(p.y + q.y) / 2}, ${q.x} ${(p.y + q.y) / 2}, ${q.x} ${q.y - 14}`}
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={frame.focus === id ? 2 : 1}
+                            initial={{ pathLength: 0, opacity: 0 }}
+                            animate={{
+                              pathLength: 1,
+                              opacity: frame.focus === id ? 1 : 0.35,
+                            }}
+                            exit={{ pathLength: 0, opacity: 0 }}
+                            transition={transition}
+                          />
+                        )
+                      })
+                  })}
+                </AnimatePresence>
+              </svg>
+              <AnimatePresence>
+                {trace.tokens.slice(0, frame.tokenCount).map((token) => {
+                  const nodeId = owners.get(token.id)
+                  const node =
+                    nodeId === undefined ? undefined : trace.nodes[nodeId]
+                  const consumed = frame.consumed.includes(token.id)
+                  if (parsed && consumed && !node) return null
+                  const tokenPoint = {
+                    x: 39 + (token.id % 12) * 54,
+                    y: 35 + Math.floor(token.id / 12) * 40,
+                  }
+                  const p = node ? point(node.id) : tokenPoint
+                  const focused = node
+                    ? frame.focus === node.id || hover === node.id
+                    : token.start === frame.span.start
+                  return (
+                    <motion.button
+                      key={`token-${token.id}`}
+                      className={`ac-piece ${node ? 'node' : 'token'} kind-${token.kind} ${focused ? 'focused' : ''} ${late ? 'small' : ''}`}
+                      initial={{
+                        left: tokenPoint.x - 55,
+                        top: tokenPoint.y,
+                        opacity: 0,
+                        scale: 0.75,
+                      }}
+                      animate={{
+                        left: (p.x / 680) * 100 + '%',
+                        top: (p.y / 480) * 100 + '%',
+                        opacity: 1,
+                        scale: 1,
+                      }}
+                      exit={{ opacity: 0, scale: 0.6 }}
+                      transition={transition}
+                      onMouseEnter={() => node && setHover(node.id)}
+                      onMouseLeave={() => setHover(null)}
+                      onFocus={() => node && setHover(node.id)}
+                      onBlur={() => setHover(null)}
+                      onClick={() => {
+                        setPlaying(false)
+                        if (node) setHover(node.id)
+                      }}
+                      aria-label={
+                        node
+                          ? `AST ${node.kind}: ${node.label}`
+                          : `Token ${token.text}, ${token.kind}`
+                      }
+                    >
+                      <span>{node ? node.label : token.text}</span>
+                      {!parsed && focused && (
+                        <motion.small
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                        >
+                          {token.kind}
+                        </motion.small>
+                      )}
+                    </motion.button>
+                  )
+                })}
+              </AnimatePresence>
+              {late && (
+                <motion.div
+                  className="ac-instructions"
+                  initial={{ opacity: 0, x: 24 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={transition}
+                >
+                  <div className="ac-code-label">
+                    {frame.phase === 'Registers'
+                      ? 'REGISTER ASSIGNMENT'
+                      : 'VIRTUAL INSTRUCTIONS'}
+                  </div>
+                  <AnimatePresence>
+                    {shownInstructions.map((ins, i) => (
+                      <motion.div
+                        className={`ac-instruction ${(i === shownInstructions.length - 1 && frame.phase === 'Emit') || i === frame.allocationCount - 1 ? 'current' : ''}`}
+                        key={`instruction-${i}`}
+                        initial={{ opacity: 0, x: -22 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0 }}
+                        transition={transition}
+                      >
+                        <span>{String(i + 1).padStart(2, '0')}</span>
+                        <code>
+                          {instructionText(
+                            ins,
+                            frame.phase === 'Registers' &&
+                              i < frame.allocationCount
+                              ? trace.registers
+                              : undefined,
+                          )}
+                        </code>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                  {frame.phase === 'Registers' && (
+                    <div className="ac-registers">
+                      {Object.entries(trace.registers)
+                        .filter(([v]) =>
+                          trace.instructions
+                            .slice(0, frame.allocationCount)
+                            .some((ins) => ins.dest === v),
+                        )
+                        .map(([v, r]) => (
+                          <motion.span
+                            key={v}
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={transition}
+                          >
+                            {v}
+                            <b>→ {r}</b>
+                          </motion.span>
+                        ))}
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </div>
+          </div>
+          <div
+            className={`ac-operation ${error ? 'has-error' : ''}`}
+            role="status"
+          >
+            <span className="ac-status-dot" />
+            <AnimatePresence mode="wait">
+              <motion.span
+                key={error ? error.message : frame.title}
+                initial={{ opacity: 0, y: reduced ? 0 : 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: reduced ? 0 : 0.12 }}
+              >
+                {error ? error.message : frame.title}
+              </motion.span>
+            </AnimatePresence>
+            <span className="ac-counter">
+              {index} / {trace.frames.length - 1}
+            </span>
+          </div>
+        </section>
+      </div>
+      <div className="ac-transport">
+        <button
+          aria-label="Restart animation"
+          onClick={() => {
+            setStep(0)
+            setPlaying(false)
+            setHover(null)
+          }}
+        >
+          ↺
+        </button>
+        <button
+          aria-label="Previous step"
+          disabled={index === 0}
+          onClick={() => move(-1)}
+        >
+          ‹
+        </button>
+        <button
+          className="ac-play"
+          aria-label={playing ? 'Pause animation' : 'Play animation'}
+          onClick={play}
+        >
+          {playing ? 'Ⅱ' : '▶'}
+        </button>
+        <button aria-label="Next step" disabled={end} onClick={() => move(1)}>
+          ›
+        </button>
+        <input
+          aria-label="Animation step"
+          type="range"
+          min={0}
+          max={trace.frames.length - 1}
+          value={index}
+          onChange={(e) => {
+            setPlaying(false)
+            setHover(null)
+            setStep(Number(e.target.value))
+          }}
+        />
+        <select
+          aria-label="Playback speed"
+          value={speed}
+          onChange={(e) => setSpeed(Number(e.target.value))}
+        >
+          {[0.5, 1, 1.5, 2].map((value) => (
+            <option value={value} key={value}>
+              {value}×
+            </option>
+          ))}
+        </select>
+      </div>
+    </section>
+  )
+}
+
+
+FILE: app/projects/mini-c-prototype/animated.css
+.animated-compiler {
+  --ac-bg: #f6f6f1;
+  --ac-pane: #fcfcfa;
+  --ac-ink: #252d29;
+  --ac-muted: #778179;
+  --ac-line: #d9dfd7;
+  --ac-accent: #3c6d46;
+  --ac-glow: #d6e9bc;
+  position: relative;
+  width: min(1160px, calc(100vw - 64px));
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--ac-ink);
+  padding: 26px 0 120px;
+  line-height: 1.5;
+}
+.dark .animated-compiler {
+  --ac-bg: #101712;
+  --ac-pane: #151e18;
+  --ac-ink: #e4ebde;
+  --ac-muted: #8b9a8d;
+  --ac-line: #303d32;
+  --ac-accent: #b3d688;
+  --ac-glow: #334d2e;
+}
+.ac-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 36px;
+  margin: 15px 0 28px;
+}
+.ac-heading h1 {
+  font:
+    36px/1.15 Georgia,
+    serif;
+  letter-spacing: -1.1px;
+  max-width: 590px;
+}
+.ac-heading details {
+  font-size: 11px;
+  max-width: 310px;
+  position: relative;
+  color: var(--ac-muted);
+  z-index: 3;
+}
+.ac-heading summary {
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ac-heading details[open] {
+  background: var(--ac-pane);
+  border: 1px solid var(--ac-line);
+  padding: 15px;
+}
+.ac-heading p {
+  margin: 10px 0;
+}
+.ac-workspace {
+  display: grid;
+  grid-template-columns: 310px minmax(0, 1fr);
+  background: var(--ac-bg);
+  border: 1px solid var(--ac-line);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 18px 60px #0000000b;
+}
+.ac-editor {
+  background: var(--ac-pane);
+  border-right: 1px solid var(--ac-line);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.ac-toolbar {
+  height: 65px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 22px;
+  border-bottom: 1px solid var(--ac-line);
+  font: 12px monospace;
+}
+.animated-compiler select {
+  color: var(--ac-muted);
+  background: transparent;
+  border: 0;
+  font: 11px monospace;
+  max-width: 160px;
+  cursor: pointer;
+}
+.animated-compiler option {
+  background: var(--ac-pane);
+}
+.ac-source {
+  position: relative;
+  flex: 1;
+  min-height: 360px;
+  font: 13px/2.15 monospace;
+  overflow: hidden;
+}
+.ac-source pre,
+.ac-source textarea {
+  position: absolute;
+  inset: 0;
+  margin: 0 !important;
+  padding: 25px 22px !important;
+  white-space: pre;
+  word-wrap: normal;
+  overflow: auto;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  font: inherit !important;
+  tab-size: 2;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  color: var(--ac-ink);
+}
+.ac-source pre {
+  pointer-events: none;
+  z-index: 1;
+}
+.ac-source textarea {
+  resize: none;
+  color: transparent;
+  caret-color: var(--ac-accent);
+  outline: none;
+  z-index: 2;
+}
+.ac-source[data-editing='true'] textarea {
+  color: var(--ac-ink);
+}
+.ac-source mark {
+  color: var(--ac-ink);
+  background: var(--ac-glow);
+  border-radius: 3px;
+  box-shadow: 0 0 0 3px var(--ac-glow);
+  transition: background 0.15s;
+}
+.ac-source .ac-error-mark {
+  background: #f5c9b6;
+  color: #602c19;
+}
+.ac-source-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border-top: 1px solid var(--ac-line);
+  padding: 16px 20px;
+  font: 10px monospace;
+  color: var(--ac-muted);
+}
+.ac-source-footer button {
+  cursor: pointer;
+  color: var(--ac-accent);
+}
+.ac-stage {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.ac-phases {
+  height: 65px;
+  display: flex;
+  border-bottom: 1px solid var(--ac-line);
+  padding: 0 18px;
+  gap: 6px;
+}
+.ac-phases button {
+  position: relative;
+  flex: 1;
+  font: 11px monospace;
+  color: var(--ac-muted);
+  cursor: pointer;
+  padding: 0 6px;
+  text-align: left;
+  border-bottom: 2px solid transparent;
+}
+.ac-phases button span {
+  font-size: 9px;
+  display: block;
+  opacity: 0.6;
+  padding-bottom: 4px;
+}
+.ac-phases button.active {
+  color: var(--ac-accent);
+  border-color: var(--ac-accent);
+}
+.ac-phases button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.ac-scene-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+.ac-scene {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 680/480;
+  min-height: 400px;
+}
+.ac-grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.4;
+  background-image: radial-gradient(var(--ac-line) 0.8px, transparent 0.8px);
+  background-size: 20px 20px;
+  mask-image: linear-gradient(transparent, #000 20%, #000 80%, transparent);
+}
+.ac-edges {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  color: var(--ac-accent);
+  overflow: visible;
+}
+.ac-piece {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border: 1px solid var(--ac-line);
+  background: var(--ac-pane);
+  color: var(--ac-ink);
+  border-radius: 7px;
+  font: 12px monospace;
+  min-width: 32px;
+  min-height: 30px;
+  padding: 5px 9px;
+  cursor: pointer;
+  z-index: 2;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px #00000005;
+}
+.ac-piece.token {
+  max-width: 50px;
+  overflow: visible;
+}
+.ac-piece.token > span {
+  display: block;
+  max-width: 40px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ac-piece.kind-keyword {
+  color: var(--ac-accent);
+}
+.ac-piece.focused {
+  border-color: var(--ac-accent);
+  background: var(--ac-glow);
+  box-shadow: 0 0 24px #a7ce791a;
+}
+.ac-piece small {
+  position: absolute;
+  top: 38px;
+  left: 50%;
+  transform: translateX(-50%);
+  font: 9px monospace;
+  color: var(--ac-muted);
+}
+.ac-piece.small {
+  font-size: 10px;
+  min-width: 26px;
+  padding: 4px 7px;
+  min-height: 26px;
+}
+.ac-invitation {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  color: var(--ac-muted);
+  font: 12px monospace;
+}
+.ac-invitation button {
+  cursor: pointer;
+}
+.ac-invitation button span {
+  font-size: 9px;
+  padding-left: 8px;
+  color: var(--ac-accent);
+}
+.ac-orbit {
+  display: grid;
+  place-items: center;
+  width: 78px;
+  height: 78px;
+  border: 1px solid var(--ac-line);
+  border-radius: 50%;
+  font:
+    32px Georgia,
+    serif;
+  color: var(--ac-accent);
+  box-shadow:
+    0 0 0 12px var(--ac-bg),
+    0 0 0 13px var(--ac-line);
+}
+.ac-instructions {
+  position: absolute;
+  left: 52%;
+  right: 20px;
+  top: 35px;
+  font: 12px/2 monospace;
+}
+.ac-code-label {
+  font-size: 9px;
+  letter-spacing: 1.4px;
+  color: var(--ac-muted);
+  margin-bottom: 18px;
+}
+.ac-instruction {
+  display: flex;
+  gap: 12px;
+  padding: 4px 7px;
+  border-radius: 4px;
+  white-space: pre;
+  transition: background 0.2s;
+}
+.ac-instruction > span {
+  font-size: 9px;
+  color: var(--ac-muted);
+}
+.ac-instruction.current {
+  background: var(--ac-glow);
+}
+.ac-instruction code {
+  font: inherit;
+}
+.ac-registers {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 22px;
+  font-size: 10px;
+}
+.ac-registers > span {
+  border: 1px solid var(--ac-line);
+  padding: 2px 7px;
+  border-radius: 4px;
+  color: var(--ac-muted);
+}
+.ac-registers b {
+  padding-left: 5px;
+  color: var(--ac-accent);
+  font-weight: 400;
+}
+.ac-operation {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 22px;
+  border-top: 1px solid var(--ac-line);
+  font: 11px/1.5 monospace;
+  color: var(--ac-muted);
+}
+.ac-status-dot {
+  height: 5px;
+  width: 5px;
+  flex: none;
+  background: var(--ac-accent);
+  border-radius: 50%;
+}
+.ac-counter {
+  margin-left: auto;
+  white-space: nowrap;
+  font-size: 10px;
+}
+.ac-operation.has-error {
+  color: #c97956;
+}
+.ac-transport {
+  margin: 20px auto 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 740px;
+  height: 48px;
+}
+.ac-transport button {
+  color: var(--ac-muted);
+  font-size: 24px;
+  cursor: pointer;
+  width: 28px;
+  flex: none;
+}
+.ac-transport button:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+.ac-transport .ac-play {
+  background: var(--ac-accent);
+  color: var(--ac-bg);
+  width: 43px;
+  height: 43px;
+  border-radius: 50%;
+  font-size: 15px;
+}
+.ac-transport input {
+  flex: 1;
+  min-width: 40px;
+  accent-color: var(--ac-accent);
+  height: 3px;
+  cursor: pointer;
+}
+.ac-transport select {
+  width: 48px;
+}
+.animated-compiler button:focus-visible,
+.animated-compiler select:focus-visible,
+.animated-compiler input:focus-visible {
+  outline: 2px solid var(--ac-accent);
+  outline-offset: 4px;
+}
+.animated-compiler .ac-piece:focus-visible {
+  outline-offset: 2px;
+}
+@media (max-width: 800px) {
+  .animated-compiler {
+    width: calc(100vw - 32px);
+    padding-top: 10px;
+  }
+  .ac-heading h1 {
+    font-size: 28px;
+    max-width: 430px;
+  }
+  .ac-heading {
+    gap: 16px;
+  }
+  .ac-workspace {
+    grid-template-columns: 240px minmax(0, 1fr);
+  }
+  .ac-toolbar {
+    padding: 0 12px;
+  }
+  .ac-source pre,
+  .ac-source textarea {
+    padding: 20px 12px !important;
+    font-size: 11px !important;
+  }
+  .ac-scene {
+    min-height: 360px;
+  }
+  .ac-source-footer {
+    padding: 12px;
+    font-size: 9px;
+  }
+  .ac-instructions {
+    font-size: 10px;
+    right: 8px;
+  }
+  .ac-instruction {
+    gap: 4px;
+  }
+}
+@media (max-width: 620px) {
+  .ac-heading {
+    display: block;
+    margin-bottom: 20px;
+  }
+  .ac-heading h1 {
+    font-size: 28px;
+    margin-bottom: 12px;
+  }
+  .ac-workspace {
+    grid-template-columns: 1fr;
+  }
+  .ac-editor {
+    border-right: 0;
+    border-bottom: 1px solid var(--ac-line);
+  }
+  .ac-toolbar {
+    height: 43px;
+    padding: 0 16px;
+  }
+  .ac-source {
+    min-height: 155px;
+    max-height: 155px;
+  }
+  .ac-source pre,
+  .ac-source textarea {
+    padding: 14px 16px !important;
+    font-size: 12px !important;
+    line-height: 1.8 !important;
+  }
+  .ac-source-footer {
+    padding: 10px 16px;
+  }
+  .ac-phases {
+    height: 50px;
+    padding: 0 10px;
+  }
+  .ac-scene {
+    min-height: 300px;
+  }
+  .ac-piece {
+    font-size: 10px;
+    min-width: 23px;
+    min-height: 23px;
+    padding: 3px 5px;
+    border-radius: 4px;
+  }
+  .ac-piece.token {
+    max-width: 26px;
+  }
+  .ac-piece.token > span {
+    max-width: 21px;
+  }
+  .ac-piece.small {
+    font-size: 8px;
+    padding: 2px 4px;
+    min-width: 20px;
+    min-height: 21px;
+  }
+  .ac-piece small {
+    font-size: 7px;
+    top: 25px;
+  }
+  .ac-operation {
+    padding: 12px;
+    min-height: 62px;
+    font-size: 10px;
+  }
+  .ac-transport {
+    gap: 12px;
+    margin-top: 12px;
+  }
+  .ac-instructions {
+    top: 20px;
+    font-size: 9px;
+    right: 4px;
+  }
+  .ac-code-label {
+    font-size: 7px;
+    letter-spacing: 0.6px;
+  }
+  .ac-instruction {
+    padding: 3px;
+    gap: 3px;
+  }
+  .ac-registers {
+    font-size: 8px;
+    gap: 4px;
+  }
+  .ac-registers > span {
+    padding: 1px 4px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animated-compiler * {
+    transition: none !important;
+  }
+}
+
+
+FILE: app/projects/mini-c-prototype/trace.ts
+// Original, bounded teaching compiler. It never executes source or calls private coursework code.
+export type Span = { start: number; end: number }
+export type Token = Span & {
+  id: number
+  text: string
+  kind: 'keyword' | 'name' | 'number' | 'symbol'
+}
+export type AstNode = Span & {
+  id: number
+  label: string
+  kind:
+    | 'function'
+    | 'declare'
+    | 'assign'
+    | 'return'
+    | 'binary'
+    | 'number'
+    | 'name'
+  children: number[]
+  token: number
+}
+export type Instruction = {
+  op: string
+  dest?: string
+  args: string[]
+  node: number
+}
+export type Frame = {
+  phase: 'Tokens' | 'Parse' | 'Check' | 'Emit' | 'Registers'
+  title: string
+  span: Span
+  tokenCount: number
+  consumed: number[]
+  nodes: number[]
+  focus: number | null
+  instructionCount: number
+  allocationCount: number
+}
+export type Trace = {
+  tokens: Token[]
+  nodes: AstNode[]
+  frames: Frame[]
+  instructions: Instruction[]
+  registers: Record<string, string>
+  error?: Span & { message: string }
+  root?: number
+}
+class CompileError extends Error {
+  constructor(
+    message: string,
+    public span: Span,
+  ) {
+    super(message)
+  }
+}
+export function buildTrace(source: string): Trace {
+  const result: Trace = {
+    tokens: [],
+    nodes: [],
+    frames: [],
+    instructions: [],
+    registers: {},
+  }
+  let consumed: number[] = [],
+    visible: number[] = []
+  const push = (
+    phase: Frame['phase'],
+    title: string,
+    span: Span,
+    focus: number | null = null,
+  ) =>
+    result.frames.push({
+      phase,
+      title,
+      span,
+      focus,
+      tokenCount: result.tokens.length,
+      consumed: [...consumed],
+      nodes: [...visible],
+      instructionCount: result.instructions.length,
+      allocationCount: 0,
+    })
+  try {
+    if (source.length > 1200)
+      throw new CompileError('Keep this sketch under 1,200 characters.', {
+        start: 0,
+        end: source.length,
+      })
+    push('Tokens', 'Press play. Follow the source into a tree.', {
+      start: 0,
+      end: 0,
+    })
+    for (let offset = 0; offset < source.length; ) {
+      if (/\s/.test(source[offset])) {
+        offset++
+        continue
+      }
+      if (source.slice(offset, offset + 2) === '//') {
+        const end = source.indexOf('\n', offset)
+        offset = end < 0 ? source.length : end
+        continue
+      }
+      const text = source
+        .slice(offset)
+        .match(/^(?:[A-Za-z_][A-Za-z_0-9]*|\d+|[(){};+*\-=])/)?.[0]
+      if (!text)
+        throw new CompileError(
+          `“${source[offset]}” is outside this sketch’s arithmetic subset.`,
+          { start: offset, end: offset + 1 },
+        )
+      if (result.tokens.length >= 90)
+        throw new CompileError(
+          'Use at most 90 tokens so the tree stays readable.',
+          { start: offset, end: offset + text.length },
+        )
+      const kind = ['int', 'return'].includes(text)
+        ? 'keyword'
+        : /^\d/.test(text)
+          ? 'number'
+          : /^[A-Za-z_]/.test(text)
+            ? 'name'
+            : 'symbol'
+      const token: Token = {
+        id: result.tokens.length,
+        text,
+        kind,
+        start: offset,
+        end: offset + text.length,
+      }
+      result.tokens.push(token)
+      push(
+        'Tokens',
+        `${kind === 'symbol' ? 'Symbol' : kind === 'name' ? 'Identifier' : kind === 'keyword' ? 'Keyword' : 'Integer'}  ·  ${text}`,
+        token,
+      )
+      offset += text.length
+    }
+    let cursor = 0
+    const peek = () => result.tokens[cursor]
+    const take = (expected?: string): Token => {
+      const t = peek()
+      if (!t || (expected && t.text !== expected))
+        throw new CompileError(
+          `Expected ${expected ? `“${expected}”` : 'an expression'}${t ? `, found “${t.text}”` : ' at the end'}.`,
+          t || { start: source.length, end: source.length },
+        )
+      cursor++
+      consumed = [...consumed, t.id]
+      push('Parse', `Read ${t.text}`, t)
+      return t
+    }
+    const add = (
+      kind: AstNode['kind'],
+      label: string,
+      token: Token,
+      children: number[] = [],
+      span: Span = token,
+    ) => {
+      const node: AstNode = {
+        id: result.nodes.length,
+        kind,
+        label,
+        token: token.id,
+        children,
+        ...span,
+      }
+      result.nodes.push(node)
+      visible = [...visible, node.id]
+      push(
+        'Parse',
+        children.length
+          ? `Build ${label} from ${children.length} ${children.length === 1 ? 'child' : 'children'}`
+          : `Make ${label} a ${kind === 'number' ? 'literal' : 'name'} node`,
+        span,
+        node.id,
+      )
+      return node.id
+    }
+    const primary = (): number => {
+      const t = peek()
+      if (t?.text === '(') {
+        take('(')
+        const id = expression()
+        take(')')
+        return id
+      }
+      if (!t || !['number', 'name'].includes(t.kind))
+        throw new CompileError(
+          'Expected a number, a local name, or a parenthesized expression.',
+          t || { start: source.length, end: source.length },
+        )
+      take()
+      return add(t.kind === 'number' ? 'number' : 'name', t.text, t)
+    }
+    const product = (): number => {
+      let left = primary()
+      while (peek()?.text === '*') {
+        const op = take()
+        const right = primary()
+        left = add('binary', '×', op, [left, right], {
+          start: result.nodes[left].start,
+          end: result.nodes[right].end,
+        })
+      }
+      return left
+    }
+    const expression = (): number => {
+      let left = product()
+      while (peek()?.text === '+' || peek()?.text === '-') {
+        const op = take()
+        const right = product()
+        left = add('binary', op.text, op, [left, right], {
+          start: result.nodes[left].start,
+          end: result.nodes[right].end,
+        })
+      }
+      return left
+    }
+    take('int')
+    const main = take('main')
+    take('(')
+    take(')')
+    take('{')
+    const statements: number[] = []
+    while (peek() && peek().text !== '}') {
+      const t = peek()
+      if (t.text === 'int') {
+        take()
+        const name = take()
+        if (name.kind !== 'name')
+          throw new CompileError('Expected a local variable name.', name)
+        const children = peek()?.text === '=' ? (take('='), [expression()]) : []
+        const end = take(';').end
+        statements.push(
+          add('declare', `int ${name.text}`, name, children, {
+            start: t.start,
+            end,
+          }),
+        )
+      } else if (t.text === 'return') {
+        take()
+        const child = expression()
+        const end = take(';').end
+        statements.push(
+          add('return', 'return', t, [child], { start: t.start, end }),
+        )
+      } else if (t.kind === 'name') {
+        const name = take()
+        take('=')
+        const child = expression()
+        const end = take(';').end
+        statements.push(
+          add('assign', `${name.text} =`, name, [child], {
+            start: t.start,
+            end,
+          }),
+        )
+      } else
+        throw new CompileError(
+          'Use int declarations, assignments, and one final return. Loops and calls are not in this sketch yet.',
+          t,
+        )
+    }
+    const close = take('}')
+    if (peek())
+      throw new CompileError(
+        'This sketch accepts one int main() function.',
+        peek(),
+      )
+    if (
+      !statements.length ||
+      result.nodes[statements[statements.length - 1]].kind !== 'return' ||
+      statements.filter((id) => result.nodes[id].kind === 'return').length !== 1
+    )
+      throw new CompileError(
+        'End main with exactly one return statement.',
+        close,
+      )
+    if (result.nodes.length > 32)
+      throw new CompileError(
+        'Keep the tree under 32 nodes for this animated sketch.',
+        main,
+      )
+    result.root = add('function', 'main', main, statements, {
+      start: 0,
+      end: source.length,
+    })
+    const declared = new Set<string>(),
+      initialized = new Set<string>()
+    const checkExpr = (id: number): void => {
+      const n = result.nodes[id]
+      if (n.kind === 'name' && !initialized.has(n.label))
+        throw new CompileError(
+          declared.has(n.label)
+            ? `“${n.label}” is read before it has a value.`
+            : `“${n.label}” has no declaration.`,
+          n,
+        )
+      n.children.forEach(checkExpr)
+    }
+    for (const id of statements) {
+      const n = result.nodes[id],
+        name = result.tokens[n.token].text
+      if (n.kind === 'declare') {
+        if (declared.has(name))
+          throw new CompileError(`“${name}” is already declared.`, n)
+        declared.add(name)
+        n.children.forEach(checkExpr)
+        if (n.children.length) initialized.add(name)
+      } else {
+        if (n.kind === 'assign' && !declared.has(name))
+          throw new CompileError(`Declare “${name}” before assigning it.`, n)
+        n.children.forEach(checkExpr)
+        if (n.kind === 'assign') initialized.add(name)
+      }
+      push(
+        'Check',
+        n.kind === 'return'
+          ? 'Return expression has type int'
+          : `${name} · name resolves, type int`,
+        n,
+        id,
+      )
+    }
+    const locals = new Map<string, string>()
+    let nextRegister = 0
+    const emit = (
+      op: string,
+      args: string[],
+      node: AstNode,
+      hasDest = true,
+    ) => {
+      const dest = hasDest ? `v${nextRegister++}` : undefined
+      result.instructions.push({ op, args, dest, node: node.id })
+      push(
+        'Emit',
+        hasDest ? `${node.label} → ${dest}` : 'Return the computed value',
+        node,
+        node.id,
+      )
+      return dest || ''
+    }
+    const generate = (id: number): string => {
+      const n = result.nodes[id]
+      if (n.kind === 'number') return emit('li', [n.label], n)
+      if (n.kind === 'name') {
+        push(
+          'Emit',
+          `${n.label} already lives in ${locals.get(n.label)}`,
+          n,
+          id,
+        )
+        return locals.get(n.label) || ''
+      }
+      const args = n.children.map(generate)
+      return emit(
+        n.label === '×' ? 'mul' : n.label === '+' ? 'add' : 'sub',
+        args,
+        n,
+      )
+    }
+    for (const id of statements) {
+      const n = result.nodes[id]
+      if (n.children.length) {
+        const value = generate(n.children[0])
+        if (n.kind === 'return') emit('return', [value], n, false)
+        else locals.set(result.tokens[n.token].text, value)
+      }
+    }
+    const lastUse: Record<string, number> = {}
+    result.instructions.forEach((ins, i) => {
+      if (ins.dest) lastUse[ins.dest] = i
+      ins.args.filter((a) => /^v\d+$/.test(a)).forEach((a) => (lastUse[a] = i))
+    })
+    const occupied = new Map<string, number>()
+    result.instructions.forEach((ins, i) => {
+      // Three-address pseudo instructions read operands before writing the destination.
+      for (const [v] of occupied) if (lastUse[v] <= i) occupied.delete(v)
+      if (ins.dest) {
+        let r = 0
+        while ([...occupied.values()].includes(r)) r++
+        occupied.set(ins.dest, r)
+        result.registers[ins.dest] = `r${r}`
+      }
+      const n = result.nodes[ins.node]
+      push(
+        'Registers',
+        ins.dest
+          ? `${ins.dest} → ${result.registers[ins.dest]} · reuse storage when a value dies`
+          : 'Virtual names are now physical registers',
+        n,
+        n.id,
+      )
+      result.frames[result.frames.length - 1].allocationCount = i + 1
+    })
+  } catch (error) {
+    if (error instanceof CompileError)
+      result.error = { message: error.message, ...error.span }
+    else throw error
+  }
+  return result
+}
+export function instructionText(
+  instruction: Instruction,
+  registers?: Record<string, string>,
+) {
+  const map = (v: string) => registers?.[v] || v
+  return `${instruction.op.padEnd(7)}${[...(instruction.dest ? [instruction.dest] : []), ...instruction.args].map(map).join(', ')}`
+}
+export function treePositions(
+  trace: Trace,
+): Record<number, { x: number; y: number }> {
+  const positions: Record<number, { x: number; y: number }> = {}
+  if (trace.root === undefined) return positions
+  let leaf = 0,
+    maxDepth = 0
+  const place = (id: number, depth: number): number => {
+    const n = trace.nodes[id]
+    maxDepth = Math.max(depth, maxDepth)
+    const xs = n.children.map((child) => place(child, depth + 1))
+    const x = xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : leaf++
+    positions[id] = { x, y: depth }
+    return x
+  }
+  place(trace.root, 0)
+  for (const p of Object.values(positions)) {
+    p.x = 55 + (p.x / Math.max(1, leaf - 1)) * 570
+    p.y = 210 + (p.y / Math.max(1, maxDepth)) * 235
+  }
+  return positions
+}
