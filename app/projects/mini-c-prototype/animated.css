@@ -36,8 +36,10 @@
 }
 /* Scrollbars: a dashed rail like a waiting parse edge, which stays to show
    a pane scrolls, and a solid thumb that glows like the timeline's playhead,
-   shown only while the pane is hovered or focused. Chrome ignores these once
-   scrollbar-width or scrollbar-color is set, so those are Firefox only. */
+   shown only while the pane is scrolled by hand or the pointer is on its
+   scrollbar (`data-reveal`, set in animated.tsx), not when a step scrolls
+   it. Chrome ignores these once scrollbar-width or scrollbar-color is set,
+   so those are Firefox only. */
 .ac ::-webkit-scrollbar {
   width: 9px;
   height: 9px;
@@ -84,8 +86,9 @@
     )
     center / calc(100% - 4px) 100% no-repeat;
 }
-.ac :hover::-webkit-scrollbar-thumb,
-.ac :focus-within::-webkit-scrollbar-thumb {
+.ac [data-reveal]::-webkit-scrollbar-thumb,
+.ac ::-webkit-scrollbar-thumb:hover,
+.ac ::-webkit-scrollbar-thumb:active {
   --thumb: var(--ink);
   --glow: color-mix(in srgb, var(--ink) 22%, transparent);
 }
@@ -102,9 +105,42 @@
     scrollbar-width: thin;
     scrollbar-color: transparent transparent;
   }
-  .ac :hover,
-  .ac :focus-within {
+  .ac [data-reveal] {
     scrollbar-color: var(--muted) transparent;
+  }
+}
+/* Scrollbars off (the options menu): panes scroll by wheel, touch or keys
+   only. The rail stays as a hint, drawn by the pane itself where its
+   scrollbar was, and only while it has more to show (a scroll timeline is
+   inactive on a pane that can't scroll, so the animation never applies). */
+.ac.bare * {
+  scrollbar-width: none;
+}
+.ac.bare :is(.ac-source, .ac-note-body, .ac-asm, .ac-scopes) {
+  border-right: 9px solid transparent;
+  /* Longhands, so a pane's own background colour stays. */
+  background-image: repeating-linear-gradient(
+    to bottom,
+    var(--rail, transparent) 0 2px,
+    transparent 2px 5px
+  );
+  background-position: right 4px top;
+  background-size: 1px 100%;
+  background-repeat: no-repeat;
+  background-origin: border-box;
+  animation: ac-rail both;
+  animation-timeline: scroll(self);
+}
+/* The scope panel keeps its frame; its rail sits inside, in the padding. */
+.ac.bare .ac-scopes {
+  border-right: 1px solid var(--line);
+  padding-right: 17px;
+  background-origin: padding-box;
+}
+@keyframes ac-rail {
+  from,
+  to {
+    --rail: var(--line);
   }
 }
 .ac button {
@@ -390,17 +426,14 @@
 .ac-text mark.err {
   background: var(--err);
 }
-/* A name found: goes green once the link reaches its declaration. */
-.ac-text mark.ok {
-  animation: ac-found 0.25s var(--land, 0.42s) both;
+/* The lookup's pair: a quiet use and a bright declaration. */
+.ac-text mark.ok.use {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--ok) 8%, var(--bg));
 }
-@keyframes ac-found {
-  from {
-    background: var(--ink);
-  }
-  to {
-    background: var(--ok);
-  }
+.ac-text mark.ok.decl {
+  color: var(--bg);
+  background: var(--ok);
 }
 /* Detailed lexer: characters read so far underlined, the current one a block,
    skipped whitespace a faint band. */
@@ -615,9 +648,8 @@
 .ac-note-body {
   white-space: pre-line;
   flex: 1;
-  /* Shrinks below its text when the source is dragged tall, or the scope
-     tree grows, and scrolls; three lines stay in view. */
-  min-height: calc(3lh + 16px);
+  /* A dragged source leaves the note its own scroll area. */
+  min-height: 0;
   overflow: auto;
   /* The rail's room is kept whether or not the text overflows, so the
      wrap doesn't change when it does; the rail stands in for the right
@@ -665,10 +697,6 @@
   stroke: var(--muted);
   stroke-dasharray: 2 3;
 }
-.ac-params {
-  stroke: var(--muted);
-  stroke-dasharray: 2 2;
-}
 .ac-group {
   stroke: var(--muted);
   stroke-dasharray: 3 3;
@@ -677,34 +705,69 @@
   stroke: var(--ink);
   stroke-dasharray: none;
 }
-/* Check: the scopes open at the current name, in the note card, each
-   indented under the one around it on a rail. */
-/* The step text above gives way first (its basis is 0); this scrolls only
-   once that is down to its floor. */
+/* Check: a compact locals panel in a free stage corner. */
 .ac-scopes {
-  flex: 0 1 auto;
-  min-height: 48px;
-  overflow: auto;
-  scrollbar-gutter: stable;
-  padding: 8px 3px 10px 10px;
-  border-top: 1px solid var(--line);
+  position: absolute;
+  z-index: 3;
+  box-sizing: border-box;
+  /* Sized to its rows; it scrolls only past the stage's height. */
+  overflow: hidden auto;
+  padding: 8px;
+  border: 1px solid var(--line);
+  background: var(--bg);
   line-height: 20px;
+  white-space: nowrap;
+}
+/* A header bar, as the editor has. */
+.ac-scopes-head {
+  margin: -8px -8px 6px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 26px;
 }
 .ac-scope {
   margin: 0 0 0 3px;
   padding: 0 0 0 11px;
   list-style: none;
   border-left: 1px solid var(--line);
-  transition: border-color 0.2s;
+  transition:
+    border-color 0.3s,
+    border-left-width 0.3s,
+    padding-left 0.3s;
+}
+.ac-scope > li {
+  overflow: hidden;
 }
 .ac-scope-name {
   color: var(--muted);
+  transition: color 0.3s;
+}
+/* The scope the name is in: its name and rows bright, its rail bold. The
+   scopes around it are dimmer. */
+.ac-scope-name.here,
+.ac-scope code.here {
+  color: var(--ink);
+  font-weight: 600;
+}
+.ac-scope.home {
+  border-left-width: 2px;
+  border-left-color: var(--ink);
+  padding-left: 10px;
 }
 .ac-scope-empty {
   color: var(--faint);
 }
 .ac-scope code {
   padding: 0 3px;
+  color: var(--muted);
+  transition:
+    color 0.3s,
+    background-color 0.25s;
+}
+.ac-scope.home > li > code:not(.found) {
   color: var(--ink);
 }
 .ac-scope code.found {
@@ -714,15 +777,16 @@
 .ac-scope code.found.ok {
   color: var(--ink);
   background: color-mix(in srgb, var(--ok) 32%, transparent);
-  transition: background-color 0.25s var(--land, 0.42s);
+  transition: background-color 0.25s;
 }
-.ac-scope.home,
-.ac-scope.hit {
+.ac-scope.hit:not(.home) {
   border-left-color: var(--muted);
 }
 /* Looked in, not found there. */
 .ac-scope.passed {
   border-left-style: dashed;
+}
+.ac-scope.passed:not(.home) {
   border-left-color: var(--muted);
 }
 .ac-scope small {
@@ -737,10 +801,8 @@
   margin-right: 2px;
   color: var(--ink);
 }
-/* A name bound to its declaration: grey on the way out, green once a
-   lookup lands; the error colour is kept for errors. A background halo
-   under the step's link lifts it over the tree's edges, and a dot marks
-   where it lands. */
+/* A lookup draws green while its declaration lights up. The halo keeps
+   tree-edge crossings legible; the dot marks the declaration. */
 .ac-link {
   stroke: var(--muted);
 }
@@ -808,9 +870,8 @@
   background: var(--bg);
   color: var(--ink);
 }
-/* Name pass: a declared name keeps a faint tint. The one a lookup finds
-   turns green once the line reaches it, and fades back on the next step.
-   When the pass is done, every linked use and declaration goes green. */
+/* Declarations keep a faint tint during the name pass. A lookup lights
+   its declaration as the link starts, then the tint fades on the next step. */
 .ac-piece.node.declared:not(.focused) {
   background: color-mix(in srgb, var(--ink) 12%, transparent);
   transition:
@@ -823,15 +884,16 @@
   background: color-mix(in srgb, var(--err) 24%, transparent);
   transition: background-color 0.6s;
 }
-.ac-piece.node.found:not(.focused) {
+.ac .ac-piece.node.found {
+  color: var(--ink);
   background: color-mix(in srgb, var(--ok) 32%, transparent);
   transition:
-    background-color 0.25s var(--land, 0.42s),
-    border-color 0.25s var(--land, 0.42s);
+    background-color 0.25s,
+    border-color 0.25s;
 }
 /* A use is outlined, pointing at its filled declaration. */
-.ac-piece.node.found.use:not(.focused) {
-  border-color: var(--ok);
+.ac .ac-piece.node.found.use {
+  box-shadow: inset 0 0 0 1px var(--ok);
   background: color-mix(in srgb, var(--ok) 8%, var(--bg));
 }
 /* An operator outside the group being read: nothing inside competes with it. */
@@ -920,6 +982,39 @@
     color: var(--ok);
   }
 }
+/* Emit: the register a node leaves behind (reg-badges.ts), drawn like a
+   type badge. A register holding an address is dashed; one on its way up to
+   the node that reads it is lit like an operator's input types; green as it
+   is written. */
+.ac-reg {
+  position: absolute;
+  z-index: 2;
+  padding: 0 3px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 13px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.ac-reg.address {
+  border-style: dashed;
+}
+.ac-reg.spent {
+  border-color: var(--muted);
+  color: var(--ink);
+}
+.ac-reg.new {
+  animation: ac-reg-new 0.6s var(--delay, 0s) both;
+}
+@keyframes ac-reg-new {
+  from,
+  40% {
+    border-color: var(--ok);
+    color: var(--ok);
+  }
+}
 .ac-piece.small {
   height: 20px;
   line-height: 18px;
@@ -939,17 +1034,19 @@
 .ac-asm .ac-label {
   margin-bottom: 4px;
 }
-/* Emit in blocks: the assembly as columns (number, op, operands) at the
-   editor's size and row, on its own ground so the stage's 22px rules don't
-   run through its 19px rows. */
-.ac-asm.blocks {
-  right: 176px;
+/* Emit in blocks, and the Registers listing: the assembly as columns
+   (number, op, operands) at the editor's size and row, on its own ground so
+   the stage's 22px rules don't run through its 19px rows. */
+.ac-asm:is(.blocks, .listing) {
   padding-bottom: 12px;
   background: var(--bg);
   font-size: 12px;
   line-height: 19px;
 }
-.ac-asm.blocks .ac-label {
+.ac-asm.blocks {
+  right: 176px;
+}
+.ac-asm:is(.blocks, .listing) .ac-label {
   position: sticky;
   top: 0;
   z-index: 1;
@@ -957,30 +1054,45 @@
   padding: 0 0 4px 34px;
   background: var(--bg);
 }
-.ac-asm.blocks .ac-ins {
+.ac-asm:is(.blocks, .listing) .ac-ins {
   display: grid;
   grid-template-columns: 34px 7ch minmax(0, 1fr);
   gap: 0;
   padding: 0;
 }
-.ac-asm.blocks .ac-ins > span {
+/* The Registers listing's last column: what is live after the line. */
+.ac-asm.listing .ac-ins {
+  grid-template-columns: 34px 7ch minmax(0, 1fr) auto;
+}
+.ac-asm.listing .ac-ins small {
+  grid-column: 4;
+  padding: 0 6px;
+}
+.ac-asm:is(.blocks, .listing) .ac-ins > span {
   padding-right: 8px;
   color: var(--faint);
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
-.ac-asm.blocks .ac-ins b {
+.ac-asm:is(.blocks, .listing) .ac-ins b {
   font-weight: 400;
 }
 /* The current block: a wash and a bar, not an inverted slab. */
-.ac-asm.blocks .ac-ins.current {
+.ac-asm:is(.blocks, .listing) .ac-ins.current {
   background: var(--wash);
   color: var(--ink);
   box-shadow: inset 2px 0 var(--ink);
 }
-.ac-asm.blocks .ac-ins.current > span {
+.ac-asm:is(.blocks, .listing) .ac-ins.current > span {
   color: var(--ink);
   opacity: 1;
+}
+.ac-asm.listing .ac-ins.current small {
+  color: var(--muted);
+  opacity: 1;
+}
+.ac-asm.listing .ac-ins.changed small {
+  color: var(--ink);
 }
 .ac-asm-head,
 .ac-asm-label {
@@ -1352,6 +1464,8 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .ac * {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
     transition: none !important;
   }
 }
@@ -1365,41 +1479,100 @@
   color: var(--ink);
   pointer-events: none;
 }
+/* A virtual register: a piece like the tree's. Once it has a physical
+   register it takes that register's colour, softened toward the ink, and
+   the register's name as a badge like a type's. */
 .ac-vr {
   position: absolute;
-  height: 26px;
-  min-width: 34px;
-  padding: 0 8px;
+  height: 22px;
+  padding: 0 5px;
   border: 1px solid var(--line);
-  border-radius: 13px;
   background: var(--bg);
   color: var(--ink);
   font: inherit;
-  line-height: 24px;
+  line-height: 20px;
   white-space: nowrap;
   z-index: 2;
   cursor: default;
+  --tint: color-mix(in srgb, var(--c) 70%, var(--ink));
   transition:
     background-color 0.25s,
     color 0.25s,
     border-color 0.25s;
 }
+.ac-vr.coloured {
+  border-color: var(--tint);
+  background: color-mix(in srgb, var(--c) 18%, var(--bg));
+  color: var(--tint);
+}
+/* On the stack: the outline it leaves in the graph. */
+.ac-vr.aside {
+  border-style: dashed;
+  border-color: var(--muted);
+}
 .ac-vr.focused {
   border-color: var(--ink);
-  box-shadow:
-    0 0 0 2px var(--bg),
-    0 0 0 3px var(--ink);
+  background: var(--ink);
+  color: var(--bg);
+}
+/* Just coloured: its colour, filled. */
+.ac-vr.coloured.focused {
+  border-color: var(--tint);
+  background: var(--tint);
+  color: var(--bg);
 }
 .ac-vr.spilled {
   border-style: dashed;
+  border-color: var(--err);
+  color: var(--err);
 }
 .ac-vr small {
   position: absolute;
-  top: 27px;
+  top: 25px;
   left: 50%;
   transform: translateX(-50%);
+  padding: 0 3px;
+  border: 1px solid var(--tint);
+  background: var(--bg);
+  color: var(--tint);
   font-size: 10px;
-  color: var(--muted);
+  line-height: 13px;
+}
+/* The allocator's stack: pushed bottom up, popped from the top. */
+.ac-pile-box {
+  position: absolute;
+  left: 10px;
+  border: 1px solid var(--line);
+  border-top: 0;
+  pointer-events: none;
+}
+.ac-pile-box .ac-label {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  padding-bottom: 4px;
+  white-space: nowrap;
+}
+.ac-pile {
+  position: absolute;
+  z-index: 3;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 11px;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+}
+/* Pushed with every register still busy: the one that may spill. */
+.ac-pile.candidate {
+  border-style: dashed;
+  border-color: var(--muted);
+}
+.ac-pile.focused {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--bg);
 }
 .ac-ins em {
   font-style: normal;
@@ -1412,7 +1585,7 @@
   color: var(--faint);
   align-self: center;
 }
-.ac-ins.dead code {
+.ac-ins.dead :is(b, code) {
   color: var(--faint);
   text-decoration: line-through;
 }

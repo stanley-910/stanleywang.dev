@@ -1,24 +1,38 @@
+import { AnimatePresence, motion } from 'motion/react'
+
+import type { Box } from './link-route'
 import type { Scopes } from './scopes'
 import type { Frame, Trace } from './trace'
 import type { ReactNode } from 'react'
 
-// Name resolution's symbol table in the note card: the scopes open where the
-// current name is used, each indented under the one around it and holding
-// what has been declared in it so far. A function's scope sits under its
-// declaration, a nested block's under a `block` line. A lookup starts in the
-// innermost scope and moves outward until it finds the name, or runs out;
-// each scope it looked in without finding it keeps a dashed rail. (First a
-// strip along the stage's bottom, after GPT-6 Astra's check proposal,
-// docs/handoffs/2026-09-24-check-visual-astra-answer.md.)
+// Name resolution's symbol table, as a locals panel in a corner of the
+// stage: the scopes open where the current name is used, each indented
+// under the one around it. The scope the name is in has the bold, bright
+// rail and name; the ones around it are dimmer. An empty scope only gets a
+// row when it is that one. A lookup moves outward from there; each scope it
+// looked in without finding the name keeps a dashed rail. Rows slide in and
+// out rather than jump, so the eye keeps its place between steps.
 export function ScopeTree({
   trace,
   scopes,
   frame,
+  box,
+  stageHeight,
+  duration,
 }: {
   trace: Trace
   scopes: Scopes
   frame: Frame
+  box: Box
+  stageHeight: number
+  duration: number
 }) {
+  const row = {
+    initial: { opacity: 0, height: 0 },
+    animate: { opacity: 1, height: 'auto' },
+    exit: { opacity: 0, height: 0 },
+    transition: { duration, ease: [0.22, 1, 0.36, 1] as const },
+  }
   const w = frame.why
   const use =
     w.kind === 'check.resolve' ||
@@ -57,8 +71,23 @@ export function ScopeTree({
       : w.kind === 'check.declare'
         ? scopes.declaredAt(w.decl)
         : nodes[at].token
-  const home = searched[0]
-  const last = searched[searched.length - 1]
+  const home = at === undefined ? undefined : scopes.scopeOf(at)
+  const visibleDecls = new Map(
+    shown.map((s) => [
+      s,
+      scopes.scopes[s].decls.filter((d) => scopes.declaredAt(d) <= before),
+    ]),
+  )
+  shown = shown.filter(
+    (s) => s === home || (visibleDecls.get(s)?.length ?? 0) > 0,
+  )
+  const parentOf = (s: number) => {
+    let p = scopes.scopes[s].parent
+    while (p !== null && !shown.includes(p)) p = scopes.scopes[p].parent
+    return p
+  }
+  const here = (s: number) => (s === home ? 'here' : '')
+  const last = [...searched].reverse().find((s) => shown.includes(s))
   const cue =
     use === undefined || found !== undefined
       ? undefined
@@ -69,9 +98,8 @@ export function ScopeTree({
           : undefined
 
   const scopeList = (s: number): ReactNode => {
-    const scope = scopes.scopes[s]
-    const decls = scope.decls.filter((d) => scopes.declaredAt(d) <= before)
-    const inner = shown.filter((c) => scopes.scopes[c].parent === s)
+    const decls = visibleDecls.get(s) ?? []
+    const inner = shown.filter((c) => parentOf(c) === s)
     // A function's scope hangs off its declaration; any other opens a line.
     const owned = new Map(
       inner
@@ -93,55 +121,79 @@ export function ScopeTree({
       <ul
         className={`ac-scope ${passed ? 'passed' : ''} ${hit ? 'hit' : ''} ${s === home ? 'home' : ''}`}
       >
-        {items.length === 0 && <li className="ac-scope-empty">–</li>}
-        {items.map((item) =>
-          'decl' in item ? (
-            <li key={`d${item.decl}`}>
-              <code
-                className={
-                  item.decl !== found
-                    ? ''
-                    : w.kind === 'check.resolve'
-                      ? 'found ok'
-                      : 'found'
-                }
-              >
-                {nodes[item.decl].kind === 'function'
-                  ? `${nodes[item.decl].label}()`
-                  : nodes[item.decl].label}
-              </code>
-              {owned.has(item.decl) &&
-                scopeList(owned.get(item.decl) as number)}
-            </li>
-          ) : (
-            <li key={`s${item.scope}`}>
-              <span className="ac-scope-name">
-                {scopes.scopes[item.scope].label}
-              </span>
-              {scopeList(item.scope)}
-            </li>
-          ),
-        )}
-        {cue && s === last && (
-          <li>
-            {cue === 'not found' && use !== undefined ? (
-              // Which name wasn't found, not just that one wasn't.
-              <small className="err">
-                <code>{nameOf(use)}</code> not found
-              </small>
+        <AnimatePresence>
+          {items.length === 0 && (
+            <motion.li key="empty" className="ac-scope-empty" {...row}>
+              empty
+            </motion.li>
+          )}
+          {items.map((item) =>
+            'decl' in item ? (
+              <motion.li key={`d${item.decl}`} {...row}>
+                <code
+                  className={`${
+                    item.decl !== found
+                      ? ''
+                      : w.kind === 'check.resolve'
+                        ? 'found ok'
+                        : 'found'
+                  } ${owned.has(item.decl) ? here(owned.get(item.decl) as number) : ''}`}
+                >
+                  {nodes[item.decl].kind === 'function'
+                    ? `${nodes[item.decl].label}()`
+                    : nodes[item.decl].label}
+                </code>
+                {owned.has(item.decl) &&
+                  scopeList(owned.get(item.decl) as number)}
+              </motion.li>
             ) : (
-              <small>{cue}</small>
-            )}
-          </li>
-        )}
+              <motion.li key={`s${item.scope}`} {...row}>
+                <span className={`ac-scope-name ${here(item.scope)}`}>
+                  {scopes.scopes[item.scope].label}
+                </span>
+                {scopeList(item.scope)}
+              </motion.li>
+            ),
+          )}
+          {cue && s === last && (
+            <motion.li key="cue" {...row}>
+              {cue === 'not found' && use !== undefined ? (
+                // Which name wasn't found, not just that one wasn't.
+                <small className="err">
+                  <code>{nameOf(use)}</code> not found
+                </small>
+              ) : (
+                <small>{cue}</small>
+              )}
+            </motion.li>
+          )}
+        </AnimatePresence>
       </ul>
     )
   }
 
   const root = shown[0] ?? 0
   return (
-    <div className="ac-scopes" aria-label="Scopes">
-      <span className="ac-scope-name">{scopes.scopes[root].label}</span>
+    <div
+      className="ac-scopes"
+      role="region"
+      aria-label="Scopes"
+      tabIndex={0}
+      // Its corner's box sets its width; it is as tall as its rows, and a
+      // bottom corner's panel grows up from the bottom edge.
+      style={{
+        left: box.x,
+        width: box.w,
+        maxHeight: stageHeight - 20,
+        ...(box.y + box.h >= stageHeight - 12
+          ? { bottom: stageHeight - box.y - box.h }
+          : { top: box.y }),
+      }}
+    >
+      <div className="ac-scopes-head">Declarations per scope</div>
+      <span className={`ac-scope-name ${here(root)}`}>
+        {scopes.scopes[root].label}
+      </span>
       {scopeList(root)}
     </div>
   )

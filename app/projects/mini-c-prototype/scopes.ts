@@ -193,13 +193,14 @@ export function withNameSteps(trace: Trace): Trace {
 
   // Links build up step by step, in the new order.
   const recorded = trace.frames[done].links ?? []
-  const all = [...recorded, ...added]
+  const all = [...new Map([...recorded, ...added])]
   const linked: [number, number][] = []
   const rebuilt = steps.map(({ frame }) => {
     const w = frame.why
     if (w.kind === 'check.resolve') {
-      const pair = all.find(([u]) => u === w.use)
-      if (pair) linked.push(pair)
+      const pair: [number, number] = [w.use, w.decl]
+      linked.push(pair)
+      if (!all.some(([u]) => u === w.use)) all.push(pair)
     }
     return { ...frame, links: [...linked] }
   })
@@ -242,18 +243,4 @@ const isParam = (trace: Trace, decl: number) => {
   // Parameters come before the body's `{`.
   const body = trace.tokens.findIndex((t, i) => i > fn.token && t.text === '{')
   return trace.nodes[decl].token < body
-}
-
-/** Each function's parameters, in order: the declarations before its `{`. */
-export function paramsOf(trace: Trace): Map<number, number[]> {
-  const out = new Map<number, number[]>()
-  for (const n of trace.nodes) {
-    if (n.kind !== 'function') continue
-    const body = trace.tokens.findIndex((t, i) => i > n.token && t.text === '{')
-    const params = n.children.filter(
-      (c) => trace.nodes[c].kind === 'declare' && trace.nodes[c].token < body,
-    )
-    if (params.length) out.set(n.id, params)
-  }
-  return out
 }
