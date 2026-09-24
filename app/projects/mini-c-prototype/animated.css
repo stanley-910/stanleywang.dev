@@ -183,16 +183,6 @@
 .ac-morph {
   white-space: pre;
 }
-.ac-chevron {
-  width: 9px;
-  height: 9px;
-  overflow: visible;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.1;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
 /* Same box as the token card: hairline border, page background. */
 .ac-picker ul {
   position: absolute;
@@ -217,11 +207,22 @@
   color: var(--ink);
   background: var(--line);
 }
-.ac-picker li[aria-selected='true']::before {
-  content: '>';
-  position: absolute;
-  left: 9px;
+.ac-picker li[aria-selected='true'] {
   color: var(--ink);
+}
+.ac-pick-mark {
+  position: absolute;
+  left: 8px;
+  /* Centred on a row; motion adds that row's offsetTop as y. */
+  top: calc((1.4em + 6px) / 2 - 4.5px);
+  z-index: 1;
+  width: 9px;
+  height: 9px;
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* Source with a real gutter. Pre and textarea share one grid cell. */
@@ -300,6 +301,22 @@
 .ac-text mark.err {
   background: var(--err);
 }
+/* Detailed lexer: characters read so far underlined, the current one a block,
+   skipped whitespace a faint band. */
+.ac-text mark.reading {
+  color: var(--ink);
+  background: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.ac-text mark.cursor {
+  color: var(--bg);
+  background: var(--ink);
+}
+.ac-text mark.skip {
+  color: inherit;
+  background: var(--line);
+}
 .ac-diag {
   display: block;
   width: 100%;
@@ -365,6 +382,24 @@
   visibility: visible;
   color: var(--ink);
 }
+.ac-note-body strong {
+  font-weight: 600;
+}
+/* Lexeme-to-category pairs on an intro slide. */
+.ac-slide-table {
+  margin-top: 10px;
+  border-collapse: collapse;
+}
+.ac-slide-table th {
+  padding: 0 18px 4px 0;
+  color: var(--muted);
+  font-weight: 400;
+  text-align: left;
+}
+.ac-slide-table td {
+  padding: 3px 18px 3px 0;
+  border-top: 1px solid var(--line);
+}
 .ac-note-stack {
   display: grid;
 }
@@ -396,6 +431,7 @@
   color: var(--err);
 }
 .ac-note-body {
+  white-space: pre-line;
   flex: 1;
   overflow: auto;
   scrollbar-width: thin;
@@ -804,4 +840,68 @@
 .ac-ins.current small {
   color: var(--bg);
   opacity: 0.7;
+}
+
+.ac-char-table {
+  margin-top: 10px;
+  border-collapse: collapse;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.ac-char-table th {
+  padding: 0 12px 0 0;
+  color: var(--muted);
+  font-weight: 400;
+  text-align: left;
+  vertical-align: top;
+  white-space: nowrap;
+}
+.ac-char-table td {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 6px;
+  padding: 0;
+}
+.ac-char-table code {
+  padding: 0 3px;
+  color: var(--muted);
+  opacity: 0.4;
+}
+.ac-char-table code.prefix {
+  color: var(--ink);
+  opacity: 1;
+}
+.ac-char-table code.exact {
+  color: var(--bg);
+  background: var(--ink);
+  opacity: 1;
+}
+.ac-char-table tr.none th {
+  opacity: 0.4;
+}
+.ac-char-table tr.prefix th,
+.ac-char-table tr.exact th {
+  color: var(--ink);
+}
+
+/* Footer "?" menu, bottom right beside the timeline. */
+.ac-more {
+  position: relative;
+}
+.ac-more-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: 5;
+  padding: 4px 0;
+  border: 1px solid var(--line);
+  background: var(--bg);
+}
+.ac-keys .ac-more-menu button {
+  gap: 8px;
+  width: 100%;
+  padding: 3px 12px;
+}
+.ac-keys .ac-more-menu button[aria-checked='true'] {
+  color: var(--ink);
 }

@@ -135,13 +135,19 @@ export function explain(trace: Trace, frame: Frame): string {
         'the C programming language. It will have reduced functionality at ' +
         'points, but aims to deliver a guided visualization of all the awesome ' +
         'things that need to happen to take your code into something that can ' +
-        'run on any machine! Enjoy.'
+        'run on any machine!\u00a0Enjoy.\n\n– Stanley'
       )
     case 'token': {
       // The token is in the header; the body names its class above the list.
       const kind = tokenKind(trace.tokens[w.token])
       return kind[0].toUpperCase() + kind.slice(1)
     }
+    case 'lex.char':
+      return readStep(trace.tokens[w.token], w.at, w.next)
+    case 'lex.skip':
+      return w.comment
+        ? 'Comments only matter to people. The lexer skips them, along with the whitespace around them.'
+        : 'Whitespace only separates tokens, so the lexer skips it without making a token.'
     case 'parse.read': {
       const t = trace.tokens[w.token]
       return `${code(t.text)} ${tokenRole(t)}. No node is built from it alone.`
@@ -449,10 +455,8 @@ export function instructionLine(ins: Trace['instructions'][number]): string {
  * ...), so these groups are for reading, not something it outputs.
  */
 export const LEXEMES = {
+  type: ['int', 'void', 'char'],
   keyword: [
-    'int',
-    'void',
-    'char',
     'if',
     'else',
     'while',
@@ -470,7 +474,7 @@ export const LEXEMES = {
   comparison: ['==', '!=', '<', '>', '<=', '>='],
   logical: ['&&', '||'],
   delimiter: ['{', '}', '(', ')', '[', ']', ';', ','],
-  assignment: ['='],
+  assign: ['='],
   // No fixed list: the token's pattern, as a regex of Token.java's rule.
   identifier: ['[A-Za-z_][A-Za-z0-9_]*'],
   number: ['[0-9]+'],
@@ -478,42 +482,59 @@ export const LEXEMES = {
 
 export type TokenClass = keyof typeof LEXEMES
 
+export type Slide = {
+  title: string
+  body: string
+  /** Lexeme and category pairs shown as a small table under the body. */
+  table?: [string, string][]
+}
+
 /**
- * Text-only slides between the welcome (frame 0) and the first token. Checked
- * against lexer/Tokeniser.java: whitespace and comments are skipped, `<` peeks
- * one character for `<=`, and a word is read whole before the keyword check.
+ * Text-only slides that open a phase. They sit just before the phase's first
+ * step (the lexer's between the welcome and the first token), so stepping
+ * walks through them and playing skips them.
  */
-export const INTRO_SLIDES = [
-  {
-    title: 'Step 1: the lexer',
-    body:
-      'Before anything else, the compiler sees your code as one long string ' +
-      'of characters. The lexer walks it left to right and cuts it into ' +
-      'tokens: the smallest pieces that mean something, like `while`, `sum`, ' +
-      '`<` and `3`.',
-  },
-  {
-    title: 'Whitespace is dropped',
-    body:
-      'Spaces, newlines and comments only separate tokens, so the lexer ' +
-      'skips them: `i<3` and `i < 3` give the same three tokens. When a ' +
-      'character could start a longer token it peeks one ahead, so `<=` is ' +
-      'one token, not `<` then `=`.',
-  },
-  {
-    title: 'Each token gets a class',
-    body:
-      'A run of letters is read as one word, then checked against the ' +
-      'keyword list: `while` is a keyword, `sum` is an identifier. Digits ' +
-      'make a number. Punctuation is an operator (`+`), a comparison ' +
-      '(`<`), a delimiter (`;`) and so on. The parser works from these, ' +
-      'not the raw text. Step on to watch it happen.',
-  },
-]
+export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
+  Tokens: [
+    {
+      title: 'Where do we start?',
+      body:
+        'Before anything else, the compiler scans through the source code, ' +
+        'character by character, and outputs a stream of **tokens**. Each ' +
+        'token consists of the lexeme plus the syntactic category it belongs to:',
+      table: [
+        ['int', 'type'],
+        ['return', 'keyword'],
+        ['x', 'identifier'],
+      ],
+    },
+  ],
+  Parse: [
+    {
+      title: 'Abstract Syntax Trees',
+      body:
+        "Great. Now what? As you can imagine, this isn't enough to output " +
+        'machine code. To get us one step closer, the **Parser** takes the ' +
+        'stream of tokens and transforms into a form that later passes of ' +
+        'the compiler can easily walk through with the meaning of the ' +
+        'program encoded into the structure of the tree itself!',
+    },
+    {
+      title: 'Abstract Syntax Trees',
+      body:
+        'This solves interesting problems like precedence. How do you make ' +
+        "sure the code that is generated correctly PEMDAS's something like " +
+        '`2 - 4 * 2`? If you just generated code left to right, you run into ' +
+        'issues like `(2 - 4) * 2`. Continue to see how an AST fixes that.',
+    },
+  ],
+}
 
 /** A token's class as shown on the page; "name" reads as "identifier". */
 export const tokenKind = (token: Token): TokenClass => {
   if (token.kind === 'name') return 'identifier'
+  if (token.kind === 'keyword')
+    return LEXEMES.type.includes(token.text) ? 'type' : 'keyword'
   if (token.kind !== 'symbol') return token.kind
   const group = (Object.keys(LEXEMES) as TokenClass[]).find((c) =>
     LEXEMES[c].includes(token.text),
@@ -523,6 +544,81 @@ export const tokenKind = (token: Token): TokenClass => {
 
 /** The lexemes in a token's page class. */
 export const lexemesOf = (token: Token) => LEXEMES[tokenKind(token)]
+
+// Classes written as a rule rather than a list.
+const PATTERNS: Partial<Record<TokenClass, RegExp>> = {
+  identifier: /^[A-Za-z_][A-Za-z0-9_]*$/,
+  number: /^[0-9]+$/,
+}
+
+export type Match = 'exact' | 'prefix' | 'none'
+
+/**
+ * How the characters read so far sit against each class's lexemes. While a
+ * token is still being read, everything it could become is a possible match
+ * (`prefix`), identifier included: the lexer only decides at the token's end.
+ * With `final` (its last character) only the class it becomes is `exact`.
+ */
+export function matchTable(read: string, final?: TokenClass) {
+  return (Object.keys(LEXEMES) as TokenClass[]).map((cls) => {
+    const rule = PATTERNS[cls]
+    const lexemes = LEXEMES[cls].map((text) => {
+      const whole = rule ? rule.test(read) : text === read
+      const match: Match =
+        final !== undefined
+          ? cls === final && whole
+            ? 'exact'
+            : 'none'
+          : whole || (!rule && text.startsWith(read))
+            ? 'prefix'
+            : 'none'
+      return { text, match }
+    })
+    const match: Match = lexemes.some((l) => l.match === 'exact')
+      ? 'exact'
+      : lexemes.some((l) => l.match === 'prefix')
+        ? 'prefix'
+        : 'none'
+    return { cls, rule: !!rule, lexemes, match }
+  })
+}
+
+const article = (cls: string) => (/^[aeiou]/.test(cls) ? 'an ' : 'a ') + cls
+const joinOr = (items: string[]) =>
+  items.length > 1
+    ? `${items.slice(0, -1).join(', ')} or ${items[items.length - 1]}`
+    : items[0]
+
+const NEXT_NAMES: Record<string, string> = {
+  ' ': 'a space',
+  '\n': 'a newline',
+  '\t': 'a tab',
+  '': 'the end of the file',
+}
+
+function readStep(token: Token, at: number, next?: string): string {
+  const read = token.text.slice(0, at - token.start + 1)
+  if (next !== undefined) {
+    const cls = tokenKind(token)
+    let text = `The next character, ${NEXT_NAMES[next] ?? code(next)}, can't extend ${code(read)}, so the token ends here as ${article(cls)}.`
+    if (cls !== 'identifier' && PATTERNS.identifier?.test(read))
+      text += ` Words on the ${cls} list win over identifiers.`
+    return text
+  }
+  const fits = matchTable(read)
+    .filter((r) => r.match !== 'none')
+    .map((r) =>
+      r.rule
+        ? article(r.cls)
+        : `${r.cls} ${r.lexemes
+            .filter((l) => l.match !== 'none')
+            .map((l) => code(l.text))
+            .join(', ')}`,
+    )
+  return fits.length > 0
+    ? `${code(read)} could still become ${joinOr(fits)}.`
+    : `${code(read)} is not in any table yet; it is part of ${article(tokenKind(token))}.`
+}
 
 /** Hover card for a tree node, describing only what is attached so far. */
 export function nodeHover(trace: Trace, frame: Frame, node: AstNode): string {

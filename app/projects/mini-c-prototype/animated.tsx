@@ -5,20 +5,26 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from 'react'
 
+import { detailTrace } from './detail'
 import {
   explain,
   instructionHover,
   nodeHover,
   registerHover,
   tokenKind,
-  INTRO_SLIDES,
+  PHASE_SLIDES,
+  type Slide,
   lexemesOf,
+  matchTable,
+  type TokenClass,
 } from './explain'
+import { compileReal } from './real'
 import { findReference, REFERENCES } from './reference'
 import {
   buildTrace,
@@ -26,6 +32,7 @@ import {
   instructionText,
   liveAfterSweep,
   type Token,
+  type Trace,
   treePositions,
 } from './trace'
 import '@/app/styles/markdown.css'
@@ -33,7 +40,8 @@ import './animated.css'
 
 const examples = REFERENCES.map((r) => ({ name: r.name, source: r.source }))
 const phases = ['Tokens', 'Parse', 'Check', 'Emit', 'Registers'] as const
-const phaseLabels = ['tokens', 'parse', 'check', 'emit', 'regs']
+type Phase = (typeof phases)[number]
+const phaseLabels = ['lexer', 'parser', 'check', 'emit', 'regs']
 const speeds = [0.5, 1, 1.5, 2]
 const KEEP_HIDDEN = ['int', '(', ')', '{', '}', ';', '=', ',']
 const HOVER_DELAY = 250
@@ -66,7 +74,17 @@ function Prose({ text }: { text: string }) {
       {text
         .split('`')
         .map((part, i) =>
-          i % 2 ? <code key={i}>{part}</code> : <span key={i}>{part}</span>,
+          i % 2 ? (
+            <code key={i}>{part}</code>
+          ) : (
+            <span key={i}>
+              {part
+                .split('**')
+                .map((run, j) =>
+                  j % 2 ? <strong key={j}>{run}</strong> : run,
+                )}
+            </span>
+          ),
         )}
     </>
   )
@@ -89,6 +107,30 @@ function StepNote({ text, token }: { text: string; token?: Token }) {
         </ul>
       )}
     </>
+  )
+}
+
+// Detailed lexer mode: every class's lexemes, lit while the characters read
+// so far could still become one; on a token's last character only the class
+// it becomes is marked.
+function CharTable({ read, final }: { read: string; final?: TokenClass }) {
+  return (
+    <table className="ac-char-table" aria-label="Token classes">
+      <tbody>
+        {matchTable(read, final).map((row) => (
+          <tr key={row.cls} className={row.match}>
+            <th>{row.cls}</th>
+            <td>
+              {row.lexemes.map((l) => (
+                <code key={l.text} className={l.match}>
+                  {l.text}
+                </code>
+              ))}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   )
 }
 
@@ -163,41 +205,6 @@ function editorKey(event: ReactKeyboardEvent<HTMLTextAreaElement>) {
   }
 }
 
-// A shallow chevron (about 140° at the tip) as two cubic segments, so the
-// closed and open shapes interpolate point for point. Between them it passes
-// through a wriggle and pulls in, then draws back out, like a tree edge
-// shooting to its child.
-const CHEVRON = {
-  closed: 'M4 1 C4.5 2.33 5 3.67 5.5 5 C5 6.33 4.5 7.67 4 9',
-  wriggle: 'M2 5.5 C3 3 4 8 5 5 C6 2 7 7 8 4.5',
-  open: 'M1 4 C2.33 4.5 3.67 5 5 5.5 C6.33 5 7.67 4.5 9 4',
-}
-
-function Chevron({ open }: { open: boolean }) {
-  const still = useReducedMotion()
-  const to = open ? CHEVRON.open : CHEVRON.closed
-  const from = open ? CHEVRON.closed : CHEVRON.open
-  return (
-    <svg className="ac-chevron" viewBox="0 0 10 10" aria-hidden="true">
-      <motion.path
-        initial={false}
-        animate={
-          still
-            ? { d: to, pathLength: 1 }
-            : { d: [from, CHEVRON.wriggle, to], pathLength: [1, 0.3, 1] }
-        }
-        transition={{
-          duration: still ? 0 : 0.55,
-          // Accelerate into the wriggle and ease out of it, so the middle
-          // shape is passed through rather than paused on.
-          times: [0, 0.35, 1],
-          ease: [[0.55, 0, 0.9, 0.45], EASE],
-        }}
-      />
-    </svg>
-  )
-}
-
 const SCRAMBLE = 'abcdefghijklmnopqrstuvwxyz'
 
 // Text that morphs into its next value: the length steps one letter per tick
@@ -256,11 +263,16 @@ function Picker({
   placeholder: string
   onChange: (index: number) => void
 }) {
+  const reduced = useReducedMotion()
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)
   const root = useRef<HTMLDivElement>(null)
   const button = useRef<HTMLButtonElement>(null)
   const list = useRef<HTMLUListElement>(null)
+  const rows = useRef<(HTMLLIElement | null)[]>([])
+  // Rows only have offsets once the list is on screen; render the mark after.
+  const [measured, setMeasured] = useState(false)
+  useLayoutEffect(() => setMeasured(open), [open])
 
   useEffect(() => {
     if (!open) return
@@ -299,7 +311,6 @@ function Picker({
           }
         }}
       >
-        <Chevron open={open} />
         <MorphText text={value >= 0 ? options[value] : placeholder} />
       </button>
       {open && (
@@ -327,8 +338,24 @@ function Picker({
             }
           }}
         >
+          {/* One shallow chevron that slides to whichever row is active. */}
+          {measured && (
+            <motion.svg
+              className="ac-pick-mark"
+              viewBox="0 0 10 10"
+              aria-hidden="true"
+              initial={false}
+              animate={{ y: rows.current[active]?.offsetTop ?? 0 }}
+              transition={{ duration: reduced ? 0 : 0.18, ease: EASE }}
+            >
+              <path d="M4 1 L5.5 5 L4 9" />
+            </motion.svg>
+          )}
           {options.map((option, i) => (
             <li
+              ref={(el) => {
+                rows.current[i] = el
+              }}
               key={option}
               id={`ac-pick-${i}`}
               role="option"
@@ -349,11 +376,60 @@ function Picker({
 export default function AnimatedCompiler() {
   const [source, setSource] = useState(examples[0].source)
   const reference = useMemo(() => findReference(source), [source])
-  // Presets play the compiler's own frames; typed sketches use the toy recorder.
-  const trace = useMemo(
-    () => reference?.trace ?? buildTrace(source),
-    [source, reference],
+  // Typed programs go through the real compiler in a worker (real.ts); the
+  // teaching compiler covers the wait and any failure.
+  const [real, setReal] = useState<{ source: string; trace: Trace } | null>(
+    null,
   )
+  useEffect(() => {
+    if (reference) return
+    const abort = new AbortController()
+    const timer = setTimeout(() => {
+      compileReal(source, abort.signal).then(
+        (trace) => setReal({ source, trace }),
+        (error: Error) => {
+          if (error.message !== 'aborted')
+            console.warn('real compiler:', error.message)
+        },
+      )
+    }, 250)
+    return () => {
+      clearTimeout(timer)
+      abort.abort()
+    }
+  }, [source, reference])
+  // Presets play the compiler's recorded frames.
+  const baseTrace = useMemo(
+    () =>
+      reference?.trace ??
+      (real?.source === source ? real.trace : buildTrace(source)),
+    [source, reference, real],
+  )
+  // Detailed lexer mode reads a character per step instead of a token.
+  const [detailed, setDetailed] = useState(false)
+  // The footer's "?" menu, which holds the detailed-lexer switch.
+  const [moreOpen, setMoreOpen] = useState(false)
+  const moreRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!moreOpen) return
+    const away = (event: PointerEvent) => {
+      if (!moreRef.current?.contains(event.target as Node)) setMoreOpen(false)
+    }
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMoreOpen(false)
+    }
+    document.addEventListener('pointerdown', away)
+    document.addEventListener('keydown', escape)
+    return () => {
+      document.removeEventListener('pointerdown', away)
+      document.removeEventListener('keydown', escape)
+    }
+  }, [moreOpen])
+  const detail = useMemo(
+    () => detailTrace(baseTrace, source),
+    [baseTrace, source],
+  )
+  const trace = detailed ? detail.trace : baseTrace
   // The longest-worded token step of each class, for sizing the step panel.
   const tallestTokenSteps = useMemo(() => {
     const best = new Map<string, { text: string; token: Token }>()
@@ -367,13 +443,38 @@ export default function AnimatedCompiler() {
     }
     return [...best.values()]
   }, [trace])
+  // The longest-worded character step, sized in the same way.
+  const tallestCharStep = useMemo(() => {
+    let best: { text: string; read: string } | undefined
+    for (const f of trace.frames) {
+      if (f.why.kind !== 'lex.char') continue
+      const text = explain(trace, f)
+      if (!best || text.length > best.text.length) {
+        const t = trace.tokens[f.why.token]
+        best = { text, read: t.text.slice(0, f.why.at - t.start + 1) }
+      }
+    }
+    return best
+  }, [trace])
   const tree = useMemo(
     () => treePositions(trace, (n) => n.label.length * CHAR_PX + 2),
     [trace],
   )
   const [step, setStep] = useState(0)
-  // Frame 0 is the welcome; the intro slides sit between it and frame 1.
+  // A phase's slides sit on the frame before its first step (the lexer's on
+  // the welcome); `slide` counts through them, 0 meaning the frame itself.
   const [slide, setSlide] = useState(0)
+  const decks = useMemo(() => {
+    const at = new Map<number, { phase: Phase; slides: Slide[] }>()
+    for (const [phase, slides] of Object.entries(PHASE_SLIDES)) {
+      const first = trace.frames.findIndex(
+        (f) => f.phase === phase && f.why.kind !== 'ready',
+      )
+      if (first > 0 && slides)
+        at.set(first - 1, { phase: phase as Phase, slides })
+    }
+    return at
+  }, [trace.frames])
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState(1)
   const [hover, setHover] = useState<number | null>(null)
@@ -399,6 +500,9 @@ export default function AnimatedCompiler() {
   const hoverTok =
     hoverToken === null || playing ? undefined : trace.tokens[hoverToken]
   const activeSpan = hoverNode || hoverTok || error || frame.span
+  const hovering = !!(hoverNode || hoverTok || error)
+  const cursor =
+    !hovering && frame.why.kind === 'lex.char' ? frame.why.at : undefined
 
   const clearHover = useCallback(() => {
     if (hoverTimer.current) clearTimeout(hoverTimer.current)
@@ -426,24 +530,22 @@ export default function AnimatedCompiler() {
     },
     [last, clearHover],
   )
-  // Stepping walks through the intro slides at frame 0 before frame 1, and
-  // stepping back from frame 1 lands on the last slide.
+  // Stepping walks through a phase's slides before its first step, and
+  // stepping back from that step lands on the last slide.
   const move = useCallback(
     (delta: number) => {
-      if (
-        index === 0 &&
-        slide + delta >= 0 &&
-        slide + delta <= INTRO_SLIDES.length
-      ) {
+      const deck = decks.get(index)
+      const before = decks.get(index - 1)
+      if (deck && slide + delta >= 0 && slide + delta <= deck.slides.length) {
         setPlaying(false)
         clearHover()
         setSlide(slide + delta)
-      } else if (index === 1 && delta < 0) {
-        seek(0)
-        setSlide(INTRO_SLIDES.length)
+      } else if (before && delta < 0 && slide === 0) {
+        seek(index - 1)
+        setSlide(before.slides.length)
       } else seek(index + delta)
     },
-    [seek, index, slide, clearHover],
+    [seek, index, slide, clearHover, decks],
   )
   const play = useCallback(() => {
     setEditing(false)
@@ -455,10 +557,17 @@ export default function AnimatedCompiler() {
   }, [end, clearHover])
   const jumpPhase = useCallback(
     (phase: (typeof phases)[number]) => {
+      // Phases after the lexer open on their first slide.
+      const deck = [...decks].find(([, d]) => d.phase === phase)
+      if (deck && phase !== 'Tokens') {
+        seek(deck[0])
+        setSlide(1)
+        return
+      }
       const at = trace.frames.findIndex((f) => f.phase === phase)
       if (at >= 0) seek(at)
     },
-    [trace.frames, seek],
+    [trace.frames, seek, decks],
   )
   const bumpSpeed = useCallback((delta: number) => {
     setSpeed((s) => {
@@ -476,6 +585,7 @@ export default function AnimatedCompiler() {
       (e) => e.name.toLowerCase() === q.get('example'),
     )
     if (example) setSource(example.source)
+    if (q.get('lexer') === 'detailed') setDetailed(true)
     const at = Number(q.get('frame'))
     if (at > 0) setStep(at)
     setLinked(true)
@@ -486,9 +596,11 @@ export default function AnimatedCompiler() {
     const example = examples.find((e) => e.name === reference?.name)
     if (example) url.searchParams.set('example', example.name.toLowerCase())
     else url.searchParams.delete('example')
+    if (detailed) url.searchParams.set('lexer', 'detailed')
+    else url.searchParams.delete('lexer')
     url.searchParams.set('frame', String(index))
     window.history.replaceState(null, '', url)
-  }, [linked, playing, reference, index])
+  }, [linked, playing, reference, index, detailed])
 
   useEffect(() => {
     if (!playing) return
@@ -498,10 +610,14 @@ export default function AnimatedCompiler() {
     }
     const timer = setTimeout(
       () => setStep((s) => s + 1),
-      (frame.phase === 'Tokens' ? 380 : 680) / speed,
+      (frame.why.kind === 'lex.char' || frame.why.kind === 'lex.skip'
+        ? 160
+        : frame.phase === 'Tokens'
+          ? 380
+          : 680) / speed,
     )
     return () => clearTimeout(timer)
-  }, [playing, end, index, speed, frame.phase])
+  }, [playing, end, index, speed, frame.phase, frame.why.kind])
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
@@ -683,7 +799,10 @@ export default function AnimatedCompiler() {
         : undefined
   // Hovers replace the step text in the panel rather than float on the stage,
   // so nothing on screen says the same thing twice.
-  const intro = index === 0 && slide > 0 ? INTRO_SLIDES[slide - 1] : undefined
+  const deck = decks.get(index)
+  const intro = slide > 0 ? deck?.slides[slide - 1] : undefined
+  // On a slide the tabs show the phase it opens.
+  const shownPhase = intro && deck ? deck.phase : frame.phase
   const statusText = error
     ? error.message
     : hoverText
@@ -691,16 +810,40 @@ export default function AnimatedCompiler() {
       : intro
         ? intro.title
         : index === 0
-          ? 'press space to compile your code!'
+          ? 'Press space to compile your code!'
           : frame.why.kind === 'token'
             ? `Token: \`${trace.tokens[frame.why.token].text}\``
             : frame.title
   const noteText = hoverText ?? intro?.body ?? explain(trace, frame)
   // A token step lists every lexeme in its class under the explanation.
   const stepToken =
-    !hoverText && !error && frame.why.kind === 'token'
+    !hoverText && !error && !intro && frame.why.kind === 'token'
       ? trace.tokens[frame.why.token]
       : undefined
+  // A character step shows the class tables under the explanation.
+  const charStep =
+    !hoverText && !error && !intro && frame.why.kind === 'lex.char'
+      ? frame.why
+      : undefined
+  const charRead =
+    charStep &&
+    trace.tokens[charStep.token].text.slice(
+      0,
+      charStep.at - trace.tokens[charStep.token].start + 1,
+    )
+  // Hidden layers size the panel for the tallest lexer step, but only on the
+  // steps themselves: the welcome and slides keep their own height.
+  const sizing = !intro && index > 0
+  // Toggling the mode keeps the place: the same token step in the other list.
+  const toggleDetail = () => {
+    if (detailed) {
+      const next = detail.origin.findIndex((o, i) => i >= index && o !== null)
+      setStep(next >= 0 ? (detail.origin[next] ?? 0) : 0)
+    } else setStep(Math.max(0, detail.origin.indexOf(index)))
+    setDetailed(!detailed)
+    setPlaying(false)
+    clearHover()
+  }
   // A token's card sits beside it on the stage; the panel keeps the step.
   const tokenCard =
     hoverTok && hoverTok.id < frame.tokenCount
@@ -719,7 +862,22 @@ export default function AnimatedCompiler() {
       })(),
       y: tokenCard.y - trayOffset,
     }
-  const openWidth = Math.min(260, sceneWidth - 16)
+  // Open, it is only as wide as the class list needs (items are 6px padding
+  // and a 1px border each side, 6px apart), up to 260 before it wraps.
+  const listWidth = hoverTok
+    ? lexemesOf(hoverTok).reduce(
+        (w, l, i) => w + l.length * CARD_CHAR_PX + 14 + (i ? 6 : 0),
+        0,
+      )
+    : 0
+  const openWidth = Math.min(
+    260,
+    sceneWidth - 16,
+    Math.max(
+      listWidth + 24,
+      hoverTok ? tokenKind(hoverTok).length * CARD_CHAR_PX + 22 : 0,
+    ),
+  )
   const cardBox =
     cardAt &&
     (cardOpen
@@ -736,11 +894,11 @@ export default function AnimatedCompiler() {
           {phases.map((phase, i) => (
             <button
               key={phase}
-              className={frame.phase === phase ? 'active' : ''}
+              className={shownPhase === phase ? 'active' : ''}
               disabled={!trace.frames.some((f) => f.phase === phase)}
               onClick={() => jumpPhase(phase)}
             >
-              0{i + 1} {phaseLabels[i]}
+              {phaseLabels[i]}
             </button>
           ))}
         </nav>
@@ -798,9 +956,28 @@ export default function AnimatedCompiler() {
                 <pre aria-label="Highlighted source">
                   <code>
                     {source.slice(0, activeSpan.start)}
-                    <mark className={error ? 'err' : ''}>
-                      {source.slice(activeSpan.start, activeSpan.end)}
-                    </mark>
+                    {cursor !== undefined ? (
+                      // Detailed lexer: read so far underlined, the character
+                      // being read as a block.
+                      <>
+                        <mark className="reading">
+                          {source.slice(activeSpan.start, cursor)}
+                        </mark>
+                        <mark className="cursor">{source[cursor]}</mark>
+                      </>
+                    ) : (
+                      <mark
+                        className={
+                          error
+                            ? 'err'
+                            : frame.why.kind === 'lex.skip' && !hovering
+                              ? 'skip'
+                              : ''
+                        }
+                      >
+                        {source.slice(activeSpan.start, activeSpan.end)}
+                      </mark>
+                    )}
                     {source.slice(activeSpan.end)}
                   </code>
                 </pre>
@@ -844,8 +1021,44 @@ export default function AnimatedCompiler() {
                 <div className="ac-note-stack">
                   <div className="ac-note-layer">
                     <StepNote text={noteText} token={stepToken} />
+                    {charRead !== undefined && (
+                      <CharTable
+                        read={charRead}
+                        final={
+                          charStep?.next !== undefined
+                            ? tokenKind(trace.tokens[charStep.token])
+                            : undefined
+                        }
+                      />
+                    )}
+                    {!hoverText && intro?.table && (
+                      <table className="ac-slide-table">
+                        <thead>
+                          <tr>
+                            <th>lexeme</th>
+                            <th>category</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {intro.table.map(([lexeme, category]) => (
+                            <tr key={lexeme}>
+                              <td>
+                                <code>{lexeme}</code>
+                              </td>
+                              <td>{category}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
                   </div>
-                  {tallestTokenSteps.map((v) => (
+                  {sizing && detailed && tallestCharStep && (
+                    <div className="ac-note-layer ghost" aria-hidden="true">
+                      <Prose text={tallestCharStep.text} />
+                      <CharTable read={tallestCharStep.read} />
+                    </div>
+                  )}
+                  {(sizing ? tallestTokenSteps : []).map((v) => (
                     <div
                       key={tokenKind(v.token)}
                       className="ac-note-layer ghost"
@@ -859,16 +1072,16 @@ export default function AnimatedCompiler() {
                 <Prose text={noteText} />
               )}
             </div>
-            {index === 0 && (
+            {intro && deck && deck.slides.length > 1 && (
               <div className="ac-note-foot">
                 <button
                   type="button"
                   className="ac-slides"
                   aria-label="Skip intro"
-                  onClick={() => seek(1)}
+                  onClick={() => seek(index + 1)}
                 >
                   <span className="count">
-                    {slide}/{INTRO_SLIDES.length}
+                    {slide}/{deck.slides.length}
                   </span>
                   <span className="skip">skip</span>
                 </button>
@@ -1246,6 +1459,29 @@ export default function AnimatedCompiler() {
           }
           onChange={(e) => seek(Number(e.target.value))}
         />
+        <div className="ac-more" ref={moreRef}>
+          <button
+            type="button"
+            aria-label="Options"
+            aria-expanded={moreOpen}
+            onClick={() => setMoreOpen((o) => !o)}
+          >
+            ?
+          </button>
+          {moreOpen && (
+            <div className="ac-more-menu" role="menu">
+              <button
+                type="button"
+                role="menuitemcheckbox"
+                aria-checked={detailed}
+                onClick={toggleDetail}
+              >
+                <span aria-hidden="true">{detailed ? '[x]' : '[ ]'}</span>
+                detailed lexer
+              </button>
+            </div>
+          )}
+        </div>
       </footer>
     </section>
   )

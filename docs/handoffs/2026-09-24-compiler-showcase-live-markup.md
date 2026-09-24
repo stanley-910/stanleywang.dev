@@ -69,16 +69,18 @@ Treat the note as guidance on what not to include, not only a one-frame fix.
   or clicking a token in the tray shows a small card under it on the stage:
   just the class ("symbol"), centred under the token. Clicking any token
   toggles the card open for every token until clicked again: it grows right
-  and down (label nudging 12px left) to the full class list, the token
+  and down (label nudging 12px left) to the full class list, only as wide as
+  that list needs (up to 260px, then it wraps), the token
   highlighted in place. Animated with motion; instant under reduced motion.
   The panel keeps the current step. Token steps: header "Token: `;`", body
   just the class ("Symbol") above the lexeme list, with no role sentence
   (explain.ts case `token`). Step-panel headers are not underlined and render
   backtick code.
 - Token classes follow the groups in `lexer/Token.java` instead of one
-  "symbol" class: keyword, identifier, number, operator (`+ - * / % & .`),
+  "symbol" class: type (`int void char`), keyword, identifier, number, operator (`+ - * / % & .`),
   comparison (`== != < > <= >=`), logical (`&& ||`), delimiter
-  (`{ } ( ) [ ] ; ,`) and assignment (`=`). `tokenKind` derives the class
+  (`{ } ( ) [ ] ; ,`) and assign (`=`; "assignment" was clipped under the
+  token). `tokenKind` derives the class
   from the lexeme; `LEXEMES` is keyed by it. The lexer itself gives every
   lexeme its own category (PLUS, SC, ...); the groups are for reading.
 - Name tokens are called "identifier" everywhere on the page (card, kind label,
@@ -127,10 +129,10 @@ Treat the note as guidance on what not to include, not only a one-frame fix.
   so its open list matches the page: hairline box, muted rows, the hovered row
   on `--line`, the current preset marked `>`. Arrows/j/k move, Enter picks,
   Escape closes. The current preset is plain muted text (no box or underline),
-  ink on hover or while open, with a small, shallow chevron (~140° at the
-  tip, 9px) to its left: pointing right when closed, down when open. It
-  morphs rather than rotates (`Chevron`): through a wriggle while it retracts
-  to 30% and draws back out, 0.55s. When the preset changes (picked, or
+  ink on hover or while open. The open list marks the active row (hover or
+  arrow keys) with one shallow chevron (~140° at the tip) that slides between
+  rows in 0.18s; the current preset's row is ink. A chevron beside the closed
+  name (morphing > to v) was tried and removed. When the preset changes (picked, or
   "custom" once the code is edited) the name morphs (`MorphText`): the length
   steps one letter per 40ms tick, growing leftward or shrinking rightward
   since the box is right-aligned, and each letter cycles through random ones
@@ -138,14 +140,47 @@ Treat the note as guidance on what not to include, not only a one-frame fix.
   mark, a flickering border, a dither/wobble filter and a box around the name
   were tried and dropped. Reduced motion: the name swaps instantly.
 
-- Three text-only intro slides on tokenization sit between the welcome
-  (frame 0) and the first token (`INTRO_SLIDES` in `explain.ts`, checked
-  against `lexer/Tokeniser.java`). They are not trace frames: a `slide` state
-  at frame 0, so URLs and frame numbers are unchanged. l/j step into them, h/k
-  from frame 1 lands on the last one, Space compiles straight away, and r or
-  the slider reset to the welcome. Under the panel body, bottom right, a
-  gray "n/3" counter (0/3 on the welcome) that reads "skip" on hover or focus
-  and jumps to frame 1 when clicked; shown only at frame 0.
+- Phases can open with text-only slides (`PHASE_SLIDES` in `explain.ts`),
+  shown on the frame before the phase's first step, so URLs and frame numbers
+  are unchanged. The lexer has one (Stanley's "Where do we start?" over a
+  lexeme/category table), between the welcome and the first token; the parser
+  has two, both headed "Abstract Syntax Trees" (Stanley's text: why tokens
+  aren't enough, then precedence with `2 - 4 * 2` vs `(2 - 4) * 2`), between
+  the last token and the first parse step. l/j step into a phase's slides, h/k from its first step lands on
+  the last slide, Space plays straight past them, and clicking a phase tab
+  (or 2-5) opens on its first slide; the lexer tab still opens the welcome.
+  On a slide the tabs highlight the phase it opens. The gray "n/N" counter
+  that reads "skip" on hover renders only for a deck of more than one slide.
+  The lexer's slides 2-3 (whitespace, token classes) were cut.
+- The welcome ends "…any machine!\u00a0Enjoy." (non-breaking, so Enjoy stays on
+  the last line) then a blank line and "– Stanley". Step text keeps newlines
+  (`white-space: pre-line` on the panel body).
+
+- Detailed lexer mode: "[ ] detailed lexer" in a small "?" menu at the right
+  end of the footer, after the timeline (opens upward; outside click or
+  Escape closes it). It was first a toggle in the step header. On, the
+  lexer steps one character at a time (`detail.ts` inserts `lex.char` steps
+  before each token step, and a `lex.skip` step only for a comment (plain
+  whitespace gets no step, by request); replayed from token spans, since the compiler reads whole tokens).
+  The source underlines the characters read so far with the current one as a
+  block, and only the finished token step fills the whole token in white;
+  a skipped comment gets a faint band. The panel shows every class's
+  lexemes (`CharTable`, `matchTable` in `explain.ts`). While a token is being
+  read, everything it could still become is lit the same way, identifier
+  included ("`i` could still become type `int`, keyword `if` or an
+  identifier"): the lexer only decides at the token's end. On its last
+  character only the class it becomes is inverted, and the text names the
+  next character that ends it and, for words like `int`, that the type or
+  keyword list wins over identifier (Stanley: identifier is only a potential
+  match until the word ends with no other match). Toggling keeps the place (`origin` maps frames
+  between the two lists); `?lexer=detailed` restores it. Character steps
+  play at 160 ms. A hidden layer with the longest character step keeps the
+  panel one height. The sizing layers (token and character) apply only on
+  lexer steps, never on the welcome or a slide, so turning the mode on
+  doesn't make a slide's box tall.
+- Phase tabs are names only, no 01-05 numbers: lexer, parser, check, emit,
+  regs (was tokens, parse). The welcome title is capitalised: "Press space to compile
+  your code!".
 
 Open questions for Stanley, not yet decided:
 
@@ -261,6 +296,44 @@ It still lists state 35 only via the old PNG; delete
 `docs/compiler-showcase-states/35-ui-reference-collapsed.png` once 34 is redone.
 Passing an `ids.json` instead of `--dry` also sends each state to Figma, which
 needs fresh capture IDs from the Figma MCP and the TEMP script in `page.tsx`.
+
+## Real compiler in the browser (2026-09-24, testing)
+
+Stanley chose to run the real compiler client-side instead of porting more of
+it into the teaching compiler, so the work can go into rendering and
+presentation.
+
+- `browser/build.sh` compiles the compiler repo's `src/java` plus
+  `ParseTrace`/`RegAllocTrace` and `browser/BrowserTrace.java` to
+  `public/mini-c/compiler.js` (~530 KB minified) with TeaVM 0.12 (jars in
+  `~/.cache/teavm/lib`, fetched from Maven Central by
+  `~/.cache/teavm/resolve.py`). `public/mini-c/` is gitignored and no compiler
+  source enters this repo. `MINIFY= browser/build.sh` gives a readable build.
+- The build patches a temporary copy only: `desugar.py` rewrites
+  `case BaseType.INT` pattern labels as guarded patterns (javac emits an
+  EnumDesc constant TeaVM can't translate); `Integer::sum` becomes a lambda;
+  `Files.readString(file.toPath())` becomes a `FileInputStream` read; the
+  reflective `ProgramCodeGen.generate` call becomes a direct one; the
+  `Register.Virtual`/`Label` intern tables are made public so `BrowserTrace`
+  clears them before each compile (a JVM run gets a fresh process).
+- `real.ts` runs each compile in a fresh module worker: 1,200-char cap before
+  it runs, 2 s timeout that terminates the worker, and abort when the source
+  changes. The page tries it 250 ms after typing stops for any source that
+  isn't a preset; the teaching compiler covers the wait and any failure
+  (missing file, timeout, exception), with a console warning.
+- Checked against the six presets in Node: tokens, tree, check lines and every
+  emitted instruction match the JVM exactly, 1-40 ms per program. Only the
+  Registers phase differs: `Register.Virtual` has identity `hashCode`, so the
+  allocator's simplify order follows HashMap iteration over identity hashes,
+  which HotSpot and TeaVM break differently. Both runs are the real
+  allocator. Presets still play the recorded (JVM) traces.
+- Rough edges for the presentation pass: a parse error arrives as "Parsing
+  failed (1 errors)" spanning the whole source with the body "Delimiter"; the
+  parser's own message goes to stderr and isn't captured.
+- Shipping: Stanley plans to ship the bundle. The minified TeaVM output
+  already renames every class, method and field (`ParseTrace`, `Tokeniser`
+  etc. don't appear); only string literals such as error messages stay
+  readable, which he accepted. No extra obfuscation.
 
 ## Open items (not started)
 
