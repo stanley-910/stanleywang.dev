@@ -1,5 +1,10 @@
 'use client'
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import {
+  AnimatePresence,
+  motion,
+  useReducedMotion,
+  type MotionStyle,
+} from 'motion/react'
 import {
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -1603,10 +1608,11 @@ export default function AnimatedCompiler() {
                     }
                     // The step's lookup goes out grey and turns green as
                     // it lands; on the next step it fades back as it reels
-                    // in.
+                    // in. Once the pass is done, every link lands green.
                     const ok =
-                      frame.why.kind === 'check.resolve' &&
-                      frame.why.use === use
+                      all ||
+                      (frame.why.kind === 'check.resolve' &&
+                        frame.why.use === use)
                     const landed = {
                       ...transition,
                       delay: drawn.delay + transition.duration,
@@ -1766,9 +1772,18 @@ export default function AnimatedCompiler() {
                     declaredAt !== undefined &&
                     declaredAt <= index &&
                     index <= namesDoneAt
+                  // Once the pass is done, each use and its declaration go
+                  // green as the first link between them lands.
+                  const landsAt =
+                    node && frame.why.kind === 'check.namesDone'
+                      ? (frame.links ?? []).findIndex(
+                          ([use, decl]) => use === node.id || decl === node.id,
+                        )
+                      : -1
                   const found =
-                    frame.why.kind === 'check.resolve' &&
-                    frame.why.decl === node?.id
+                    landsAt >= 0 ||
+                    (frame.why.kind === 'check.resolve' &&
+                      frame.why.decl === node?.id)
                   const missingAt =
                     node === undefined ? undefined : missingStep.get(node.id)
                   const missing =
@@ -1778,7 +1793,15 @@ export default function AnimatedCompiler() {
                   return (
                     <motion.button
                       key={key}
-                      style={{ x: '-50%', y: '-50%' }}
+                      style={
+                        {
+                          x: '-50%',
+                          y: '-50%',
+                          ...(landsAt >= 0 && {
+                            '--land': `${(landsAt * 0.25 + 1) * transition.duration}s`,
+                          }),
+                        } as MotionStyle
+                      }
                       className={`ac-piece ${node ? 'node' : 'token'} kind-${token.kind} ${focused ? 'focused' : ''} ${pending ? 'pending' : ''} ${late ? 'small' : ''} ${node && node.id === working.preview ? 'preview' : ''} ${node && working.outside.includes(node.id) ? 'outside' : ''} ${declared ? 'declared' : ''} ${found ? 'found' : ''} ${missing ? 'missing' : ''}`}
                       initial={{
                         left: '-5%',
