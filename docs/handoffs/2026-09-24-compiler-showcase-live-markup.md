@@ -14,8 +14,9 @@ note; start at **13 check · resolve**.
 ## Where things are
 
 - Worktree: `~/worktrees/stanley-wang/2026-09-21_compiler-showcase`, branch
-  `compiler-showcase`. Everything under `app/projects/mini-c-prototype/` and
-  `docs/` is untracked. No commit is authorised.
+  `compiler-showcase`. The prototype, handoffs and `states.cjs` are committed
+  (be702d8, 2026-09-24); the state PNGs and `.claude/launch.json` are left
+  untracked on purpose. Commit again only when Stanley asks.
 - Dev server: `npm run dev -- --hostname 127.0.0.1 --port 3107` from the
   worktree (check first: `lsof -iTCP:3107 -sTCP:LISTEN`). Page:
   <http://127.0.0.1:3107/projects/mini-c-prototype>. It 404s in production.
@@ -47,8 +48,12 @@ Treat the note as guidance on what not to include, not only a one-frame fix.
 
 2026-09-24, live markup:
 
-- Frame 0 step-panel header reads "press space to start" (was "ready · 45
-  tokens · press space").
+- Frame 0 step-panel header reads "press space to compile your code!" (was
+  "ready · 45 tokens · press space", then "press space to start"). Its body is
+  Stanley's welcome ("Welcome to an interactive port of a compiler I wrote…
+  Enjoy.", explain.ts case `ready`).
+- Panel chrome text (file name, preset picker, step header) is 12px like the
+  code and body; step headers are weight 600.
 - Stepping: h and k go back, l and j go forward. The footer legend shows only
   "h l step", and each key is its own button (h disabled at frame 0, l at the
   last frame). j/k are undocumented on the page.
@@ -60,15 +65,18 @@ Treat the note as guidance on what not to include, not only a one-frame fix.
   playhead with a faint glow instead of the round native thumb.
 - Say each thing once. Node, instruction and register hovers replace the step
   panel's text; they have no floating card. Tokens are the exception: hovering
-  or clicking a token in the tray shows a small card beside it on the stage
-  ("`;` · symbol · ends this statement", from `tokenHover` in `explain.ts`),
-  and the panel keeps the current step. Token steps: header "Token: `;`", body
+  or clicking a token in the tray shows a small card under it on the stage:
+  just the class ("symbol"), centred under the token. Clicking any token
+  toggles the card open for every token until clicked again: it grows right
+  and down (label nudging 12px left) to the full class list, the token
+  highlighted in place. Animated with motion; instant under reduced motion.
+  The panel keeps the current step. Token steps: header "Token: `;`", body
   just the class ("Symbol") above the lexeme list, with no role sentence
   (explain.ts case `token`). Step-panel headers are not underlined and render
   backtick code.
 - Name tokens are called "identifier" everywhere on the page (card, kind label,
   aria label, step text), via `tokenKind` in `explain.ts`. An identifier's card
-  is just "`sum` · identifier", with no role sentence.
+  is "identifier" over its regex.
 - On token steps the step panel always lists every lexeme in that class under
   the explanation, current one highlighted (no toggle). The lists (`LEXEMES`
   in `explain.ts`) come from `lexer/Token.java` in
@@ -90,9 +98,38 @@ Treat the note as guidance on what not to include, not only a one-frame fix.
   pixels too.
 - The about popup holds only Stanley's intro (the presets/teaching-compiler
   and key-binding paragraphs were removed), linking COMP520
-  to <https://www.cs.mcgill.ca/~cs520/2026/>. Frame 0's step panel keeps "Step
-  through to watch the source become a tree, then instructions." Links use the
+  to <https://www.cs.mcgill.ca/~cs520/2026/>. Links use the
   site's `.prose-link` class (`app/styles/markdown.css`), not a local style.
+- The teaching compiler (typed programs) records parents first, like the real
+  ParseTrace: `main` appears pending, each statement node opens before its
+  value and joins `main` once complete, and "Function main is complete" closes
+  the parse. Previously it built everything bottom-up with `main` last.
+  Stanley wants the presets finished before more custom-program work.
+
+- Source editor rows are 19px (`--row` on `.ac-source`, `SOURCE_ROW` in
+  the scroll code). Tab indents (2 spaces; whole lines when a selection spans
+  lines), Shift+Tab outdents, Enter keeps the indent and adds a level after
+  `{` (splitting `{}` onto three lines), and `}` on a blank line outdents.
+  Edits go through `execCommand('insertText')` so undo keeps working; Escape
+  leaves the editor.
+- Presets match ignoring whitespace: `findReference` compares lexemes, and
+  on a whitespace-only edit it moves every span in the recorded trace onto the
+  new text (`reflow` in `reference.ts`). Before this, any edit (even a Tab)
+  dropped to the teaching compiler, which has no `<` or `while`.
+- The preset picker is a custom listbox (`Picker`), not a native `<select>`,
+  so its open list matches the page: hairline box, muted rows, the hovered row
+  on `--line`, the current preset marked `>`. Arrows/j/k move, Enter picks,
+  Escape closes. The current preset is plain muted text (no box or underline),
+  ink on hover or while open, with a small, shallow chevron (~140° at the
+  tip, 9px) to its left: pointing right when closed, down when open. It
+  morphs rather than rotates (`Chevron`): through a wriggle while it retracts
+  to 30% and draws back out, 0.55s. When the preset changes (picked, or
+  "custom" once the code is edited) the name morphs (`MorphText`): the length
+  steps one letter per 40ms tick, growing leftward or shrinking rightward
+  since the box is right-aligned, and each letter cycles through random ones
+  before settling, left to right. A larger, sharper chevron, a flickering
+  mark, a flickering border, a dither/wobble filter and a box around the name
+  were tried and dropped. Reduced motion: the name swaps instantly.
 
 Open questions for Stanley, not yet decided:
 

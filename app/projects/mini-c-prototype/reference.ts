@@ -45,7 +45,66 @@ export const REFERENCES: Reference[] = [
   entry('Unresolved name', 'unresolved-name', unresolvedNameTrace),
 ]
 
+// Mini-C lexemes, coarse but enough to tell a whitespace-only edit from a real
+// one: "i+1" and "i + 1" split the same, "int x" and "intx" do not.
+const LEXEME = /[A-Za-z_#][A-Za-z0-9_]*|\d+|&&|\|\||[<>=!]=|\S/g
+const lexemes = (text: string) => text.match(LEXEME) ?? []
+
+// Offsets of the non-whitespace characters, in order.
+const solid = (text: string) => {
+  const at: number[] = []
+  for (let i = 0; i < text.length; i++) if (!/\s/.test(text[i])) at.push(i)
+  return at
+}
+
+// The same trace, its spans moved from the recorded text onto `source`, which
+// differs from it only in whitespace.
+function reflow(trace: Trace, from: string, source: string): Trace {
+  const a = solid(from)
+  const b = solid(source)
+  const index = new Map(a.map((offset, i) => [offset, i]))
+  const move = <T extends { start: number; end: number }>(span: T): T => {
+    if (span.end <= span.start) {
+      const i = index.get(span.start)
+      const at = i === undefined ? source.length : b[i]
+      return { ...span, start: at, end: at }
+    }
+    const first = index.get(span.start)
+    const last = index.get(span.end - 1)
+    if (first === undefined || last === undefined) return span
+    return { ...span, start: b[first], end: b[last] + 1 }
+  }
+  return {
+    ...trace,
+    text: source,
+    tokens: trace.tokens.map(move),
+    nodes: trace.nodes.map(move),
+    frames: trace.frames.map((frame) => ({
+      ...frame,
+      span: move(frame.span),
+      why:
+        'span' in frame.why && frame.why.span
+          ? { ...frame.why, span: move(frame.why.span) }
+          : frame.why,
+    })) as Trace['frames'],
+    error: trace.error && move(trace.error),
+  }
+}
+
+/** The preset `source` is, ignoring whitespace, with spans moved to match. */
 export function findReference(source: string): Reference | undefined {
   const key = source.replace(/\s+$/, '')
-  return REFERENCES.find((r) => r.source === key)
+  const exact = REFERENCES.find((r) => r.source === key)
+  if (exact) return exact
+  const words = lexemes(key).join('\u0000')
+  const same = REFERENCES.find(
+    (r) => lexemes(r.source).join('\u0000') === words,
+  )
+  return (
+    same && {
+      ...same,
+      source: key,
+      trace: reflow(same.trace, same.source, key),
+    }
+  )
 }

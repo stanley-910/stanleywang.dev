@@ -130,7 +130,13 @@ export function explain(trace: Trace, frame: Frame): string {
   const src = (id: number) => code(text(trace, node(id)))
   switch (w.kind) {
     case 'ready':
-      return 'Step through to watch the source become a tree, then instructions.'
+      return (
+        'Welcome to an interactive port of a compiler I wrote for a subset of ' +
+        'the C programming language. It will have reduced functionality at ' +
+        'points, but aims to deliver a guided visualization of all the awesome ' +
+        'things that need to happen to take your code into something that can ' +
+        'run on any machine! Enjoy.'
+      )
     case 'token': {
       // The token is in the header; the body names its class above the list.
       const kind = tokenKind(trace.tokens[w.token])
@@ -491,28 +497,6 @@ export const LEXEMES: Record<Token['kind'], string[]> = {
 /** A token's class as shown on the page; "name" reads as "identifier". */
 export const tokenKind = (token: Token) =>
   token.kind === 'name' ? 'identifier' : token.kind
-
-/** Hover card for a token that is not yet part of the tree. */
-export function tokenHover(token: Token): string {
-  const role =
-    token.kind === 'keyword'
-      ? (KEYWORD_ROLES[token.text] ?? 'a keyword with a fixed meaning').replace(
-          /^is /,
-          '',
-        )
-      : token.kind === 'number'
-        ? token.text.length > 1
-          ? `all ${token.text.length} digits are one number`
-          : 'a single digit'
-        : (SYMBOL_ROLES[token.text] ??
-          (OP_NAMES[token.text]
-            ? `${OP_NAMES[token.text]}, needs a value on each side`
-            : 'punctuation'))
-  const kind = tokenKind(token)
-  return token.kind === 'name'
-    ? `${code(token.text)} · ${kind}`
-    : `${code(token.text)} · ${kind} · ${role}`
-}
 
 /** Hover card for a tree node, describing only what is attached so far. */
 export function nodeHover(trace: Trace, frame: Frame, node: AstNode): string {
