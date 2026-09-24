@@ -15,7 +15,8 @@ note; start at **13 check · resolve**.
 
 - Worktree: `~/worktrees/stanley-wang/2026-09-21_compiler-showcase`, branch
   `compiler-showcase`. The prototype, handoffs and `states.cjs` are committed
-  (be702d8, 2026-09-24); the state PNGs and `.claude/launch.json` are left
+  (be702d8, 883daab header fix, 67a6ee2 live-markup work, 2026-09-24); the
+  state PNGs and `.claude/launch.json` are left
   untracked on purpose. Commit again only when Stanley asks.
 - Dev server: `npm run dev -- --hostname 127.0.0.1 --port 3107` from the
   worktree (check first: `lsof -iTCP:3107 -sTCP:LISTEN`). Page:
@@ -130,6 +131,15 @@ Treat the note as guidance on what not to include, not only a one-frame fix.
   before settling, left to right. A larger, sharper chevron, a flickering
   mark, a flickering border, a dither/wobble filter and a box around the name
   were tried and dropped. Reduced motion: the name swaps instantly.
+
+- Three text-only intro slides on tokenization sit between the welcome
+  (frame 0) and the first token (`INTRO_SLIDES` in `explain.ts`, checked
+  against `lexer/Tokeniser.java`). They are not trace frames: a `slide` state
+  at frame 0, so URLs and frame numbers are unchanged. l/j step into them, h/k
+  from frame 1 lands on the last one, Space compiles straight away, and r or
+  the slider reset to the welcome. Under the panel body, bottom right, a
+  gray "n/3" counter (0/3 on the welcome) that reads "skip" on hover or focus
+  and jumps to frame 1 when clicked; shown only at frame 0.
 
 Open questions for Stanley, not yet decided:
 

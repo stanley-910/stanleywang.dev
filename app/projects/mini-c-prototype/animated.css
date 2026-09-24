@@ -333,6 +333,38 @@
   color: var(--ink);
   font-weight: 600;
 }
+/* Intro slides: skip and a small slide counter, bottom right. */
+.ac-note-foot {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  padding: 0 10px 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+/* The counter turns into "skip" on hover; both share a grid cell so the
+   width holds. */
+.ac-slides {
+  display: grid;
+  justify-items: end;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.ac-slides > span {
+  grid-area: 1 / 1;
+}
+.ac-slides .skip,
+.ac-slides:hover .count,
+.ac-slides:focus-visible .count {
+  visibility: hidden;
+}
+.ac-slides:hover .skip,
+.ac-slides:focus-visible .skip {
+  visibility: visible;
+  color: var(--ink);
+}
 .ac-note-stack {
   display: grid;
 }
