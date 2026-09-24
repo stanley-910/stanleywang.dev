@@ -145,7 +145,7 @@
   padding: 0 10px;
   border-bottom: 1px solid var(--line);
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
   white-space: nowrap;
 }
 .ac-bar button {
@@ -165,21 +165,68 @@
 .ac-file {
   color: var(--ink);
 }
-.ac select {
-  font: inherit;
-  font-size: 11px;
-  color: var(--muted);
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-  max-width: 160px;
+.ac-picker {
+  position: relative;
 }
-.ac option {
+.ac-picker > button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  text-decoration: none;
+  cursor: pointer;
+}
+.ac-picker > button:hover,
+.ac-picker > button[aria-expanded='true'] {
+  color: var(--ink);
+}
+.ac-morph {
+  white-space: pre;
+}
+.ac-chevron {
+  width: 9px;
+  height: 9px;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* Same box as the token card: hairline border, page background. */
+.ac-picker ul {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 8;
+  min-width: 160px;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  border: 1px solid var(--line);
   background: var(--bg);
+  outline: none;
+}
+.ac-picker li {
+  padding: 3px 12px 3px 22px;
+  color: var(--muted);
+  cursor: pointer;
+  position: relative;
+}
+.ac-picker li.active {
+  color: var(--ink);
+  background: var(--line);
+}
+.ac-picker li[aria-selected='true']::before {
+  content: '>';
+  position: absolute;
+  left: 9px;
+  color: var(--ink);
 }
 
 /* Source with a real gutter. Pre and textarea share one grid cell. */
 .ac-source {
+  --row: 19px;
   position: relative;
   display: grid;
   grid-template-columns: 34px 1fr;
@@ -284,6 +331,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--ink);
+  font-weight: 600;
 }
 .ac-note-stack {
   display: grid;
@@ -469,17 +517,32 @@
 /* Card beside a clicked or hovered token. */
 .ac-hover {
   position: absolute;
-  width: max-content;
-  max-width: 260px;
-  padding: 4px 8px;
+  transform: translateY(16px);
+  padding: 6px 10px;
   border: 1px solid var(--line);
   background: var(--bg);
   color: var(--ink);
   font-size: 11px;
   line-height: 1.4;
-  white-space: normal;
+  white-space: nowrap;
+  overflow: hidden;
   pointer-events: none;
   z-index: 6;
+}
+/* The list's height animates on this wrapper, which has no padding, so the
+   measured height is exact and nothing jumps when the animation ends. */
+.ac-hover-list {
+  overflow: hidden;
+}
+.ac-hover .ac-lexemes {
+  gap: 6px;
+  margin: 0;
+  padding: 8px 0 2px;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.ac-hover .ac-lexemes li {
+  padding: 0 6px;
 }
 .ac-counter {
   margin-left: auto;
@@ -561,7 +624,6 @@
   height: 14px;
 }
 .ac button:focus-visible,
-.ac select:focus-visible,
 .ac input:focus-visible,
 .ac summary:focus-visible {
   outline: 1px solid var(--ink);

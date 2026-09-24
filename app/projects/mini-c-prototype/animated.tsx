@@ -2,6 +2,7 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import {
   type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -14,7 +15,6 @@ import {
   instructionHover,
   nodeHover,
   registerHover,
-  tokenHover,
   tokenKind,
   LEXEMES,
 } from './explain'
@@ -41,6 +41,11 @@ const HOVER_DELAY = 250
 const VIEW_W = 680
 const CHAR_PX = 7.2
 const EDGE_PX = 24
+// Advance of one character in the 11px token card.
+const CARD_CHAR_PX = 6.6
+// Line height of the source editor; matches --row on .ac-source.
+const SOURCE_ROW = 19
+const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number]
 // Fill colours for the interference graph, one per physical register in use.
 const INK = [
   '#2563eb',
@@ -66,14 +71,16 @@ function Prose({ text }: { text: string }) {
   )
 }
 
-// A token step: its sentence, then every lexeme in its class.
+// A token step: its sentence, then every lexeme in its class, the token's own
+// lexeme highlighted.
 function StepNote({ text, token }: { text: string; token?: Token }) {
+  const lexemes = token ? LEXEMES[token.kind] : []
   return (
     <>
       <Prose text={text} />
-      {token && (
+      {token && lexemes.length > 0 && (
         <ul className="ac-lexemes" aria-label="Lexemes in this class">
-          {LEXEMES[token.kind].map((lexeme) => (
+          {lexemes.map((lexeme) => (
             <li key={lexeme} className={lexeme === token.text ? 'current' : ''}>
               {lexeme}
             </li>
@@ -81,6 +88,260 @@ function StepNote({ text, token }: { text: string; token?: Token }) {
         </ul>
       )}
     </>
+  )
+}
+
+const INDENT = '  '
+
+// Replace [start, end) through the browser's own editing, so undo still works
+// and React sees an ordinary input event.
+function replaceRange(
+  area: HTMLTextAreaElement,
+  start: number,
+  end: number,
+  text: string,
+) {
+  area.setSelectionRange(start, end)
+  if (!document.execCommand('insertText', false, text))
+    area.setRangeText(text, start, end, 'end')
+}
+
+// Tab / Shift+Tab indent and outdent the selected lines; Enter keeps the
+// current indent, adding a level after `{`; `}` on a blank line outdents.
+function editorKey(event: ReactKeyboardEvent<HTMLTextAreaElement>) {
+  const area = event.currentTarget
+  const { value, selectionStart: start, selectionEnd: end } = area
+  const lineStart = value.lastIndexOf('\n', start - 1) + 1
+
+  if (event.key === 'Tab') {
+    event.preventDefault()
+    if (!event.shiftKey && start === end) {
+      replaceRange(area, start, end, INDENT)
+      return
+    }
+    const blockEnd = end > start && value[end - 1] === '\n' ? end - 1 : end
+    const nextBreak = value.indexOf('\n', blockEnd)
+    const lineEnd = nextBreak === -1 ? value.length : nextBreak
+    const lines = value.slice(lineStart, lineEnd).split('\n')
+    const changed = lines.map((line) =>
+      event.shiftKey
+        ? line.replace(new RegExp(`^ {1,${INDENT.length}}`), '')
+        : INDENT + line,
+    )
+    const firstShift = changed[0].length - lines[0].length
+    const totalShift = changed.join('\n').length - (lineEnd - lineStart)
+    replaceRange(area, lineStart, lineEnd, changed.join('\n'))
+    area.setSelectionRange(
+      Math.max(lineStart, start + firstShift),
+      Math.max(lineStart, end + totalShift),
+    )
+    return
+  }
+
+  if (event.key === 'Enter' && !event.shiftKey && !event.metaKey) {
+    event.preventDefault()
+    const indent = /^[ \t]*/.exec(value.slice(lineStart, start))?.[0] ?? ''
+    const opens = value.slice(lineStart, start).trimEnd().endsWith('{')
+    const closes = value.slice(end).trimStart().startsWith('}')
+    const inner = opens ? indent + INDENT : indent
+    if (opens && closes && !value.slice(end).split('\n')[0].trim().slice(1)) {
+      replaceRange(area, start, end, `\n${inner}\n${indent}`)
+      area.setSelectionRange(start + 1 + inner.length, start + 1 + inner.length)
+    } else {
+      replaceRange(area, start, end, `\n${inner}`)
+    }
+    return
+  }
+
+  if (event.key === '}' && start === end) {
+    const before = value.slice(lineStart, start)
+    if (before.length >= INDENT.length && !before.trim()) {
+      event.preventDefault()
+      replaceRange(area, start - INDENT.length, end, '}')
+    }
+  }
+}
+
+// A shallow chevron (about 140° at the tip) as two cubic segments, so the
+// closed and open shapes interpolate point for point. Between them it passes
+// through a wriggle and pulls in, then draws back out, like a tree edge
+// shooting to its child.
+const CHEVRON = {
+  closed: 'M4 1 C4.5 2.33 5 3.67 5.5 5 C5 6.33 4.5 7.67 4 9',
+  wriggle: 'M2 5.5 C3 3 4 8 5 5 C6 2 7 7 8 4.5',
+  open: 'M1 4 C2.33 4.5 3.67 5 5 5.5 C6.33 5 7.67 4.5 9 4',
+}
+
+function Chevron({ open }: { open: boolean }) {
+  const still = useReducedMotion()
+  const to = open ? CHEVRON.open : CHEVRON.closed
+  const from = open ? CHEVRON.closed : CHEVRON.open
+  return (
+    <svg className="ac-chevron" viewBox="0 0 10 10" aria-hidden="true">
+      <motion.path
+        initial={false}
+        animate={
+          still
+            ? { d: to, pathLength: 1 }
+            : { d: [from, CHEVRON.wriggle, to], pathLength: [1, 0.3, 1] }
+        }
+        transition={{
+          duration: still ? 0 : 0.55,
+          // Accelerate into the wriggle and ease out of it, so the middle
+          // shape is passed through rather than paused on.
+          times: [0, 0.35, 1],
+          ease: [[0.55, 0, 0.9, 0.45], EASE],
+        }}
+      />
+    </svg>
+  )
+}
+
+const SCRAMBLE = 'abcdefghijklmnopqrstuvwxyz'
+
+// Text that morphs into its next value: the length steps one letter per tick
+// (growing leftward, shrinking rightward, as the label is right-aligned) and
+// each letter cycles through random ones before settling, left to right.
+function MorphText({ text }: { text: string }) {
+  const reduced = useReducedMotion()
+  const [shown, setShown] = useState(text)
+  const current = useRef(text)
+  useEffect(() => {
+    const from = current.current
+    if (reduced || from === text) {
+      current.current = text
+      setShown(text)
+      return
+    }
+    const grow = Math.sign(text.length - from.length)
+    const steps = Math.abs(text.length - from.length)
+    let tick = 0
+    const id = window.setInterval(() => {
+      tick++
+      const length = from.length + grow * Math.min(tick, steps)
+      let next = ''
+      for (let i = 0; i < length; i++) {
+        const settled = tick >= 3 + i && i < text.length
+        next +=
+          settled || text[i] === ' '
+            ? text[i]
+            : SCRAMBLE[Math.floor(Math.random() * SCRAMBLE.length)]
+      }
+      current.current = next
+      setShown(next)
+      if (next === text) window.clearInterval(id)
+    }, 40)
+    return () => window.clearInterval(id)
+  }, [text, reduced])
+  return (
+    <span className="ac-morph" aria-label={text}>
+      {shown}
+    </span>
+  )
+}
+
+// The preset menu. A native <select> opens an OS-styled list, so this is a
+// small listbox instead: arrows move, Enter picks, Escape closes.
+function Picker({
+  label,
+  options,
+  value,
+  placeholder,
+  onChange,
+}: {
+  label: string
+  options: string[]
+  value: number
+  placeholder: string
+  onChange: (index: number) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [active, setActive] = useState(0)
+  const root = useRef<HTMLDivElement>(null)
+  const button = useRef<HTMLButtonElement>(null)
+  const list = useRef<HTMLUListElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    list.current?.focus()
+    const away = (event: PointerEvent) => {
+      if (!root.current?.contains(event.target as Node)) setOpen(false)
+    }
+    window.addEventListener('pointerdown', away)
+    return () => window.removeEventListener('pointerdown', away)
+  }, [open])
+
+  const show = () => {
+    setActive(Math.max(0, value))
+    setOpen(true)
+  }
+  const pick = (index: number) => {
+    setOpen(false)
+    button.current?.focus()
+    if (index !== value) onChange(index)
+  }
+
+  return (
+    <div className="ac-picker" ref={root}>
+      <button
+        ref={button}
+        type="button"
+        aria-label={label}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => (open ? setOpen(false) : show())}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault()
+            event.stopPropagation()
+            show()
+          }
+        }}
+      >
+        <Chevron open={open} />
+        <MorphText text={value >= 0 ? options[value] : placeholder} />
+      </button>
+      {open && (
+        <ul
+          ref={list}
+          role="listbox"
+          aria-label={label}
+          tabIndex={-1}
+          aria-activedescendant={`ac-pick-${active}`}
+          onKeyDown={(event) => {
+            event.stopPropagation()
+            if (event.key === 'ArrowDown' || event.key === 'j') {
+              event.preventDefault()
+              setActive((a) => Math.min(options.length - 1, a + 1))
+            } else if (event.key === 'ArrowUp' || event.key === 'k') {
+              event.preventDefault()
+              setActive((a) => Math.max(0, a - 1))
+            } else if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              pick(active)
+            } else if (event.key === 'Escape' || event.key === 'Tab') {
+              event.preventDefault()
+              setOpen(false)
+              button.current?.focus()
+            }
+          }}
+        >
+          {options.map((option, i) => (
+            <li
+              key={option}
+              id={`ac-pick-${i}`}
+              role="option"
+              aria-selected={i === value}
+              className={i === active ? 'active' : ''}
+              onPointerEnter={() => setActive(i)}
+              onClick={() => pick(i)}
+            >
+              {option}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }
 
@@ -114,6 +375,8 @@ export default function AnimatedCompiler() {
   const [speed, setSpeed] = useState(1)
   const [hover, setHover] = useState<number | null>(null)
   const [hoverToken, setHoverToken] = useState<number | null>(null)
+  // Clicking a token toggles class lists on every token card until clicked again.
+  const [cardOpen, setCardOpen] = useState(false)
   const [hoverIns, setHoverIns] = useState<number | null>(null)
   const [hoverVr, setHoverVr] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
@@ -199,12 +462,12 @@ export default function AnimatedCompiler() {
   useEffect(() => {
     if (!linked || playing) return
     const url = new URL(window.location.href)
-    const example = examples.find((e) => e.source === source)
+    const example = examples.find((e) => e.name === reference?.name)
     if (example) url.searchParams.set('example', example.name.toLowerCase())
     else url.searchParams.delete('example')
     url.searchParams.set('frame', String(index))
     window.history.replaceState(null, '', url)
-  }, [linked, playing, source, index])
+  }, [linked, playing, reference, index])
 
   useEffect(() => {
     if (!playing) return
@@ -260,7 +523,7 @@ export default function AnimatedCompiler() {
     if (pane && !editing)
       pane.scrollTop = Math.max(
         0,
-        (source.slice(0, activeSpan.start).split('\n').length - 3) * 22,
+        (source.slice(0, activeSpan.start).split('\n').length - 3) * SOURCE_ROW,
       )
   }, [activeSpan.start, source, editing])
 
@@ -403,7 +666,7 @@ export default function AnimatedCompiler() {
     : hoverText
       ? 'hover'
       : index === 0
-        ? 'press space to start'
+        ? 'press space to compile your code!'
         : frame.why.kind === 'token'
           ? `Token: \`${trace.tokens[frame.why.token].text}\``
           : frame.title
@@ -418,10 +681,28 @@ export default function AnimatedCompiler() {
     hoverTok && hoverTok.id < frame.tokenCount
       ? tokenPoints[hoverTok.id]
       : undefined
-  const cardAt = tokenCard && {
-    x: tokenCard.x,
-    y: tokenCard.y - trayOffset,
-  }
+  // Closed, the card is just the class, centred under the token. Open, it
+  // grows right and down to the full class list, its label nudged left.
+  // Widths are exact because the text is monospace.
+  const clampLeft = (left: number, width: number) =>
+    Math.max(8, Math.min(left, sceneWidth - width - 8))
+  const cardAt = tokenCard &&
+    hoverTok && {
+      closed: (() => {
+        const width = tokenKind(hoverTok).length * CARD_CHAR_PX + 22
+        return { left: clampLeft(tokenCard.x / unit - width / 2, width), width }
+      })(),
+      y: tokenCard.y - trayOffset,
+    }
+  const openWidth = Math.min(260, sceneWidth - 16)
+  const cardBox =
+    cardAt &&
+    (cardOpen
+      ? {
+          left: clampLeft(cardAt.closed.left - 12, openWidth),
+          width: openWidth,
+        }
+      : cardAt.closed)
 
   return (
     <section className="ac" data-phase={frame.phase.toLowerCase()}>
@@ -464,23 +745,13 @@ export default function AnimatedCompiler() {
         <section className="ac-editor" aria-label="Source editor">
           <div className="ac-bar">
             <span className="ac-file">main.c</span>
-            <select
-              aria-label="Example program"
-              value={examples.findIndex((e) => e.source === source)}
-              onChange={(e) => {
-                const example = examples[Number(e.target.value)]
-                if (example) update(example.source)
-              }}
-            >
-              <option value={-1} disabled>
-                custom
-              </option>
-              {examples.map((e, i) => (
-                <option key={e.name} value={i}>
-                  {e.name.toLowerCase()}
-                </option>
-              ))}
-            </select>
+            <Picker
+              label="Example program"
+              options={examples.map((e) => e.name.toLowerCase())}
+              value={examples.findIndex((e) => e.name === reference?.name)}
+              placeholder="custom"
+              onChange={(i) => update(examples[i].source)}
+            />
           </div>
           <div
             className="ac-source"
@@ -521,6 +792,7 @@ export default function AnimatedCompiler() {
                 }}
                 onBlur={() => setEditing(false)}
                 onChange={(e) => update(e.target.value)}
+                onKeyDown={editorKey}
               />
             </div>
           </div>
@@ -686,7 +958,10 @@ export default function AnimatedCompiler() {
                       onClick={() => {
                         setPlaying(false)
                         if (node) setHover(node.id)
-                        else setHoverToken(token.id)
+                        else {
+                          setHoverToken(token.id)
+                          setCardOpen((open) => !open)
+                        }
                       }}
                       aria-label={
                         node
@@ -700,18 +975,45 @@ export default function AnimatedCompiler() {
                   )
                 })}
             </AnimatePresence>
-            {hoverTok && cardAt && (
-              <div
+            {hoverTok && cardAt && cardBox && (
+              <motion.div
+                key={hoverTok.id}
                 className="ac-hover"
-                style={{
-                  left: `${(cardAt.x / 680) * 100}%`,
-                  top: `${(cardAt.y / 480) * 100}%`,
-                  // keep the card inside the scene near either edge
-                  transform: `translate(${cardAt.x < 150 ? '0' : cardAt.x > 530 ? '-100%' : '-50%'}, 16px)`,
-                }}
+                style={{ top: `${(cardAt.y / 480) * 100}%` }}
+                initial={false}
+                animate={cardBox}
+                transition={{ duration: reduced ? 0 : 0.22, ease: EASE }}
               >
-                <Prose text={tokenHover(hoverTok)} />
-              </div>
+                {tokenKind(hoverTok)}
+                <AnimatePresence initial={false}>
+                  {cardOpen && (
+                    <motion.div
+                      className="ac-hover-list"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: reduced ? 0 : 0.22, ease: EASE }}
+                    >
+                      <ul
+                        className="ac-lexemes"
+                        aria-label="Lexemes in this class"
+                        style={{ width: openWidth - 22 }}
+                      >
+                        {LEXEMES[hoverTok.kind].map((lexeme) => (
+                          <li
+                            key={lexeme}
+                            className={
+                              lexeme === hoverTok.text ? 'current' : ''
+                            }
+                          >
+                            {lexeme}
+                          </li>
+                        ))}
+                      </ul>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
             )}
             {graphFn && (
               <svg
