@@ -47,7 +47,12 @@ export const PROJECTS: Project[] = [
     description:
       'A Night’s Watch for coding agents. Named after Eastwatch-by-the-Sea from Game of Thrones, it turns issue-board actions into resumable AI coding sessions, with a TUI to keep watch over the fleet.',
     link: '/projects/eastwatch',
-    // Add a TUI screenshot here when one is ready.
+    media: {
+      type: 'images',
+      sources: ['/images/projects/eastwatch-fleet.png'],
+      fit: 'contain',
+      alt: 'Eastwatch’s fleet TUI with seven agents working or finished and a live trace of one agent’s tool calls.',
+    },
     id: 'eastwatch',
     category: 'Developer Tools',
   },
