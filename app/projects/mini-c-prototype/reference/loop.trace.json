@@ -1,0 +1,1438 @@
+{
+  "source": "loop.c",
+  "text": "int main() {\n  int i; int sum;\n  i = 0; sum = 0;\n  while (i < 3) {\n    sum = sum + i * 2;\n    i = i + 1;\n  }\n  return sum;\n}\n",
+  "tokens": [
+    {"id": 0, "text": "int", "kind": "keyword", "start": 0, "end": 3},
+    {"id": 1, "text": "main", "kind": "name", "start": 4, "end": 8},
+    {"id": 2, "text": "(", "kind": "symbol", "start": 8, "end": 9},
+    {"id": 3, "text": ")", "kind": "symbol", "start": 9, "end": 10},
+    {"id": 4, "text": "{", "kind": "symbol", "start": 11, "end": 12},
+    {"id": 5, "text": "int", "kind": "keyword", "start": 15, "end": 18},
+    {"id": 6, "text": "i", "kind": "name", "start": 19, "end": 20},
+    {"id": 7, "text": ";", "kind": "symbol", "start": 20, "end": 21},
+    {"id": 8, "text": "int", "kind": "keyword", "start": 22, "end": 25},
+    {"id": 9, "text": "sum", "kind": "name", "start": 26, "end": 29},
+    {"id": 10, "text": ";", "kind": "symbol", "start": 29, "end": 30},
+    {"id": 11, "text": "i", "kind": "name", "start": 33, "end": 34},
+    {"id": 12, "text": "=", "kind": "symbol", "start": 35, "end": 36},
+    {"id": 13, "text": "0", "kind": "number", "start": 37, "end": 38},
+    {"id": 14, "text": ";", "kind": "symbol", "start": 38, "end": 39},
+    {"id": 15, "text": "sum", "kind": "name", "start": 40, "end": 43},
+    {"id": 16, "text": "=", "kind": "symbol", "start": 44, "end": 45},
+    {"id": 17, "text": "0", "kind": "number", "start": 46, "end": 47},
+    {"id": 18, "text": ";", "kind": "symbol", "start": 47, "end": 48},
+    {"id": 19, "text": "while", "kind": "keyword", "start": 51, "end": 56},
+    {"id": 20, "text": "(", "kind": "symbol", "start": 57, "end": 58},
+    {"id": 21, "text": "i", "kind": "name", "start": 58, "end": 59},
+    {"id": 22, "text": "<", "kind": "symbol", "start": 60, "end": 61},
+    {"id": 23, "text": "3", "kind": "number", "start": 62, "end": 63},
+    {"id": 24, "text": ")", "kind": "symbol", "start": 63, "end": 64},
+    {"id": 25, "text": "{", "kind": "symbol", "start": 65, "end": 66},
+    {"id": 26, "text": "sum", "kind": "name", "start": 71, "end": 74},
+    {"id": 27, "text": "=", "kind": "symbol", "start": 75, "end": 76},
+    {"id": 28, "text": "sum", "kind": "name", "start": 77, "end": 80},
+    {"id": 29, "text": "+", "kind": "symbol", "start": 81, "end": 82},
+    {"id": 30, "text": "i", "kind": "name", "start": 83, "end": 84},
+    {"id": 31, "text": "*", "kind": "symbol", "start": 85, "end": 86},
+    {"id": 32, "text": "2", "kind": "number", "start": 87, "end": 88},
+    {"id": 33, "text": ";", "kind": "symbol", "start": 88, "end": 89},
+    {"id": 34, "text": "i", "kind": "name", "start": 94, "end": 95},
+    {"id": 35, "text": "=", "kind": "symbol", "start": 96, "end": 97},
+    {"id": 36, "text": "i", "kind": "name", "start": 98, "end": 99},
+    {"id": 37, "text": "+", "kind": "symbol", "start": 100, "end": 101},
+    {"id": 38, "text": "1", "kind": "number", "start": 102, "end": 103},
+    {"id": 39, "text": ";", "kind": "symbol", "start": 103, "end": 104},
+    {"id": 40, "text": "}", "kind": "symbol", "start": 107, "end": 108},
+    {"id": 41, "text": "return", "kind": "keyword", "start": 111, "end": 117},
+    {"id": 42, "text": "sum", "kind": "name", "start": 118, "end": 121},
+    {"id": 43, "text": ";", "kind": "symbol", "start": 121, "end": 122},
+    {"id": 44, "text": "}", "kind": "symbol", "start": 123, "end": 124}
+  ],
+  "nodes": [
+    {"id": 0, "label": "main", "kind": "function", "start": 0, "end": 124, "children": [1, 2, 3, 5, 7, 22], "token": 1},
+    {"id": 1, "label": "int i", "kind": "declare", "start": 15, "end": 21, "children": [], "token": 6},
+    {"id": 2, "label": "int sum", "kind": "declare", "start": 22, "end": 30, "children": [], "token": 9},
+    {"id": 3, "label": "i =", "kind": "assign", "start": 33, "end": 39, "children": [4], "token": 11},
+    {"id": 4, "label": "0", "kind": "number", "start": 37, "end": 38, "children": [], "token": 13},
+    {"id": 5, "label": "sum =", "kind": "assign", "start": 40, "end": 48, "children": [6], "token": 15},
+    {"id": 6, "label": "0", "kind": "number", "start": 46, "end": 47, "children": [], "token": 17},
+    {"id": 7, "label": "while", "kind": "while", "start": 51, "end": 108, "children": [8, 11], "token": 19},
+    {"id": 8, "label": "<", "kind": "binary", "start": 58, "end": 63, "children": [9, 10], "token": 22},
+    {"id": 9, "label": "i", "kind": "name", "start": 58, "end": 59, "children": [], "token": 21},
+    {"id": 10, "label": "3", "kind": "number", "start": 62, "end": 63, "children": [], "token": 23},
+    {"id": 11, "label": "{ }", "kind": "block", "start": 65, "end": 108, "children": [12, 18], "token": 25},
+    {"id": 12, "label": "sum =", "kind": "assign", "start": 71, "end": 89, "children": [13], "token": 26},
+    {"id": 13, "label": "+", "kind": "binary", "start": 77, "end": 88, "children": [14, 15], "token": 29},
+    {"id": 14, "label": "sum", "kind": "name", "start": 77, "end": 80, "children": [], "token": 28},
+    {"id": 15, "label": "×", "kind": "binary", "start": 83, "end": 88, "children": [16, 17], "token": 31},
+    {"id": 16, "label": "i", "kind": "name", "start": 83, "end": 84, "children": [], "token": 30},
+    {"id": 17, "label": "2", "kind": "number", "start": 87, "end": 88, "children": [], "token": 32},
+    {"id": 18, "label": "i =", "kind": "assign", "start": 94, "end": 104, "children": [19], "token": 34},
+    {"id": 19, "label": "+", "kind": "binary", "start": 98, "end": 103, "children": [20, 21], "token": 37},
+    {"id": 20, "label": "i", "kind": "name", "start": 98, "end": 99, "children": [], "token": 36},
+    {"id": 21, "label": "1", "kind": "number", "start": 102, "end": 103, "children": [], "token": 38},
+    {"id": 22, "label": "return", "kind": "return", "start": 111, "end": 122, "children": [23], "token": 41},
+    {"id": 23, "label": "sum", "kind": "name", "start": 118, "end": 121, "children": [], "token": 42}
+  ],
+  "frames": [
+    {"phase": "Tokens", "title": "Press play. Follow the source", "span": {"start": 0, "end": 0}, "tokenCount": 0, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "ready"}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Keyword  ·  int", "span": {"start": 0, "end": 3}, "tokenCount": 1, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 0}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Identifier  ·  main", "span": {"start": 4, "end": 8}, "tokenCount": 2, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 1}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  (", "span": {"start": 8, "end": 9}, "tokenCount": 3, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 2}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  )", "span": {"start": 9, "end": 10}, "tokenCount": 4, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 3}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  {", "span": {"start": 11, "end": 12}, "tokenCount": 5, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 4}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Keyword  ·  int", "span": {"start": 15, "end": 18}, "tokenCount": 6, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 5}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Identifier  ·  i", "span": {"start": 19, "end": 20}, "tokenCount": 7, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 6}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  ;", "span": {"start": 20, "end": 21}, "tokenCount": 8, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 7}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Keyword  ·  int", "span": {"start": 22, "end": 25}, "tokenCount": 9, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 8}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Identifier  ·  sum", "span": {"start": 26, "end": 29}, "tokenCount": 10, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 9}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  ;", "span": {"start": 29, "end": 30}, "tokenCount": 11, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 10}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Identifier  ·  i", "span": {"start": 33, "end": 34}, "tokenCount": 12, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 11}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  =", "span": {"start": 35, "end": 36}, "tokenCount": 13, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 12}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Integer  ·  0", "span": {"start": 37, "end": 38}, "tokenCount": 14, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 13}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  ;", "span": {"start": 38, "end": 39}, "tokenCount": 15, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 14}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Identifier  ·  sum", "span": {"start": 40, "end": 43}, "tokenCount": 16, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 15}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  =", "span": {"start": 44, "end": 45}, "tokenCount": 17, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 16}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Integer  ·  0", "span": {"start": 46, "end": 47}, "tokenCount": 18, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 17}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  ;", "span": {"start": 47, "end": 48}, "tokenCount": 19, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 18}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Keyword  ·  while", "span": {"start": 51, "end": 56}, "tokenCount": 20, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 19}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  (", "span": {"start": 57, "end": 58}, "tokenCount": 21, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 20}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Identifier  ·  i", "span": {"start": 58, "end": 59}, "tokenCount": 22, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 21}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  <", "span": {"start": 60, "end": 61}, "tokenCount": 23, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 22}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Integer  ·  3", "span": {"start": 62, "end": 63}, "tokenCount": 24, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 23}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  )", "span": {"start": 63, "end": 64}, "tokenCount": 25, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 24}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  {", "span": {"start": 65, "end": 66}, "tokenCount": 26, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 25}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Identifier  ·  sum", "span": {"start": 71, "end": 74}, "tokenCount": 27, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 26}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  =", "span": {"start": 75, "end": 76}, "tokenCount": 28, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 27}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Identifier  ·  sum", "span": {"start": 77, "end": 80}, "tokenCount": 29, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 28}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  +", "span": {"start": 81, "end": 82}, "tokenCount": 30, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 29}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Identifier  ·  i", "span": {"start": 83, "end": 84}, "tokenCount": 31, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 30}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  *", "span": {"start": 85, "end": 86}, "tokenCount": 32, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 31}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Integer  ·  2", "span": {"start": 87, "end": 88}, "tokenCount": 33, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 32}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  ;", "span": {"start": 88, "end": 89}, "tokenCount": 34, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 33}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Identifier  ·  i", "span": {"start": 94, "end": 95}, "tokenCount": 35, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 34}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  =", "span": {"start": 96, "end": 97}, "tokenCount": 36, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 35}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Identifier  ·  i", "span": {"start": 98, "end": 99}, "tokenCount": 37, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 36}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  +", "span": {"start": 100, "end": 101}, "tokenCount": 38, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 37}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Integer  ·  1", "span": {"start": 102, "end": 103}, "tokenCount": 39, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 38}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  ;", "span": {"start": 103, "end": 104}, "tokenCount": 40, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 39}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  }", "span": {"start": 107, "end": 108}, "tokenCount": 41, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 40}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Keyword  ·  return", "span": {"start": 111, "end": 117}, "tokenCount": 42, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 41}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Identifier  ·  sum", "span": {"start": 118, "end": 121}, "tokenCount": 43, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 42}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  ;", "span": {"start": 121, "end": 122}, "tokenCount": 44, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 43}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  }", "span": {"start": 123, "end": 124}, "tokenCount": 45, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 44}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Function main: parameters, then the body", "span": {"start": 0, "end": 124}, "tokenCount": 45, "consumed": [0, 1], "nodes": [0], "attached": [], "focus": 0, "why": {"kind": "parse.node", "node": 0}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Declare i as int", "span": {"start": 15, "end": 21}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6], "nodes": [0, 1], "attached": [], "focus": 1, "why": {"kind": "parse.node", "node": 1}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Declare sum as int", "span": {"start": 22, "end": 30}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], "nodes": [0, 1, 2], "attached": [1], "focus": 2, "why": {"kind": "parse.node", "node": 2}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Assign into i: read the value", "span": {"start": 33, "end": 39}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], "nodes": [0, 1, 2, 3], "attached": [1, 2], "focus": 3, "why": {"kind": "parse.node", "node": 3}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Read 0 as a literal", "span": {"start": 37, "end": 38}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13], "nodes": [0, 1, 2, 3, 4], "attached": [1, 2], "focus": 4, "why": {"kind": "parse.node", "node": 4}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "i = takes 0", "span": {"start": 33, "end": 39}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14], "nodes": [0, 1, 2, 3, 4], "attached": [1, 2, 4], "focus": 3, "why": {"kind": "parse.close", "node": 3}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Assign into sum: read the value", "span": {"start": 40, "end": 48}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], "nodes": [0, 1, 2, 3, 4, 5], "attached": [1, 2, 4, 3], "focus": 5, "why": {"kind": "parse.node", "node": 5}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Read 0 as a literal", "span": {"start": 46, "end": 47}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17], "nodes": [0, 1, 2, 3, 4, 5, 6], "attached": [1, 2, 4, 3], "focus": 6, "why": {"kind": "parse.node", "node": 6}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "sum = takes 0", "span": {"start": 40, "end": 48}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18], "nodes": [0, 1, 2, 3, 4, 5, 6], "attached": [1, 2, 4, 3, 6], "focus": 5, "why": {"kind": "parse.close", "node": 5}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "while: read the condition, then the body", "span": {"start": 51, "end": 108}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19], "nodes": [0, 1, 2, 3, 4, 5, 6, 7], "attached": [1, 2, 4, 3, 6, 5], "focus": 7, "why": {"kind": "parse.node", "node": 7}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Read i as a name", "span": {"start": 58, "end": 59}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9], "attached": [1, 2, 4, 3, 6, 5], "focus": 9, "why": {"kind": "parse.node", "node": 9}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "< takes i as its left side and waits for the right", "span": {"start": 58, "end": 61}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8], "attached": [1, 2, 4, 3, 6, 5, 9], "focus": 8, "why": {"kind": "parse.wait", "node": 8, "child": 9}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Read 3 as a literal", "span": {"start": 62, "end": 63}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10], "attached": [1, 2, 4, 3, 6, 5, 9], "focus": 10, "why": {"kind": "parse.node", "node": 10}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "< closes over i < 3", "span": {"start": 58, "end": 63}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10], "attached": [1, 2, 4, 3, 6, 5, 9, 10], "focus": 8, "why": {"kind": "parse.close", "node": 8}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "A block: declarations, then statements", "span": {"start": 65, "end": 108}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8], "focus": 11, "why": {"kind": "parse.node", "node": 11}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Assign into sum: read the value", "span": {"start": 71, "end": 89}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8], "focus": 12, "why": {"kind": "parse.node", "node": 12}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Read sum as a name", "span": {"start": 77, "end": 80}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8], "focus": 14, "why": {"kind": "parse.node", "node": 14}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "+ takes sum as its left side and waits for the right", "span": {"start": 77, "end": 82}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14], "focus": 13, "why": {"kind": "parse.wait", "node": 13, "child": 14}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Read i as a name", "span": {"start": 83, "end": 84}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14], "focus": 16, "why": {"kind": "parse.node", "node": 16}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "× binds tighter than +, so i goes to × first", "span": {"start": 85, "end": 86}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14], "focus": 15, "why": {"kind": "parse.precedence", "pending": "+", "incoming": "×", "relation": "tighter", "child": 16}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "× takes i as its left side and waits for the right", "span": {"start": 83, "end": 86}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16], "focus": 15, "why": {"kind": "parse.wait", "node": 15, "child": 16}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Read 2 as a literal", "span": {"start": 87, "end": 88}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16], "focus": 17, "why": {"kind": "parse.node", "node": 17}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "× closes over i * 2", "span": {"start": 83, "end": 88}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17], "focus": 15, "why": {"kind": "parse.close", "node": 15}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "+ closes over sum + i * 2", "span": {"start": 77, "end": 88}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15], "focus": 13, "why": {"kind": "parse.close", "node": 13}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "sum = takes sum + i * 2", "span": {"start": 71, "end": 89}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13], "focus": 12, "why": {"kind": "parse.close", "node": 12}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Assign into i: read the value", "span": {"start": 94, "end": 104}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12], "focus": 18, "why": {"kind": "parse.node", "node": 18}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Read i as a name", "span": {"start": 98, "end": 99}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12], "focus": 20, "why": {"kind": "parse.node", "node": 20}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "+ takes i as its left side and waits for the right", "span": {"start": 98, "end": 101}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20], "focus": 19, "why": {"kind": "parse.wait", "node": 19, "child": 20}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Read 1 as a literal", "span": {"start": 102, "end": 103}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20], "focus": 21, "why": {"kind": "parse.node", "node": 21}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "+ closes over i + 1", "span": {"start": 98, "end": 103}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21], "focus": 19, "why": {"kind": "parse.close", "node": 19}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "i = takes i + 1", "span": {"start": 94, "end": 104}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19], "focus": 18, "why": {"kind": "parse.close", "node": 18}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "The block closes", "span": {"start": 65, "end": 108}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18], "focus": 11, "why": {"kind": "parse.close", "node": 11}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "while closes over its condition and body", "span": {"start": 51, "end": 108}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11], "focus": 7, "why": {"kind": "parse.close", "node": 7}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "return: read the value", "span": {"start": 111, "end": 122}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7], "focus": 22, "why": {"kind": "parse.node", "node": 22}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Read sum as a name", "span": {"start": 118, "end": 121}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7], "focus": 23, "why": {"kind": "parse.node", "node": 23}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "return takes sum", "span": {"start": 111, "end": 122}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23], "focus": 22, "why": {"kind": "parse.close", "node": 22}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Function main is complete", "span": {"start": 0, "end": 124}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 0, "why": {"kind": "parse.close", "node": 0}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Tree complete: 24 nodes", "span": {"start": 0, "end": 124}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 0, "why": {"kind": "parse.done", "root": 0}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Check", "title": "i refers to its declaration above", "span": {"start": 58, "end": 59}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 9, "why": {"kind": "check.resolve", "use": 9, "decl": 1, "where": "above"}, "instructionCount": 0, "allocationCount": 0, "links": [[9, 1]]},
+    {"phase": "Check", "title": "sum refers to its declaration above", "span": {"start": 77, "end": 80}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 14, "why": {"kind": "check.resolve", "use": 14, "decl": 2, "where": "above"}, "instructionCount": 0, "allocationCount": 0, "links": [[9, 1], [14, 2]]},
+    {"phase": "Check", "title": "i refers to its declaration above", "span": {"start": 83, "end": 84}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 16, "why": {"kind": "check.resolve", "use": 16, "decl": 1, "where": "above"}, "instructionCount": 0, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1]]},
+    {"phase": "Check", "title": "i refers to its declaration above", "span": {"start": 98, "end": 99}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 20, "why": {"kind": "check.resolve", "use": 20, "decl": 1, "where": "above"}, "instructionCount": 0, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1]]},
+    {"phase": "Check", "title": "sum refers to its declaration above", "span": {"start": 118, "end": 121}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 23, "why": {"kind": "check.resolve", "use": 23, "decl": 2, "where": "above"}, "instructionCount": 0, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Check", "title": "Every name has a declaration", "span": {"start": 0, "end": 124}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 0, "why": {"kind": "check.namesDone", "unresolved": 0}, "instructionCount": 0, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Check", "title": "i has type int", "span": {"start": 15, "end": 21}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 1, "why": {"kind": "check.type", "node": 1, "type": "int"}, "instructionCount": 0, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Check", "title": "sum has type int", "span": {"start": 22, "end": 30}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 2, "why": {"kind": "check.type", "node": 2, "type": "int"}, "instructionCount": 0, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Check", "title": "return has type int, as main promises", "span": {"start": 111, "end": 122}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 22, "why": {"kind": "check.type", "node": 22, "type": "int", "expected": "int"}, "instructionCount": 0, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Emit", "title": "main: frame set up, 5 instructions", "span": {"start": 0, "end": 124}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 0, "why": {"kind": "emit.prologue", "node": 0, "from": 0, "to": 4}, "instructionCount": 5, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Emit", "title": "addi v0,$fp,-8", "span": {"start": 33, "end": 39}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 3, "why": {"kind": "emit.instr", "node": 3, "from": 5, "to": 5}, "instructionCount": 6, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Emit", "title": "li v1,0", "span": {"start": 37, "end": 38}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 4, "why": {"kind": "emit.instr", "node": 4, "from": 6, "to": 6}, "instructionCount": 7, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Emit", "title": "sw v1,0(v0)", "span": {"start": 33, "end": 39}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 3, "why": {"kind": "emit.instr", "node": 3, "from": 7, "to": 7}, "instructionCount": 8, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Emit", "title": "addi v2,$fp,-12", "span": {"start": 40, "end": 48}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 5, "why": {"kind": "emit.instr", "node": 5, "from": 8, "to": 8}, "instructionCount": 9, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Emit", "title": "li v3,0", "span": {"start": 46, "end": 47}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 6, "why": {"kind": "emit.instr", "node": 6, "from": 9, "to": 9}, "instructionCount": 10, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Emit", "title": "sw v3,0(v2)", "span": {"start": 40, "end": 48}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 5, "why": {"kind": "emit.instr", "node": 5, "from": 10, "to": 10}, "instructionCount": 11, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Emit", "title": "addi v5,$fp,-8  ·  lw v4,0(v5)", "span": {"start": 58, "end": 59}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 9, "why": {"kind": "emit.instr", "node": 9, "from": 11, "to": 12}, "instructionCount": 13, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Emit", "title": "li v6,3", "span": {"start": 62, "end": 63}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 10, "why": {"kind": "emit.instr", "node": 10, "from": 13, "to": 13}, "instructionCount": 14, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Emit", "title": "slt v7,v4,v6", "span": {"start": 58, "end": 63}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 8, "why": {"kind": "emit.instr", "node": 8, "from": 14, "to": 14}, "instructionCount": 15, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Emit", "title": "beqz v7,label_3_while_end", "span": {"start": 51, "end": 108}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 7, "why": {"kind": "emit.instr", "node": 7, "from": 15, "to": 15}, "instructionCount": 16, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Emit", "title": "addi v8,$fp,-12", "span": {"start": 71, "end": 89}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 12, "why": {"kind": "emit.instr", "node": 12, "from": 16, "to": 16}, "instructionCount": 17, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Emit", "title": "addi v10,$fp,-12  ·  lw v9,0(v10)", "span": {"start": 77, "end": 80}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 14, "why": {"kind": "emit.instr", "node": 14, "from": 17, "to": 18}, "instructionCount": 19, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Emit", "title": "addi v12,$fp,-8  ·  lw v11,0(v12)", "span": {"start": 83, "end": 84}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 16, "why": {"kind": "emit.instr", "node": 16, "from": 19, "to": 20}, "instructionCount": 21, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Emit", "title": "li v13,2", "span": {"start": 87, "end": 88}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 17, "why": {"kind": "emit.instr", "node": 17, "from": 21, "to": 21}, "instructionCount": 22, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Emit", "title": "mult v11,v13  ·  mflo v14", "span": {"start": 83, "end": 88}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 15, "why": {"kind": "emit.instr", "node": 15, "from": 22, "to": 23}, "instructionCount": 24, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Emit", "title": "addu v15,v9,v14", "span": {"start": 77, "end": 88}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 13, "why": {"kind": "emit.instr", "node": 13, "from": 24, "to": 24}, "instructionCount": 25, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Emit", "title": "sw v15,0(v8)", "span": {"start": 71, "end": 89}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 12, "why": {"kind": "emit.instr", "node": 12, "from": 25, "to": 25}, "instructionCount": 26, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Emit", "title": "addi v16,$fp,-8", "span": {"start": 94, "end": 104}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 18, "why": {"kind": "emit.instr", "node": 18, "from": 26, "to": 26}, "instructionCount": 27, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Emit", "title": "addi v18,$fp,-8  ·  lw v17,0(v18)", "span": {"start": 98, "end": 99}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 20, "why": {"kind": "emit.instr", "node": 20, "from": 27, "to": 28}, "instructionCount": 29, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Emit", "title": "li v19,1", "span": {"start": 102, "end": 103}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 21, "why": {"kind": "emit.instr", "node": 21, "from": 29, "to": 29}, "instructionCount": 30, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Emit", "title": "addu v20,v17,v19", "span": {"start": 98, "end": 103}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 19, "why": {"kind": "emit.instr", "node": 19, "from": 30, "to": 30}, "instructionCount": 31, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Emit", "title": "sw v20,0(v16)", "span": {"start": 94, "end": 104}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 18, "why": {"kind": "emit.instr", "node": 18, "from": 31, "to": 31}, "instructionCount": 32, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Emit", "title": "j label_2_while_start", "span": {"start": 51, "end": 108}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 7, "why": {"kind": "emit.instr", "node": 7, "from": 32, "to": 32}, "instructionCount": 33, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Emit", "title": "addi v22,$fp,-12  ·  lw v21,0(v22)", "span": {"start": 118, "end": 121}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 23, "why": {"kind": "emit.instr", "node": 23, "from": 33, "to": 34}, "instructionCount": 35, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Emit", "title": "sw v21,4($fp)  ·  j main_epilogue", "span": {"start": 111, "end": 122}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 22, "why": {"kind": "emit.instr", "node": 22, "from": 35, "to": 36}, "instructionCount": 37, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Emit", "title": "main: frame restored", "span": {"start": 0, "end": 124}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 0, "why": {"kind": "emit.epilogue", "node": 0, "from": 37, "to": 41}, "instructionCount": 42, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "main: 42 instructions, 1 back edge", "span": {"start": 0, "end": 0}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 0, "why": {"kind": "reg.cfg", "fn": 0, "blocks": 42, "back": [[32, 11]]}, "instructionCount": 42, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "Sweep 1: 39 live sets filled", "span": {"start": 0, "end": 0}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 0, "why": {"kind": "reg.live", "fn": 0, "sweep": 1, "changed": 39}, "instructionCount": 42, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "Sweep 2: 6 live sets change", "span": {"start": 0, "end": 0}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 0, "why": {"kind": "reg.live", "fn": 0, "sweep": 2, "changed": 6}, "instructionCount": 42, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "Sweep 3: nothing changes, liveness is settled", "span": {"start": 0, "end": 0}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 0, "why": {"kind": "reg.live", "fn": 0, "sweep": 3, "changed": 0}, "instructionCount": 42, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "23 virtual registers, 20 overlaps", "span": {"start": 0, "end": 0}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 0, "why": {"kind": "reg.interfere", "fn": 0, "nodes": 23, "edges": 20, "busiest": "v8", "degree": 7}, "instructionCount": 42, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v5 set aside, 0 neighbours", "span": {"start": 58, "end": 59}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 9, "why": {"kind": "reg.simplify", "fn": 0, "step": 0, "at": 11}, "instructionCount": 42, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v11 set aside, 3 neighbours", "span": {"start": 83, "end": 84}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 16, "why": {"kind": "reg.simplify", "fn": 0, "step": 1, "at": 20}, "instructionCount": 42, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v16 set aside, 4 neighbours", "span": {"start": 94, "end": 104}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 18, "why": {"kind": "reg.simplify", "fn": 0, "step": 2, "at": 26}, "instructionCount": 42, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v18 set aside, 0 neighbours", "span": {"start": 98, "end": 99}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 20, "why": {"kind": "reg.simplify", "fn": 0, "step": 3, "at": 27}, "instructionCount": 42, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v2 set aside, 1 neighbour", "span": {"start": 40, "end": 48}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 5, "why": {"kind": "reg.simplify", "fn": 0, "step": 4, "at": 8}, "instructionCount": 42, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v9 set aside, 4 neighbours", "span": {"start": 77, "end": 80}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 14, "why": {"kind": "reg.simplify", "fn": 0, "step": 5, "at": 18}, "instructionCount": 42, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v15 set aside, 1 neighbour", "span": {"start": 77, "end": 88}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 13, "why": {"kind": "reg.simplify", "fn": 0, "step": 6, "at": 24}, "instructionCount": 42, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v1 set aside, 1 neighbour", "span": {"start": 37, "end": 38}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 4, "why": {"kind": "reg.simplify", "fn": 0, "step": 7, "at": 6}, "instructionCount": 42, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v12 set aside, 1 neighbour", "span": {"start": 83, "end": 84}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 16, "why": {"kind": "reg.simplify", "fn": 0, "step": 8, "at": 19}, "instructionCount": 42, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v22 set aside, 0 neighbours", "span": {"start": 118, "end": 121}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 23, "why": {"kind": "reg.simplify", "fn": 0, "step": 9, "at": 33}, "instructionCount": 42, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v17 set aside, 1 neighbour", "span": {"start": 98, "end": 99}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 20, "why": {"kind": "reg.simplify", "fn": 0, "step": 10, "at": 28}, "instructionCount": 42, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v20 set aside, 0 neighbours", "span": {"start": 98, "end": 103}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 19, "why": {"kind": "reg.simplify", "fn": 0, "step": 11, "at": 30}, "instructionCount": 42, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v3 set aside, 0 neighbours", "span": {"start": 46, "end": 47}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 6, "why": {"kind": "reg.simplify", "fn": 0, "step": 12, "at": 9}, "instructionCount": 42, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v13 set aside, 1 neighbour", "span": {"start": 87, "end": 88}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 17, "why": {"kind": "reg.simplify", "fn": 0, "step": 13, "at": 21}, "instructionCount": 42, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v10 set aside, 1 neighbour", "span": {"start": 77, "end": 80}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 14, "why": {"kind": "reg.simplify", "fn": 0, "step": 14, "at": 17}, "instructionCount": 42, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v7 set aside, 0 neighbours", "span": {"start": 58, "end": 63}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 8, "why": {"kind": "reg.simplify", "fn": 0, "step": 15, "at": 14}, "instructionCount": 42, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v14 set aside, 1 neighbour", "span": {"start": 83, "end": 88}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 15, "why": {"kind": "reg.simplify", "fn": 0, "step": 16, "at": 23}, "instructionCount": 42, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v4 set aside, 1 neighbour", "span": {"start": 58, "end": 59}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 9, "why": {"kind": "reg.simplify", "fn": 0, "step": 17, "at": 12}, "instructionCount": 42, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v21 set aside, 0 neighbours", "span": {"start": 118, "end": 121}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 23, "why": {"kind": "reg.simplify", "fn": 0, "step": 18, "at": 34}, "instructionCount": 42, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v0 set aside, 0 neighbours", "span": {"start": 33, "end": 39}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 3, "why": {"kind": "reg.simplify", "fn": 0, "step": 19, "at": 5}, "instructionCount": 42, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v6 set aside, 0 neighbours", "span": {"start": 62, "end": 63}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 10, "why": {"kind": "reg.simplify", "fn": 0, "step": 20, "at": 13}, "instructionCount": 42, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v8 set aside, 0 neighbours", "span": {"start": 71, "end": 89}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 12, "why": {"kind": "reg.simplify", "fn": 0, "step": 21, "at": 16}, "instructionCount": 42, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v19 set aside, 0 neighbours", "span": {"start": 102, "end": 103}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 21, "why": {"kind": "reg.simplify", "fn": 0, "step": 22, "at": 29}, "instructionCount": 42, "allocationCount": 0, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v19 gets $t0", "span": {"start": 102, "end": 103}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 21, "why": {"kind": "reg.select", "fn": 0, "step": 23, "at": 29}, "instructionCount": 42, "allocationCount": 1, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v8 gets $t0", "span": {"start": 71, "end": 89}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 12, "why": {"kind": "reg.select", "fn": 0, "step": 24, "at": 16}, "instructionCount": 42, "allocationCount": 2, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v6 gets $t0", "span": {"start": 62, "end": 63}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 10, "why": {"kind": "reg.select", "fn": 0, "step": 25, "at": 13}, "instructionCount": 42, "allocationCount": 3, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v0 gets $t0", "span": {"start": 33, "end": 39}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 3, "why": {"kind": "reg.select", "fn": 0, "step": 26, "at": 5}, "instructionCount": 42, "allocationCount": 4, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v21 gets $t0", "span": {"start": 118, "end": 121}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 23, "why": {"kind": "reg.select", "fn": 0, "step": 27, "at": 34}, "instructionCount": 42, "allocationCount": 5, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v4 gets $t1", "span": {"start": 58, "end": 59}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 9, "why": {"kind": "reg.select", "fn": 0, "step": 28, "at": 12}, "instructionCount": 42, "allocationCount": 6, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v14 gets $t1", "span": {"start": 83, "end": 88}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 15, "why": {"kind": "reg.select", "fn": 0, "step": 29, "at": 23}, "instructionCount": 42, "allocationCount": 7, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v7 gets $t0", "span": {"start": 58, "end": 63}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 8, "why": {"kind": "reg.select", "fn": 0, "step": 30, "at": 14}, "instructionCount": 42, "allocationCount": 8, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v10 gets $t1", "span": {"start": 77, "end": 80}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 14, "why": {"kind": "reg.select", "fn": 0, "step": 31, "at": 17}, "instructionCount": 42, "allocationCount": 9, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v13 gets $t1", "span": {"start": 87, "end": 88}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 17, "why": {"kind": "reg.select", "fn": 0, "step": 32, "at": 21}, "instructionCount": 42, "allocationCount": 10, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v3 gets $t0", "span": {"start": 46, "end": 47}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 6, "why": {"kind": "reg.select", "fn": 0, "step": 33, "at": 9}, "instructionCount": 42, "allocationCount": 11, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v20 gets $t0", "span": {"start": 98, "end": 103}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 19, "why": {"kind": "reg.select", "fn": 0, "step": 34, "at": 30}, "instructionCount": 42, "allocationCount": 12, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v17 gets $t1", "span": {"start": 98, "end": 99}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 20, "why": {"kind": "reg.select", "fn": 0, "step": 35, "at": 28}, "instructionCount": 42, "allocationCount": 13, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v22 gets $t0", "span": {"start": 118, "end": 121}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 23, "why": {"kind": "reg.select", "fn": 0, "step": 36, "at": 33}, "instructionCount": 42, "allocationCount": 14, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v12 gets $t1", "span": {"start": 83, "end": 84}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 16, "why": {"kind": "reg.select", "fn": 0, "step": 37, "at": 19}, "instructionCount": 42, "allocationCount": 15, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v1 gets $t1", "span": {"start": 37, "end": 38}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 4, "why": {"kind": "reg.select", "fn": 0, "step": 38, "at": 6}, "instructionCount": 42, "allocationCount": 16, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v15 gets $t1", "span": {"start": 77, "end": 88}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 13, "why": {"kind": "reg.select", "fn": 0, "step": 39, "at": 24}, "instructionCount": 42, "allocationCount": 17, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v9 gets $t2", "span": {"start": 77, "end": 80}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 14, "why": {"kind": "reg.select", "fn": 0, "step": 40, "at": 18}, "instructionCount": 42, "allocationCount": 18, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v2 gets $t1", "span": {"start": 40, "end": 48}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 5, "why": {"kind": "reg.select", "fn": 0, "step": 41, "at": 8}, "instructionCount": 42, "allocationCount": 19, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v18 gets $t0", "span": {"start": 98, "end": 99}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 20, "why": {"kind": "reg.select", "fn": 0, "step": 42, "at": 27}, "instructionCount": 42, "allocationCount": 20, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v16 gets $t2", "span": {"start": 94, "end": 104}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 18, "why": {"kind": "reg.select", "fn": 0, "step": 43, "at": 26}, "instructionCount": 42, "allocationCount": 21, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v11 gets $t3", "span": {"start": 83, "end": 84}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 16, "why": {"kind": "reg.select", "fn": 0, "step": 44, "at": 20}, "instructionCount": 42, "allocationCount": 22, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "v5 gets $t0", "span": {"start": 58, "end": 59}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 9, "why": {"kind": "reg.select", "fn": 0, "step": 45, "at": 11}, "instructionCount": 42, "allocationCount": 23, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]},
+    {"phase": "Registers", "title": "main: 23 virtual registers fit in 4 real ones", "span": {"start": 0, "end": 0}, "tokenCount": 45, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], "nodes": [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10, 11, 12, 14, 13, 16, 15, 17, 18, 20, 19, 21, 22, 23], "attached": [1, 2, 4, 3, 6, 5, 9, 10, 8, 14, 16, 17, 15, 13, 12, 20, 21, 19, 18, 11, 7, 23, 22], "focus": 0, "why": {"kind": "reg.done", "fn": 0, "used": 4, "spills": 0}, "instructionCount": 42, "allocationCount": 23, "links": [[9, 1], [14, 2], [16, 1], [20, 1], [23, 2]]}
+  ],
+  "instructions": [
+    {"id": 0, "fn": 0, "text": "addi $sp,$sp,-4", "op": "addi", "dest": "$sp", "args": ["$sp"], "node": 0, "labels": ["main"]},
+    {"id": 1, "fn": 0, "text": "sw $fp,0($sp)", "op": "sw", "dest": null, "args": ["$fp", "$sp"], "node": 0, "labels": []},
+    {"id": 2, "fn": 0, "text": "addiu $fp,$sp,0", "op": "addiu", "dest": "$fp", "args": ["$sp"], "node": 0, "labels": []},
+    {"id": 3, "fn": 0, "text": "addiu $sp,$sp,-12", "op": "addiu", "dest": "$sp", "args": ["$sp"], "node": 0, "labels": []},
+    {"id": 4, "fn": 0, "text": "pushRegisters", "op": "pushRegisters", "dest": null, "args": [], "node": 0, "labels": []},
+    {"id": 5, "fn": 0, "text": "addi v0,$fp,-8", "op": "addi", "dest": "v0", "args": ["$fp"], "node": 3, "labels": []},
+    {"id": 6, "fn": 0, "text": "li v1,0", "op": "li", "dest": "v1", "args": [], "node": 4, "labels": []},
+    {"id": 7, "fn": 0, "text": "sw v1,0(v0)", "op": "sw", "dest": null, "args": ["v1", "v0"], "node": 3, "labels": []},
+    {"id": 8, "fn": 0, "text": "addi v2,$fp,-12", "op": "addi", "dest": "v2", "args": ["$fp"], "node": 5, "labels": []},
+    {"id": 9, "fn": 0, "text": "li v3,0", "op": "li", "dest": "v3", "args": [], "node": 6, "labels": []},
+    {"id": 10, "fn": 0, "text": "sw v3,0(v2)", "op": "sw", "dest": null, "args": ["v3", "v2"], "node": 5, "labels": []},
+    {"id": 11, "fn": 0, "text": "addi v5,$fp,-8", "op": "addi", "dest": "v5", "args": ["$fp"], "node": 9, "labels": ["label_2_while_start"]},
+    {"id": 12, "fn": 0, "text": "lw v4,0(v5)", "op": "lw", "dest": "v4", "args": ["v5"], "node": 9, "labels": []},
+    {"id": 13, "fn": 0, "text": "li v6,3", "op": "li", "dest": "v6", "args": [], "node": 10, "labels": []},
+    {"id": 14, "fn": 0, "text": "slt v7,v4,v6", "op": "slt", "dest": "v7", "args": ["v4", "v6"], "node": 8, "labels": []},
+    {"id": 15, "fn": 0, "text": "beqz v7,label_3_while_end", "op": "beqz", "dest": null, "args": ["v7"], "node": 7, "labels": []},
+    {"id": 16, "fn": 0, "text": "addi v8,$fp,-12", "op": "addi", "dest": "v8", "args": ["$fp"], "node": 12, "labels": []},
+    {"id": 17, "fn": 0, "text": "addi v10,$fp,-12", "op": "addi", "dest": "v10", "args": ["$fp"], "node": 14, "labels": []},
+    {"id": 18, "fn": 0, "text": "lw v9,0(v10)", "op": "lw", "dest": "v9", "args": ["v10"], "node": 14, "labels": []},
+    {"id": 19, "fn": 0, "text": "addi v12,$fp,-8", "op": "addi", "dest": "v12", "args": ["$fp"], "node": 16, "labels": []},
+    {"id": 20, "fn": 0, "text": "lw v11,0(v12)", "op": "lw", "dest": "v11", "args": ["v12"], "node": 16, "labels": []},
+    {"id": 21, "fn": 0, "text": "li v13,2", "op": "li", "dest": "v13", "args": [], "node": 17, "labels": []},
+    {"id": 22, "fn": 0, "text": "mult v11,v13", "op": "mult", "dest": null, "args": ["v11", "v13"], "node": 15, "labels": []},
+    {"id": 23, "fn": 0, "text": "mflo v14", "op": "mflo", "dest": "v14", "args": [], "node": 15, "labels": []},
+    {"id": 24, "fn": 0, "text": "addu v15,v9,v14", "op": "addu", "dest": "v15", "args": ["v9", "v14"], "node": 13, "labels": []},
+    {"id": 25, "fn": 0, "text": "sw v15,0(v8)", "op": "sw", "dest": null, "args": ["v15", "v8"], "node": 12, "labels": []},
+    {"id": 26, "fn": 0, "text": "addi v16,$fp,-8", "op": "addi", "dest": "v16", "args": ["$fp"], "node": 18, "labels": []},
+    {"id": 27, "fn": 0, "text": "addi v18,$fp,-8", "op": "addi", "dest": "v18", "args": ["$fp"], "node": 20, "labels": []},
+    {"id": 28, "fn": 0, "text": "lw v17,0(v18)", "op": "lw", "dest": "v17", "args": ["v18"], "node": 20, "labels": []},
+    {"id": 29, "fn": 0, "text": "li v19,1", "op": "li", "dest": "v19", "args": [], "node": 21, "labels": []},
+    {"id": 30, "fn": 0, "text": "addu v20,v17,v19", "op": "addu", "dest": "v20", "args": ["v17", "v19"], "node": 19, "labels": []},
+    {"id": 31, "fn": 0, "text": "sw v20,0(v16)", "op": "sw", "dest": null, "args": ["v20", "v16"], "node": 18, "labels": []},
+    {"id": 32, "fn": 0, "text": "j label_2_while_start", "op": "j", "dest": null, "args": [], "node": 7, "labels": []},
+    {"id": 33, "fn": 0, "text": "addi v22,$fp,-12", "op": "addi", "dest": "v22", "args": ["$fp"], "node": 23, "labels": ["label_3_while_end"]},
+    {"id": 34, "fn": 0, "text": "lw v21,0(v22)", "op": "lw", "dest": "v21", "args": ["v22"], "node": 23, "labels": []},
+    {"id": 35, "fn": 0, "text": "sw v21,4($fp)", "op": "sw", "dest": null, "args": ["v21", "$fp"], "node": 22, "labels": []},
+    {"id": 36, "fn": 0, "text": "j main_epilogue", "op": "j", "dest": null, "args": [], "node": 22, "labels": []},
+    {"id": 37, "fn": 0, "text": "popRegisters", "op": "popRegisters", "dest": null, "args": [], "node": 0, "labels": ["main_epilogue"]},
+    {"id": 38, "fn": 0, "text": "addi $sp,$fp,4", "op": "addi", "dest": "$sp", "args": ["$fp"], "node": 0, "labels": []},
+    {"id": 39, "fn": 0, "text": "lw $fp,0($fp)", "op": "lw", "dest": "$fp", "args": ["$fp"], "node": 0, "labels": []},
+    {"id": 40, "fn": 0, "text": "li $v0,10", "op": "li", "dest": "$v0", "args": [], "node": 0, "labels": []},
+    {"id": 41, "fn": 0, "text": "syscall", "op": "syscall", "dest": null, "args": [], "node": 0, "labels": []}
+  ],
+  "registers": {"v0": "$t0", "v1": "$t1", "v10": "$t1", "v11": "$t3", "v12": "$t1", "v13": "$t1", "v14": "$t1", "v15": "$t1", "v16": "$t2", "v17": "$t1", "v18": "$t0", "v19": "$t0", "v2": "$t1", "v20": "$t0", "v21": "$t0", "v22": "$t0", "v3": "$t0", "v4": "$t1", "v5": "$t0", "v6": "$t0", "v7": "$t0", "v8": "$t0", "v9": "$t2"},
+  "backend": {
+    "k": 18,
+    "palette": ["$t0","$t1","$t2","$t3","$t4","$t5","$t6","$t7","$t8","$t9","$s0","$s1","$s2","$s3","$s4","$s5","$s6","$s7"],
+    "functions": [
+      {
+        "name": "main",
+        "node": 0,
+        "first": 0,
+        "blocks": [
+          {
+            "id": 0,
+            "labels": ["main"],
+            "text": "addi $sp,$sp,-4",
+            "def": "$sp",
+            "uses": ["$sp"],
+            "succ": [1]
+          },
+          {
+            "id": 1,
+            "labels": [],
+            "text": "sw $fp,0($sp)",
+            "def": null,
+            "uses": ["$fp","$sp"],
+            "succ": [2]
+          },
+          {
+            "id": 2,
+            "labels": [],
+            "text": "addiu $fp,$sp,0",
+            "def": "$fp",
+            "uses": ["$sp"],
+            "succ": [3]
+          },
+          {
+            "id": 3,
+            "labels": [],
+            "text": "addiu $sp,$sp,-12",
+            "def": "$sp",
+            "uses": ["$sp"],
+            "succ": [4]
+          },
+          {
+            "id": 4,
+            "labels": [],
+            "text": "pushRegisters",
+            "def": null,
+            "uses": [],
+            "succ": [5]
+          },
+          {
+            "id": 5,
+            "labels": [],
+            "text": "addi v0,$fp,-8",
+            "def": "v0",
+            "uses": ["$fp"],
+            "succ": [6]
+          },
+          {
+            "id": 6,
+            "labels": [],
+            "text": "li v1,0",
+            "def": "v1",
+            "uses": [],
+            "succ": [7]
+          },
+          {
+            "id": 7,
+            "labels": [],
+            "text": "sw v1,0(v0)",
+            "def": null,
+            "uses": ["v1","v0"],
+            "succ": [8]
+          },
+          {
+            "id": 8,
+            "labels": [],
+            "text": "addi v2,$fp,-12",
+            "def": "v2",
+            "uses": ["$fp"],
+            "succ": [9]
+          },
+          {
+            "id": 9,
+            "labels": [],
+            "text": "li v3,0",
+            "def": "v3",
+            "uses": [],
+            "succ": [10]
+          },
+          {
+            "id": 10,
+            "labels": [],
+            "text": "sw v3,0(v2)",
+            "def": null,
+            "uses": ["v3","v2"],
+            "succ": [11]
+          },
+          {
+            "id": 11,
+            "labels": ["label_2_while_start"],
+            "text": "addi v5,$fp,-8",
+            "def": "v5",
+            "uses": ["$fp"],
+            "succ": [12]
+          },
+          {
+            "id": 12,
+            "labels": [],
+            "text": "lw v4,0(v5)",
+            "def": "v4",
+            "uses": ["v5"],
+            "succ": [13]
+          },
+          {
+            "id": 13,
+            "labels": [],
+            "text": "li v6,3",
+            "def": "v6",
+            "uses": [],
+            "succ": [14]
+          },
+          {
+            "id": 14,
+            "labels": [],
+            "text": "slt v7,v4,v6",
+            "def": "v7",
+            "uses": ["v4","v6"],
+            "succ": [15]
+          },
+          {
+            "id": 15,
+            "labels": [],
+            "text": "beqz v7,label_3_while_end",
+            "def": null,
+            "uses": ["v7"],
+            "succ": [33,16]
+          },
+          {
+            "id": 16,
+            "labels": [],
+            "text": "addi v8,$fp,-12",
+            "def": "v8",
+            "uses": ["$fp"],
+            "succ": [17]
+          },
+          {
+            "id": 17,
+            "labels": [],
+            "text": "addi v10,$fp,-12",
+            "def": "v10",
+            "uses": ["$fp"],
+            "succ": [18]
+          },
+          {
+            "id": 18,
+            "labels": [],
+            "text": "lw v9,0(v10)",
+            "def": "v9",
+            "uses": ["v10"],
+            "succ": [19]
+          },
+          {
+            "id": 19,
+            "labels": [],
+            "text": "addi v12,$fp,-8",
+            "def": "v12",
+            "uses": ["$fp"],
+            "succ": [20]
+          },
+          {
+            "id": 20,
+            "labels": [],
+            "text": "lw v11,0(v12)",
+            "def": "v11",
+            "uses": ["v12"],
+            "succ": [21]
+          },
+          {
+            "id": 21,
+            "labels": [],
+            "text": "li v13,2",
+            "def": "v13",
+            "uses": [],
+            "succ": [22]
+          },
+          {
+            "id": 22,
+            "labels": [],
+            "text": "mult v11,v13",
+            "def": null,
+            "uses": ["v11","v13"],
+            "succ": [23]
+          },
+          {
+            "id": 23,
+            "labels": [],
+            "text": "mflo v14",
+            "def": "v14",
+            "uses": [],
+            "succ": [24]
+          },
+          {
+            "id": 24,
+            "labels": [],
+            "text": "addu v15,v9,v14",
+            "def": "v15",
+            "uses": ["v9","v14"],
+            "succ": [25]
+          },
+          {
+            "id": 25,
+            "labels": [],
+            "text": "sw v15,0(v8)",
+            "def": null,
+            "uses": ["v15","v8"],
+            "succ": [26]
+          },
+          {
+            "id": 26,
+            "labels": [],
+            "text": "addi v16,$fp,-8",
+            "def": "v16",
+            "uses": ["$fp"],
+            "succ": [27]
+          },
+          {
+            "id": 27,
+            "labels": [],
+            "text": "addi v18,$fp,-8",
+            "def": "v18",
+            "uses": ["$fp"],
+            "succ": [28]
+          },
+          {
+            "id": 28,
+            "labels": [],
+            "text": "lw v17,0(v18)",
+            "def": "v17",
+            "uses": ["v18"],
+            "succ": [29]
+          },
+          {
+            "id": 29,
+            "labels": [],
+            "text": "li v19,1",
+            "def": "v19",
+            "uses": [],
+            "succ": [30]
+          },
+          {
+            "id": 30,
+            "labels": [],
+            "text": "addu v20,v17,v19",
+            "def": "v20",
+            "uses": ["v17","v19"],
+            "succ": [31]
+          },
+          {
+            "id": 31,
+            "labels": [],
+            "text": "sw v20,0(v16)",
+            "def": null,
+            "uses": ["v20","v16"],
+            "succ": [32]
+          },
+          {
+            "id": 32,
+            "labels": [],
+            "text": "j label_2_while_start",
+            "def": null,
+            "uses": [],
+            "succ": [11]
+          },
+          {
+            "id": 33,
+            "labels": ["label_3_while_end"],
+            "text": "addi v22,$fp,-12",
+            "def": "v22",
+            "uses": ["$fp"],
+            "succ": [34]
+          },
+          {
+            "id": 34,
+            "labels": [],
+            "text": "lw v21,0(v22)",
+            "def": "v21",
+            "uses": ["v22"],
+            "succ": [35]
+          },
+          {
+            "id": 35,
+            "labels": [],
+            "text": "sw v21,4($fp)",
+            "def": null,
+            "uses": ["v21","$fp"],
+            "succ": [36]
+          },
+          {
+            "id": 36,
+            "labels": [],
+            "text": "j main_epilogue",
+            "def": null,
+            "uses": [],
+            "succ": [37]
+          },
+          {
+            "id": 37,
+            "labels": ["main_epilogue"],
+            "text": "popRegisters",
+            "def": null,
+            "uses": [],
+            "succ": [38]
+          },
+          {
+            "id": 38,
+            "labels": [],
+            "text": "addi $sp,$fp,4",
+            "def": "$sp",
+            "uses": ["$fp"],
+            "succ": [39]
+          },
+          {
+            "id": 39,
+            "labels": [],
+            "text": "lw $fp,0($fp)",
+            "def": "$fp",
+            "uses": ["$fp"],
+            "succ": [40]
+          },
+          {
+            "id": 40,
+            "labels": [],
+            "text": "li $v0,10",
+            "def": "$v0",
+            "uses": [],
+            "succ": [41]
+          },
+          {
+            "id": 41,
+            "labels": [],
+            "text": "syscall",
+            "def": null,
+            "uses": [],
+            "succ": []
+          }
+        ],
+        "liveness": [
+          {
+            "sweep": 1,
+            "changes": [
+              {
+                "block": 39,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 38,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 37,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 36,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 35,
+                "in": ["v21"],
+                "out": []
+              },
+              {
+                "block": 34,
+                "in": ["v22"],
+                "out": ["v21"]
+              },
+              {
+                "block": 33,
+                "in": [],
+                "out": ["v22"]
+              },
+              {
+                "block": 31,
+                "in": ["v16","v20"],
+                "out": []
+              },
+              {
+                "block": 30,
+                "in": ["v16","v17","v19"],
+                "out": ["v16","v20"]
+              },
+              {
+                "block": 29,
+                "in": ["v16","v17"],
+                "out": ["v16","v17","v19"]
+              },
+              {
+                "block": 28,
+                "in": ["v16","v18"],
+                "out": ["v16","v17"]
+              },
+              {
+                "block": 27,
+                "in": ["v16"],
+                "out": ["v16","v18"]
+              },
+              {
+                "block": 26,
+                "in": [],
+                "out": ["v16"]
+              },
+              {
+                "block": 25,
+                "in": ["v15","v8"],
+                "out": []
+              },
+              {
+                "block": 24,
+                "in": ["v14","v8","v9"],
+                "out": ["v15","v8"]
+              },
+              {
+                "block": 23,
+                "in": ["v8","v9"],
+                "out": ["v14","v8","v9"]
+              },
+              {
+                "block": 22,
+                "in": ["v11","v13","v8","v9"],
+                "out": ["v8","v9"]
+              },
+              {
+                "block": 21,
+                "in": ["v11","v8","v9"],
+                "out": ["v11","v13","v8","v9"]
+              },
+              {
+                "block": 20,
+                "in": ["v12","v8","v9"],
+                "out": ["v11","v8","v9"]
+              },
+              {
+                "block": 19,
+                "in": ["v8","v9"],
+                "out": ["v12","v8","v9"]
+              },
+              {
+                "block": 18,
+                "in": ["v10","v8"],
+                "out": ["v8","v9"]
+              },
+              {
+                "block": 17,
+                "in": ["v8"],
+                "out": ["v10","v8"]
+              },
+              {
+                "block": 16,
+                "in": [],
+                "out": ["v8"]
+              },
+              {
+                "block": 15,
+                "in": ["v7"],
+                "out": []
+              },
+              {
+                "block": 14,
+                "in": ["v4","v6"],
+                "out": ["v7"]
+              },
+              {
+                "block": 13,
+                "in": ["v4"],
+                "out": ["v4","v6"]
+              },
+              {
+                "block": 12,
+                "in": ["v5"],
+                "out": ["v4"]
+              },
+              {
+                "block": 11,
+                "in": [],
+                "out": ["v5"]
+              },
+              {
+                "block": 10,
+                "in": ["v2","v3"],
+                "out": []
+              },
+              {
+                "block": 9,
+                "in": ["v2"],
+                "out": ["v2","v3"]
+              },
+              {
+                "block": 8,
+                "in": [],
+                "out": ["v2"]
+              },
+              {
+                "block": 7,
+                "in": ["v0","v1"],
+                "out": []
+              },
+              {
+                "block": 6,
+                "in": ["v0"],
+                "out": ["v0","v1"]
+              },
+              {
+                "block": 5,
+                "in": [],
+                "out": ["v0"]
+              },
+              {
+                "block": 4,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 3,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 2,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 1,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 0,
+                "in": [],
+                "out": []
+              }
+            ]
+          },
+          {
+            "sweep": 2,
+            "changes": [
+              {
+                "block": 32,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 31,
+                "in": ["v16","v20"],
+                "out": []
+              },
+              {
+                "block": 30,
+                "in": ["v16","v17","v19"],
+                "out": ["v16","v20"]
+              },
+              {
+                "block": 29,
+                "in": ["v16","v17"],
+                "out": ["v16","v17","v19"]
+              },
+              {
+                "block": 28,
+                "in": ["v16","v18"],
+                "out": ["v16","v17"]
+              },
+              {
+                "block": 27,
+                "in": ["v16"],
+                "out": ["v16","v18"]
+              }
+            ]
+          },
+          {
+            "sweep": 3,
+            "changes": []
+          },
+          {
+            "sweep": "final",
+            "deadDefs": [],
+            "blocks": [
+              {
+                "block": 0,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 1,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 2,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 3,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 4,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 5,
+                "in": [],
+                "out": ["v0"]
+              },
+              {
+                "block": 6,
+                "in": ["v0"],
+                "out": ["v0","v1"]
+              },
+              {
+                "block": 7,
+                "in": ["v0","v1"],
+                "out": []
+              },
+              {
+                "block": 8,
+                "in": [],
+                "out": ["v2"]
+              },
+              {
+                "block": 9,
+                "in": ["v2"],
+                "out": ["v2","v3"]
+              },
+              {
+                "block": 10,
+                "in": ["v2","v3"],
+                "out": []
+              },
+              {
+                "block": 11,
+                "in": [],
+                "out": ["v5"]
+              },
+              {
+                "block": 12,
+                "in": ["v5"],
+                "out": ["v4"]
+              },
+              {
+                "block": 13,
+                "in": ["v4"],
+                "out": ["v4","v6"]
+              },
+              {
+                "block": 14,
+                "in": ["v4","v6"],
+                "out": ["v7"]
+              },
+              {
+                "block": 15,
+                "in": ["v7"],
+                "out": []
+              },
+              {
+                "block": 16,
+                "in": [],
+                "out": ["v8"]
+              },
+              {
+                "block": 17,
+                "in": ["v8"],
+                "out": ["v10","v8"]
+              },
+              {
+                "block": 18,
+                "in": ["v10","v8"],
+                "out": ["v8","v9"]
+              },
+              {
+                "block": 19,
+                "in": ["v8","v9"],
+                "out": ["v12","v8","v9"]
+              },
+              {
+                "block": 20,
+                "in": ["v12","v8","v9"],
+                "out": ["v11","v8","v9"]
+              },
+              {
+                "block": 21,
+                "in": ["v11","v8","v9"],
+                "out": ["v11","v13","v8","v9"]
+              },
+              {
+                "block": 22,
+                "in": ["v11","v13","v8","v9"],
+                "out": ["v8","v9"]
+              },
+              {
+                "block": 23,
+                "in": ["v8","v9"],
+                "out": ["v14","v8","v9"]
+              },
+              {
+                "block": 24,
+                "in": ["v14","v8","v9"],
+                "out": ["v15","v8"]
+              },
+              {
+                "block": 25,
+                "in": ["v15","v8"],
+                "out": []
+              },
+              {
+                "block": 26,
+                "in": [],
+                "out": ["v16"]
+              },
+              {
+                "block": 27,
+                "in": ["v16"],
+                "out": ["v16","v18"]
+              },
+              {
+                "block": 28,
+                "in": ["v16","v18"],
+                "out": ["v16","v17"]
+              },
+              {
+                "block": 29,
+                "in": ["v16","v17"],
+                "out": ["v16","v17","v19"]
+              },
+              {
+                "block": 30,
+                "in": ["v16","v17","v19"],
+                "out": ["v16","v20"]
+              },
+              {
+                "block": 31,
+                "in": ["v16","v20"],
+                "out": []
+              },
+              {
+                "block": 32,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 33,
+                "in": [],
+                "out": ["v22"]
+              },
+              {
+                "block": 34,
+                "in": ["v22"],
+                "out": ["v21"]
+              },
+              {
+                "block": 35,
+                "in": ["v21"],
+                "out": []
+              },
+              {
+                "block": 36,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 37,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 38,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 39,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 40,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 41,
+                "in": [],
+                "out": []
+              }
+            ]
+          }
+        ],
+        "interference": {
+          "nodes": ["v0","v1","v10","v11","v12","v13","v14","v15","v16","v17","v18","v19","v2","v20","v21","v22","v3","v4","v5","v6","v7","v8","v9"],
+          "edges": [
+            ["v0","v1"],
+            ["v10","v8"],
+            ["v11","v13"],
+            ["v11","v8"],
+            ["v11","v9"],
+            ["v12","v8"],
+            ["v12","v9"],
+            ["v13","v8"],
+            ["v13","v9"],
+            ["v14","v8"],
+            ["v14","v9"],
+            ["v15","v8"],
+            ["v16","v17"],
+            ["v16","v18"],
+            ["v16","v19"],
+            ["v16","v20"],
+            ["v17","v19"],
+            ["v2","v3"],
+            ["v4","v6"],
+            ["v8","v9"]
+          ],
+          "degree": {
+            "v0": 1,
+            "v1": 1,
+            "v10": 1,
+            "v11": 3,
+            "v12": 2,
+            "v13": 3,
+            "v14": 2,
+            "v15": 1,
+            "v16": 4,
+            "v17": 2,
+            "v18": 1,
+            "v19": 2,
+            "v2": 1,
+            "v20": 1,
+            "v21": 0,
+            "v22": 0,
+            "v3": 1,
+            "v4": 1,
+            "v5": 0,
+            "v6": 1,
+            "v7": 0,
+            "v8": 7,
+            "v9": 5
+          }
+        },
+        "colouring": {
+          "steps": [
+            {
+              "op": "simplify",
+              "vr": "v5",
+              "degree": 0
+            },
+            {
+              "op": "simplify",
+              "vr": "v11",
+              "degree": 3
+            },
+            {
+              "op": "simplify",
+              "vr": "v16",
+              "degree": 4
+            },
+            {
+              "op": "simplify",
+              "vr": "v18",
+              "degree": 0
+            },
+            {
+              "op": "simplify",
+              "vr": "v2",
+              "degree": 1
+            },
+            {
+              "op": "simplify",
+              "vr": "v9",
+              "degree": 4
+            },
+            {
+              "op": "simplify",
+              "vr": "v15",
+              "degree": 1
+            },
+            {
+              "op": "simplify",
+              "vr": "v1",
+              "degree": 1
+            },
+            {
+              "op": "simplify",
+              "vr": "v12",
+              "degree": 1
+            },
+            {
+              "op": "simplify",
+              "vr": "v22",
+              "degree": 0
+            },
+            {
+              "op": "simplify",
+              "vr": "v17",
+              "degree": 1
+            },
+            {
+              "op": "simplify",
+              "vr": "v20",
+              "degree": 0
+            },
+            {
+              "op": "simplify",
+              "vr": "v3",
+              "degree": 0
+            },
+            {
+              "op": "simplify",
+              "vr": "v13",
+              "degree": 1
+            },
+            {
+              "op": "simplify",
+              "vr": "v10",
+              "degree": 1
+            },
+            {
+              "op": "simplify",
+              "vr": "v7",
+              "degree": 0
+            },
+            {
+              "op": "simplify",
+              "vr": "v14",
+              "degree": 1
+            },
+            {
+              "op": "simplify",
+              "vr": "v4",
+              "degree": 1
+            },
+            {
+              "op": "simplify",
+              "vr": "v21",
+              "degree": 0
+            },
+            {
+              "op": "simplify",
+              "vr": "v0",
+              "degree": 0
+            },
+            {
+              "op": "simplify",
+              "vr": "v6",
+              "degree": 0
+            },
+            {
+              "op": "simplify",
+              "vr": "v8",
+              "degree": 0
+            },
+            {
+              "op": "simplify",
+              "vr": "v19",
+              "degree": 0
+            },
+            {
+              "op": "select",
+              "vr": "v19",
+              "forbidden": [],
+              "colour": "$t0"
+            },
+            {
+              "op": "select",
+              "vr": "v8",
+              "forbidden": [],
+              "colour": "$t0"
+            },
+            {
+              "op": "select",
+              "vr": "v6",
+              "forbidden": [],
+              "colour": "$t0"
+            },
+            {
+              "op": "select",
+              "vr": "v0",
+              "forbidden": [],
+              "colour": "$t0"
+            },
+            {
+              "op": "select",
+              "vr": "v21",
+              "forbidden": [],
+              "colour": "$t0"
+            },
+            {
+              "op": "select",
+              "vr": "v4",
+              "forbidden": ["$t0"],
+              "colour": "$t1"
+            },
+            {
+              "op": "select",
+              "vr": "v14",
+              "forbidden": ["$t0"],
+              "colour": "$t1"
+            },
+            {
+              "op": "select",
+              "vr": "v7",
+              "forbidden": [],
+              "colour": "$t0"
+            },
+            {
+              "op": "select",
+              "vr": "v10",
+              "forbidden": ["$t0"],
+              "colour": "$t1"
+            },
+            {
+              "op": "select",
+              "vr": "v13",
+              "forbidden": ["$t0"],
+              "colour": "$t1"
+            },
+            {
+              "op": "select",
+              "vr": "v3",
+              "forbidden": [],
+              "colour": "$t0"
+            },
+            {
+              "op": "select",
+              "vr": "v20",
+              "forbidden": [],
+              "colour": "$t0"
+            },
+            {
+              "op": "select",
+              "vr": "v17",
+              "forbidden": ["$t0"],
+              "colour": "$t1"
+            },
+            {
+              "op": "select",
+              "vr": "v22",
+              "forbidden": [],
+              "colour": "$t0"
+            },
+            {
+              "op": "select",
+              "vr": "v12",
+              "forbidden": ["$t0"],
+              "colour": "$t1"
+            },
+            {
+              "op": "select",
+              "vr": "v1",
+              "forbidden": ["$t0"],
+              "colour": "$t1"
+            },
+            {
+              "op": "select",
+              "vr": "v15",
+              "forbidden": ["$t0"],
+              "colour": "$t1"
+            },
+            {
+              "op": "select",
+              "vr": "v9",
+              "forbidden": ["$t0","$t1"],
+              "colour": "$t2"
+            },
+            {
+              "op": "select",
+              "vr": "v2",
+              "forbidden": ["$t0"],
+              "colour": "$t1"
+            },
+            {
+              "op": "select",
+              "vr": "v18",
+              "forbidden": [],
+              "colour": "$t0"
+            },
+            {
+              "op": "select",
+              "vr": "v16",
+              "forbidden": ["$t0","$t1"],
+              "colour": "$t2"
+            },
+            {
+              "op": "select",
+              "vr": "v11",
+              "forbidden": ["$t0","$t1","$t2"],
+              "colour": "$t3"
+            },
+            {
+              "op": "select",
+              "vr": "v5",
+              "forbidden": [],
+              "colour": "$t0"
+            }
+          ],
+          "result": {
+            "v0": "$t0",
+            "v1": "$t1",
+            "v10": "$t1",
+            "v11": "$t3",
+            "v12": "$t1",
+            "v13": "$t1",
+            "v14": "$t1",
+            "v15": "$t1",
+            "v16": "$t2",
+            "v17": "$t1",
+            "v18": "$t0",
+            "v19": "$t0",
+            "v2": "$t1",
+            "v20": "$t0",
+            "v21": "$t0",
+            "v22": "$t0",
+            "v3": "$t0",
+            "v4": "$t1",
+            "v5": "$t0",
+            "v6": "$t0",
+            "v7": "$t0",
+            "v8": "$t0",
+            "v9": "$t2"
+          },
+          "spills": []
+        }
+      }
+    ]
+  },
+  "root": 0,
+  "ast": "Program(FunDef(INT,main,Block(VarDecl(INT,i),VarDecl(INT,sum),ExprStmt(Assign(VarExpr(i),IntLiteral(0))),ExprStmt(Assign(VarExpr(sum),IntLiteral(0))),While(BinOp(VarExpr(i),LT,IntLiteral(3)),Block(ExprStmt(Assign(VarExpr(sum),BinOp(VarExpr(sum),ADD,BinOp(VarExpr(i),MUL,IntLiteral(2))))),ExprStmt(Assign(VarExpr(i),BinOp(VarExpr(i),ADD,IntLiteral(1)))))),Return(VarExpr(sum)))))",
+  "sem": ["Semantic analysis: Pass"]
+}

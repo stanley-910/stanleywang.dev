@@ -1,0 +1,31 @@
+digraph ast {
+  Node0 [label="Program"];
+  Node1 [label="FunDef"];
+  Node2 [label="INT"];
+  Node3 [label="Ident(main)"];
+  Node4 [label="Block"];
+  Node5 [label="Return"];
+  Node6 [label="Cst(4)"];
+  Node7 [label="+"];
+  Node8 [label="Cst(2)"];
+  Node9 [label="*"];
+  Node10 [label="Cst(3)"];
+  Node7 -> Node6;
+  Node7 -> Node8;
+  { rank=same; Node6 Node8; }
+  Node6 -> Node8 [style=invis];
+  Node9 -> Node7;
+  Node9 -> Node10;
+  { rank=same; Node7 Node10; }
+  Node7 -> Node10 [style=invis];
+  Node5 -> Node9;
+  Node4 -> Node5 [label="stmt0"];
+  { rank=same; Node5; }
+  Node1 -> Node2 [label="Type"];
+  Node1 -> Node3 [label="Name"];
+  Node1 -> Node4 [label="Block"];
+  { rank=same; Node2 Node3 Node4; }
+  Node2 -> Node3 [style=invis];
+  Node3 -> Node4 [style=invis];
+  Node0 -> Node1;
+}

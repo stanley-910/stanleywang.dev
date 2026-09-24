@@ -1,0 +1,25 @@
+{
+  "command": "claude -p --model 'claude-fable-5-1[1m]' --effort xhigh --tools '' --disable-slash-commands --strict-mcp-config --mcp-config '{\"mcpServers\":{}}' --output-format json --system-prompt '<bounded design reviewer>' < fable-prompt.txt",
+  "requestedEffort": "xhigh",
+  "model": "claude-fable-5-1[1m]",
+  "is_error": false,
+  "subtype": "success",
+  "duration_ms": 501294,
+  "modelUsage": {
+    "claude-fable-5-1[1m]": {
+      "inputTokens": 17366,
+      "outputTokens": 37458,
+      "cacheReadInputTokens": 0,
+      "cacheCreationInputTokens": 17014,
+      "webSearchRequests": 0,
+      "costUSD": 2.3868400000000003,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 34248,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "session_id": "336fa4f5-12b7-44a4-8f98-a3b6359de62c"
+}

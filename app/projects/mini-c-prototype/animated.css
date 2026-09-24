@@ -1,0 +1,713 @@
+/* Animated compiler, revision D — dense mono layout on the site's zinc shell. */
+.ac {
+  --bg: #fff;
+  --ink: #18181b;
+  --muted: #71717a;
+  --faint: #a1a1aa;
+  --line: #e4e4e7;
+  --wash: #f4f4f5;
+  --err: #9a4b2b;
+  --row: 22px;
+  position: relative;
+  width: min(1120px, calc(100vw - 48px));
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 4px;
+  padding-bottom: 96px;
+  color: var(--ink);
+  font: 12px/1.45 var(--font-mono);
+  -webkit-font-smoothing: antialiased;
+}
+.dark .ac {
+  --bg: #09090b;
+  --ink: #e4e4e7;
+  --muted: #a1a1aa;
+  --faint: #52525b;
+  --line: #27272a;
+  --wash: #18181b;
+  --err: #e5a58a;
+}
+.ac *,
+.ac *::before,
+.ac *::after {
+  box-sizing: border-box;
+}
+.ac button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.ac button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.ac kbd {
+  display: inline-block;
+  min-width: 18px;
+  padding: 0 4px;
+  border: 1px solid currentColor;
+  font: 10px/16px var(--font-mono);
+  text-align: center;
+  text-transform: uppercase;
+}
+.ac pre,
+.ac code {
+  font: inherit;
+  margin: 0;
+  background: none;
+  border: 0;
+  padding: 0;
+}
+.ac-label {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+/* Top line: numbered phases, about. */
+.ac-top {
+  display: flex;
+  align-items: baseline;
+  gap: 24px;
+  padding: 6px 0 10px;
+}
+.ac-phases {
+  display: flex;
+  gap: 14px;
+  margin-left: auto;
+}
+.ac-phases button {
+  padding: 1px 4px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.ac-phases button.active {
+  color: var(--bg);
+  background: var(--ink);
+}
+.ac-about {
+  position: relative;
+  color: var(--muted);
+  z-index: 4;
+}
+.ac-about summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 1px 4px;
+}
+.ac-about summary::-webkit-details-marker {
+  display: none;
+}
+.ac-about[open] summary {
+  color: var(--bg);
+  background: var(--ink);
+}
+.ac-about > div {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  width: 340px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  color: var(--ink);
+}
+.ac-about p {
+  margin: 0 0 8px;
+}
+.ac-about p:last-child {
+  margin: 0;
+}
+
+/* Workspace: editor column and stage. */
+.ac-work {
+  display: grid;
+  grid-template-columns: 330px minmax(0, 1fr);
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 90%, transparent);
+}
+.ac-editor {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-right: 1px solid var(--line);
+}
+.ac-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 28px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.ac-bar button {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.ac-bar b {
+  font-weight: 400;
+}
+.ac-bar b.ok {
+  color: var(--ink);
+}
+.ac-bar b.bad {
+  color: var(--err);
+}
+.ac-file {
+  color: var(--ink);
+}
+.ac select {
+  font: inherit;
+  font-size: 11px;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  max-width: 160px;
+}
+.ac option {
+  background: var(--bg);
+}
+
+/* Source with a real gutter. Pre and textarea share one grid cell. */
+.ac-source {
+  position: relative;
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  height: 236px;
+  overflow: auto;
+  scrollbar-width: thin;
+  cursor: text;
+}
+.ac-gutter {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+  color: var(--faint);
+  text-align: right;
+  user-select: none;
+}
+.ac-gutter span {
+  display: block;
+  height: var(--row);
+  line-height: var(--row);
+  padding-right: 8px;
+}
+.ac-gutter span.active {
+  color: var(--ink);
+}
+.ac-text {
+  position: relative;
+  display: grid;
+  padding: 8px 10px 8px 0;
+}
+.ac-text pre,
+.ac-text textarea {
+  grid-area: 1 / 1;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  font: inherit !important;
+  font-family: var(--font-mono) !important;
+  line-height: var(--row) !important;
+  white-space: pre;
+  tab-size: 2;
+  min-width: 0;
+  width: 100%;
+  overflow: hidden;
+  color: var(--ink);
+}
+.ac-text pre {
+  pointer-events: none;
+  z-index: 1;
+}
+.ac-text textarea {
+  display: block;
+  resize: none;
+  color: transparent;
+  caret-color: var(--ink);
+  outline: none;
+  z-index: 2;
+}
+.ac-source[data-editing='true'] textarea {
+  color: var(--ink);
+}
+.ac-text mark {
+  color: var(--bg);
+  background: var(--ink);
+}
+.ac-text mark:empty {
+  background: none;
+}
+.ac-text mark.err {
+  background: var(--err);
+}
+.ac-diag {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  border-top: 1px solid var(--line);
+  text-align: left;
+  color: var(--err);
+  white-space: normal;
+}
+.ac-diag span {
+  display: inline-block;
+  margin-right: 8px;
+  padding: 0 4px;
+  color: var(--bg);
+  background: var(--err);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+/* Step panel: what the current frame did and why. */
+.ac-note {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  border-top: 1px solid var(--line);
+}
+.ac-note-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ink);
+}
+.ac-note-stack {
+  display: grid;
+}
+.ac-note-layer {
+  grid-area: 1 / 1;
+}
+.ac-note-layer.ghost {
+  visibility: hidden;
+}
+.ac-lexemes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+}
+.ac-lexemes li {
+  padding: 0 4px;
+  border: 1px solid var(--line);
+}
+.ac-lexemes li.current {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--bg);
+}
+.ac-note.err .ac-note-title {
+  color: var(--err);
+}
+.ac-note-body {
+  flex: 1;
+  overflow: auto;
+  scrollbar-width: thin;
+  padding: 8px 10px;
+  color: var(--ink);
+  line-height: 1.45;
+}
+
+/* Stage. */
+.ac-stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.ac-scene {
+  position: relative;
+  flex: 1 1 auto;
+  height: 420px;
+  overflow: hidden;
+  background-image: linear-gradient(var(--line) 1px, transparent 1px);
+  background-size: 100% 22px;
+  background-position: 0 -1px;
+}
+.dark .ac-scene {
+  background-image: linear-gradient(#18181b 1px, transparent 1px);
+}
+.dark .ac-piece {
+  border-color: #3f3f46;
+}
+.ac-edges {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  color: var(--ink);
+  overflow: visible;
+}
+.ac-link {
+  stroke: var(--err);
+  stroke-dasharray: 3 3;
+}
+.ac-piece {
+  position: absolute;
+  height: 22px;
+  padding: 0 7px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 20px;
+  white-space: nowrap;
+  z-index: 2;
+  transition:
+    background-color 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+}
+.ac-piece.kind-keyword {
+  color: var(--muted);
+}
+.ac-piece.kind-symbol {
+  color: var(--muted);
+}
+.ac-piece.node.kind-symbol,
+.ac-piece.node.kind-keyword {
+  color: var(--ink);
+}
+.ac-piece.node.pending {
+  border-style: dashed;
+  border-color: var(--muted);
+}
+.ac-piece.focused,
+.ac-piece.node.focused {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--bg);
+}
+/* Kind label under the lexeme being read. */
+.ac-piece small {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: var(--muted);
+}
+.ac-piece.small {
+  height: 20px;
+  line-height: 18px;
+  padding: 0 5px;
+  font-size: 11px;
+}
+.ac-asm {
+  position: absolute;
+  left: 50%;
+  right: 12px;
+  top: 12px;
+  max-height: calc(100% - 24px);
+  overflow: auto;
+  scrollbar-width: thin;
+  line-height: var(--row);
+}
+.ac-asm .ac-label {
+  margin-bottom: 4px;
+}
+.ac-ins {
+  display: flex;
+  gap: 10px;
+  padding: 0 6px;
+  white-space: pre;
+}
+.ac-ins > span {
+  color: var(--faint);
+}
+.ac-ins.current {
+  background: var(--ink);
+  color: var(--bg);
+}
+.ac-ins.current > span {
+  color: var(--bg);
+  opacity: 0.6;
+}
+.ac-regs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* Status line under the stage. */
+.ac-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 28px;
+  padding: 0 10px;
+  border-top: 1px solid var(--line);
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.ac-note code,
+.ac-hover code {
+  font-family: inherit;
+  padding: 0 3px;
+  background: var(--line);
+}
+
+/* Card beside a clicked or hovered token. */
+.ac-hover {
+  position: absolute;
+  width: max-content;
+  max-width: 260px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: normal;
+  pointer-events: none;
+  z-index: 6;
+}
+.ac-counter {
+  margin-left: auto;
+  color: var(--muted);
+}
+
+/* Footer key bar, Commit-Mono style. */
+.ac-keys {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  height: 36px;
+  padding: 0 2px;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--bg) 90%, transparent);
+}
+.ac-keys button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.ac-step {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.ac-keys button kbd + kbd {
+  margin-left: -2px;
+}
+.ac-keys button kbd:last-of-type {
+  margin-right: 4px;
+}
+.ac-keys button:hover,
+.ac-keys button.on {
+  color: var(--ink);
+}
+.ac-keys input {
+  --p: 0%;
+  flex: 1;
+  min-width: 60px;
+  height: 14px;
+  margin: 0;
+  appearance: none;
+  background: linear-gradient(
+      to right,
+      var(--ink) var(--p),
+      var(--line) var(--p)
+    )
+    center / 100% 1px no-repeat;
+  cursor: pointer;
+}
+.ac-keys input::-webkit-slider-thumb {
+  width: 2px;
+  height: 12px;
+  border: 0;
+  border-radius: 0;
+  appearance: none;
+  background: var(--ink);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--ink) 60%, transparent);
+  transition: height 0.15s;
+}
+.ac-keys input::-moz-range-thumb {
+  width: 2px;
+  height: 12px;
+  border: 0;
+  border-radius: 0;
+  background: var(--ink);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--ink) 60%, transparent);
+  transition: height 0.15s;
+}
+.ac-keys input:hover::-webkit-slider-thumb,
+.ac-keys input:active::-webkit-slider-thumb {
+  height: 14px;
+}
+.ac-keys input:hover::-moz-range-thumb,
+.ac-keys input:active::-moz-range-thumb {
+  height: 14px;
+}
+.ac button:focus-visible,
+.ac select:focus-visible,
+.ac input:focus-visible,
+.ac summary:focus-visible {
+  outline: 1px solid var(--ink);
+  outline-offset: 2px;
+}
+
+@media (max-width: 900px) {
+  .ac {
+    width: calc(100vw - 32px);
+  }
+  .ac-work {
+    grid-template-columns: 270px minmax(0, 1fr);
+  }
+  .ac-scene {
+    height: 380px;
+  }
+}
+@media (max-width: 640px) {
+  .ac-top {
+    flex-wrap: wrap;
+    gap: 8px 14px;
+  }
+  .ac-phases {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+    gap: 8px;
+    overflow-x: auto;
+  }
+  .ac-about > div {
+    left: 0;
+    right: auto;
+    width: min(340px, calc(100vw - 32px));
+  }
+  .ac-work {
+    grid-template-columns: 1fr;
+  }
+  .ac-editor {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .ac-source {
+    height: 132px;
+  }
+  .ac-note-body {
+    min-height: 88px;
+  }
+  .ac-scene {
+    height: 300px;
+  }
+  .ac-piece {
+    height: 20px;
+    line-height: 18px;
+    padding: 0 5px;
+    font-size: 11px;
+  }
+  .ac-piece.small {
+    font-size: 10px;
+    padding: 0 4px;
+  }
+  .ac-asm {
+    left: 48%;
+    right: 6px;
+    top: 8px;
+    font-size: 10.5px;
+  }
+  .ac-stage {
+    order: -1;
+    border-bottom: 1px solid var(--line);
+  }
+  .ac-keys {
+    flex-wrap: wrap;
+    height: auto;
+    gap: 10px 12px;
+    padding: 8px 0;
+  }
+  .ac-keys input {
+    flex-basis: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ac * {
+    transition: none !important;
+  }
+}
+
+/* Interference graph: the Registers phase for presets. */
+.ac-graph {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  color: var(--ink);
+  pointer-events: none;
+}
+.ac-vr {
+  position: absolute;
+  height: 26px;
+  min-width: 34px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  line-height: 24px;
+  white-space: nowrap;
+  z-index: 2;
+  cursor: default;
+  transition:
+    background-color 0.25s,
+    color 0.25s,
+    border-color 0.25s;
+}
+.ac-vr.focused {
+  border-color: var(--ink);
+  box-shadow:
+    0 0 0 2px var(--bg),
+    0 0 0 3px var(--ink);
+}
+.ac-vr.spilled {
+  border-style: dashed;
+}
+.ac-vr small {
+  position: absolute;
+  top: 27px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: var(--muted);
+}
+.ac-ins em {
+  font-style: normal;
+  color: var(--muted);
+  padding-right: 6px;
+}
+.ac-ins small {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--faint);
+  align-self: center;
+}
+.ac-ins.changed small {
+  color: var(--ink);
+}
+.ac-ins.current small {
+  color: var(--bg);
+  opacity: 0.7;
+}
