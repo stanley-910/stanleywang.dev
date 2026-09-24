@@ -25,6 +25,7 @@ import {
   matchTable,
   type TokenClass,
 } from './explain'
+import { linkRouter, type Box, type Route } from './link-route'
 import { replayedParse } from './parse-replay'
 import { groupsOf, parentsOf, parseView } from './parse-view'
 import { compileReal, compilerLoaded, REAL_MAX_CHARS } from './real'
@@ -493,6 +494,12 @@ export default function AnimatedCompiler() {
     () => trace.frames.findIndex((f) => f.why.kind === 'check.namesDone'),
     [trace],
   )
+  // Name-link routes, worked out once per step and stage size (below).
+  const routeCache = useRef<{
+    trace: Trace
+    key: string
+    routes: Map<string, Route>
+  } | null>(null)
   // Once parsing starts, a `*` that multiplies waits in the tray as the `×`
   // the tree will show; a prefix `*` stays as typed.
   const times = useMemo(
@@ -918,6 +925,62 @@ export default function AnimatedCompiler() {
     const mid = (y0 + y1) / 2
     return `M ${p.x} ${y0} C ${p.x} ${mid}, ${q.x} ${mid}, ${q.x} ${y1}`
   }
+  // Name links pathfind around the tree's labels and across its edges
+  // (link-route.ts, Fable 5.1's router). A piece is exactly as wide as its
+  // label (`.ac button` has no padding) and as tall as its box; 3px more
+  // each side keeps a link's ends off the letters.
+  const pieceBox = (id: number): Box => {
+    const c = toPx(point(id))
+    const w = trace.nodes[id].label.length * CHAR_PX * fit + 6
+    return { x: c.x - w / 2, y: c.y - pieceHalf, w, h: pieceHalf * 2 }
+  }
+  const linkRoutes = (() => {
+    const links = frame.links ?? []
+    if (!links.length || frame.phase === 'Registers') return undefined
+    const key = `${index}|${sceneWidth}|${sceneHeight}|${narrow}`
+    const cached = routeCache.current
+    if (cached?.trace === trace && cached.key === key) return cached.routes
+    const boxes = frame.nodes.map(pieceBox)
+    const edges = frame.nodes.flatMap((id) =>
+      trace.nodes[id].children
+        .filter((c) => frame.attached.includes(c))
+        .map((c) => {
+          const p = toPx(point(id)),
+            q = toPx(point(c))
+          return {
+            from: { x: p.x, y: p.y + pieceHalf },
+            to: { x: q.x, y: q.y - pieceHalf },
+          }
+        }),
+    )
+    // Around the tree, but clear of the stage's edges and the scope strip.
+    const floor =
+      frame.phase === 'Check' && index <= namesDoneAt
+        ? sceneHeight - 64
+        : sceneHeight - 4
+    const top = Math.max(4, Math.min(...boxes.map((b) => b.y)) - 24)
+    const left = Math.max(4, Math.min(...boxes.map((b) => b.x)) - 28)
+    const right = Math.min(
+      sceneWidth - 4,
+      Math.max(...boxes.map((b) => b.x + b.w)) + 28,
+    )
+    const bottom = Math.min(
+      floor,
+      Math.max(...boxes.map((b) => b.y + b.h)) + 24,
+    )
+    const router = linkRouter(boxes, {
+      edges,
+      bounds: { x: left, y: top, w: right - left, h: bottom - top },
+    })
+    const routes = new Map(
+      links.map(([use, decl]) => [
+        `${use}-${decl}`,
+        router.route(pieceBox(use), pieceBox(decl)),
+      ]),
+    )
+    routeCache.current = { trace, key, routes }
+    return routes
+  })()
   const shownNodes =
     working.preview === undefined
       ? frame.nodes
@@ -1429,47 +1492,60 @@ export default function AnimatedCompiler() {
                     ))
                   })()}
                 {!regView &&
-                  (frame.links ?? []).map(([use, decl]) => {
-                    const p = point(use),
-                      q = point(decl)
-                    // The step's own binding is drawn in full, from the top
-                    // of the use to the top of its declaration. A settled
-                    // one shrinks to a hook beside the use, on the side of
-                    // its declaration, clear of the edge arriving on top;
-                    // hovering either end draws it in full again.
+                  (frame.links ?? []).flatMap(([use, decl]) => {
+                    // Only the step's own binding is drawn (Stanley: hooks
+                    // left on settled ones read as stray dashes), over a
+                    // halo so it passes over the tree's edges, with a dot
+                    // where it lands. Moving on reels it back in; hovering
+                    // the name or its declaration draws it again. A route
+                    // that can't clear the labels isn't drawn.
+                    const r = linkRoutes?.get(`${use}-${decl}`)
                     const full =
                       frame.focus === use || hover === use || hover === decl
-                    const a = toPx(p),
-                      b = toPx(q)
-                    const lift = 28 + Math.abs(a.x - b.x) * 0.12
-                    const lean = Math.sign(b.x - a.x) || -1
-                    const top = a.y - pieceHalf,
-                      end = b.y - pieceHalf
-                    const side =
-                      a.x +
-                      lean *
-                        ((trace.nodes[use].label.length * CHAR_PX * fit) / 2 +
-                          4)
-                    const d = full
-                      ? `M ${a.x} ${top} C ${a.x} ${top - lift}, ${b.x} ${end - lift}, ${b.x} ${end}`
-                      : `M ${side} ${a.y + 3} C ${side} ${a.y - 3}, ${side + lean * 2} ${a.y - 7}, ${side + lean * 7} ${a.y - 7}`
-                    return (
+                    if (!r?.clean || !full) return []
+                    const d = r.d
+                    return [
+                      <motion.path
+                        key={`link-halo-${use}-${decl}`}
+                        className="ac-link-halo"
+                        d={d}
+                        fill="none"
+                        initial={{ d, pathLength: 0, opacity: 1 }}
+                        animate={{ d, pathLength: 1, opacity: 1 }}
+                        exit={{ pathLength: 0, opacity: 0 }}
+                        transition={transition}
+                      />,
                       <motion.path
                         key={`link-${use}-${decl}`}
                         className="ac-link"
                         d={d}
                         fill="none"
                         strokeWidth={1}
-                        initial={{ d, pathLength: 0, opacity: 0 }}
-                        animate={{
-                          d,
-                          pathLength: 1,
-                          opacity: full ? 1 : 0.6,
-                        }}
+                        initial={{ d, pathLength: 0, opacity: 1 }}
+                        animate={{ d, pathLength: 1, opacity: 1 }}
                         exit={{ pathLength: 0, opacity: 0 }}
                         transition={transition}
-                      />
-                    )
+                      />,
+                      <motion.circle
+                        key={`link-end-${use}-${decl}`}
+                        className="ac-link-end"
+                        cx={r.end.x}
+                        cy={r.end.y}
+                        r={2}
+                        initial={{ opacity: 0 }}
+                        // The dot waits for the line to land; it leaves
+                        // with it.
+                        animate={{
+                          opacity: 1,
+                          transition: {
+                            ...transition,
+                            delay: transition.duration,
+                          },
+                        }}
+                        exit={{ opacity: 0 }}
+                        transition={transition}
+                      />,
+                    ]
                   })}
               </AnimatePresence>
             </svg>

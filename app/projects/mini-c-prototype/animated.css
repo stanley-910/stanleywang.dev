@@ -612,9 +612,20 @@
 .ac-scope small.err {
   color: var(--err);
 }
-/* A name bound to its declaration; the error colour is kept for errors. */
+/* A name bound to its declaration; the error colour is kept for errors. A
+   background halo under the step's link lifts it over the tree's edges,
+   and a dot marks where it lands. */
 .ac-link {
   stroke: var(--ink);
+}
+.ac-link-halo {
+  stroke: var(--bg);
+  stroke-width: 3;
+}
+.ac-link-end {
+  fill: var(--ink);
+  stroke: var(--bg);
+  stroke-width: 1;
 }
 .ac-piece {
   position: absolute;
