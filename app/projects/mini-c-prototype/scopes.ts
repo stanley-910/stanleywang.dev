@@ -102,15 +102,17 @@ export function scopesOf(trace: Trace): Scopes {
 // tree folds `i` into its `i =` node, so the recorder has no node to point
 // at. NameAnalyzer does resolve them, target before value, so each target
 // gets its own step here, in source order, before the uses on its right.
-export function withTargets(trace: Trace): Trace {
+// It also records no step for a declaration going into its scope, so each
+// declaration gets one too, where NameAnalyzer meets it.
+export function withNameSteps(trace: Trace): Trace {
   if (trace.ast === undefined) return trace
   const first = trace.frames.findIndex((f) => f.phase === 'Check')
   const done = trace.frames.findIndex((f) => f.why.kind === 'check.namesDone')
   if (first < 0 || done < 0) return trace
-  const { lookup } = scopesOf(trace)
+  const { scopes, declaredAt, lookup } = scopesOf(trace)
   const tokenOf = (id: number) => trace.nodes[id].token
   const targets = trace.nodes.filter((n) => n.kind === 'assign')
-  if (!targets.length) return trace
+  const base = trace.frames[first]
 
   const names = trace.frames.slice(first, done)
   const steps: { token: number; frame: Frame }[] = names.map((f) => ({
@@ -120,6 +122,30 @@ export function withTargets(trace: Trace): Trace {
         : Infinity,
     frame: f,
   }))
+  for (const scope of scopes)
+    for (const d of scope.decls) {
+      const n = trace.nodes[d]
+      const t = trace.tokens[n.token]
+      const where =
+        scope.node === null ? 'global' : isParam(trace, d) ? 'param' : 'local'
+      const label =
+        scope.node === null
+          ? 'the global scope'
+          : trace.nodes[scope.node].kind === 'function'
+            ? `${scope.label}'s scope`
+            : "the block's scope"
+      // A declaration goes in before any use at the same token.
+      steps.push({
+        token: declaredAt(d) - 0.5,
+        frame: {
+          ...base,
+          title: `${t.text} is declared in ${label}`,
+          why: { kind: 'check.declare', decl: d, where, scope: label },
+          span: { start: t.start, end: t.end },
+          focus: d,
+        },
+      })
+    }
   const added: [number, number][] = []
   let unresolved = 0
   let missing: { name: string; start: number; end: number } | undefined
@@ -127,7 +153,6 @@ export function withTargets(trace: Trace): Trace {
     const text = trace.tokens[a.token].text
     const { decl } = lookup(text, a.id)
     const t = trace.tokens[a.token]
-    const base = trace.frames[first]
     const param = decl !== undefined && isParam(trace, decl)
     const frame: Frame = {
       ...base,

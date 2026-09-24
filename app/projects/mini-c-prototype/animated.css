@@ -7,6 +7,7 @@
   --line: #e4e4e7;
   --wash: #f4f4f5;
   --err: #9a4b2b;
+  --ok: #2f7a4b;
   --row: 22px;
   position: relative;
   width: min(1120px, calc(100vw - 48px));
@@ -26,6 +27,7 @@
   --line: #27272a;
   --wash: #18181b;
   --err: #e5a58a;
+  --ok: #8fcfa2;
 }
 .ac *,
 .ac *::before,
@@ -598,6 +600,11 @@
   color: var(--bg);
   background: var(--ink);
 }
+.ac-scope code.found.ok {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--ok) 32%, transparent);
+  transition: background-color 0.25s var(--land, 0.42s);
+}
 .ac-scope.home,
 .ac-scope.hit {
   border-color: var(--muted);
@@ -612,11 +619,15 @@
 .ac-scope small.err {
   color: var(--err);
 }
-/* A name bound to its declaration; the error colour is kept for errors. A
-   background halo under the step's link lifts it over the tree's edges,
-   and a dot marks where it lands. */
+/* A name bound to its declaration: grey on the way out, green once a
+   lookup lands; the error colour is kept for errors. A background halo
+   under the step's link lifts it over the tree's edges, and a dot marks
+   where it lands. */
 .ac-link {
-  stroke: var(--ink);
+  stroke: var(--muted);
+}
+.ac-link.ok {
+  stroke: var(--ok);
 }
 .ac-link-halo {
   stroke: var(--bg);
@@ -626,6 +637,9 @@
   fill: var(--ink);
   stroke: var(--bg);
   stroke-width: 1;
+}
+.ac-link-end.ok {
+  fill: var(--ok);
 }
 .ac-piece {
   position: absolute;
@@ -670,6 +684,19 @@
   border-color: var(--ink);
   background: var(--bg);
   color: var(--ink);
+}
+/* Name pass: a declared name keeps a faint tint. The one a lookup finds
+   turns green once the line reaches it, and fades back on the next step. */
+.ac-piece.node.declared:not(.focused) {
+  background: color-mix(in srgb, var(--ink) 12%, transparent);
+  transition:
+    background-color 0.6s,
+    color 0.15s,
+    border-color 0.15s;
+}
+.ac-piece.node.declared.found:not(.focused) {
+  background: color-mix(in srgb, var(--ok) 32%, transparent);
+  transition: background-color 0.25s var(--land, 0.42s);
 }
 /* An operator outside the group being read: nothing inside competes with it. */
 .ac-piece.node.outside {

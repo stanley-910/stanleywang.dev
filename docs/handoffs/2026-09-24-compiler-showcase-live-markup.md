@@ -345,31 +345,31 @@ Keys: space play, h/k back, l/j forward, r restart, 1–5 jump to phase, e edit,
 
 | State | Link | Then |
 | --- | --- | --- |
-| 13 check · resolve | `?example=loop&frame=84` | |
-| 14 check · names done | `?example=loop&frame=93` | |
-| 15 check · types | `?example=loop&frame=94` | |
-| 16 check · unresolved name | `?example=unresolved+name&frame=21` | |
-| 17 check · error end | `?example=unresolved+name&frame=22` | |
-| 18 emit · prologue | `?example=loop&frame=97` | |
-| 19 emit · instructions | `?example=loop&frame=108` | |
-| 20 emit · epilogue | `?example=loop&frame=123` | |
-| 21 emit · hover instruction | `?example=loop&frame=123` | hover the 15th instruction |
-| 22 regs · cfg | `?example=loop&frame=124` | |
-| 23 regs · liveness sweep 1 | `?example=loop&frame=125` | |
-| 24 regs · liveness last sweep | `?example=loop&frame=127` | |
-| 25 regs · interference | `?example=loop&frame=128` | |
-| 26 regs · simplify start | `?example=loop&frame=129` | |
-| 27 regs · simplify mid | `?example=loop&frame=142` | |
-| 28 regs · select start | `?example=loop&frame=152` | |
-| 29 regs · select mid | `?example=loop&frame=164` | |
-| 30 regs · done | `?example=loop&frame=175` | |
-| 31 regs · hover register | `?example=loop&frame=175` | hover v16 |
-| 32 regs · two functions | `?example=function+call&frame=70` | |
+| 13 check · resolve | `?example=loop&frame=87` | |
+| 14 check · names done | `?example=loop&frame=96` | |
+| 15 check · types | `?example=loop&frame=97` | |
+| 16 check · unresolved name | `?example=unresolved+name&frame=22` | |
+| 17 check · error end | `?example=unresolved+name&frame=23` | |
+| 18 emit · prologue | `?example=loop&frame=100` | |
+| 19 emit · instructions | `?example=loop&frame=111` | |
+| 20 emit · epilogue | `?example=loop&frame=126` | |
+| 21 emit · hover instruction | `?example=loop&frame=126` | hover the 15th instruction |
+| 22 regs · cfg | `?example=loop&frame=127` | |
+| 23 regs · liveness sweep 1 | `?example=loop&frame=128` | |
+| 24 regs · liveness last sweep | `?example=loop&frame=130` | |
+| 25 regs · interference | `?example=loop&frame=131` | |
+| 26 regs · simplify start | `?example=loop&frame=132` | |
+| 27 regs · simplify mid | `?example=loop&frame=145` | |
+| 28 regs · select start | `?example=loop&frame=155` | |
+| 29 regs · select mid | `?example=loop&frame=167` | |
+| 30 regs · done | `?example=loop&frame=178` | |
+| 31 regs · hover register | `?example=loop&frame=178` | hover v16 |
+| 32 regs · two functions | `?example=function+call&frame=73` | |
 | 33 ui · playing 2x | `?example=loop&frame=60` | `=` twice, space |
 | 34 ui · about open | `?example=loop&frame=83` | open "about" |
 | 36–38 custom | none | paste the program below, press 3 / 5 / play to end |
 | 39 custom · error | none | paste the error program below, play to end |
-| 40–41 mobile | `?example=loop&frame=83`, `frame=175` | 390 px wide |
+| 40–41 mobile | `?example=loop&frame=83`, `frame=178` | 390 px wide |
 
 Custom program (36–38):
 
@@ -538,7 +538,7 @@ It is built in `parse-view.ts`:
   dropping the late phases' separate 11/12 squeeze.
 - The parse tray shows a multiplying `*` as `×` once parsing starts
   (Stanley); a prefix `*` stays as typed.
-- Assignment targets are resolved (`withTargets` in `scopes.ts`, compiler
+- Assignment targets are resolved (`withNameSteps` in `scopes.ts`, compiler
   traces only). The recorder has no node for a target (the tree folds it
   into `i =`), but NameAnalyzer resolves it, target before value, so each
   target gets a resolve step in source order, before the uses on its
@@ -629,6 +629,27 @@ It is built in `parse-view.ts`:
   45–46 draw one link each, no leftovers, no console warnings, no route
   through a label. The second `n` in `twice` runs close beside the `+`
   edge; it doesn't touch a label.
+
+## Name pass: declarations, tint, found (2026-09-24)
+
+- Each declaration gets its own step where NameAnalyzer meets it
+  (`check.declare`, added by `withNameSteps` in `scopes.ts`, formerly
+  `withTargets`): "`int i;` puts `i` in main's scope.", "The parameter
+  `int n` goes in twice's scope.", "The function `main` goes in the global
+  scope, so calls anywhere below it can find it." The scope strip shows it
+  going in. Loop gains 3 steps, function call 3, unresolved name 1; the
+  state table above is shifted.
+- From its step to the end of the name pass a declared node keeps a faint
+  grey tint (`.declared`).
+- A lookup's line goes out grey (`--muted`); as it lands, a green copy
+  fades in over it, the dot turns green, and the declaration's tint and
+  its entry in the scope strip turn green (`--ok`, delayed by `--land`,
+  the draw time). On the next step the green fades back to grey as the
+  line reels in.
+- A name with no declaration still sends its line out, routed to the
+  root (the top of the tree, where the outermost scope is), and it reels
+  back in over three draw times (`missing`, `miss-<use>` route).
+- Built-in calls (`print_i`) get no line.
 
 ## Open items (not started)
 
