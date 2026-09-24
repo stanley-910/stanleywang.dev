@@ -125,6 +125,32 @@ export type Why =
   | { kind: 'check.unresolved'; use: number }
   | { kind: 'check.builtin'; use: number }
   | { kind: 'check.type'; node: number; type: string; expected?: string }
+  // Type pass, compiler traces: an operator or call gets its type from its
+  // operands. `typed` lists the nodes whose types this step shows (leaf
+  // operands, then the node); on a failure, `bad` is the operand that
+  // doesn't fit and `expected` what was needed there.
+  | {
+      kind: 'check.expr'
+      node: number
+      type: string
+      typed: [number, string][]
+      ok: boolean
+      bad?: number | null
+      expected?: string | null
+    }
+  // A statement checks a value against what it needs: an assignment's
+  // target, a condition (int), or the function's return type.
+  | {
+      kind: 'check.fits'
+      node: number
+      value: number
+      rule: 'assign' | 'condition' | 'return'
+      type: string
+      expected: string
+      ok: boolean
+      typed: [number, string][]
+    }
+  | { kind: 'check.typesDone' }
   | { kind: 'check.namesDone'; unresolved: number }
   // instructions from..to (inclusive) came from one node
   | { kind: 'emit.instr'; node: number; from: number; to: number }

@@ -676,6 +676,50 @@ It is built in `parse-view.ts`:
   Links cover variables and function calls, which is what the recorder
   resolves; struct types aren't recorded as links yet.
 
+## Type pass (2026-09-24)
+
+Built from Astra's check answer, with fewer steps: one per operator or
+call, one per statement check, instead of one per expression.
+
+- The recorder (`ParseTrace.replayTypes`, compiler repo, untracked; backup
+  of the previous version in the session scratchpad
+  `cc/ParseTrace.java.pre-types`) walks the tree in source order
+  and reads the type TypeAnalyzer left on each expression (`UNKNOWN` where
+  it reported an error). It runs NameAnalyzer and TypeAnalyzer itself,
+  as `SemanticAnalyzer.analyze` does, so a name error still stops after
+  the name pass and a type error now replays types up to the first
+  failure. New steps: `check.expr` (an operator or call gets its type; its
+  leaf operands get theirs in the same step), `check.fits` (an
+  assignment's target, a condition needing `int`, a return against the
+  function's type), `check.typesDone`. Declarations keep `check.type`.
+  Loop has 13 type steps (was 3). Error messages: "“×” needs int, but
+  "hi" is char[3].", "“f()” takes int, but 'c' is char.", "“x” is int,
+  but the value is char.", "A condition must be int, not char.", "main
+  returns int, but this is char."
+- Regenerating the traces changed the register frames of precedence,
+  parentheses, local-variable and function-call (loop's are unchanged).
+  The allocator's order follows identity hashes, which shift with any
+  change to what runs before it; each run is still deterministic and
+  still the real allocator.
+- Page: each typed node shows its type in a small box to its right
+  (`typeBadge`, `.ac-type`). New ones fade in, an operator's own after its
+  operands'; a checked value and what it must fit go green when the check
+  lands; a return shows a dashed `main: int` (what its function promises)
+  for its step, while a condition's rule (`int`) is only in the step text,
+  since `needs int` beside `while` read as if the loop were an int; a
+  mismatch shows `char[3] ≠ int` in the error colour and the operator
+  `unknown`. The type pass lays the tree out with room for each badge
+  (`typedTree`, `badgeRoom`) from its first step, with each label left of
+  its slot's centre, so badges never cover a neighbour. Badges show until
+  the check phase ends. Focus no longer draws an assignment target's name
+  link during the type pass (hover still does).
+- A type error's last step keeps its own explanation instead of the
+  generic "The compiler stops at its first error."
+- Not done: context errors (`break` outside a loop, missing return value)
+  still end on "Semantic analysis failed (n errors)"; `duplicate` and
+  shadowing; badges travelling up the edges; the teaching compiler's
+  fallback trace still has only declaration and return type steps.
+
 ## Open items (not started)
 
 - Remove the TEMP Figma capture `<script>` in `page.tsx` once Figma is done with.

@@ -61,6 +61,8 @@ const HOVER_DELAY = 250
 const VIEW_W = 680
 const VIEW_H = 480
 const CHAR_PX = 7.2
+// A type badge's characters (10px).
+const TYPE_PX = 6
 const EDGE_PX = 24
 // Advance of one character in the 11px token card.
 const CARD_CHAR_PX = 6.6
@@ -487,7 +489,7 @@ export default function AnimatedCompiler() {
     }
     return [...best.values()]
   }, [trace, titles])
-  const tree = useMemo(
+  const baseTree = useMemo(
     () => treePositions(trace, (n) => n.label.length * CHAR_PX + 2),
     [trace],
   )
@@ -509,6 +511,51 @@ export default function AnimatedCompiler() {
     })
     return at
   }, [trace])
+  // Type pass: the step each node gets its type, and the type. From there
+  // to the end of the check phase it shows beside the node.
+  const typedStep = useMemo(() => {
+    const at = new Map<number, { type: string; step: number }>()
+    trace.frames.forEach((f, i) => {
+      if (f.why.kind !== 'check.expr' && f.why.kind !== 'check.fits') return
+      for (const [id, type] of f.why.typed)
+        if (!at.has(id)) at.set(id, { type, step: i })
+    })
+    return at
+  }, [trace])
+  // What a return must match, named by its function: `main: int`. The
+  // function is out of sight up the tree; a condition's rule (int) is only
+  // in the step text.
+  const returnNeed = useMemo(() => {
+    const need = new Map<number, string>()
+    for (const f of trace.frames) {
+      if (f.why.kind !== 'check.fits' || f.why.rule !== 'return') continue
+      let at: number | undefined = f.why.node
+      while (at !== undefined && trace.nodes[at].kind !== 'function')
+        at = parents.get(at)
+      if (at !== undefined)
+        need.set(f.why.node, `${trace.nodes[at].label}: ${f.why.expected}`)
+    }
+    return need
+  }, [trace, parents])
+  // Room for each node's type badge (or what a return must match), in tree
+  // units. The type pass lays the tree out with it from its first step, so
+  // badges don't jump the tree as they appear.
+  const badgeRoom = useMemo(() => {
+    const room = new Map<number, number>()
+    const fit = (id: number, text: string) =>
+      room.set(id, Math.max(room.get(id) ?? 0, text.length * TYPE_PX + 13))
+    for (const [id, { type }] of typedStep) fit(id, type)
+    for (const [id, text] of returnNeed) fit(id, text)
+    return room
+  }, [typedStep, returnNeed])
+  const typedTree = useMemo(
+    () =>
+      treePositions(
+        trace,
+        (n) => n.label.length * CHAR_PX + 2 + (badgeRoom.get(n.id) ?? 0),
+      ),
+    [trace, badgeRoom],
+  )
   // The step a name was found to have no declaration; from there on, in
   // the check phase, it keeps a red tint.
   const missingStep = useMemo(() => {
@@ -910,6 +957,9 @@ export default function AnimatedCompiler() {
     duration: reduced ? 0 : 0.42 / speed,
     ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
   }
+  // The type pass makes room beside each node for its type.
+  const typing = frame.phase === 'Check' && index > namesDoneAt
+  const tree = typing ? typedTree : baseTree
   // Late phases share the stage with the instruction list on the right half.
   const unit = VIEW_W / sceneWidth
   const treeRoom = (late ? sceneWidth * 0.46 : sceneWidth) - EDGE_PX * 2
@@ -926,9 +976,13 @@ export default function AnimatedCompiler() {
   // slide on, so it doesn't jump when the name pass starts.
   const lifted = frame.phase === 'Check' || shownPhase === 'Check'
   // Parse: unattached nodes wait in their holder's open slot (parse-view.ts).
-  const working = parseView(trace, index, parents, groups, tree.at)
+  const working = parseView(trace, index, parents, groups, baseTree.at)
   const point = (id: number) => {
-    const at = tree.at[id] ?? { x: tree.width / 2, y: tree.depth }
+    const slot = tree.at[id] ?? { x: tree.width / 2, y: tree.depth }
+    // A label and its badge share the slot, so the label sits left of centre.
+    const at = typing
+      ? { ...slot, x: slot.x - (badgeRoom.get(id) ?? 0) / 2 }
+      : slot
     const shift = working.shift.get(id)
     const p = shift ? { x: at.x + shift.x, y: at.y + shift.y } : at
     const x = (treeLeft + p.x * (late ? 11 / 12 : 1) * spread) * unit
@@ -973,6 +1027,39 @@ export default function AnimatedCompiler() {
     trace.root !== frame.why.use
       ? { use: frame.why.use, root: trace.root }
       : undefined
+  // A node's type badge on this step. New ones fade in, an operator's own
+  // after its operands'; a checked value and what it must fit go green when
+  // the check lands; a mismatch shows what was needed.
+  const typeBadge = (id: number) => {
+    const w = frame.why
+    const need = returnNeed.get(id)
+    if (w.kind === 'check.fits' && w.node === id && need)
+      return {
+        text: need,
+        state: `need ${w.ok ? 'ok' : 'bad'}`,
+        delay: 0,
+      }
+    const typed = typedStep.get(id)
+    if (!typed || typed.step > index) return undefined
+    const fresh = typed.step === index
+    const states = fresh ? ['new'] : []
+    let text = typed.type
+    let delay = 0
+    if (w.kind === 'check.expr') {
+      if (fresh && w.node === id) delay = transition.duration
+      if (trace.nodes[w.node].children.includes(id)) states.push('input')
+      if (!w.ok && w.bad === id) {
+        states.push('bad')
+        text = `${typed.type} ≠ ${w.expected}`
+      }
+      if (!w.ok && w.node === id) states.push('unknown')
+    }
+    if (w.kind === 'check.fits' && (w.value === id || w.node === id)) {
+      states.push(w.ok ? 'ok' : 'bad')
+      if (!w.ok && w.value === id) text = `${typed.type} ≠ ${w.expected}`
+    }
+    return { text, state: states.join(' '), delay }
+  }
   const linkRoutes = (() => {
     const links = frame.links ?? []
     if ((!links.length && !missing) || frame.phase === 'Registers')
@@ -1100,7 +1187,12 @@ export default function AnimatedCompiler() {
   const noteText =
     hoverText ??
     intro?.body ??
-    (error
+    (error &&
+    // A type error's step says what didn't fit, and that it stops there.
+    !(
+      (frame.why.kind === 'check.expr' || frame.why.kind === 'check.fits') &&
+      !frame.why.ok
+    )
       ? 'The compiler stops at its first error. Fix it in the editor and it runs again.'
       : explain(trace, frame, titles))
   // Without step titles, only the welcome and slides keep a header; an
@@ -1595,9 +1687,11 @@ export default function AnimatedCompiler() {
                     // Once the name pass is done, every use links to its
                     // declaration at once, one after another.
                     const all = frame.why.kind === 'check.namesDone'
+                    // The type pass focuses assignments too; their
+                    // target's link only shows on hover there.
                     const full =
                       all ||
-                      frame.focus === use ||
+                      (!typing && frame.focus === use) ||
                       hover === use ||
                       hover === decl
                     if (!r?.clean || !full) return []
@@ -1790,6 +1884,10 @@ export default function AnimatedCompiler() {
                     missingAt !== undefined &&
                     missingAt <= index &&
                     frame.phase === 'Check'
+                  const badge =
+                    node && frame.phase === 'Check'
+                      ? typeBadge(node.id)
+                      : undefined
                   return (
                     <motion.button
                       key={key}
@@ -1850,6 +1948,21 @@ export default function AnimatedCompiler() {
                       {!parsed && focused && <small>{tokenKind(token)}</small>}
                       {node && working.cue?.node === node.id && (
                         <small className="ac-cue">{working.cue.text}</small>
+                      )}
+                      {badge && (
+                        // Keyed by step so a landing replays on the next one.
+                        <small
+                          key={index}
+                          className={`ac-type ${badge.state}`}
+                          style={
+                            {
+                              '--delay': `${badge.delay}s`,
+                              '--land': `${transition.duration}s`,
+                            } as CSSProperties
+                          }
+                        >
+                          {badge.text}
+                        </small>
                       )}
                     </motion.button>
                   )
