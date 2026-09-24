@@ -711,7 +711,8 @@
   color: var(--ink);
 }
 /* Name pass: a declared name keeps a faint tint. The one a lookup finds
-   turns green once the line reaches it, and fades back on the next step. */
+   turns green once the line reaches it, and fades back on the next step.
+   When the pass is done, every linked use and declaration goes green. */
 .ac-piece.node.declared:not(.focused) {
   background: color-mix(in srgb, var(--ink) 12%, transparent);
   transition:
@@ -724,7 +725,7 @@
   background: color-mix(in srgb, var(--err) 24%, transparent);
   transition: background-color 0.6s;
 }
-.ac-piece.node.declared.found:not(.focused) {
+.ac-piece.node.found:not(.focused) {
   background: color-mix(in srgb, var(--ok) 32%, transparent);
   transition: background-color 0.25s var(--land, 0.42s);
 }
