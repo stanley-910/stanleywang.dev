@@ -49,6 +49,15 @@ export function scopesOf(trace: Trace): Scopes {
       forward.set(name(id), n.token)
       return
     }
+    // A function's body block shares the function's scope: NameAnalyzer
+    // puts the parameters and the body's declarations in one.
+    const up = parent.get(id)
+    const body =
+      n.kind === 'block' && up !== undefined && nodes[up].kind === 'function'
+    if (body) {
+      for (const c of n.children) visit(c, scope)
+      return
+    }
     if (n.kind === 'function' || n.kind === 'block') {
       if (n.kind === 'function') {
         scopes[scope].decls.push(id)
