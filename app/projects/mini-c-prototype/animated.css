@@ -546,6 +546,10 @@
   stroke: var(--muted);
   stroke-dasharray: 2 3;
 }
+.ac-params {
+  stroke: var(--muted);
+  stroke-dasharray: 2 2;
+}
 .ac-group {
   stroke: var(--muted);
   stroke-dasharray: 3 3;
@@ -665,6 +669,11 @@
 .ac-piece.node.kind-symbol,
 .ac-piece.node.kind-keyword {
   color: var(--ink);
+}
+/* Room either side of the letters, so a highlighted node's box doesn't
+   clip them and a link's dot sits on the border, not on a letter. */
+.ac-piece.node {
+  padding: 0 3px;
 }
 .ac-piece.node.pending {
   border-style: dashed;

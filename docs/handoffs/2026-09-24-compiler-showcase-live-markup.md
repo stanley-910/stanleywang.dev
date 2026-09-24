@@ -650,6 +650,16 @@ It is built in `parse-view.ts`:
   root (the top of the tree, where the outermost scope is), and it reels
   back in over three draw times (`missing`, `miss-<use>` route).
 - Built-in calls (`print_i`) get no line.
+- Tree pieces have 3px of real side padding (`.ac-piece.node`), and the
+  router's boxes match it, so a link's dot sits on the border whichever
+  side it lands on. Before, the router padded 3px on the sides only, so
+  side landings floated off the box and top/bottom ones sat on it.
+- A function's parameters sit in small dashed parens (`.ac-params`,
+  `paramsOf` in `scopes.ts`), set apart from its body statements.
+- The recorder flattens a function's body into the function node
+  (`ParseTrace.decl` adds `blockContents(f.block)`); the compiler's
+  `FunDef` has `params` and a `Block`. Nested blocks keep their `{ }`
+  node.
 
 ## Open items (not started)
 
