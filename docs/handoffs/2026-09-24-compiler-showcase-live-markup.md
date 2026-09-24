@@ -549,7 +549,8 @@ It is built in `parse-view.ts`:
   the step's own binding is drawn, or a hovered use's or declaration's;
   see "Name link routing" below. This replaced the pile of arcs on
   "Every name has a declaration".
-- Scope strip (`scope-strip.tsx`, scopes from `scopesOf`): during the name
+- Scope strip (since replaced by the scope tree in the note card; see
+  "Scopes, links and parse edges" below), scopes from `scopesOf`: during the name
   pass, the bottom of the stage lists the scopes open at the current use,
   outermost first (`global`, then the function, then nested blocks), each
   with what has been declared in it so far. Scopes follow NameAnalyzer: a
@@ -615,8 +616,8 @@ It is built in `parse-view.ts`:
 - Wiring (`animated.tsx`, `linkRoutes`): obstacles are the frame's pieces
   (`pieceBox`: label width at `CHAR_PX` times scale plus 3px each side, so
   line ends sit off the letters), edges are the attached parent→child
-  ports, bounds are the tree plus 24–28px, above the scope strip while it
-  shows. Routes are cached per frame index and stage size.
+  ports, bounds are the tree plus 24–28px, inside the stage. Routes are
+  cached per frame index, tree layout (plain or typed) and stage size.
 - Drawing: a 3px background halo under a 1px ink line (so it passes over
   tree edges like a wire), drawn in with `pathLength`, and a 2px dot on
   the declaration once the line lands. Moving on reels it back in.
@@ -720,6 +721,102 @@ call, one per statement check, instead of one per expression.
   shadowing; badges travelling up the edges; the teaching compiler's
   fallback trace still has only declaration and return type steps.
 
+## Emit in blocks and the stack column (2026-09-24)
+
+- Emit plays in blocks by default (`withEmitBlocks`, `emit-view.ts`, from
+  Astra's emit answer): a leaf's instructions (a literal, a name's load, an
+  assignment's target address) join the step of the operation that uses
+  them when that operation comes next; a leaf that waits for a sibling's
+  work keeps its own step. The more menu's `[x]` toggle, or `?emit=log`,
+  shows the old step per node; switching keeps the place (the first step
+  of the other view that has emitted at least as much).
+- The stage puts the tree, the assembly and a stack column side by side
+  (Fable's emit styling answer). The assembly (about 280px) and the stack
+  column (176px) keep their room; the tree takes what's left, up to a
+  third, and hides on a narrow stage (`treeless`). A block's rows arrive
+  one after another. A comment row names the source line over the first
+  block from it, as `objdump -S` does; a loop's jump back belongs to its
+  closing brace. Name links stay with the check phase in this view.
+- `stack-view.ts` works out each function's frame from the instructions
+  the compiler wrote, word by word: addresses are bytes from where `$sp`
+  stood on entry, so the caller's words sit at 0 and above.
+  `stack-column.tsx` draws it high addresses up, `$fp` pointing in from
+  the left and `$sp` from the right; a pointer slides as its instruction's
+  row appears, a word is outlined when read and tinted when written.
+- The editor column's border with the stage can be dragged (saved in
+  localStorage); the stage keeps at least `STAGE_MIN`.
+- Draft slides for Stanley to rewrite: Code Generation and Skipping the
+  Fine Print (emit); Register Allocation, Liveness Flows Backwards,
+  Sweeping to a Fixed Point (only before a sweep 2 that changes
+  something, so only `loop`), Graph Colouring, Chaitin's Algorithm and Why
+  It Pays Off (registers). The Opus pressure answer's copy bugs are fixed
+  (`reg.done` says "spilled to memory"; Chaitin credits Briggs for the
+  optimistic step).
+
+## Liveness facts (2026-09-24)
+
+Step 1 of the Opus liveness answer
+(`docs/handoffs/2026-09-24-liveness-opus-answer.md`, which records it).
+
+- `liveAdded` (`trace.ts`) reruns the recorder's backward sweeps with every
+  register, `$fp`/`$sp` included, and returns what each sweep adds per
+  line. Checked against the recorded changed blocks and virtual sets on
+  every preset.
+- `reg.cfg` note: "The allocator links each instruction to the ones that
+  can run next: a graph of the control flow." ("Each instruction is a
+  block" is gone.) Sweep 1 explains the backward walk; a sweep that
+  changes nothing says it is a fixed point. On `loop`, sweep 2 names what
+  crossed the back edge: "Line 33 jumps back to line 12, which needs
+  `$fp`, so this sweep finds it live on lines 28 to 33 too", plus why no
+  virtual register does. Those rows show `+$fp`.
+- The cfg note and the slide both say "links each instruction…"; left for
+  Stanley's rewrite.
+
+## Scopes, links and parse edges (2026-09-24)
+
+- Scope tree (`scope-tree.tsx`, was `scope-strip.tsx`): the name pass's
+  scopes now sit in the note card, under the step text, as an indented
+  tree instead of cards along the stage's bottom (Stanley). A function's
+  scope hangs under its declaration (`global` / `main()` / `int i`), a
+  nested block under a `block` line. Each scope has a left rail: dashed
+  where the lookup looked without finding the name, brighter where it
+  started or found it. A missing name reads "`missing` not found", the
+  name as a code chip and only "not found" in the error colour. It hides
+  on the Type Analysis slide. The step text gives way first when the card
+  is short but keeps three lines (`min-height: calc(3lh + 16px)`).
+- Name pass done: declarations are filled green, uses outlined green with
+  a faint fill (`.found.use`), so each use points at a filled box.
+- The type layout (room for badges) starts on the Type Analysis slide,
+  not the step after it. The route cache key includes the layout; without
+  it, links kept routes from the other layout when stepping onto or off
+  the slide (function call 55/93).
+- Parse edges follow recursive descent: an attached (solid) edge draws
+  from the child up to its parent, as a call returns (`edgeUp`). A dashed
+  socket for a node shown this step draws from the holder down, as the
+  call descends (a solid mask animates `pathLength`, since a dash pattern
+  can't carry it); one adopted from an earlier step (`4` moving under `+`)
+  only fades in, since no call made it.
+- Parse and check put the tree at one height, just under the token tray
+  (it used to start near mid-stage in parse and jump up in check).
+
+## Page chrome (2026-09-24)
+
+- About text is Stanley's: "This simulation was built by bundling my
+  compiler source code with TeaVM. Every program you compile here uses
+  the code I wrote for my compiler's class…" ("for this class" was joined
+  to his existing class sentence so it has a referent).
+- The note card scrolls when the source is dragged tall. `.ac-note` had
+  `flex-shrink: 0.001`, and a factor sum below 1 absorbs only that
+  fraction of the overflow, so it clipped; the source is now `0 1000 236px`
+  and the note `1 1 auto`.
+- Scrollbars (all panes): a 1px dashed rail like a waiting parse edge,
+  shown only where a pane scrolls, and a glowing 3px thumb like the
+  timeline's playhead, shown only while the pane is hovered or focused
+  (5px under the pointer). The panes keep the rail's room
+  (`scrollbar-gutter: stable`), so text doesn't rewrap when it overflows.
+  Chrome ignores `::-webkit-scrollbar` once `scrollbar-width` or
+  `scrollbar-color` is set, so those are in a Firefox-only `@supports`.
+
 ## Open items (not started)
 
 - Remove the TEMP Figma capture `<script>` in `page.tsx` once Figma is done with.
@@ -729,5 +826,10 @@ call, one per statement check, instead of one per expression.
   its labels become unreadable. It needs a different arrangement there (tree
   above the list, or tree hidden), not more scaling.
 - ParseTrace mishandles casts and `return`; the sketch rejects read-before-assign.
+- Registers, agreed order: register badges on the emit tree (Astra's core
+  idea), then branch arrows and the `jal` preview; then the liveness
+  gutter bars with the `$fp` lane, block brackets, the 5-box CFG, the
+  pressure strip and a k=3 spill mode (Opus liveness and pressure answers).
+- Stanley to rewrite the draft slides and the `reg.cfg` note.
 - Longer-term direction (real JSON traces, portfolio page) is in
   `docs/handoffs/2026-09-21-compiler-showcase-wayfinder.md`.
