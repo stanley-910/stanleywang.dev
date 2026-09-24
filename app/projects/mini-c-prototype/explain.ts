@@ -1,7 +1,7 @@
 // Sentences for the step popup and the hover cards. Every template is filled
 // from trace data, so the same wording serves presets and typed programs.
 // Backticks mark code spans; the page renders them as <code>.
-import { instructionText } from './trace'
+import { instructionText, liveAdded } from './trace'
 
 import type {
   AstNode,
@@ -54,6 +54,11 @@ const SYMBOL_ROLES: Record<string, string> = {
 }
 
 const code = (s: string) => `\`${s}\``
+/** "a", "a and b", "a, b, and c" */
+const list = (items: string[]) =>
+  items.length < 3
+    ? items.join(' and ')
+    : `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`
 
 const text = (trace: Trace, span: Span) =>
   (trace.text ?? '').slice(span.start, span.end)
@@ -333,6 +338,11 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
           ? `The condition ${value} is ${code('int')}, as ${what} needs.`
           : `A ${what} condition must be ${code('int')}, but ${value} is ${code(w.type)}. The compiler stops here.`
       }
+      // A bare `return;` stands in for its own value.
+      if (w.value === w.node)
+        return w.ok
+          ? `${code('return;')} hands back nothing, as a ${code('void')} function should.`
+          : `The function promises ${code(w.expected)}, but this ${code('return;')} hands back nothing. The compiler stops here.`
       return w.ok
         ? `The return value ${value} is ${code(w.type)}, matching what the function promises.`
         : `The function promises ${code(w.expected)}, but ${value} is ${code(w.type)}. The compiler stops here.`
@@ -360,7 +370,10 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
         }
       }
       const dead = run.find((i) => i.dead)
-      const said = explainMips(trace, n, run)
+      const said =
+        w.parts && w.parts.length > 1
+          ? explainBlock(trace, w.parts)
+          : explainMips(trace, n, run)
       return dead
         ? `${said} ${run.length === 1 ? 'It' : code(dead.text ?? dead.op)} never runs: the jump before it always leaves first, so the register allocator drops it.`
         : said
@@ -368,8 +381,17 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
     case 'emit.prologue': {
       const n = node(w.node)
       const run = trace.instructions.slice(w.from, w.to + 1)
-      const room = run.find((i) => /^addiu? \$sp,\$sp,-/.test(i.text ?? ''))
-      const bytes = room ? Number(room.text?.split(',').pop()) * -1 : 0
+      // Space for locals is the last move of $sp after $fp is set; the
+      // earlier ones make room for the saved $fp and $ra.
+      const setFp = run.findIndex((i) => i.text === 'addiu $fp,$sp,0')
+      const room = run
+        .slice(setFp + 1)
+        .filter((i) => /^addiu? \$sp,\$sp,-/.test(i.text ?? ''))
+        .pop()
+      const bytes =
+        room && !run[run.indexOf(room) + 1]?.text?.startsWith('sw $ra')
+          ? Number(room.text?.split(',').pop()) * -1
+          : 0
       const saveRa = run.some((i) => i.text?.startsWith('sw $ra'))
       return `Before its body, ${code(n.label)} builds a stack frame: it saves the caller's frame pointer, points ${code('$fp')} at this frame${saveRa ? ', keeps the return address' : ''}${bytes ? `, and reserves ${bytes} bytes for locals` : ''}. Nothing here comes from your code.`
     }
@@ -387,19 +409,44 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
       return `${code(w.r)} is free again: ${code(w.prevV)} was read for the last time by instruction ${w.diedAt + 1}, so ${code(w.v)} can take it.`
     case 'reg.cfg': {
       const f = trace.backend?.functions[w.fn]
-      if (!f) return 'Each instruction is a block in the control-flow graph.'
+      const graph =
+        'The allocator links each instruction to the ones that can run next: a graph of the control flow.'
+      if (!f) return graph
       if (w.back.length === 0)
-        return `Each instruction is a block in the control-flow graph. ${code(f.name)} is a straight line: control only flows downwards, so every value's life is one span of lines.`
+        return `${graph} ${code(f.name)} is a straight line: control only flows downwards, so every value's life is one span of lines.`
       const [from, to] = w.back[0]
       const jump = trace.instructions[f.first + from]
-      return `Each instruction is a block in the control-flow graph. ${code(jump?.text ?? 'j')} on line ${f.first + from + 1} goes back to line ${f.first + to + 1}: that back edge is what makes the loop a loop, and liveness must follow it.`
+      return `${graph} ${code(jump?.text ?? 'j')} on line ${f.first + from + 1} goes back to line ${f.first + to + 1}: that back edge is what makes the loop a loop, and liveness must follow it.`
     }
-    case 'reg.live':
+    case 'reg.live': {
       if (w.sweep === 1)
-        return `Liveness walks the instructions backwards. A register is live from the line that defines it to the last line that reads it. One pass fills ${w.changed} sets.`
+        return `Liveness walks the instructions backwards, from the last line up. A read makes its register live back up to the line that writes it. Each line shows what is live after it.`
       if (w.changed === 0)
-        return 'A pass that changes nothing means the sets are stable. Liveness is done.'
-      return `The back edge carries what the loop reads round again, so ${w.changed} sets grow on this pass. Values read at the top of the loop stay live through its body.`
+        return `Sweep ${w.sweep} changes nothing, so the sets are stable: a fixed point. Liveness is done.`
+      const backend = trace.backend
+      if (!backend) return `Sweep ${w.sweep} changes ${w.changed} lines.`
+      const f = backend.functions[w.fn]
+      const added = liveAdded(backend, w.fn, w.sweep)
+      const regs = [...new Set([...added.values()].flat())].sort()
+      const lines = [...added.keys()].map((i) => i + 1)
+      const low = Math.min(...lines)
+      const high = Math.max(...lines)
+      const where =
+        high - low + 1 === lines.length
+          ? `lines ${low} to ${high}`
+          : `${lines.length} more lines`
+      const back = f.blocks.find((b) => b.succ.some((s) => s < b.id))
+      const target = back?.succ.find((s) => s < back.id)
+      const jump =
+        back && target !== undefined
+          ? `Line ${f.first + back.id + 1} jumps back to line ${f.first + target + 1}, which needs ${list(regs.map(code))}, so this sweep finds ${regs.length === 1 ? 'it' : 'them'} live on ${where} too.`
+          : `This sweep finds ${list(regs.map(code))} live on ${where} too.`
+      // Variables live on the stack and are reloaded each trip, so often
+      // only the frame pointer goes round.
+      if (regs.every((r) => !r.startsWith('v')))
+        return `${jump} The loop's variables stay on the stack and are loaded again each trip, so no virtual register crosses the jump.`
+      return jump
+    }
     case 'reg.interfere':
       return `Two registers interfere when they are live at the same time: they cannot share a real register. ${w.nodes} virtual registers, ${w.edges} ${w.edges === 1 ? 'overlap' : 'overlaps'}${w.busiest ? `; ${code(w.busiest)} overlaps the most, with ${w.degree}` : ''}.`
     case 'reg.simplify': {
@@ -429,8 +476,58 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
     case 'reg.done':
       if (w.fn === undefined)
         return 'Every temporary now has a physical register. Reuse kept the count small.'
-      return `${w.used} real ${w.used === 1 ? 'register' : 'registers'} cover every virtual one${w.spills ? `, with ${w.spills} spilled to the stack` : ''}. Values that never overlap share a register.`
+      return `${w.used} real ${w.used === 1 ? 'register' : 'registers'} cover every virtual one${w.spills ? `, with ${w.spills} spilled to memory` : ''}. Values that never overlap share a register.`
   }
+}
+
+/**
+ * One sentence for a block of emit steps (emit-view.ts): a clause per node,
+ * in the order the instructions come.
+ */
+function explainBlock(
+  trace: Trace,
+  parts: { node: number; from: number; to: number }[],
+): string {
+  const line = (i: Instruction) => code(i.text ?? '')
+  const name = (label: string) => label.replace(/\s*=$/, '')
+  const clauses = parts.map((p, k) => {
+    const n = trace.nodes[p.node]
+    const run = trace.instructions.slice(p.from, p.to + 1)
+    const first = run[0],
+      last = run[run.length - 1]
+    const ops = run.map((i) => i.op)
+    if (ops.includes('jal'))
+      return `${line(run.find((i) => i.op === 'jal') as Instruction)} calls ${code(trace.tokens[n.token].text)}, and ${code(last.dest ?? '')} reads its result`
+    switch (n.kind) {
+      case 'number':
+        return `${line(first)} loads ${code(n.label)}`
+      case 'name':
+        return ops.includes('lw')
+          ? `${line(last)} loads ${code(n.label)} from its slot`
+          : `${line(first)} finds ${code(n.label)}'s slot`
+      case 'binary': {
+        const op = OP_NAMES[n.label] ?? 'operation'
+        if (ops.includes('mflo'))
+          return `${line(first)} and ${line(last)} do the ${op} into ${code(last.dest ?? '')}`
+        if (first.op === 'slt' || first.op === 'sltu')
+          return `${line(first)} compares them into ${code(first.dest ?? '')}`
+        return `${line(first)} does the ${op} into ${code(first.dest ?? '')}`
+      }
+      case 'assign':
+        return ops.includes('sw') && k > 0
+          ? `${line(last)} stores it in ${code(name(n.label))}`
+          : `${line(first)} finds ${code(name(n.label))}'s slot`
+      case 'return':
+        return `${line(first)} writes the return value and ${line(last)} jumps to the exit`
+      default:
+        return `${run.map(line).join(', ')} ${run.length === 1 ? 'is' : 'are'} emitted for ${code(text(trace, n).replace(/\s+/g, ' '))}`
+    }
+  })
+  const listed =
+    clauses.length > 1
+      ? `${clauses.slice(0, -1).join(', ')}, and ${clauses[clauses.length - 1]}`
+      : clauses[0]
+  return `${listed[0].toUpperCase()}${listed.slice(1)}.`
 }
 
 /** Sentence for one run of real MIPS from one node. */
@@ -563,8 +660,10 @@ export type TokenClass = keyof typeof LEXEMES
 export type Slide = {
   title: string
   body: string
-  /** Lexeme and category pairs shown as a small table under the body. */
+  /** Pairs shown as a small table under the body. */
   table?: [string, string][]
+  /** The table's column headings; lexeme and category by default. */
+  head?: [string, string]
 }
 
 /**
@@ -651,6 +750,59 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
         'declared twice in the same scope, is an error.',
     },
   ],
+  // Draft copy, for Stanley to rewrite.
+  Emit: [
+    {
+      title: 'Code Generation',
+      body:
+        'The tree is checked, so the compiler can finally write code. It ' +
+        'walks the tree one last time and emits **MIPS assembly** for each ' +
+        'node: an expression leaves its value in a register, and a statement ' +
+        'strings those together with loads, stores and jumps.',
+    },
+    {
+      title: 'Skipping the Fine Print',
+      body:
+        'Real assembly carries a lot of bookkeeping, so we sweep over it for ' +
+        'now. Every value gets a fresh **virtual register**, as if the ' +
+        'machine had as many as we like, and saving and restoring registers ' +
+        "around a function is left as two placeholders. We'll add the " +
+        'details back a block at a time as we go, and the register allocator ' +
+        'fills in the rest next.',
+      head: ['written', 'stands for'],
+      table: [
+        ['v0, v1, …', 'a virtual register'],
+        ['pushRegisters', 'save registers in use'],
+        ['popRegisters', 'restore them'],
+      ],
+    },
+  ],
+  // Draft copy, for Stanley to rewrite. The fixed point, graph colouring
+  // and Chaitin slides open their steps (STEP_SLIDES); the liveness slides
+  // follow the Opus liveness answer (docs/handoffs, 2026-09-24).
+  Registers: [
+    {
+      title: 'Register Allocation',
+      body:
+        'The code so far uses a fresh virtual register for every value, and ' +
+        'even a short loop runs into the dozens. The machine has 18 we can ' +
+        'hand out (`$t0`–`$t9` and `$s0`–`$s7`). The **register allocator** ' +
+        'maps each virtual register onto a real one. Two values can share a ' +
+        "register as long as they're never needed at the same time; when " +
+        "they can't all fit, some are **spilled** to memory, which costs a " +
+        'load or store every time they are used.',
+    },
+    {
+      title: 'Liveness Flows Backwards',
+      body:
+        "A value is **live** from where it's written to the last place it's " +
+        'read, and two values can share a register only if their lives never ' +
+        'overlap. To find those lives, the allocator links each instruction ' +
+        'to the ones that can run next, jumps included, then starts at each ' +
+        'read and walks **backwards** until it meets the write. A loop’s ' +
+        'jump back to its test is an edge like any other.',
+    },
+  ],
 }
 
 /**
@@ -679,6 +831,77 @@ export const STEP_SLIDES: {
           "arguments must match the function's parameters, and `return` must " +
           "match the function's return type. It also catches `break` and " +
           '`continue` outside a loop.',
+      },
+    ],
+  },
+  // Draft copy, for Stanley to rewrite.
+  {
+    phase: 'Registers',
+    // Only when one sweep wasn't enough: a loop.
+    starts: (frame) =>
+      frame.why.kind === 'reg.live' &&
+      frame.why.sweep === 2 &&
+      frame.why.changed > 0,
+    slides: [
+      {
+        title: 'Sweeping to a Fixed Point',
+        body:
+          "One backward sweep isn't always enough. When it reaches a loop's " +
+          "jump back to the top, it hasn't looked at the loop's first lines " +
+          "yet, so it doesn't know what they need. So the allocator sweeps " +
+          'again, carrying what it learned round the **back edge**, and keeps ' +
+          'going until a sweep changes nothing: a **fixed point**. This ' +
+          'compiler keeps variables on the stack, so what goes round is ' +
+          'usually just the frame pointer, `$fp`, which the loop needs to ' +
+          'find them.',
+      },
+    ],
+  },
+  {
+    phase: 'Registers',
+    starts: (frame, previous) =>
+      frame.why.kind === 'reg.interfere' && previous.why.kind === 'reg.live',
+    slides: [
+      {
+        title: 'Graph Colouring',
+        body:
+          'Two values that are live at the same time **interfere**: they ' +
+          "can't share a register. Draw each virtual register as a node and " +
+          'join every pair that interferes, and allocation becomes a ' +
+          'colouring puzzle: give each node one of 18 colours so that no two ' +
+          'joined nodes match. Finding the fewest colours is NP-hard, so ' +
+          'compilers use a fast heuristic instead.',
+      },
+    ],
+  },
+  {
+    phase: 'Registers',
+    starts: (frame, previous) =>
+      frame.why.kind === 'reg.simplify' &&
+      previous.why.kind === 'reg.interfere',
+    slides: [
+      {
+        title: "Chaitin's Algorithm",
+        body:
+          'The heuristic is **Chaitin’s**. A node with fewer than 18 ' +
+          'neighbours can always be coloured later, whatever they get, so ' +
+          'the allocator sets it aside on a stack and removes it, which ' +
+          "lowers its neighbours' counts and frees up more nodes. If every " +
+          'node left has 18 or more, it sets aside the busiest one as a ' +
+          '**spill candidate**. Then it pops the stack, rebuilding the graph, ' +
+          "and gives each node the first colour its neighbours aren't using. " +
+          'A candidate that still finds one keeps its register (Briggs’s ' +
+          "optimistic twist on Chaitin); one that doesn't is spilled.",
+      },
+      {
+        title: 'Why It Pays Off',
+        body:
+          'Registers are the fastest storage the processor has; memory is ' +
+          'many times slower. By letting values that are never live together ' +
+          'share a register, dozens of virtual registers fit in a handful of ' +
+          'real ones, so the program keeps its working values out of memory. ' +
+          'The placeholders expand too: `pushRegisters` becomes one save for ' +
+          'each real register in use, not all 18.',
       },
     ],
   },

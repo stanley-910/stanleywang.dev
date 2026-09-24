@@ -153,7 +153,14 @@ export type Why =
   | { kind: 'check.typesDone' }
   | { kind: 'check.namesDone'; unresolved: number }
   // instructions from..to (inclusive) came from one node
-  | { kind: 'emit.instr'; node: number; from: number; to: number }
+  | {
+      kind: 'emit.instr'
+      node: number
+      from: number
+      to: number
+      // In blocks (emit-view.ts): the nodes whose steps this one covers.
+      parts?: { node: number; from: number; to: number }[]
+    }
   | { kind: 'emit.prologue'; node: number; from: number; to: number }
   | { kind: 'emit.epilogue'; node: number; from: number; to: number }
   | { kind: 'emit.value'; node: number; v: string }
@@ -821,6 +828,43 @@ export function liveAfterSweep(
   }
   return out
 }
+/**
+ * What each sweep of function `fn` added, by instruction id, counting every
+ * register. The recorded sets keep only virtual ones, but the sweeps also
+ * track `$fp` and `$sp` (a loop's second sweep is `$fp` going round the back
+ * edge), so this reruns the recorder's loop (RegAllocTrace.liveness: blocks
+ * in reverse, each out the union of its successors' ins) on the blocks'
+ * uses, defs and successors. The rows it reports changed match the
+ * recorded ones on every preset.
+ */
+export function liveAdded(
+  backend: Backend,
+  fn: number,
+  sweep: number,
+): Map<number, string[]> {
+  const f = backend.functions[fn]
+  const liveIn = new Map<number, Set<string>>()
+  const liveOut = new Map<number, Set<string>>()
+  const added = new Map<number, string[]>()
+  for (let k = 1; k <= sweep; k++) {
+    added.clear()
+    for (const b of [...f.blocks].reverse()) {
+      const out = new Set(b.succ.flatMap((s) => [...(liveIn.get(s) ?? [])]))
+      const ins = new Set([...b.uses, ...[...out].filter((r) => r !== b.def)])
+      const inBefore = liveIn.get(b.id) ?? new Set()
+      const outBefore = liveOut.get(b.id) ?? new Set()
+      const grew = [
+        ...[...ins].filter((r) => !inBefore.has(r)),
+        ...[...out].filter((r) => !outBefore.has(r)),
+      ]
+      if (grew.length) added.set(f.first + b.id, [...new Set(grew)].sort())
+      liveIn.set(b.id, ins)
+      liveOut.set(b.id, out)
+    }
+  }
+  return added
+}
+
 /**
  * Lays the tree out in pixels. Each subtree gets a slot as wide as its widest
  * row, so labels at any depth never overlap; parents sit over their children.
