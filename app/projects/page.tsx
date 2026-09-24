@@ -1,10 +1,11 @@
 'use client'
 import { XIcon } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react'
+import Link from 'next/link'
 import { useState, useEffect } from 'react'
 
 // UI Components
-import { PROJECTS } from '@/app/data'
+import { PROJECTS, type Project } from '@/app/data'
 import CdOut from '@/components/ui/cd-out'
 import {
   MorphingDialog,
@@ -36,13 +37,11 @@ const TRANSITION_SECTION = {
 }
 
 type ProjectMediaProps = {
-  media: {
-    type: 'video' | 'images'
-    sources: string[]
-  }
+  media: NonNullable<Project['media']>
+  name: string
 }
 
-function ProjectMedia({ media }: ProjectMediaProps) {
+function ProjectMedia({ media, name }: ProjectMediaProps) {
   const [thumbnailIndex, setThumbnailIndex] = useState(0)
   const [fullscreenIndex, setFullscreenIndex] = useState(0)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -155,8 +154,8 @@ function ProjectMedia({ media }: ProjectMediaProps) {
             <motion.img
               key={thumbnailIndex}
               src={media.sources[thumbnailIndex]}
-              alt={`Project image ${thumbnailIndex + 1}`}
-              className="h-full w-full cursor-pointer object-cover"
+              alt={media.alt ?? `${name} — image ${thumbnailIndex + 1}`}
+              className={`h-full w-full cursor-zoom-in ${media.fit === 'contain' ? 'object-contain' : 'object-cover'}`}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -178,7 +177,7 @@ function ProjectMedia({ media }: ProjectMediaProps) {
             >
               <motion.img
                 src={media.sources[fullscreenIndex]}
-                alt={`Project image ${fullscreenIndex + 1}`}
+                alt={media.alt ?? `${name} — image ${fullscreenIndex + 1}`}
                 className="h-auto max-h-[80vh] w-auto max-w-[90vw] rounded-xl object-contain"
               />
             </motion.div>
@@ -289,27 +288,57 @@ export default function ProjectsPage() {
         transition={TRANSITION_SECTION}
       >
         {/* <h3 className="mb-5 text-lg font-medium font-serif"><Link className="prose-link" href="/projects">Showcase</Link></h3> */}
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          {PROJECTS.map((project) => (
-            <div key={project.name} className="space-y-2">
-              <div className="relative rounded-2xl bg-zinc-50/40 p-1 ring-1 ring-zinc-200/50 ring-inset dark:bg-zinc-950/40 dark:ring-zinc-800/50">
-                <ProjectMedia media={project.media} />
-              </div>
-              <div className="px-1">
-                <a
-                  className="group relative inline-block font-mono text-sm tracking-tight text-zinc-900 dark:text-zinc-50"
-                  href={project.link}
-                  target="_blank"
-                >
-                  {project.name}
-                  <span className="absolute bottom-0.5 left-0 block h-[1px] w-full max-w-0 bg-zinc-900 transition-all duration-200 group-hover:max-w-full dark:bg-zinc-400"></span>
-                </a>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  {project.description}
-                </p>
-              </div>
-            </div>
-          ))}
+        <div className="columns-1 gap-6 sm:columns-2">
+          {PROJECTS.map((project) => {
+            const hasMedia = project.media && project.media.sources.length > 0
+            const titleClassName =
+              'group relative inline-block font-mono text-sm tracking-tight text-zinc-900 dark:text-zinc-50'
+
+            return (
+              <article
+                key={project.id}
+                id={project.slug}
+                className={
+                  hasMedia
+                    ? 'mb-6 inline-block w-full break-inside-avoid space-y-2 align-top'
+                    : 'mb-6 inline-block w-full break-inside-avoid rounded-2xl bg-zinc-50/40 p-5 align-top ring-1 ring-zinc-200/50 ring-inset dark:bg-zinc-950/40 dark:ring-zinc-800/50'
+                }
+              >
+                {hasMedia && project.media && (
+                  <div className="relative rounded-2xl bg-zinc-50/40 p-1 ring-1 ring-zinc-200/50 ring-inset dark:bg-zinc-950/40 dark:ring-zinc-800/50">
+                    <ProjectMedia media={project.media} name={project.name} />
+                  </div>
+                )}
+                <div className={hasMedia ? 'space-y-1 px-1' : 'space-y-2'}>
+                  <h2>
+                    {project.link.startsWith('/') ? (
+                      <Link
+                        className={titleClassName}
+                        href={project.link}
+                        prefetch={false}
+                      >
+                        {project.name}
+                        <span className="absolute bottom-0.5 left-0 block h-[1px] w-full max-w-0 bg-zinc-900 transition-all duration-200 group-hover:max-w-full dark:bg-zinc-400"></span>
+                      </Link>
+                    ) : (
+                      <a
+                        className={titleClassName}
+                        href={project.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {project.name}
+                        <span className="absolute bottom-0.5 left-0 block h-[1px] w-full max-w-0 bg-zinc-900 transition-all duration-200 group-hover:max-w-full dark:bg-zinc-400"></span>
+                      </a>
+                    )}
+                  </h2>
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                    {project.description}
+                  </p>
+                </div>
+              </article>
+            )
+          })}
         </div>
       </motion.section>
       <motion.section
