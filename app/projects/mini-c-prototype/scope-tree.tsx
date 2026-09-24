@@ -1,12 +1,13 @@
 import { AnimatePresence, motion } from 'motion/react'
 
-import type { Box } from './link-route'
+import { nodeKind } from './explain'
+
 import type { Scopes } from './scopes'
 import type { Frame, Trace } from './trace'
 import type { ReactNode } from 'react'
 
-// Name resolution's symbol table, as a locals panel in a corner of the
-// stage: the scopes open where the current name is used, each indented
+// Name resolution's symbol table, in the note card under the source while
+// the name pass runs (the card's header says what it is): the scopes open where the current name is used, each indented
 // under the one around it. The scope the name is in has the bold, bright
 // rail and name; the ones around it are dimmer. An empty scope only gets a
 // row when it is that one. A lookup moves outward from there; each scope it
@@ -16,15 +17,11 @@ export function ScopeTree({
   trace,
   scopes,
   frame,
-  box,
-  stageHeight,
   duration,
 }: {
   trace: Trace
   scopes: Scopes
   frame: Frame
-  box: Box
-  stageHeight: number
   duration: number
 }) {
   const row = {
@@ -42,6 +39,15 @@ export function ScopeTree({
       : undefined
   const nodes = trace.nodes
   const nameOf = (id: number) => trace.tokens[nodes[id].token]?.text ?? ''
+  // What a declaration makes, beside it: var, function or struct.
+  const declKind = (id: number) => {
+    const kind = nodeKind(nodes[id]).kind
+    return kind === 'variable'
+      ? 'var'
+      : kind === 'prototype'
+        ? 'function'
+        : (kind ?? '')
+  }
 
   // A use shows the scopes around it; the pass's last step shows them all.
   let shown: number[]
@@ -143,6 +149,7 @@ export function ScopeTree({
                     ? `${nodes[item.decl].label}()`
                     : nodes[item.decl].label}
                 </code>
+                <span className="ac-scope-kind">{declKind(item.decl)}</span>
                 {owned.has(item.decl) &&
                   scopeList(owned.get(item.decl) as number)}
               </motion.li>
@@ -174,23 +181,7 @@ export function ScopeTree({
 
   const root = shown[0] ?? 0
   return (
-    <div
-      className="ac-scopes"
-      role="region"
-      aria-label="Scopes"
-      tabIndex={0}
-      // Its corner's box sets its width; it is as tall as its rows, and a
-      // bottom corner's panel grows up from the bottom edge.
-      style={{
-        left: box.x,
-        width: box.w,
-        maxHeight: stageHeight - 20,
-        ...(box.y + box.h >= stageHeight - 12
-          ? { bottom: stageHeight - box.y - box.h }
-          : { top: box.y }),
-      }}
-    >
-      <div className="ac-scopes-head">Declarations per scope</div>
+    <div className="ac-scopes" role="region" aria-label="Scopes">
       <span className={`ac-scope-name ${here(root)}`}>
         {scopes.scopes[root].label}
       </span>

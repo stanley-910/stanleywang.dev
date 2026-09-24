@@ -1,4 +1,4 @@
-// Standalone regressions for the compiler page's name pass, scope panel and
+// Standalone regressions for the compiler page's name pass, scope tree and
 // link routes: npm run check:mini-c
 // The custom case needs the local public/mini-c/compiler.js bundle.
 /* eslint-disable @typescript-eslint/no-require-imports -- a plain Node script */
@@ -48,14 +48,9 @@ const { replayedParse } = load('parse-replay.ts')
 const { withNameSteps, scopesOf } = load('scopes.ts')
 const { treePositions } = load('trace.ts')
 const { packTray, treeRows } = load('stage-layout.ts')
-const { scopePanelBox } = load('scope-panel.ts')
 const { linkRouter } = load('link-route.ts')
 const { ScopeTree } = load('scope-tree.tsx')
 const { NameLinks } = load('name-links.tsx')
-const plain = (x) => JSON.parse(JSON.stringify(x))
-const overlap = (a, b) =>
-  Math.min(a.x + a.w, b.x + b.w) > Math.max(a.x, b.x) + 0.01 &&
-  Math.min(a.y + a.h, b.y + b.h) > Math.max(a.y, b.y) + 0.01
 function samples(d) {
   const n = d.match(/-?\d+(?:\.\d+)?/g).map(Number)
   const out = []
@@ -118,46 +113,6 @@ function geometry(trace, width, height, narrow) {
     boxes.every((b) => b.y + b.h <= height - 15.99),
     'Tree fits stage vertically',
   )
-  const scopes = scopesOf(trace)
-  const panel = scopePanelBox(
-    boxes,
-    width,
-    height,
-    1 +
-      scopes.scopes.reduce(
-        (n, s) =>
-          n +
-          s.decls.length +
-          (s.node !== null && trace.nodes[s.node].kind === 'block' ? 2 : 0),
-        0,
-      ),
-  )
-  assert(
-    panel.x >= 0 &&
-      panel.y >= 0 &&
-      panel.x + panel.w <= width &&
-      panel.y + panel.h <= height,
-  )
-  assert(!boxes.some((b) => overlap(b, panel)), 'Scope panel clears pieces')
-  assert.deepEqual(
-    plain(panel),
-    plain(
-      scopePanelBox(
-        boxes,
-        width,
-        height,
-        1 +
-          scopes.scopes.reduce(
-            (n, s) =>
-              n +
-              s.decls.length +
-              (s.node !== null && trace.nodes[s.node].kind === 'block' ? 2 : 0),
-            0,
-          ),
-      ),
-    ),
-    'Corner is deterministic',
-  )
   const edges = trace.nodes.flatMap((n) =>
     n.children.map((c) => ({
       from: {
@@ -169,10 +124,9 @@ function geometry(trace, width, height, narrow) {
   )
   return {
     boxes,
-    panel,
     router: linkRouter(boxes, {
       edges,
-      walls: [panel],
+      walls: [],
       bounds: { x: 4, y: 4, w: width - 8, h: height - 8 },
     }),
   }
@@ -180,8 +134,7 @@ function geometry(trace, width, height, narrow) {
 let routes = 0,
   fallback = 0
 function check(trace) {
-  const scopes = scopesOf(trace),
-    box = { x: 0, y: 0, w: 210, h: 220 }
+  const scopes = scopesOf(trace)
   const done = trace.frames.find((f) => f.why.kind === 'check.namesDone')
   for (const f of trace.frames.filter((f) => f.why.kind === 'check.resolve')) {
     assert(
@@ -193,8 +146,6 @@ function check(trace) {
         trace,
         scopes,
         frame: f,
-        box,
-        stageHeight: 480,
         duration: 0,
       }),
     )
@@ -211,8 +162,6 @@ function check(trace) {
         trace,
         scopes,
         frame: done,
-        box,
-        stageHeight: 480,
         duration: 0,
       }),
     )
@@ -224,7 +173,7 @@ function check(trace) {
       [342, 300, true],
       [260, 300, true],
     ]) {
-      const { boxes, panel, router } = geometry(trace, width, height, narrow)
+      const { boxes, router } = geometry(trace, width, height, narrow)
       for (const [use, decl] of done.links ?? []) {
         const r = router.route(boxes[use], boxes[decl])
         routes++
@@ -237,10 +186,7 @@ function check(trace) {
           continue
         }
         for (const p of samples(r.d))
-          for (const b of [
-            ...boxes.filter((_, i) => i !== use && i !== decl),
-            panel,
-          ])
+          for (const b of boxes.filter((_, i) => i !== use && i !== decl))
             assert(
               !(
                 p.x > b.x + 0.1 &&
@@ -248,7 +194,7 @@ function check(trace) {
                 p.y > b.y + 0.1 &&
                 p.y < b.y + b.h - 0.1
               ),
-              `Clean route crosses a piece/panel at ${width}: ${use}-${decl}`,
+              `Clean route crosses a piece at ${width}: ${use}-${decl}`,
             )
       }
     }
@@ -284,8 +230,6 @@ async function main() {
       trace,
       scopes,
       frame: target,
-      box: { x: 0, y: 0, w: 210, h: 220 },
-      stageHeight: 480,
       duration: 0,
     }),
   )
@@ -326,7 +270,7 @@ async function main() {
   assert.equal(blocked.clean, false)
   assert(blocked.d && !/NaN|Infinity/.test(blocked.d))
   console.log(
-    `PASS: tray clearance, stable scope corners, current/empty scopes, missing link lists, ${routes} routes (${fallback} visible fallbacks), custom loop.`,
+    `PASS: tray clearance, current/empty scopes, missing link lists, ${routes} routes (${fallback} visible fallbacks), custom loop.`,
   )
 }
 main().catch((e) => {

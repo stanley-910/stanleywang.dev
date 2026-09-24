@@ -18,11 +18,13 @@ import {
 } from 'react'
 
 import { detailTrace } from './detail'
-import { withEmitBlocks } from './emit-view'
+import { EmitLanes, lanesWidth } from './emit-lanes'
+import { withEmitBlocks, withEmitLines } from './emit-view'
 import {
   explain,
   instructionHover,
-  nodeHover,
+  NODE_KINDS,
+  nodeKind,
   registerHover,
   tokenKind,
   PHASE_SLIDES,
@@ -32,6 +34,7 @@ import {
   matchTable,
   type TokenClass,
 } from './explain'
+import { lanesOf, registersOf } from './lanes'
 import { linkRouter, type Box, type Route } from './link-route'
 import { NameLinks } from './name-links'
 import { replayedParse } from './parse-replay'
@@ -39,7 +42,7 @@ import { groupsOf, parentsOf, parseView } from './parse-view'
 import { compileReal, compilerLoaded, REAL_MAX_CHARS } from './real'
 import { findReference, REFERENCES } from './reference'
 import { badgesAt, regBadges } from './reg-badges'
-import { scopePanelBox } from './scope-panel'
+import { withRegisterStops } from './regs-view'
 import { ScopeTree } from './scope-tree'
 import { scopesOf, withNameSteps } from './scopes'
 import { StackColumn } from './stack-column'
@@ -95,6 +98,8 @@ const CARD_CHAR_PX = 6.6
 const SOURCE_ROW = 19
 // The emit pane's rows and stack words, one to one with the editor's.
 const ASM_ROW = SOURCE_ROW
+// One character of the assembly's 12px monospace.
+const ASM_CH = 7.2
 // A dragged source height, kept per browser.
 const SPLIT_KEY = 'mini-c-split'
 const SPLIT_MIN = SOURCE_ROW * 3 + 8
@@ -476,8 +481,8 @@ export default function AnimatedCompiler() {
   // Presets play the compiler's recorded frames, with the parse steps
   // rebuilt in the parser's own order (parse-replay.ts says why) and a name
   // step for each assignment target (scopes.ts).
-  // Emit in blocks (emit-view.ts); off shows a step per node, as before.
-  const [emitBlocks, setEmitBlocks] = useState(true)
+  // Emit line by line, or in blocks (emit-view.ts).
+  const [emitBlocks, setEmitBlocks] = useState(false)
   const namedTrace = useMemo(() => {
     const recorded = reference?.trace ?? (real?.source === source && real.trace)
     return recorded
@@ -486,9 +491,13 @@ export default function AnimatedCompiler() {
   }, [source, reference, real])
   const withEmit = useCallback(
     (blocks: boolean) =>
-      blocks && namedTrace.recorded
-        ? withEmitBlocks(namedTrace.trace)
-        : namedTrace.trace,
+      !namedTrace.recorded
+        ? namedTrace.trace
+        : withRegisterStops(
+            blocks
+              ? withEmitBlocks(namedTrace.trace)
+              : withEmitLines(namedTrace.trace),
+          ),
     [namedTrace],
   )
   const baseTrace = useMemo(() => withEmit(emitBlocks), [withEmit, emitBlocks])
@@ -540,6 +549,18 @@ export default function AnimatedCompiler() {
   // Emit in blocks: each function's stack frame, and a comment row naming
   // the source line over the first block from it (as objdump -S does).
   const stacks = useMemo(() => stackFrames(trace), [trace])
+  const lanes = useMemo(() => lanesOf(trace.instructions), [trace])
+  // The longest operands, in characters: the lanes sit just past them.
+  const operandsCh = useMemo(
+    () =>
+      Math.max(
+        0,
+        ...trace.instructions.map(
+          (ins) => (ins.text ?? ins.op).split(/\s+(.*)/)[1]?.length ?? 0,
+        ),
+      ),
+    [trace],
+  )
   const asmHeads = useMemo(() => {
     const heads = new Map<number, string>()
     const all = trace.text ?? ''
@@ -551,17 +572,24 @@ export default function AnimatedCompiler() {
     let previous = -1
     for (const f of trace.frames) {
       const w = f.why
+      // Line by line, a run's head goes over its first line.
       if (w.kind === 'emit.prologue' || w.kind === 'emit.epilogue') {
-        heads.set(w.from, w.kind === 'emit.prologue' ? 'prologue' : 'epilogue')
+        const from = w.of?.from ?? w.from
+        // `twice_epilogue:` already says it.
+        const named = trace.instructions[from]?.labels?.some((l) =>
+          l.endsWith('_epilogue'),
+        )
+        if (!named)
+          heads.set(from, w.kind === 'emit.prologue' ? 'prologue' : 'epilogue')
         previous = -1
       } else if (w.kind === 'emit.instr') {
+        const from = w.of?.from ?? w.from
         const n = trace.nodes[w.node]
         // A loop's jump back belongs to its closing brace.
-        const back =
-          n.kind === 'while' && trace.instructions[w.from]?.op === 'j'
+        const back = n.kind === 'while' && trace.instructions[from]?.op === 'j'
         const line = lineAt(back ? n.end - 1 : n.start)
-        if (line !== previous && !heads.has(w.from))
-          heads.set(w.from, lineText(line))
+        if (line !== previous && !heads.has(from))
+          heads.set(from, lineText(line))
         previous = line
       }
     }
@@ -594,13 +622,16 @@ export default function AnimatedCompiler() {
     })
     return at
   }, [trace])
-  // What a return must match, named by its function: `main: int`. The
-  // function is out of sight up the tree; a condition's rule (int) is only
-  // in the step text.
-  // It stays after its check, settled (or red), with the step it was
+  // What a return must match: its function's return type. On the check
+  // both badges light, the return's and the function's signature, so the
+  // match speaks for itself; a condition's rule (int) is only in the step
+  // text. It stays after its check, settled (or red), with the step it was
   // checked on.
   const returnNeed = useMemo(() => {
-    const need = new Map<number, { text: string; step: number; ok: boolean }>()
+    const need = new Map<
+      number,
+      { text: string; step: number; ok: boolean; fn: number }
+    >()
     trace.frames.forEach((f, step) => {
       if (f.why.kind !== 'check.fits' || f.why.rule !== 'return') return
       let at: number | undefined = f.why.node
@@ -608,9 +639,10 @@ export default function AnimatedCompiler() {
         at = parents.get(at)
       if (at !== undefined)
         need.set(f.why.node, {
-          text: `${trace.nodes[at].label}: ${f.why.expected}`,
+          text: f.why.expected,
           step,
           ok: f.why.ok,
+          fn: at,
         })
     })
     return need
@@ -662,30 +694,23 @@ export default function AnimatedCompiler() {
     },
     [trace, functionType],
   )
-  // Room for each node's type badge (or what a return must match), in tree
-  // units. The type pass lays the tree out with it from its first step, so
-  // badges don't jump the tree as they appear.
-  const badgeRoom = useMemo(() => {
-    const room = new Map<number, number>()
-    const fit = (id: number, text: string) =>
-      room.set(id, Math.max(room.get(id) ?? 0, text.length * TYPE_PX + 13))
-    for (const [id, { type }] of typedStep) fit(id, type)
-    for (const [id, { text }] of returnNeed) fit(id, text)
-    for (const [id, { type }] of functionType) fit(id, type)
-    for (const n of trace.nodes) {
-      const sig = callNeed(n.id)
-      if (sig) fit(n.id, sig)
-    }
-    return room
+  // Each type badge (or what a return must match): its width in pixels and
+  // the step it first shows. The type pass makes room node by node as it
+  // reaches them, rather than all at once.
+  const badgeTexts = useMemo(() => {
+    const out: { id: number; width: number; step: number }[] = []
+    const fit = (id: number, text: string, step: number) =>
+      out.push({ id, width: text.length * TYPE_PX + 13, step })
+    for (const [id, { type, step }] of typedStep) fit(id, type, step)
+    for (const [id, { text, step }] of returnNeed) fit(id, text, step)
+    for (const [id, { type, step }] of functionType) fit(id, type, step)
+    trace.frames.forEach((f, step) => {
+      if (f.why.kind !== 'check.expr') return
+      const sig = callNeed(f.why.node)
+      if (sig) fit(f.why.node, sig, step)
+    })
+    return out
   }, [trace, typedStep, returnNeed, functionType, callNeed])
-  const typedTree = useMemo(
-    () =>
-      treePositions(
-        trace,
-        (n) => n.label.length * CHAR_PX + 2 + (badgeRoom.get(n.id) ?? 0),
-      ),
-    [trace, badgeRoom],
-  )
   // Emit: the register each node leaves behind (reg-badges.ts), with room
   // for it beside the node from the phase's first step.
   const regs = useMemo(() => regBadges(trace.instructions), [trace])
@@ -762,6 +787,16 @@ export default function AnimatedCompiler() {
   const [cardOpen, setCardOpen] = useState(false)
   const [hoverIns, setHoverIns] = useState<number | null>(null)
   const [hoverVr, setHoverVr] = useState<string | null>(null)
+  // A virtual register under focus in emit (`fn:vr`), stepped through its
+  // lifecycle: the line that writes it, then each line that reads it. A
+  // hover plays it once; a click pins it for the keys. It holds for the
+  // step it was picked on.
+  const [regFocus, setRegFocus] = useState<{
+    key: string
+    pinned: boolean
+    stage: number
+    at: number
+  } | null>(null)
   const [editing, setEditing] = useState(false)
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -915,8 +950,48 @@ export default function AnimatedCompiler() {
   const hoverNode = hover === null || playing ? undefined : trace.nodes[hover]
   const hoverTok =
     hoverToken === null || playing ? undefined : trace.tokens[hoverToken]
-  const activeSpan = hoverNode || hoverTok || error || frame.span
-  const hovering = !!(hoverNode || hoverTok || error)
+  // Emit in blocks: the tree, the assembly and a stack column side by side
+  // (Fable's emit styling, docs/handoffs/2026-09-24-emit-styling-fable-answer.md).
+  const emitStage = namedTrace.recorded && frame.phase === 'Emit'
+  // Hovering a line of the emit blocks marks the source it came from; the
+  // note keeps telling the step's story.
+  const hoverAsm =
+    emitStage && hoverIns !== null && !playing
+      ? trace.nodes[trace.instructions[hoverIns]?.node ?? -1]
+      : undefined
+  const focusLane =
+    emitStage && regFocus?.at === index && !playing
+      ? lanes.lanes.find(
+          (l) =>
+            `${l.fn}:${l.vr}` === regFocus.key &&
+            l.def < frame.instructionCount,
+        )
+      : undefined
+  // The lines it has lived through so far; an open lane ends at the last.
+  const lifecycle = focusLane
+    ? [focusLane.def, ...focusLane.reads].filter(
+        (i) => i < frame.instructionCount,
+      )
+    : []
+  const stage = regFocus ? regFocus.stage % Math.max(1, lifecycle.length) : 0
+  const stageRow = focusLane ? lifecycle[stage] : undefined
+  const stageNode =
+    stageRow === undefined ? undefined : trace.instructions[stageRow].node
+  const focusAsm =
+    stageNode === undefined || stageNode === null
+      ? undefined
+      : trace.nodes[stageNode]
+  // A declaration reads as its type and name (`int n`), in the source as
+  // on the stage, not the name alone.
+  const declSpan = (decl: number) => ({
+    start: trace.nodes[decl].start,
+    end: trace.tokens[trace.nodes[decl].token].end,
+  })
+  const stepSpan =
+    frame.why.kind === 'check.declare' ? declSpan(frame.why.decl) : frame.span
+  const activeSpan =
+    hoverNode || hoverTok || focusAsm || hoverAsm || error || stepSpan
+  const hovering = !!(hoverNode || hoverTok || focusAsm || hoverAsm || error)
   const cursor =
     !hovering && frame.why.kind === 'lex.char' ? frame.why.at : undefined
 
@@ -928,6 +1003,48 @@ export default function AnimatedCompiler() {
     setHoverIns(null)
     setHoverVr(null)
   }, [])
+  const focusReg = (key: string, pin: boolean) => {
+    if (playing) return
+    setRegFocus((f) =>
+      pin
+        ? f?.pinned && f.key === key && f.at === index
+          ? null
+          : {
+              key,
+              pinned: true,
+              stage: f?.key === key && f.at === index ? f.stage : 0,
+              at: index,
+            }
+        : f?.pinned && f.at === index
+          ? f
+          : { key, pinned: false, stage: 0, at: index },
+    )
+  }
+  const blurReg = () => setRegFocus((f) => (f?.pinned ? f : null))
+  // A hover plays the lifecycle once, a stage at a time.
+  const lifeLength = lifecycle.length
+  useEffect(() => {
+    if (!regFocus || regFocus.pinned || regFocus.stage >= lifeLength - 1) return
+    const timer = setTimeout(
+      () =>
+        setRegFocus((f) => (f && !f.pinned ? { ...f, stage: f.stage + 1 } : f)),
+      900 / speed,
+    )
+    return () => clearTimeout(timer)
+  }, [regFocus, lifeLength, speed])
+  // A click anywhere but on a register lets a pinned one go.
+  const pinned = !!focusLane && !!regFocus?.pinned
+  useEffect(() => {
+    if (!pinned) return
+    const away = (event: PointerEvent) => {
+      if (
+        !(event.target instanceof Element && event.target.closest('[data-vr]'))
+      )
+        setRegFocus(null)
+    }
+    window.addEventListener('pointerdown', away)
+    return () => window.removeEventListener('pointerdown', away)
+  }, [pinned])
   useEffect(() => {
     if (reference) return
     const abort = new AbortController()
@@ -1053,7 +1170,7 @@ export default function AnimatedCompiler() {
     if (example) setSource(example.source)
     if (q.get('lexer') === 'detailed') setDetailed(true)
     if (q.get('titles') === 'on') setTitles(true)
-    if (q.get('emit') === 'log') setEmitBlocks(false)
+    if (q.get('emit') === 'blocks') setEmitBlocks(true)
     const at = Number(q.get('frame'))
     if (at > 0) setStep(at)
     setLinked(true)
@@ -1070,11 +1187,94 @@ export default function AnimatedCompiler() {
     url.searchParams.delete('parser')
     if (titles) url.searchParams.set('titles', 'on')
     else url.searchParams.delete('titles')
-    if (emitBlocks) url.searchParams.delete('emit')
-    else url.searchParams.set('emit', 'log')
+    if (emitBlocks) url.searchParams.set('emit', 'blocks')
+    else url.searchParams.delete('emit')
     url.searchParams.set('frame', String(index))
     window.history.replaceState(null, '', url)
   }, [linked, playing, reference, index, detailed, titles, emitBlocks])
+
+  // The name pass walks the tree between the names it looks at: from the
+  // last one up to where their paths meet, then down to this one. Its
+  // edges light in turn, [parent, child, down], before the lookup draws.
+  const walk = useMemo(() => {
+    const nameAt = (f: Frame | undefined) => {
+      const v = f?.why
+      if (v?.kind === 'check.declare') return v.decl
+      if (
+        v?.kind === 'check.resolve' ||
+        v?.kind === 'check.unresolved' ||
+        v?.kind === 'check.builtin'
+      )
+        return v.use
+      return undefined
+    }
+    const to = nameAt(trace.frames[index])
+    const from = nameAt(trace.frames[index - 1]) ?? trace.root
+    if (to === undefined || from === undefined || from === to) return []
+    const up = (id: number) => {
+      const out = [id]
+      for (let p = parents.get(id); p !== undefined; p = parents.get(p))
+        out.push(p)
+      return out
+    }
+    const rise = up(from)
+    const fall = up(to)
+    const meet = rise.find((id) => fall.includes(id))
+    if (meet === undefined) return []
+    const edges: [number, number, boolean][] = []
+    for (let i = 0; rise[i] !== meet; i++)
+      edges.push([rise[i + 1], rise[i], false])
+    for (let i = fall.indexOf(meet); i > 0; i--)
+      edges.push([fall[i], fall[i - 1], true])
+    return edges
+  }, [trace, index, parents])
+  // Seconds per lit edge, at 1×.
+  // One eased stroke along the whole walk (ease in and out, sine). Timed by
+  // the edges it crosses: 0.5s for three (main down to `twice()`, which
+  // Stanley liked), shorter hops quicker at that pace, longer walks adding
+  // 0.14s an edge. Each edge draws during its share of the curve, with the
+  // curve's own slice as its easing, so the speed carries across edges.
+  const walkTime =
+    reduced || !walk.length
+      ? 0
+      : walk.length <= 3
+        ? (0.5 * walk.length) / 3
+        : 0.5 + (walk.length - 3) * 0.14
+  const walkEase = (x: number) => (1 - Math.cos(Math.PI * x)) / 2
+  const walkWhen = (y: number) => Math.acos(1 - 2 * y) / Math.PI
+  const walkEdge = (i: number) => {
+    const n = walk.length
+    const from = walkWhen(i / n),
+      to = walkWhen((i + 1) / n)
+    return {
+      delay: from * walkTime,
+      duration: (to - from) * walkTime,
+      ease: (u: number) => n * walkEase(from + u * (to - from)) - i,
+    }
+  }
+
+  // Play holds an emit step until its animation is done (Fable's pacing
+  // fix): the rows arriving one after another, then any register read on
+  // them travelling up the tree, then a beat. Milliseconds at 1×, from the
+  // same numbers the stage uses (0.42s moves, rows 0.35 of that apart,
+  // badges travelling 1.5 of it).
+  const emitHold = (() => {
+    const v = frame.why
+    if (
+      v.kind !== 'emit.instr' &&
+      v.kind !== 'emit.prologue' &&
+      v.kind !== 'emit.epilogue'
+    )
+      return 680
+    const rows = trace.instructions.slice(v.from, v.to + 1)
+    const reads = rows.some((ins) =>
+      (ins.text?.match(/\bv\d+\b/g) ?? []).some((r) => r !== ins.dest),
+    )
+    return Math.max(
+      680,
+      420 + (rows.length - 1) * 147 + (reads ? 630 : 0) + 260,
+    )
+  })()
 
   useEffect(() => {
     if (!playing) return
@@ -1092,7 +1292,7 @@ export default function AnimatedCompiler() {
             : 420 * (1 + (frame.links.length - 1) * 0.25) + 3250 * speed
           : frame.phase === 'Tokens'
             ? 380
-            : 680) / speed,
+            : emitHold + walkTime * 1000) / speed,
     )
     return () => clearTimeout(timer)
   }, [
@@ -1104,6 +1304,8 @@ export default function AnimatedCompiler() {
     frame.phase,
     frame.why.kind,
     frame.links,
+    walkTime,
+    emitHold,
   ])
 
   useEffect(() => {
@@ -1115,6 +1317,20 @@ export default function AnimatedCompiler() {
       }
       if (event.metaKey || event.ctrlKey || event.altKey) return
       const key = event.key
+      // A pinned register takes the step keys: they loop its lifecycle.
+      if (pinned && /^([hjkl]|Arrow(Left|Right)|Escape)$/.test(key)) {
+        event.preventDefault()
+        if (key === 'Escape') return setRegFocus(null)
+        const by = key === 'h' || key === 'k' || key === 'ArrowLeft' ? -1 : 1
+        setRegFocus(
+          (f) =>
+            f && {
+              ...f,
+              stage: (f.stage + by + lifeLength) % Math.max(1, lifeLength),
+            },
+        )
+        return
+      }
       if (event.code === 'Space' && !target?.closest('button,summary')) {
         event.preventDefault()
         play()
@@ -1130,7 +1346,7 @@ export default function AnimatedCompiler() {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [move, play, seek, bumpSpeed, jumpTab])
+  }, [move, play, seek, bumpSpeed, jumpTab, pinned, lifeLength])
 
   useEffect(() => {
     const scene = sceneRef.current
@@ -1176,9 +1392,6 @@ export default function AnimatedCompiler() {
   }
 
   const late = frame.phase === 'Emit' || frame.phase === 'Registers'
-  // Emit in blocks: the tree, the assembly and a stack column side by side
-  // (Fable's emit styling, docs/handoffs/2026-09-24-emit-styling-fable-answer.md).
-  const emitStage = emitBlocks && namedTrace.recorded && frame.phase === 'Emit'
   // Presets carry the real allocator's working; the Registers phase then
   // shows its interference graph instead of the tree.
   const backend = trace.backend
@@ -1301,28 +1514,40 @@ export default function AnimatedCompiler() {
       scale: { duration: 0 },
     }),
   }
-  // The type pass makes room beside each node for its type, from its
-  // slide on (the slide's deck sits on the name pass's last frame).
+  // The type pass, from its slide on (the slide's deck sits on the name
+  // pass's last frame).
   const typing =
     frame.phase === 'Check' &&
     namesDoneAt >= 0 &&
     (index > namesDoneAt ||
       (index === namesDoneAt && slide > 0 && decks.has(index)))
-  const tree = typing ? typedTree : late ? regTree : baseTree
-  const room = typing ? badgeRoom : late ? regRoom : undefined
+  // Each node's widest badge so far.
+  const badgeRoom = useMemo(() => {
+    const room = new Map<number, number>()
+    for (const { id, width, step } of badgeTexts)
+      if (step <= index) room.set(id, Math.max(room.get(id) ?? 0, width))
+    return room
+  }, [badgeTexts, index])
+  // The type pass keeps the check layout; badges push nodes aside only
+  // where they would collide (typedShift, below).
+  const tree = late ? regTree : baseTree
+  const room = late ? regRoom : undefined
   // Late phases share the stage with the instruction list on the right half.
   const unit = VIEW_W / sceneWidth
-  // Emit in blocks: the assembly (about 280px) and the stack column (176px)
-  // keep their room and the tree takes what is left, up to a third; on a
-  // narrow stage it gives way.
-  const emitTree = Math.min(sceneWidth / 3, sceneWidth - 470)
-  const emitTreeShown = emitTree >= 150
+  // Emit: the tree keeps its check-phase layout on the left, up to 60% of
+  // the stage; the assembly, with its live-range lanes just past the
+  // longest line, keeps the room it needs on the right. The stack sits in
+  // a free corner of the tree's side. On a narrow stage the tree gives way
+  // and the stack goes back beside the assembly.
+  const lanesW = lanesWidth(lanes.columns)
+  const lanesAt = 34 + (9 + operandsCh) * ASM_CH
+  const asmLeft = Math.min(sceneWidth * 0.6, sceneWidth - lanesAt - lanesW - 24)
+  const emitTreeShown = asmLeft >= 260
+  const twoColumn = emitStage && emitTreeShown
+  // Registers, and emit without room for the tree, draw it small and flat.
+  const compact = late && !twoColumn
   const treeRoom =
-    (late
-      ? emitStage
-        ? Math.max(emitTree, 0)
-        : sceneWidth * 0.46
-      : sceneWidth) -
+    (late ? (emitStage ? asmLeft : sceneWidth * 0.46) : sceneWidth) -
     EDGE_PX * 2
   const squeeze = late && !emitStage ? 11 / 12 : 1
   const treeWidth = tree.width * squeeze
@@ -1330,13 +1555,49 @@ export default function AnimatedCompiler() {
   const spread = Math.min(treeRoom / treeWidth, 3)
   const fit = Math.min(1, spread)
   const treeLeft = EDGE_PX + (treeRoom - treeWidth * spread) / 2
+  // Type pass: the tree stays where the checks left it. Row by row, top
+  // down, a node whose label and badge would run into the one left of it
+  // moves right just enough, and its subtree moves with it. Only if that
+  // runs off the stage does the whole tree slide left. So a step moves
+  // nothing unless its new badge needs the space. In pixels, since badges
+  // don't stretch with the layout's spread.
+  const typedShift = (() => {
+    if (!typing) return undefined
+    const shift = new Map<number, number>()
+    const baseX = (id: number) => treeLeft + (tree.at[id]?.x ?? 0) * spread
+    const rows = new Map<number, number[]>()
+    for (const n of trace.nodes) {
+      const row = tree.at[n.id]?.y
+      if (row === undefined) continue
+      rows.set(row, [...(rows.get(row) ?? []), n.id])
+    }
+    let right = -Infinity
+    for (const row of [...rows.keys()].sort((a, b) => a - b)) {
+      let edge = -Infinity
+      const ids = rows.get(row) ?? []
+      ids.sort((a, b) => baseX(a) - baseX(b))
+      for (const id of ids) {
+        const parent = parents.get(id)
+        let x =
+          baseX(id) + (parent === undefined ? 0 : (shift.get(parent) ?? 0))
+        const half = ((trace.nodes[id].label.length * CHAR_PX + 16) * fit) / 2
+        if (x - half < edge + 10 * fit) x = edge + 10 * fit + half
+        shift.set(id, x - baseX(id))
+        edge = x + half + (badgeRoom.get(id) ?? 0) * fit
+        right = Math.max(right, edge)
+      }
+    }
+    const over = right - (EDGE_PX + treeRoom)
+    if (over > 0) for (const [id, d] of shift) shift.set(id, d - over)
+    return shift
+  })()
   const deck = decks.get(index)
   const intro = slide > 0 ? deck?.slides[slide - 1] : undefined
   // On a slide the tabs show the phase it opens.
   const shownPhase = intro && deck ? deck.phase : frame.phase
   // Parse: unattached nodes wait in their holder's open slot (parse-view.ts).
   const working = parseView(trace, index, parents, groups, baseTree.at)
-  const pieceHalf = ((late || narrow ? 20 : 22) * fit) / 2
+  const pieceHalf = ((compact || narrow ? 20 : 22) * fit) / 2
   const { top: treeTop, band: treeBand } = treeRows(
     packTray(trace.tokens, sceneWidth),
     sceneHeight,
@@ -1350,12 +1611,13 @@ export default function AnimatedCompiler() {
     const at = room ? { ...slot, x: slot.x - (room.get(id) ?? 0) / 2 } : slot
     const shift = working.shift.get(id)
     const p = shift ? { x: at.x + shift.x, y: at.y + shift.y } : at
-    const x = (treeLeft + p.x * squeeze * spread) * unit
+    const x =
+      (treeLeft + p.x * squeeze * spread + (typedShift?.get(id) ?? 0)) * unit
     // Crowded rows keep their extra room until the stage's floor. Then
     // the tree fits below the tray instead of raising its root into it.
     const row = p.y / Math.max(1, tree.depth)
     const band = Math.min((tree.depth / Math.max(1, tree.levels)) * 235, 295)
-    return late
+    return compact
       ? { x, y: 60 + row * band * 1.3 }
       : { x, y: ((treeTop + row * treeBand) * VIEW_H) / sceneHeight }
   }
@@ -1390,6 +1652,89 @@ export default function AnimatedCompiler() {
     const w = (trace.nodes[id].label.length * CHAR_PX + 6) * fit
     return { x: c.x - w / 2, y: c.y - pieceHalf, w, h: pieceHalf * 2 }
   }
+  // The stack's corner of the tree's half: the one covering the least of
+  // the tree (badges included), sized for the trace's deepest frame so it
+  // stays put from step to step. Top left wins a tie.
+  const stackAt = (() => {
+    if (!twoColumn || !stacks.length) return undefined
+    const w = 156
+    const h =
+      22 +
+      ASM_ROW *
+        Math.max(
+          ...stacks.map(
+            (f) => (f.top - Math.min(...f.poses.map((p) => p.sp))) / 4 + 1,
+          ),
+        )
+    const boxes = trace.nodes.map((n) => {
+      const b = pieceBox(n.id)
+      return { ...b, w: b.w + (room?.get(n.id) ?? 0) * spread }
+    })
+    // Bottom corners first: the tree hangs from the top, so they are the
+    // emptiest, and the column keeps clear of the root's edges.
+    const corners = [
+      { x: 12, y: sceneHeight - h - 12 },
+      { x: asmLeft - w - 12, y: sceneHeight - h - 12 },
+      { x: 12, y: 12 },
+      { x: asmLeft - w - 12, y: 12 },
+    ]
+    // Points along every edge, sampled from the curve edgePath draws.
+    const edgePoints = trace.nodes.flatMap((n) =>
+      n.children.flatMap((c) => {
+        const p = toPx(point(n.id)),
+          q = toPx(point(c))
+        const y0 = p.y + pieceHalf,
+          y1 = q.y - pieceHalf,
+          mid = (y0 + y1) / 2
+        return Array.from({ length: 13 }, (_, k) => {
+          const t = k / 12,
+            u = 1 - t
+          return {
+            x:
+              (u * u * u + 3 * u * u * t) * p.x +
+              (3 * u * t * t + t * t * t) * q.x,
+            y: u * u * u * y0 + 3 * u * t * (u + t) * mid + t * t * t * y1,
+          }
+        })
+      }),
+    )
+    // With a margin, so a label merely touching the column counts too.
+    const cover = (c: { x: number; y: number }) =>
+      boxes.reduce(
+        (sum, b) =>
+          sum +
+          Math.max(0, Math.min(c.x + w, b.x + b.w) - Math.max(c.x, b.x) + 16) *
+            Math.max(0, Math.min(c.y + h, b.y + b.h) - Math.max(c.y, b.y) + 16),
+        0,
+      ) +
+      edgePoints.filter(
+        (e) =>
+          e.x > c.x - 8 &&
+          e.x < c.x + w + 8 &&
+          e.y > c.y - 8 &&
+          e.y < c.y + h + 8,
+      ).length *
+        200
+    return corners.reduce((best, c) => (cover(c) < cover(best) ? c : best))
+  })()
+  // The focused register on the tree: beside the node that writes it, then
+  // under each node that reads it, in the order of its lines.
+  const focusBadge = (() => {
+    if (!focusLane || stageRow === undefined) return undefined
+    const born = trace.instructions[focusLane.def].node
+    const at = trace.instructions[stageRow].node
+    if (born === null || at === null) return undefined
+    const width = (focusLane.vr.length * TYPE_PX + 8) * fit
+    const box = pieceBox(born)
+    const p =
+      stage === 0 || at === born
+        ? { x: box.x + box.w + 5 * fit + width / 2, y: box.y + box.h / 2 }
+        : { x: toPx(point(at)).x, y: toPx(point(at)).y + pieceHalf + 9 * fit }
+    return {
+      left: `${(p.x / sceneWidth) * 100}%`,
+      top: `${(p.y / sceneHeight) * 100}%`,
+    }
+  })()
   // A name with no declaration still searches: its line heads for the top
   // of the tree, where the outermost scope is, and comes back empty.
   const missing =
@@ -1437,12 +1782,88 @@ export default function AnimatedCompiler() {
       }
       if (!w.ok && w.node === id) states.push('unknown')
     }
+    // A return's check lights its function's return type, `→ int`, too.
+    if (
+      w.kind === 'check.fits' &&
+      w.rule === 'return' &&
+      returnNeed.get(w.node)?.fn === id
+    )
+      states.push(w.ok ? 'returns-ok' : 'returns-bad')
     if (w.kind === 'check.fits' && (w.value === id || w.node === id)) {
       states.push(w.ok ? 'ok' : 'bad')
       if (!w.ok && w.value === id) text = `${typed.type} ≠ ${w.expected}`
     }
     return { text, state: states.join(' '), delay }
   }
+  // Parse: the node landing this step. Like a token in the lexer, it shows
+  // its class under it and the class's kinds under the note.
+  const landing =
+    !intro &&
+    (w.kind === 'parse.node' || w.kind === 'parse.wait') &&
+    trace.nodes[w.node].kind !== 'program'
+      ? nodeKind(trace.nodes[w.node])
+      : undefined
+  // Where a landing node's class sits (parse): under it, else right, left
+  // or above, whichever crosses no edge on the stage and covers no other
+  // piece. The right is taken when the node has a parse cue there.
+  const landingSpot = (() => {
+    if (!landing || (w.kind !== 'parse.node' && w.kind !== 'parse.wait'))
+      return undefined
+    const id = w.node
+    const c = toPx(point(id))
+    const half = pieceBox(id).w / 2
+    const tw = landing.cls.length * 6.1 + 2
+    const th = 13
+    const top = c.y - pieceHalf
+    const spots = [
+      { side: 'below', x: c.x - tw / 2, y: top + 24 },
+      { side: 'right', x: c.x + half + 6, y: c.y - th / 2 },
+      { side: 'left', x: c.x - half - 6 - tw, y: c.y - th / 2 },
+      { side: 'above', x: c.x - tw / 2, y: c.y + pieceHalf - 24 - th },
+    ].filter((s) => s.side !== 'right' || working.cue?.node !== id)
+    // Every edge drawn this step, sampled along its cubic.
+    const edges = [
+      ...frame.nodes.flatMap((p) =>
+        trace.nodes[p].children
+          .filter((ch) => frame.attached.includes(ch))
+          .map((ch) => edgeUp(p, ch)),
+      ),
+      ...working.held.map(([holder, child]) => edgePath(holder, child)),
+    ]
+    const points = edges.flatMap((d) => {
+      const [x0, y0, x1, y1, x2, y2, x3, y3] = (
+        d.match(/-?\d+(?:\.\d+)?/g) ?? []
+      ).map(Number)
+      return Array.from({ length: 21 }, (_, k) => {
+        const t = k / 20,
+          u = 1 - t
+        return {
+          x:
+            u ** 3 * x0 + 3 * u * u * t * x1 + 3 * u * t * t * x2 + t ** 3 * x3,
+          y:
+            u ** 3 * y0 + 3 * u * u * t * y1 + 3 * u * t * t * y2 + t ** 3 * y3,
+        }
+      })
+    })
+    const others = frame.nodes.filter((n) => n !== id).map(pieceBox)
+    const cost = (s: { x: number; y: number }) =>
+      points.filter(
+        (p) =>
+          p.x > s.x - 3 &&
+          p.x < s.x + tw + 3 &&
+          p.y > s.y - 3 &&
+          p.y < s.y + th + 3,
+      ).length *
+        100 +
+      others.filter(
+        (b) =>
+          b.x < s.x + tw &&
+          b.x + b.w > s.x &&
+          b.y < s.y + th &&
+          b.y + b.h > s.y,
+      ).length
+    return spots.reduce((a, b) => (cost(b) < cost(a) ? b : a)).side
+  })()
   const naming =
     frame.phase === 'Check' &&
     !typing &&
@@ -1455,28 +1876,17 @@ export default function AnimatedCompiler() {
   const bindings = new Map(frame.links ?? [])
   if (w.kind === 'check.resolve') bindings.set(w.use, w.decl)
   const links = [...bindings]
-  // Check starts with the complete tree. Choose against every piece so
-  // the corner and its scroll area stay put as the scope contents grow.
-  const scopeBox = naming
-    ? scopePanelBox(
-        trace.nodes.map((n) => pieceBox(n.id)),
-        sceneWidth,
-        sceneHeight,
-        1 +
-          scopes.scopes.reduce(
-            (rows, scope) =>
-              rows +
-              scope.decls.length +
-              (scope.node !== null && trace.nodes[scope.node].kind === 'block'
-                ? 2
-                : 0),
-            0,
-          ),
-      )
-    : undefined
+  // Past the name pass, hovering a name or a declaration still draws its
+  // links, wherever the tree is on the stage.
+  const hoverLinked =
+    !!hoverNode &&
+    !regView &&
+    !(emitStage && !emitTreeShown) &&
+    links.some(([u, d]) => u === hoverNode.id || d === hoverNode.id)
   const linkRoutes = (() => {
-    if (!naming || (!links.length && !missing)) return undefined
-    const key = `${index}|${sceneWidth}|${sceneHeight}|${narrow}|${JSON.stringify(links)}|${JSON.stringify(scopeBox)}`
+    if (!(naming || hoverLinked) || (!links.length && !missing))
+      return undefined
+    const key = `${index}|${sceneWidth}|${sceneHeight}|${narrow}|${JSON.stringify(links)}`
     const cached = routeCache.current
     if (cached?.trace === trace && cached.key === key) return cached.routes
     const boxes = frame.nodes.map(pieceBox)
@@ -1492,10 +1902,9 @@ export default function AnimatedCompiler() {
           }
         }),
     )
-    // Keep the whole stage available for a detour around the scope panel.
     const router = linkRouter(boxes, {
       edges,
-      walls: scopeBox ? [scopeBox] : [],
+      walls: [],
       bounds: { x: 4, y: 4, w: sceneWidth - 8, h: sceneHeight - 8 },
     })
     const routes = new Map(
@@ -1516,7 +1925,13 @@ export default function AnimatedCompiler() {
     working.preview === undefined
       ? frame.nodes
       : [...frame.nodes, working.preview]
-  const owners = new Map(shownNodes.map((id) => [trace.nodes[id].token, id]))
+  // The root has no token of its own (it is anchored at the first), so it
+  // never takes one from the tray.
+  const owners = new Map(
+    shownNodes
+      .filter((id) => trace.nodes[id].kind !== 'program')
+      .map((id) => [trace.nodes[id].token, id]),
+  )
   // Stage pieces: every token read so far, as its node once it has one. A
   // node sharing its token with another (an expression statement and its
   // first operand, both anchored at `x` in `x + 1;`) gets a piece of its own.
@@ -1552,14 +1967,32 @@ export default function AnimatedCompiler() {
   const pairMarks = resolve
     ? [
         { ...trace.tokens[trace.nodes[resolve.use].token], kind: 'use' },
-        { ...trace.tokens[scopes.declaredAt(resolve.decl)], kind: 'decl' },
+        { ...declSpan(resolve.decl), kind: 'decl' },
       ].sort((a, b) => a.start - b.start)
     : undefined
   const lines = source.split('\n')
   const line = source.slice(0, activeSpan.start).split('\n').length
-  const hoverText = hoverNode
-    ? nodeHover(trace, frame, hoverNode)
-    : hoverIns !== null && !playing
+  // Draft copy: where the focused register is in its life.
+  const focusText =
+    focusLane && stageRow !== undefined
+      ? stage === 0
+        ? `\`${focusLane.vr}\` is born on line ${stageRow + 1}: \`${trace.instructions[stageRow].op}\` writes it.${
+            lifecycle.length > 1
+              ? ` Read on line${lifecycle.length > 2 ? 's' : ''} ${lifecycle
+                  .slice(1)
+                  .map((r) => r + 1)
+                  .join(', ')}.`
+              : focusLane.last >= frame.instructionCount
+                ? ' Nothing reads it yet.'
+                : ' Nothing reads it.'
+          }`
+        : stageRow === focusLane.last
+          ? `Line ${stageRow + 1} reads \`${focusLane.vr}\` for the last time. It dies here, and its register is free again.`
+          : `Line ${stageRow + 1} reads \`${focusLane.vr}\`. ${stageRow === lifecycle[lifecycle.length - 1] ? 'A later line reads it again.' : `Still live: line ${lifecycle[stage + 1] + 1} reads it again.`}`
+      : undefined
+  const hoverText =
+    focusText ??
+    (hoverIns !== null && !playing && !emitStage
       ? instructionHover(
           trace,
           trace.instructions[hoverIns],
@@ -1569,20 +2002,24 @@ export default function AnimatedCompiler() {
         )
       : hoverVr !== null && !playing
         ? registerHover(trace, fnIndex, hoverVr, coloured?.[hoverVr])
-        : undefined
+        : undefined)
   // Hovers replace the step text in the panel rather than float on the stage,
   // so nothing on screen says the same thing twice.
+  // The name pass: the note card holds the scopes instead of a sentence.
+  const scopeCard = naming && !hoverText
   const statusText = error
     ? error.message
-    : hoverText
-      ? 'hover'
-      : intro
-        ? intro.title
-        : index === 0
-          ? 'Press space to compile your code!'
-          : frame.why.kind === 'token'
-            ? `Token: \`${trace.tokens[frame.why.token].text}\``
-            : frame.title
+    : scopeCard
+      ? 'Declarations per scope'
+      : hoverText
+        ? 'hover'
+        : intro
+          ? intro.title
+          : index === 0
+            ? 'Press space to compile your code!'
+            : frame.why.kind === 'token'
+              ? `Token: \`${trace.tokens[frame.why.token].text}\``
+              : frame.title
   const noteText =
     hoverText ??
     intro?.body ??
@@ -1597,7 +2034,10 @@ export default function AnimatedCompiler() {
   // Without step titles, only the welcome and slides keep a header; an
   // error is already spelled out in the chip above.
   const showTitle =
-    titles || (!!intro && !hoverText) || (index === 0 && !hoverText && !error)
+    titles ||
+    scopeCard ||
+    (!!intro && !hoverText) ||
+    (index === 0 && !hoverText && !error)
   // A slide's small two-column table, under its body.
   const slideTable = !hoverText && intro?.table && (
     <table className="ac-slide-table">
@@ -1666,48 +2106,152 @@ export default function AnimatedCompiler() {
     setPlaying(false)
     clearHover()
   }
-  // A token's card sits beside it on the stage; the panel keeps the step.
-  const tokenCard =
-    hoverTok && hoverTok.id < frame.tokenCount
-      ? tokenPoints[hoverTok.id]
-      : undefined
-  // Closed, the card is just the class, centred under the token. Open, it
+  // A token's or a node's card sits under it on the stage; the panel keeps
+  // the step. A token's names its class and opens to the class's lexemes; a
+  // node's names its class in the grammar and opens to that class's kinds.
+  const card = (() => {
+    if (hoverTok && hoverTok.id < frame.tokenCount) {
+      const at = tokenPoints[hoverTok.id]
+      if (!at) return undefined
+      return {
+        key: `token-${hoverTok.id}`,
+        title: tokenKind(hoverTok),
+        list: lexemesOf(hoverTok) as readonly string[],
+        current: hoverTok.text,
+        label: 'Lexemes in this class',
+        x: at.x,
+        y: at.y - trayOffset,
+      }
+    }
+    if (hoverNode) {
+      const { cls, kind } = nodeKind(hoverNode)
+      return {
+        key: `node-${hoverNode.id}`,
+        title: cls,
+        list: cls === 'global' ? [] : NODE_KINDS[cls],
+        current: kind,
+        label: 'Kinds in this class',
+        ...point(hoverNode.id),
+      }
+    }
+    return undefined
+  })()
+  const cardText = card?.title.length ?? 0
+  // Closed, the card is just the class, centred under the piece. Open, it
   // grows right and down to the full class list, its label nudged left.
   // Widths are exact because the text is monospace.
   const clampLeft = (left: number, width: number) =>
     Math.max(8, Math.min(left, sceneWidth - width - 8))
-  const cardAt = tokenCard &&
-    hoverTok && {
-      closed: (() => {
-        const width = tokenKind(hoverTok).length * CARD_CHAR_PX + 22
-        return { left: clampLeft(tokenCard.x / unit - width / 2, width), width }
-      })(),
-      y: tokenCard.y - trayOffset,
-    }
+  const cardAt = card && {
+    closed: (() => {
+      const width = cardText * CARD_CHAR_PX + 22
+      return { left: clampLeft(card.x / unit - width / 2, width), width }
+    })(),
+    y: card.y,
+  }
   // Open, it is only as wide as the class list needs (items are 6px padding
   // and a 1px border each side, 6px apart), up to 260 before it wraps.
-  const listWidth = hoverTok
-    ? lexemesOf(hoverTok).reduce(
-        (w, l, i) => w + l.length * CARD_CHAR_PX + 14 + (i ? 6 : 0),
-        0,
-      )
-    : 0
+  const listWidth = (card?.list ?? []).reduce(
+    (w, l, i) => w + l.length * CARD_CHAR_PX + 14 + (i ? 6 : 0),
+    0,
+  )
   const openWidth = Math.min(
     260,
     sceneWidth - 16,
-    Math.max(
-      listWidth + 24,
-      hoverTok ? tokenKind(hoverTok).length * CARD_CHAR_PX + 22 : 0,
-    ),
+    Math.max(listWidth + 24, cardText * CARD_CHAR_PX + 22),
   )
+  // A node's card keeps clear of the links on the stage: under the node,
+  // else above, right or left of it, whichever crosses no link and covers
+  // the fewest other pieces. A token's always sits under it.
+  const cardPlace = (() => {
+    if (!card || !cardAt) return undefined
+    const c = toPx({ x: card.x, y: card.y })
+    const w = cardAt.closed.width
+    const h = 30
+    const under = { left: cardAt.closed.left, top: c.y + 16, side: false }
+    if (!hoverNode) return under
+    const half = pieceBox(hoverNode.id).w / 2
+    const spots = [
+      under,
+      { left: cardAt.closed.left, top: c.y - 16 - h, side: false },
+      { left: c.x + half + 8, top: c.y - h / 2, side: true },
+      { left: c.x - half - 8 - w, top: c.y - h / 2, side: true },
+    ]
+    const drawn = [...(linkRoutes?.entries() ?? [])]
+      .filter(([key]) => {
+        const [u, d] = key.split('-').map(Number)
+        return (
+          u === hoverNode.id ||
+          d === hoverNode.id ||
+          (frame.why.kind === 'check.resolve' && frame.why.use === u)
+        )
+      })
+      .map(([, r]) => r.d)
+    // Points along each route, from the corners of its cubics.
+    const along = drawn.flatMap((d) => {
+      const n = (d.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number)
+      const pts: { x: number; y: number }[] = []
+      for (let i = 0; i + 1 < n.length; i += 2)
+        pts.push({ x: n[i], y: n[i + 1] })
+      return pts.flatMap((p, i) => {
+        const q = pts[i + 1]
+        if (!q) return [p]
+        const steps = Math.max(
+          1,
+          Math.ceil(Math.hypot(q.x - p.x, q.y - p.y) / 3),
+        )
+        return Array.from({ length: steps }, (_, k) => ({
+          x: p.x + ((q.x - p.x) * k) / steps,
+          y: p.y + ((q.y - p.y) * k) / steps,
+        }))
+      })
+    })
+    const others = frame.nodes.filter((id) => id !== hoverNode.id).map(pieceBox)
+    const cost = (s: { left: number; top: number }) => {
+      if (
+        s.left < 4 ||
+        s.top < 4 ||
+        s.left + w > sceneWidth - 4 ||
+        s.top + h > sceneHeight - 4
+      )
+        return Infinity
+      const hits = along.filter(
+        (p) =>
+          p.x > s.left - 3 &&
+          p.x < s.left + w + 3 &&
+          p.y > s.top - 3 &&
+          p.y < s.top + h + 3,
+      ).length
+      const covered = others.reduce(
+        (sum, b) =>
+          sum +
+          Math.max(0, Math.min(s.left + w, b.x + b.w) - Math.max(s.left, b.x)) *
+            Math.max(0, Math.min(s.top + h, b.y + b.h) - Math.max(s.top, b.y)),
+        0,
+      )
+      return hits * 10000 + covered
+    }
+    const best = spots.reduce((a, b) => (cost(b) < cost(a) ? b : a))
+    return cost(best) === Infinity ? under : best
+  })()
   const cardBox =
     cardAt &&
-    (cardOpen
+    cardPlace &&
+    // A card with no list (the root's) stays as it is when clicked.
+    (cardOpen && card.list.length > 0
       ? {
-          left: clampLeft(cardAt.closed.left - 12, openWidth),
+          left: clampLeft(
+            cardPlace.left - (cardPlace.side ? 0 : 12),
+            openWidth,
+          ),
+          top: cardPlace.top,
           width: openWidth,
         }
-      : cardAt.closed)
+      : {
+          left: clampLeft(cardPlace.left, cardAt.closed.width),
+          top: cardPlace.top,
+          width: cardAt.closed.width,
+        })
 
   return (
     <section
@@ -2005,9 +2549,28 @@ export default function AnimatedCompiler() {
                     </div>
                   ))}
                 </div>
+              ) : scopeCard ? (
+                <ScopeTree
+                  trace={trace}
+                  scopes={scopes}
+                  frame={frame}
+                  duration={transition.duration}
+                />
               ) : (
                 <>
                   <Prose text={noteText} />
+                  {landing && !hoverText && (
+                    <ul className="ac-lexemes" aria-label="Kinds in this class">
+                      {NODE_KINDS[landing.cls].map((kind) => (
+                        <li
+                          key={kind}
+                          className={kind === landing.kind ? 'current' : ''}
+                        >
+                          {kind}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   {slideTable}
                 </>
               )}
@@ -2162,8 +2725,34 @@ export default function AnimatedCompiler() {
                     ))
                   })()}
               </AnimatePresence>
-              {naming && linkRoutes && (
+              {naming && walkTime > 0 && (
+                <g key={`walk-${index}`} className="ac-walk">
+                  {walk.map(([parent, child, down], i) => (
+                    <motion.path
+                      key={`${parent}-${child}`}
+                      d={down ? edgePath(parent, child) : edgeUp(parent, child)}
+                      fill="none"
+                      initial={{ pathLength: 0, opacity: 1 }}
+                      animate={{ pathLength: 1, opacity: 0 }}
+                      transition={{
+                        pathLength: {
+                          delay: walkEdge(i).delay / speed,
+                          duration: walkEdge(i).duration / speed,
+                          ease: walkEdge(i).ease,
+                        },
+                        opacity: {
+                          delay: (walkTime + 0.42) / speed,
+                          duration: 0.4 / speed,
+                        },
+                      }}
+                    />
+                  ))}
+                </g>
+              )}
+              {linkRoutes && (
                 <NameLinks
+                  delay={walkTime / speed}
+                  hoverOnly={!naming}
                   key={`${source}|${detailed}|${emitBlocks}|${index}|${slide}`}
                   links={links}
                   routes={linkRoutes}
@@ -2171,20 +2760,10 @@ export default function AnimatedCompiler() {
                   hover={hover}
                   reduced={!!reduced}
                   duration={transition.duration}
-                  missing={missing?.use}
+                  missing={naming ? missing?.use : undefined}
                 />
               )}
             </svg>
-            {scopeBox && (
-              <ScopeTree
-                trace={trace}
-                scopes={scopes}
-                frame={frame}
-                box={scopeBox}
-                stageHeight={sceneHeight}
-                duration={transition.duration}
-              />
-            )}
             <AnimatePresence>
               {!regView &&
                 pieces.map(({ token, nodeId, key }) => {
@@ -2203,9 +2782,19 @@ export default function AnimatedCompiler() {
                     ? point(node.id)
                     : { x: tokenPoint.x, y: tokenPoint.y - trayOffset }
                   if (!node && (p.y < 8 || p.y > 150)) return null
+                  // A focused register moves the focus to its line's node.
                   const focused = node
-                    ? frame.focus === node.id || hover === node.id
-                    : token.start === frame.span.start
+                    ? (focusLane
+                        ? stageNode === node.id
+                        : frame.focus === node.id) || hover === node.id
+                    : // A step about a node lights the node, even one
+                      // anchored at this token (the root, at the first).
+                      frame.focus === null && token.start === frame.span.start
+                  const life =
+                    node !== undefined &&
+                    lifecycle.some(
+                      (r) => trace.instructions[r].node === node.id,
+                    )
                   const pending =
                     node !== undefined &&
                     node.children.some(
@@ -2248,7 +2837,7 @@ export default function AnimatedCompiler() {
                           y: '-50%',
                         } as MotionStyle
                       }
-                      className={`ac-piece ${node ? 'node' : 'token'} kind-${token.kind} ${focused ? 'focused' : ''} ${pending ? 'pending' : ''} ${late ? 'small' : ''} ${node && node.id === working.preview ? 'preview' : ''} ${node && working.outside.includes(node.id) ? 'outside' : ''} ${declared ? 'declared' : ''} ${found ? 'found' : ''} ${use ? 'use' : ''} ${missing ? 'missing' : ''}`}
+                      className={`ac-piece ${node ? 'node' : 'token'} kind-${token.kind} ${focused ? 'focused' : ''} ${pending ? 'pending' : ''} ${compact ? 'small' : ''} ${node && node.id === working.preview ? 'preview' : ''} ${node && working.outside.includes(node.id) ? 'outside' : ''} ${declared ? 'declared' : ''} ${found ? 'found' : ''} ${use ? 'use' : ''} ${missing ? 'missing' : ''} ${life ? 'life' : ''}`}
                       initial={{
                         left: '-5%',
                         top: (Math.min(tokenPoint.y, 98) / 480) * 100 + '%',
@@ -2277,10 +2866,8 @@ export default function AnimatedCompiler() {
                       onClick={() => {
                         setPlaying(false)
                         if (node) setHover(node.id)
-                        else {
-                          setHoverToken(token.id)
-                          setCardOpen((open) => !open)
-                        }
+                        else setHoverToken(token.id)
+                        setCardOpen((open) => !open)
                       }}
                       aria-label={
                         node
@@ -2294,6 +2881,14 @@ export default function AnimatedCompiler() {
                           ? '×'
                           : token.text}
                       {!parsed && focused && <small>{tokenKind(token)}</small>}
+                      {landing &&
+                        node &&
+                        (w.kind === 'parse.node' || w.kind === 'parse.wait') &&
+                        node.id === w.node && (
+                          <small className={`ac-class ${landingSpot ?? ''}`}>
+                            {landing.cls}
+                          </small>
+                        )}
                       {node && working.cue?.node === node.id && (
                         <small className="ac-cue">{working.cue.text}</small>
                       )}
@@ -2309,7 +2904,16 @@ export default function AnimatedCompiler() {
                             } as CSSProperties
                           }
                         >
-                          {badge.text}
+                          {badge.text.includes('→') ? (
+                            <>
+                              {badge.text.slice(0, badge.text.indexOf('→'))}
+                              <span className="returns">
+                                {badge.text.slice(badge.text.indexOf('→'))}
+                              </span>
+                            </>
+                          ) : (
+                            badge.text
+                          )}
                         </small>
                       )}
                     </motion.button>
@@ -2399,7 +3003,21 @@ export default function AnimatedCompiler() {
                     return (
                       <motion.span
                         key={`reg-${b.reg}`}
-                        className={`ac-reg ${b.address ? 'address' : ''} ${b.state}`}
+                        data-vr
+                        className={`ac-reg ${b.address ? 'address' : ''} ${b.state} ${focusLane ? 'off' : ''}`}
+                        onMouseEnter={() =>
+                          focusReg(
+                            `${trace.instructions[b.def].fn}:${b.reg}`,
+                            false,
+                          )
+                        }
+                        onMouseLeave={blurReg}
+                        onClick={() =>
+                          focusReg(
+                            `${trace.instructions[b.def].fn}:${b.reg}`,
+                            true,
+                          )
+                        }
                         style={
                           {
                             x: '-50%',
@@ -2443,18 +3061,30 @@ export default function AnimatedCompiler() {
                   },
                 )}
             </AnimatePresence>
-            {hoverTok && cardAt && cardBox && (
+            {focusBadge && (!emitStage || emitTreeShown) && (
+              <motion.span
+                key={`focus-${regFocus?.key}`}
+                className={`ac-reg focus ${stage === 0 ? 'def' : ''} ${stageRow === focusLane?.last && stage > 0 ? 'dies' : ''}`}
+                style={{ x: '-50%', y: '-50%', scale: fit }}
+                initial={{ opacity: 0, ...focusBadge }}
+                animate={{ opacity: 1, ...focusBadge }}
+                transition={transition}
+                aria-hidden
+              >
+                {focusLane?.vr}
+              </motion.span>
+            )}
+            {card && cardAt && cardBox && (
               <motion.div
-                key={hoverTok.id}
+                key={card.key}
                 className="ac-hover"
-                style={{ top: `${(cardAt.y / 480) * 100}%` }}
                 initial={false}
                 animate={cardBox}
                 transition={{ duration: reduced ? 0 : 0.22, ease: EASE }}
               >
-                {tokenKind(hoverTok)}
+                {card.title}
                 <AnimatePresence initial={false}>
-                  {cardOpen && (
+                  {cardOpen && card.list.length > 0 && (
                     <motion.div
                       className="ac-hover-list"
                       initial={{ height: 0, opacity: 0 }}
@@ -2464,15 +3094,13 @@ export default function AnimatedCompiler() {
                     >
                       <ul
                         className="ac-lexemes"
-                        aria-label="Lexemes in this class"
+                        aria-label={card.label}
                         style={{ width: openWidth - 22 }}
                       >
-                        {lexemesOf(hoverTok).map((lexeme) => (
+                        {card.list.map((lexeme) => (
                           <li
                             key={lexeme}
-                            className={
-                              lexeme === hoverTok.text ? 'current' : ''
-                            }
+                            className={lexeme === card.current ? 'current' : ''}
                           >
                             {lexeme}
                           </li>
@@ -2495,6 +3123,9 @@ export default function AnimatedCompiler() {
                       const p = graphPoint(a),
                         q = graphPoint(b)
                       const gone = onStack.has(a) || onStack.has(b)
+                      // At a stop, only the current register's edges stay:
+                      // they are what its choice depends on.
+                      const mine = stepVr === a || stepVr === b
                       return (
                         <motion.line
                           key={`ig-${a}-${b}`}
@@ -2507,7 +3138,11 @@ export default function AnimatedCompiler() {
                           initial={{ pathLength: 0, opacity: 0 }}
                           animate={{
                             pathLength: 1,
-                            opacity: gone ? 0.12 : 0.6,
+                            opacity: mine
+                              ? 0.9
+                              : stepVr !== undefined || gone
+                                ? 0.1
+                                : 0.6,
                           }}
                           exit={{ opacity: 0 }}
                           transition={transition}
@@ -2620,9 +3255,9 @@ export default function AnimatedCompiler() {
             {emitStage && (
               <>
                 <motion.div
-                  className="ac-asm blocks"
+                  className={`ac-asm blocks ${focusLane ? 'reg-focus' : ''}`}
                   ref={instructionRef}
-                  style={{ left: emitTreeShown ? emitTree : 12 }}
+                  style={{ left: emitTreeShown ? asmLeft : 12 }}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={transition}
@@ -2668,7 +3303,8 @@ export default function AnimatedCompiler() {
                           </motion.div>
                         )}
                         <motion.div
-                          className={`ac-ins ${current ? 'current' : ''} ${ins.dead ? 'dead' : ''}`}
+                          data-row={i}
+                          className={`ac-ins ${current ? 'current' : ''} ${ins.dead ? 'dead' : ''} ${i === hoverIns && !playing ? 'hover' : ''} ${focusLane && i >= focusLane.def && i <= focusLane.last ? 'live' : ''} ${i === stageRow ? 'stage' : ''}`}
                           initial={{ opacity: 0, y: 4 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={enter}
@@ -2681,13 +3317,55 @@ export default function AnimatedCompiler() {
                           ) : (
                             <>
                               <b>{op}</b>
-                              <code>{args}</code>
+                              <code>
+                                {args.split(/\b(v\d+)\b/).map((part, j) => {
+                                  if (j % 2 === 0) return part
+                                  const key = `${ins.fn}:${part}`
+                                  const on =
+                                    key === regFocus?.key && !!focusLane
+                                  return (
+                                    <span
+                                      key={j}
+                                      data-vr
+                                      className={`ac-arg ${on ? 'focus' : ''} ${on && j === 1 && i === focusLane.def ? 'def' : ''} ${on && i === stageRow ? 'stage' : ''}`}
+                                      onMouseEnter={() => focusReg(key, false)}
+                                      onMouseLeave={blurReg}
+                                      onClick={() => focusReg(key, true)}
+                                    >
+                                      {part}
+                                    </span>
+                                  )
+                                })}
+                              </code>
                             </>
                           )}
                         </motion.div>
                       </Fragment>
                     )
                   })}
+                  <EmitLanes
+                    left={lanesAt}
+                    lanes={lanes.lanes}
+                    columns={lanes.columns}
+                    count={frame.instructionCount}
+                    range={currentRange}
+                    focused={focusLane && regFocus?.key}
+                    stageRow={stageRow}
+                    onFocus={focusReg}
+                    onBlur={blurReg}
+                    focus={
+                      new Set(
+                        hoverIns !== null && !playing
+                          ? registersOf(trace.instructions[hoverIns]).map(
+                              (r) => `${trace.instructions[hoverIns].fn}:${r}`,
+                            )
+                          : [],
+                      )
+                    }
+                    stagger={rowStagger}
+                    duration={transition.duration}
+                    still={!!reduced}
+                  />
                 </motion.div>
                 <StackColumn
                   frame={stacks.find(
@@ -2702,6 +3380,7 @@ export default function AnimatedCompiler() {
                   duration={transition.duration}
                   still={!!reduced}
                   step={index}
+                  at={stackAt}
                 />
               </>
             )}
@@ -2757,6 +3436,7 @@ export default function AnimatedCompiler() {
                           </div>
                         ))}
                         <div
+                          data-row={i}
                           className={`ac-ins ${current ? 'current' : ''} ${changed.has(i) ? 'changed' : ''} ${ins.dead ? 'dead' : ''}`}
                           onMouseEnter={() => !playing && setHoverIns(i)}
                           onMouseLeave={clearHover}
@@ -2785,6 +3465,34 @@ export default function AnimatedCompiler() {
                     )
                   })}
                 </AnimatePresence>
+                {/* Emit's lanes carry on: each takes its register's colour
+                    once the allocator picks one. The liveness sweeps use
+                    this column for their sets instead. */}
+                {regView && w.kind !== 'reg.live' && (
+                  <EmitLanes
+                    left={lanesAt}
+                    lanes={lanes.lanes}
+                    columns={lanes.columns}
+                    count={frame.instructionCount}
+                    range={null}
+                    focus={
+                      new Set(
+                        stepVr === undefined ? [] : [`${fnIndex}:${stepVr}`],
+                      )
+                    }
+                    onFocus={() => {}}
+                    onBlur={() => {}}
+                    stagger={rowStagger}
+                    duration={transition.duration}
+                    still={!!reduced}
+                    tint={(key) => {
+                      const colour = coloured?.[key.split(':')[1]]
+                      return colour
+                        ? INK[paletteIndex(colour) % INK.length]
+                        : undefined
+                    }}
+                  />
+                )}
                 {frame.phase === 'Registers' && !backend && (
                   <div className="ac-regs">
                     {Object.entries(trace.registers)

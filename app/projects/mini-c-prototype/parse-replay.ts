@@ -648,7 +648,7 @@ function replayParse(trace: Trace): Frame[] | undefined {
     if (e.t === 'declarations') {
       if (root?.kind === 'program') {
         visible.push(root.id)
-        push('A program: one declaration after another', root, root.id, {
+        push('global: one declaration after another', root, root.id, {
           kind: 'parse.node',
           node: root.id,
         })
@@ -808,6 +808,13 @@ const withParse = (trace: Trace, parse: Frame[]) => {
 export function replayedParse(trace: Trace): Trace {
   if (!recorded(trace) || !trace.frames.some((f) => f.phase === 'Parse'))
     return trace
-  const parse = replayParse(trace)
-  return parse ? withParse(trace, parse) : trace
+  // The root reads `global`, as the scope it opens does.
+  const named = {
+    ...trace,
+    nodes: trace.nodes.map((n) =>
+      n.kind === 'program' ? { ...n, label: 'global' } : n,
+    ),
+  }
+  const parse = replayParse(named)
+  return parse ? withParse(named, parse) : named
 }

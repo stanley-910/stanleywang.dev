@@ -106,11 +106,11 @@ function simulate(
         if (op === 'sw' && a[0] === '$fp') labels.set(addr, 'old $fp')
         else if (op === 'sw' && a[0] === '$ra') labels.set(addr, '$ra')
         else if (addr >= 0 && op === 'sw' && a[1].endsWith('($fp)'))
-          labels.set(addr, 'ret')
+          labels.set(addr, 'return')
         else if (op === 'sw' && a[1] === '0($sp)' && !labels.has(addr))
           labels.set(addr, 'arg')
         else if (op === 'lw' && a[1] === '0($sp)' && !labels.has(addr))
-          labels.set(addr, 'ret')
+          labels.set(addr, 'return')
         // The caller's frame pointer is back: this frame is gone.
         if (op === 'lw' && a[0] === '$fp') next.fp = null
       }
