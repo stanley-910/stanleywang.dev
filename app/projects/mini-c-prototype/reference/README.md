@@ -80,6 +80,11 @@ Each frame also carries `why`: the decision behind the frame as ids and facts
 (`{"kind": "parse.wait", "node": 2, "child": 3}`), matching the `Why` union in
 `trace.ts`. The page turns these into sentences in `explain.ts`.
 
+Each token also carries `reads`: every character the tokeniser read on its way to
+it (the whitespace and comments before it, its own characters, the one it looked at
+to see where it ends) and any error it reported, with what it decided at each, as
+`Tokeniser.readObserver` hears them. The detailed lexer mode plays these (`detail.ts`).
+
 ## Back end in the same trace (2026-09-22)
 
 `<name>.trace.json` now continues past Check for every program that passes

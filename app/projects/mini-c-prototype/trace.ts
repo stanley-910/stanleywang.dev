@@ -4,7 +4,43 @@ export type Token = Span & {
   id: number
   text: string
   kind: 'keyword' | 'name' | 'number' | 'symbol'
+  // compiler-emitted traces: what the tokeniser read on its way to this
+  // token, in order (Tokeniser.readObserver): the whitespace and comments
+  // before it, its own characters, and the one it looked at to see where
+  // it ends
+  reads?: LexRead[]
 }
+// One character the tokeniser read, at a source offset: taken, or only
+// looked at (`look`), and what for (Tokeniser.ReadObserver lists the
+// words); or an error it reported there.
+export type LexRead =
+  | { at: number; does: LexDecision; look?: true }
+  | { at: number; error: string }
+export type LexDecision =
+  // taken: between tokens, then the first character of a token
+  | 'space'
+  | 'single'
+  | 'word'
+  | 'number'
+  | 'include'
+  | 'string'
+  | 'char'
+  | 'pair'
+  | 'slash'
+  | 'invalid'
+  // taken: the rest of a token or a comment
+  | 'continue'
+  | 'escape'
+  | 'escaped'
+  | 'bad escape'
+  | 'bad char'
+  | 'close'
+  | 'second'
+  | 'comment'
+  | 'comment end'
+  // looked at (also 'invalid'): the token ends before it
+  | 'end'
+  | 'unterminated'
 export type AstNode = Span & {
   id: number
   label: string
@@ -164,9 +200,11 @@ export type Backend = {
 export type Why =
   | { kind: 'ready' }
   | { kind: 'token'; token: number }
-  // Detailed lexer mode (detail.ts): one character of a token read, `next`
-  // set on its last one; whitespace or a comment skipped between tokens.
-  | { kind: 'lex.char'; token: number; at: number; next?: string }
+  // Detailed lexer mode (detail.ts): one of the tokeniser's reads for a
+  // token (trace.tokens[token].reads[read], at `at`), an error it reported,
+  // or whitespace or a comment skipped between tokens.
+  | { kind: 'lex.char'; token: number; read: number; at: number }
+  | { kind: 'lex.error'; token: number; read: number }
   | { kind: 'lex.skip'; start: number; end: number; comment: boolean }
   | { kind: 'parse.read'; token: number }
   | { kind: 'parse.node'; node: number }
@@ -418,13 +456,21 @@ export function buildTrace(source: string): Trace {
         start: 0,
         end: source.length,
       })
+    // What it read on the way to each token, in the real tokeniser's words
+    // (Token.reads), so the detailed lexer plays these tokens too.
+    let reads: LexRead[] = []
     for (let offset = 0; offset < source.length; ) {
       if (/\s/.test(source[offset])) {
+        reads.push({ at: offset, does: 'space' })
         offset++
         continue
       }
       if (source.slice(offset, offset + 2) === '//') {
         const end = source.indexOf('\n', offset)
+        reads.push({ at: offset, does: 'slash' })
+        for (let at = offset + 1; at < (end < 0 ? source.length : end); at++)
+          reads.push({ at, does: 'comment' })
+        if (end >= 0) reads.push({ at: end, does: 'end', look: true })
         offset = end < 0 ? source.length : end
         continue
       }
@@ -448,13 +494,29 @@ export function buildTrace(source: string): Trace {
           : /^[A-Za-z_]/.test(text)
             ? 'name'
             : 'symbol'
+      const end = offset + text.length
+      const first: LexDecision =
+        kind === 'number'
+          ? 'number'
+          : kind !== 'symbol'
+            ? 'word'
+            : text === '='
+              ? 'pair'
+              : 'single'
+      reads.push({ at: offset, does: first })
+      for (let at = offset + 1; at < end; at++)
+        reads.push({ at, does: 'continue' })
+      if (first !== 'single' && end < source.length)
+        reads.push({ at: end, does: 'end', look: true })
       const token: Token = {
         id: result.tokens.length,
         text,
         kind,
         start: offset,
-        end: offset + text.length,
+        end,
+        reads,
       }
+      reads = []
       result.tokens.push(token)
       push(
         'Tokens',
@@ -462,7 +524,7 @@ export function buildTrace(source: string): Trace {
         token,
         { kind: 'token', token: token.id },
       )
-      offset += text.length
+      offset = end
     }
     let cursor = 0
     const peek = () => result.tokens[cursor]
