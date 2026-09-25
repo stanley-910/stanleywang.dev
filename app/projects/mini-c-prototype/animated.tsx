@@ -33,6 +33,7 @@ import {
   STEP_SLIDES,
   type Slide,
   lexemesOf,
+  lexState,
   matchTable,
   type TokenClass,
 } from './explain'
@@ -59,6 +60,7 @@ import {
   liveAfterSweep,
   rewritten,
   type Frame,
+  type LexDecision,
   type Token,
   type Trace,
   treePositions,
@@ -190,15 +192,23 @@ function StepNote({ text, token }: { text: string; token?: Token }) {
 }
 
 // Detailed lexer mode: every class's lexemes, lit while the characters read
-// so far could still become one; on a token's last character only the class
-// it becomes is marked.
-function CharTable({ read, final }: { read: string; final?: TokenClass }) {
+// so far could still become one; on the step that settles the token only the
+// class it becomes is marked.
+function CharTable({
+  read,
+  reader,
+  final,
+}: {
+  read: string
+  reader?: LexDecision
+  final?: TokenClass
+}) {
   return (
     // aria-hidden: it sits in the live step note, and the sentence above it
     // already says what matches.
     <table className="ac-char-table" aria-hidden="true">
       <tbody>
-        {matchTable(read, final).map((row) => (
+        {matchTable(read, reader, final).map((row) => (
           <tr key={row.cls} className={row.match}>
             <th>{row.cls}</th>
             <td>
@@ -1033,6 +1043,9 @@ export default function AnimatedCompiler() {
   const hovering = !!(hoverNode || hoverTok || focusAsm || hoverAsm || error)
   const cursor =
     !hovering && frame.why.kind === 'lex.char' ? frame.why.at : undefined
+  // A character the tokeniser only looked at, to see where the token ends.
+  const peeked =
+    frame.why.kind === 'lex.char' && lexState(trace, frame.why).look
 
   const clearHover = useCallback(() => {
     if (hoverTimer.current) clearTimeout(hoverTimer.current)
@@ -2033,14 +2046,8 @@ export default function AnimatedCompiler() {
   // A character step shows the class tables under the explanation.
   const charStep =
     !hoverText && !error && !intro && frame.why.kind === 'lex.char'
-      ? frame.why
+      ? lexState(trace, frame.why)
       : undefined
-  const charRead =
-    charStep &&
-    trace.tokens[charStep.token].text.slice(
-      0,
-      charStep.at - trace.tokens[charStep.token].start + 1,
-    )
   // Hidden layers size the panel for the tallest lexer step, but only on the
   // steps themselves: the welcome and slides keep their own height.
   const sizing = !intro && index > 0
@@ -2397,12 +2404,16 @@ export default function AnimatedCompiler() {
                         {source.slice(0, activeSpan.start)}
                         {cursor !== undefined ? (
                           // Detailed lexer: read so far underlined, the character
-                          // being read as a block.
+                          // being read as a block, one only looked at as an
+                          // outline (a newline as a space before it).
                           <>
                             <mark className="reading">
                               {source.slice(activeSpan.start, cursor)}
                             </mark>
-                            <mark className="cursor">{source[cursor]}</mark>
+                            <mark className={peeked ? 'cursor peek' : 'cursor'}>
+                              {source[cursor] === '\n' ? ' ' : source[cursor]}
+                            </mark>
+                            {source[cursor] === '\n' && '\n'}
                           </>
                         ) : (
                           <mark
@@ -2410,7 +2421,9 @@ export default function AnimatedCompiler() {
                             className={
                               hoverNode || hoverTok
                                 ? ''
-                                : error || frame.why.kind === 'check.unresolved'
+                                : error ||
+                                    frame.why.kind === 'check.unresolved' ||
+                                    frame.why.kind === 'lex.error'
                                   ? 'err'
                                   : frame.why.kind === 'lex.skip'
                                     ? 'skip'
@@ -2522,14 +2535,11 @@ export default function AnimatedCompiler() {
                 <div className="ac-note-stack">
                   <div className="ac-note-layer">
                     <StepNote text={noteText} token={stepToken} />
-                    {charRead !== undefined && (
+                    {charStep && (
                       <CharTable
-                        read={charRead}
-                        final={
-                          charStep?.next !== undefined
-                            ? tokenKind(trace.tokens[charStep.token])
-                            : undefined
-                        }
+                        read={charStep.read}
+                        reader={charStep.reader}
+                        final={charStep.final}
                       />
                     )}
                     {slideTable}
