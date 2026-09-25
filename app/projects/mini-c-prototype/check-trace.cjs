@@ -153,7 +153,10 @@ for (const r of refBox.exports.REFERENCES) {
       }
       if ('step' in w)
         assert.ok(
-          b.functions[w.fn].colouring.steps[w.step],
+          (w.abandoned
+            ? b.functions[w.fn].abandoned
+            : b.functions[w.fn].colouring
+          )?.steps[w.step],
           r.name + ': step index',
         )
     }
