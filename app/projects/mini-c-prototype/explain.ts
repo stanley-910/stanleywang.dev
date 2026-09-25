@@ -460,16 +460,27 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
     case 'check.declare': {
       const decl = node(w.decl)
       const name = trace.tokens[decl.token].text
+      // DRAFT copy: a definition joining its forward declaration, and a
+      // declaration hiding one around it.
+      if (w.joins !== undefined)
+        return `The definition of ${code(name)} joins its declaration on line ${line(trace, node(w.joins))}: one function, now with a body.`
+      const hides =
+        w.shadows === undefined
+          ? ''
+          : ` From here on it hides ${code(text(trace, node(w.shadows)))} on line ${line(trace, node(w.shadows))}.`
       if (decl.kind === 'function')
-        return `The function ${code(name)} goes in ${w.scope}, so calls anywhere below it can find it.`
+        return `The function ${code(name)} goes in ${w.scope}, so calls anywhere below it can find it.${hides}`
       if (w.where === 'param')
-        return `The parameter ${code(decl.label)} goes in ${w.scope}.`
-      return `${code(text(trace, decl))} puts ${code(name)} in ${w.scope}.`
+        return `The parameter ${code(decl.label)} goes in ${w.scope}.${hides}`
+      return `${code(text(trace, decl))} puts ${code(name)} in ${w.scope}.${hides}`
     }
     case 'check.resolve': {
       const use = node(w.use),
         decl = node(w.decl)
       const name = trace.tokens[use.token].text
+      // DRAFT copy: a call that finds only a forward declaration.
+      if (w.deferred)
+        return `${code(name + '()')} finds the declaration of ${code(name)} on line ${line(trace, decl)}. Its definition comes later, so the call is tied to it once the whole file is read.`
       if (use.kind === 'call')
         return `${code(name + '()')} calls the function ${code(decl.label)} defined ${w.where}.`
       const where =
@@ -482,12 +493,27 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
     }
     case 'check.unresolved': {
       const use = node(w.use)
-      return `No declaration is visible for ${code(trace.tokens[use.token].text)}, so the compiler cannot say what it means. It stops here.`
+      const name = trace.tokens[use.token].text
+      // DRAFT copy: the name is there, but not a variable or not a function.
+      if (w.found !== undefined && use.kind === 'call')
+        return `${code(name)} here names ${code(text(trace, node(w.found)))} on line ${line(trace, node(w.found))}, which is not a function, so the compiler cannot call it. It stops here.`
+      if (w.found !== undefined && node(w.found).kind === 'function')
+        return `${code(name)} here names the function ${code(name)}, not a variable, so the compiler cannot read it. It stops here.`
+      return `No declaration is visible for ${code(name)}, so the compiler cannot say what it means. It stops here.`
     }
     case 'check.builtin': {
       const use = node(w.use)
       return `${code(trace.tokens[use.token].text + '()')} is a built-in function. No declaration in this file is needed.`
     }
+    // DRAFT copy, the next three.
+    case 'check.link': {
+      const name = trace.tokens[node(w.use).token].text
+      return `Now that the whole file has been read, ${code(name + '()')} is tied to the definition of ${code(name)} on line ${line(trace, node(w.decl))}.`
+    }
+    case 'check.nameError':
+      return `The name pass reports: ${w.message}. Compilation stops after this pass.`
+    case 'check.typeError':
+      return `${src(w.node)}: ${w.message}. The compiler stops here.`
     case 'check.type': {
       const n = node(w.node)
       if (n.kind === 'declare')
@@ -502,7 +528,9 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
         const bad = w.bad == null ? undefined : node(w.bad)
         const got = bad && w.typed.find(([id]) => id === bad.id)?.[1]
         if (!bad || !w.expected)
-          return `${src(w.node)} doesn't type-check, so the compiler stops here.`
+          return w.message
+            ? `${src(w.node)} doesn't type-check: ${w.message}. The compiler stops here.` // DRAFT copy
+            : `${src(w.node)} doesn't type-check, so the compiler stops here.`
         if (n.kind === 'call')
           return `${code(n.label)} needs ${code(w.expected)} here, but ${src(bad.id)} is ${code(got ?? '?')}. The compiler stops here.`
         return ['==', '!='].includes(n.label)
@@ -547,9 +575,12 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
     case 'check.typesDone':
       return 'Every expression has a type, and each one fits where it is used. The tree is ready for code generation.'
     case 'check.namesDone':
-      return w.unresolved === 0
-        ? 'Every name has a declaration. Each use is now tied to the place it was declared.'
-        : `${w.unresolved} ${w.unresolved === 1 ? 'name has' : 'names have'} no declaration, so compilation stops.`
+      return w.unresolved === 0 && w.errors
+        ? // DRAFT copy
+          `Every name has a declaration, but the name pass found ${w.errors === 1 ? 'an error' : `${w.errors} errors`}, so compilation stops.`
+        : w.unresolved === 0
+          ? 'Every name has a declaration. Each use is now tied to the place it was declared.'
+          : `${w.unresolved} ${w.unresolved === 1 ? 'name has' : 'names have'} no declaration, so compilation stops.`
     case 'emit.instr': {
       const n = node(w.node)
       const run = trace.instructions.slice(w.from, w.to + 1)
@@ -1220,9 +1251,13 @@ export const STEP_SLIDES: {
   {
     phase: 'Check',
     starts: (frame, previous) =>
-      ['check.type', 'check.expr', 'check.fits', 'check.typesDone'].includes(
-        frame.why.kind,
-      ) && previous.why.kind === 'check.namesDone',
+      [
+        'check.type',
+        'check.expr',
+        'check.fits',
+        'check.typeError',
+        'check.typesDone',
+      ].includes(frame.why.kind) && previous.why.kind === 'check.namesDone',
     slides: [
       {
         title: 'Type Analysis',
