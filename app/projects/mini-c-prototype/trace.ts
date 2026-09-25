@@ -423,13 +423,21 @@ export function buildTrace(source: string): Trace {
         start: 0,
         end: source.length,
       })
+    // What it read on the way to each token, in the real tokeniser's words
+    // (Token.reads), so the detailed lexer plays these tokens too.
+    let reads: LexRead[] = []
     for (let offset = 0; offset < source.length; ) {
       if (/\s/.test(source[offset])) {
+        reads.push({ at: offset, does: 'space' })
         offset++
         continue
       }
       if (source.slice(offset, offset + 2) === '//') {
         const end = source.indexOf('\n', offset)
+        reads.push({ at: offset, does: 'slash' })
+        for (let at = offset + 1; at < (end < 0 ? source.length : end); at++)
+          reads.push({ at, does: 'comment' })
+        if (end >= 0) reads.push({ at: end, does: 'end', look: true })
         offset = end < 0 ? source.length : end
         continue
       }
@@ -453,13 +461,29 @@ export function buildTrace(source: string): Trace {
           : /^[A-Za-z_]/.test(text)
             ? 'name'
             : 'symbol'
+      const end = offset + text.length
+      const first: LexDecision =
+        kind === 'number'
+          ? 'number'
+          : kind !== 'symbol'
+            ? 'word'
+            : text === '='
+              ? 'pair'
+              : 'single'
+      reads.push({ at: offset, does: first })
+      for (let at = offset + 1; at < end; at++)
+        reads.push({ at, does: 'continue' })
+      if (first !== 'single' && end < source.length)
+        reads.push({ at: end, does: 'end', look: true })
       const token: Token = {
         id: result.tokens.length,
         text,
         kind,
         start: offset,
-        end: offset + text.length,
+        end,
+        reads,
       }
+      reads = []
       result.tokens.push(token)
       push(
         'Tokens',
@@ -467,7 +491,7 @@ export function buildTrace(source: string): Trace {
         token,
         { kind: 'token', token: token.id },
       )
-      offset += text.length
+      offset = end
     }
     let cursor = 0
     const peek = () => result.tokens[cursor]

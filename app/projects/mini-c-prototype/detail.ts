@@ -32,8 +32,8 @@ export function readerOf(token: Token): LexDecision | undefined {
 // character taken, the one it only looked at to see where the token ends,
 // and any error it reported. The whitespace and comments before a token get
 // one step if there is a comment among them (plain whitespace gets none).
-// Traces without recorded reads (the teaching compiler's) get no extra
-// steps. `origin` maps each frame back to its index in the plain trace (null
+// The teaching compiler gives its tokens reads in the same words; a trace
+// without reads gets no extra steps. `origin` maps each frame back to its index in the plain trace (null
 // for the inserted ones), so toggling the mode keeps the place.
 export function detailTrace(
   trace: Trace,
@@ -68,16 +68,18 @@ export function detailTrace(
           read,
           token.start,
         )
+      // A comment that never closes is the token itself: one skip step
+      // over what the tokeniser read of it.
+      const open = reads.filter(
+        (r) => r.at >= token.start && 'does' in r && r.does === 'comment',
+      )
       reads.forEach((r, n) => {
         const step = stepOf(token, n)
         if (step === 'error') {
-          // At a newline (a string left open), what was read is marked.
-          const blank = !source[r.at]?.trim() && r.at > token.start
           add(
             { kind: 'lex.error', token: token.id, read: n },
             'Lexing error', // DRAFT copy
-            blank ? token.start : r.at,
-            blank ? r.at : Math.min(r.at + 1, source.length),
+            ...errorSpan(token, n, source),
           )
         } else if (step === 'char' && 'does' in r) {
           add(
@@ -88,6 +90,14 @@ export function detailTrace(
             token.start,
             r.at + 1,
           )
+        } else if (r === open[0]) {
+          const end = open[open.length - 1].at + 1
+          add(
+            { kind: 'lex.skip', start: token.start, end, comment: true },
+            'Skipping a comment',
+            token.start,
+            end,
+          )
         }
       })
       read = token.end
@@ -96,4 +106,23 @@ export function detailTrace(
     origin.push(i)
   })
   return { trace: { ...trace, frames }, origin }
+}
+
+/**
+ * What an error step marks: the character the tokeniser reported it at, or
+ * what it read of the token when that says more: a string left open at a
+ * newline, or an error reported at the token's start once it had read on
+ * (`'ab'`, `!x`, a comment that never closes).
+ */
+function errorSpan(token: Token, n: number, source: string): [number, number] {
+  const reads = token.reads ?? []
+  const at = reads[n].at
+  if (source[at] === '\n' && at > token.start) return [token.start, at]
+  const last = reads
+    .slice(0, n)
+    .filter((r) => 'does' in r && r.at > token.start)
+    .pop()
+  if (at === token.start && last)
+    return [token.start, source[last.at] === '\n' ? last.at : last.at + 1]
+  return [at, Math.min(at + 1, source.length)]
 }
