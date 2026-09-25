@@ -164,9 +164,13 @@ export type Why =
       relation: 'tighter' | 'equal' | 'looser'
       child: number
     }
-  | { kind: 'parse.group'; span: Span; state: 'open' | 'closed' }
+  // a parenthesis opens a group; the step that finishes it seals it (Frame.sealed)
+  | { kind: 'parse.group'; span: Span }
   | { kind: 'parse.close'; node: number }
   | { kind: 'parse.done'; root: number }
+  // the parser's first error: what it expected (token categories, empty for
+  // a freeform error) and the token it found, null at the end of the source
+  | { kind: 'parse.error'; token: number | null; expected: string[] }
   | {
       kind: 'check.declare'
       decl: number
@@ -492,7 +496,7 @@ export function buildTrace(source: string): Trace {
           'Parse',
           'A group: everything inside closes before anything outside',
           t,
-          { kind: 'parse.group', span: t, state: 'open' },
+          { kind: 'parse.group', span: t },
         )
         const id = expression(0)
         const close = take(')')

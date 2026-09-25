@@ -86,6 +86,7 @@ function reflow(trace: Trace, from: string, source: string): Trace {
         'span' in frame.why && frame.why.span
           ? { ...frame.why, span: move(frame.why.span) }
           : frame.why,
+      sealed: frame.sealed?.map(move),
     })) as Trace['frames'],
     error: trace.error && move(trace.error),
   }

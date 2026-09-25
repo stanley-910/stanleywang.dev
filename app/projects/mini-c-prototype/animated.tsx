@@ -39,7 +39,6 @@ import {
 import { lanesOf, registersOf } from './lanes'
 import { linkRouter, type Box, type Route } from './link-route'
 import { NameLinks } from './name-links'
-import { replayedParse } from './parse-replay'
 import { groupsOf, parentsOf, parseView } from './parse-view'
 import { compileReal, compilerLoaded, REAL_MAX_CHARS } from './real'
 import { findReference, REFERENCES } from './reference'
@@ -480,15 +479,15 @@ export default function AnimatedCompiler() {
     real?.source !== source &&
     realFailed !== source &&
     source.length <= REAL_MAX_CHARS
-  // Presets play the compiler's recorded frames, with the parse steps
-  // rebuilt in the parser's own order (parse-replay.ts says why) and a name
-  // step for each assignment target (scopes.ts).
+  // Presets play the compiler's recorded frames, the parse steps in the
+  // order its parser took them, with a name step for each assignment target
+  // (scopes.ts).
   // Emit line by line, or in blocks (emit-view.ts).
   const [emitBlocks, setEmitBlocks] = useState(false)
   const namedTrace = useMemo(() => {
     const recorded = reference?.trace ?? (real?.source === source && real.trace)
     return recorded
-      ? { trace: withNameSteps(replayedParse(recorded)), recorded: true }
+      ? { trace: withNameSteps(recorded), recorded: true }
       : { trace: buildTrace(source), recorded: false }
   }, [source, reference, real])
   const withEmit = useCallback(
