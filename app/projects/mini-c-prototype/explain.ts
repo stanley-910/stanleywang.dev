@@ -462,6 +462,8 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
       const name = trace.tokens[decl.token].text
       // DRAFT copy: a definition joining its forward declaration, and a
       // declaration hiding one around it.
+      if (w.joins !== undefined && decl.kind !== 'function')
+        return `The declaration of ${code(name)} matches its definition on line ${line(trace, node(w.joins))}: still one function.`
       if (w.joins !== undefined)
         return `The definition of ${code(name)} joins its declaration on line ${line(trace, node(w.joins))}: one function, now with a body.`
       const hides =

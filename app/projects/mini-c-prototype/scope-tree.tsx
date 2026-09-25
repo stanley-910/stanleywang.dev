@@ -85,7 +85,7 @@ export function ScopeTree({
           w.kind === 'check.link'
         ? (w.searched ?? [])
         : []
-  const found =
+  const foundAt =
     w.kind === 'check.declare' ||
     w.kind === 'check.resolve' ||
     w.kind === 'check.link'
@@ -96,9 +96,14 @@ export function ScopeTree({
   // Declarations made by this step. A forward declaration gives way to the
   // definition that joined it: one symbol, one row.
   const made = (d: number) => scopes.declaredStep(d) <= step
-  const joined = new Set(
-    [...scopes.joins].filter(([def]) => made(def)).map(([, fwd]) => fwd),
+  const joined = new Map(
+    [...scopes.joins]
+      .filter(([def]) => made(def))
+      .map(([def, fwd]) => [fwd, def]),
   )
+  // A declaration that gave way is found as its definition's row.
+  const found =
+    foundAt === undefined ? undefined : (joined.get(foundAt) ?? foundAt)
   const visibleDecls = new Map(
     shown.map((s) => [
       s,
