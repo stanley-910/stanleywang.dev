@@ -77,7 +77,24 @@ function reflow(trace: Trace, from: string, source: string): Trace {
   return {
     ...trace,
     text: source,
-    tokens: trace.tokens.map(move),
+    // A look just past its token stays just past it, at whatever follows
+    // the token now. Other reads land on the same non-whitespace character,
+    // or the same place inside their token (a space in a string);
+    // whitespace between tokens gets no step, so its reads are dropped.
+    tokens: trace.tokens.map((token) => {
+      const moved = move(token)
+      if (!token.reads) return moved
+      const reads = token.reads.flatMap((r) => {
+        if ('look' in r && r.look && r.at === token.end)
+          return [{ ...r, at: moved.end }]
+        const i = index.get(r.at)
+        if (i !== undefined) return [{ ...r, at: b[i] }]
+        if (r.at >= token.start && r.at < token.end)
+          return [{ ...r, at: moved.start + r.at - token.start }]
+        return []
+      })
+      return { ...moved, reads }
+    }),
     nodes: trace.nodes.map(move),
     frames: trace.frames.map((frame) => ({
       ...frame,
