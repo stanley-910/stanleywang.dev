@@ -46,7 +46,7 @@ import { findReference, REFERENCES } from './reference'
 import { badgesAt, regBadges } from './reg-badges'
 import { withRegisterStops } from './regs-view'
 import { ScopeTree } from './scope-tree'
-import { scopesOf, withNameSteps } from './scopes'
+import { scopesOf } from './scopes'
 import { StackColumn } from './stack-column'
 import { stackFrames } from './stack-view'
 import { packTray, treeRows } from './stage-layout'
@@ -79,6 +79,7 @@ const TYPE_KINDS = [
   'check.type',
   'check.expr',
   'check.fits',
+  'check.typeError',
   'check.typesDone',
 ] as const
 const isTypeStep = (f: Frame) =>
@@ -481,14 +482,13 @@ export default function AnimatedCompiler() {
     realFailed !== source &&
     source.length <= REAL_MAX_CHARS
   // Presets play the compiler's recorded frames, with the parse steps
-  // rebuilt in the parser's own order (parse-replay.ts says why) and a name
-  // step for each assignment target (scopes.ts).
+  // rebuilt in the parser's own order (parse-replay.ts says why).
   // Emit line by line, or in blocks (emit-view.ts).
   const [emitBlocks, setEmitBlocks] = useState(false)
   const namedTrace = useMemo(() => {
     const recorded = reference?.trace ?? (real?.source === source && real.trace)
     return recorded
-      ? { trace: withNameSteps(replayedParse(recorded)), recorded: true }
+      ? { trace: replayedParse(recorded), recorded: true }
       : { trace: buildTrace(source), recorded: false }
   }, [source, reference, real])
   const withEmit = useCallback(
@@ -618,7 +618,12 @@ export default function AnimatedCompiler() {
   const typedStep = useMemo(() => {
     const at = new Map<number, { type: string; step: number }>()
     trace.frames.forEach((f, i) => {
-      if (f.why.kind !== 'check.expr' && f.why.kind !== 'check.fits') return
+      if (
+        f.why.kind !== 'check.expr' &&
+        f.why.kind !== 'check.fits' &&
+        f.why.kind !== 'check.typeError'
+      )
+        return
       for (const [id, type] of f.why.typed)
         if (!at.has(id)) at.set(id, { type, step: i })
     })
@@ -671,7 +676,8 @@ export default function AnimatedCompiler() {
         (f) =>
           (f.why.kind === 'check.type' ||
             f.why.kind === 'check.expr' ||
-            f.why.kind === 'check.fits') &&
+            f.why.kind === 'check.fits' ||
+            f.why.kind === 'check.typeError') &&
           f.span.start >= fn.start &&
           f.span.end <= fn.end,
       )
@@ -736,12 +742,15 @@ export default function AnimatedCompiler() {
       ),
     [trace, regRoom],
   )
-  // The step a name was found to have no declaration; from there on, in
-  // the check phase, it keeps a red tint.
+  // The step a name was found to have no declaration (or was declared
+  // twice, or never defined); from there on, in the check phase, it keeps a
+  // red tint.
   const missingStep = useMemo(() => {
     const at = new Map<number, number>()
     trace.frames.forEach((f, i) => {
       if (f.why.kind === 'check.unresolved') at.set(f.why.use, i)
+      if (f.why.kind === 'check.nameError' && !at.has(f.why.node))
+        at.set(f.why.node, i)
     })
     return at
   }, [trace])
@@ -1221,10 +1230,12 @@ export default function AnimatedCompiler() {
     const nameAt = (f: Frame | undefined) => {
       const v = f?.why
       if (v?.kind === 'check.declare') return v.decl
+      if (v?.kind === 'check.nameError') return v.node
       if (
         v?.kind === 'check.resolve' ||
         v?.kind === 'check.unresolved' ||
-        v?.kind === 'check.builtin'
+        v?.kind === 'check.builtin' ||
+        v?.kind === 'check.link'
       )
         return v.use
       return undefined
@@ -1840,10 +1851,12 @@ export default function AnimatedCompiler() {
     w.kind !== 'check.type' &&
     w.kind !== 'check.expr' &&
     w.kind !== 'check.fits' &&
+    w.kind !== 'check.typeError' &&
     w.kind !== 'check.typesDone'
   // Resolve frames are authoritative, including traces missing `links`.
   const bindings = new Map(frame.links ?? [])
-  if (w.kind === 'check.resolve') bindings.set(w.use, w.decl)
+  if (w.kind === 'check.resolve' || w.kind === 'check.link')
+    bindings.set(w.use, w.decl)
   const links = [...bindings]
   // Past the name pass, hovering a name or a declaration still draws its
   // links, wherever the tree is on the stage.
@@ -1934,7 +1947,10 @@ export default function AnimatedCompiler() {
   const tokenPoints = packTray(tray, sceneWidth)
   const scanningRow = tokenPoints[Math.max(0, frame.tokenCount - 1)]?.y || 30
   const trayOffset = parsed ? 0 : Math.max(0, scanningRow - 98)
-  const resolve = frame.why.kind === 'check.resolve' ? frame.why : undefined
+  const resolve =
+    frame.why.kind === 'check.resolve' || frame.why.kind === 'check.link'
+      ? frame.why
+      : undefined
   const pairMarks = resolve
     ? [
         { ...trace.tokens[trace.nodes[resolve.use].token], kind: 'use' },
@@ -1978,8 +1994,9 @@ export default function AnimatedCompiler() {
     (error &&
     // A type error's step says what didn't fit, and that it stops there.
     !(
-      (frame.why.kind === 'check.expr' || frame.why.kind === 'check.fits') &&
-      !frame.why.ok
+      ((frame.why.kind === 'check.expr' || frame.why.kind === 'check.fits') &&
+        !frame.why.ok) ||
+      frame.why.kind === 'check.typeError'
     )
       ? 'The compiler stops at its first error. Fix it in the editor and it runs again.'
       : explain(trace, frame, titles))
@@ -2135,7 +2152,9 @@ export default function AnimatedCompiler() {
         return (
           u === hoverNode.id ||
           d === hoverNode.id ||
-          (frame.why.kind === 'check.resolve' && frame.why.use === u)
+          ((frame.why.kind === 'check.resolve' ||
+            frame.why.kind === 'check.link') &&
+            frame.why.use === u)
         )
       })
       .map(([, r]) => r.d)
@@ -2535,6 +2554,7 @@ export default function AnimatedCompiler() {
                   trace={trace}
                   scopes={scopes}
                   frame={frame}
+                  step={index}
                   duration={transition.duration}
                 />
               ) : (

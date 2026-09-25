@@ -167,16 +167,65 @@ export type Why =
   | { kind: 'parse.group'; span: Span; state: 'open' | 'closed' }
   | { kind: 'parse.close'; node: number }
   | { kind: 'parse.done'; root: number }
+  // Name pass, compiler traces: NameAnalyzer's own steps, in its order.
+  // `inScope` is the scope (trace.scopes) the step happened in; a lookup's
+  // `searched` lists the scopes it looked in, innermost first, ending with
+  // the one it found the name in.
   | {
       kind: 'check.declare'
       decl: number
       where: 'global' | 'param' | 'local'
       /** "the global scope", "main's scope", "the block's scope". */
       scope: string
+      inScope?: number
+      /** A declaration of the same name in a scope around it, now hidden. */
+      shadows?: number
+      /** A function's definition joining its forward declaration. */
+      joins?: number
     }
-  | { kind: 'check.resolve'; use: number; decl: number; where: string }
-  | { kind: 'check.unresolved'; use: number }
-  | { kind: 'check.builtin'; use: number }
+  | {
+      kind: 'check.resolve'
+      use: number
+      decl: number
+      where: string
+      inScope?: number
+      searched?: number[]
+      /** Scopes out from the use's own. */
+      up?: number
+      /** A call that found only a forward declaration; see check.link. */
+      deferred?: boolean
+    }
+  | {
+      kind: 'check.unresolved'
+      use: number
+      inScope?: number
+      searched?: number[]
+      /** The declaration found instead, of the wrong kind (a variable called). */
+      found?: number
+    }
+  | {
+      kind: 'check.builtin'
+      use: number
+      inScope?: number
+      searched?: number[]
+    }
+  // After the whole program, a call that found a forward declaration is
+  // tied to the function's definition.
+  | {
+      kind: 'check.link'
+      use: number
+      decl: number
+      inScope?: number
+      searched?: number[]
+    }
+  // Any other error either pass reported, in the analyser's words.
+  | { kind: 'check.nameError'; node: number; message: string; inScope?: number }
+  | {
+      kind: 'check.typeError'
+      node: number
+      message: string
+      typed: [number, string][]
+    }
   | { kind: 'check.type'; node: number; type: string; expected?: string }
   // Type pass, compiler traces: an operator or call gets its type from its
   // operands. `typed` lists the nodes whose types this step shows (leaf
@@ -190,6 +239,8 @@ export type Why =
       ok: boolean
       bad?: number | null
       expected?: string | null
+      /** TypeAnalyzer's words, on a failure no operand explains. */
+      message?: string | null
     }
   // A statement checks a value against what it needs: an assignment's
   // target, a condition (int), or the function's return type.
@@ -204,7 +255,7 @@ export type Why =
       typed: [number, string][]
     }
   | { kind: 'check.typesDone' }
-  | { kind: 'check.namesDone'; unresolved: number }
+  | { kind: 'check.namesDone'; unresolved: number; errors?: number }
   // instructions from..to (inclusive) came from one node
   | {
       kind: 'emit.instr'
@@ -297,6 +348,22 @@ export type Trace = {
   sem?: string[]
   backend?: Backend
   layout?: Layout
+  scopes?: RecordedScope[]
+}
+// A scope NameAnalyzer opened (ParseTrace.scopesJson): the global scope,
+// one per function (its parameters and the declarations at the top of its
+// body share it), one per nested block, and one per struct or class.
+export type RecordedScope = {
+  id: number
+  /** The function or block node that opens it; null for the global scope. */
+  node: number | null
+  parent: number | null
+  kind: 'global' | 'function' | 'block' | 'struct' | 'class'
+  label: string
+  /** Declarations, in the order they went in. */
+  decls: number[]
+  /** Built-in functions, which have no node. */
+  builtins?: string[]
 }
 // The storage MemAllocCodeGen gave each declaration (ParseTrace's
 // layoutJson): the emit phase's stack draws these words.
@@ -722,6 +789,27 @@ export function buildTrace(source: string): Trace {
     )
     const declared = new Map<string, number>(),
       initialized = new Set<string>()
+    // The sketch has one function, so two scopes: the global one with
+    // `main` in it, and main's.
+    const mainScope: RecordedScope = {
+      id: 1,
+      node: result.root,
+      parent: 0,
+      kind: 'function',
+      label: 'main',
+      decls: [],
+    }
+    result.scopes = [
+      {
+        id: 0,
+        node: null,
+        parent: null,
+        kind: 'global',
+        label: 'global',
+        decls: [result.root],
+      },
+      mainScope,
+    ]
     const checkExpr = (id: number): void => {
       const n = result.nodes[id]
       if (n.kind === 'name') {
@@ -731,7 +819,21 @@ export function buildTrace(source: string): Trace {
             'Check',
             `No ${decl === undefined ? 'declaration' : 'value yet'} for ${n.label}`,
             n,
-            { kind: 'check.unresolved', use: id },
+            // Read before it has a value: found, but not usable yet.
+            decl === undefined
+              ? {
+                  kind: 'check.unresolved',
+                  use: id,
+                  inScope: 1,
+                  searched: [1, 0],
+                }
+              : {
+                  kind: 'check.unresolved',
+                  use: id,
+                  inScope: 1,
+                  searched: [1],
+                  found: decl,
+                },
             id,
           )
           throw new CompileError(
@@ -745,7 +847,14 @@ export function buildTrace(source: string): Trace {
           'Check',
           `${n.label} refers to its declaration above`,
           n,
-          { kind: 'check.resolve', use: id, decl, where: 'above' },
+          {
+            kind: 'check.resolve',
+            use: id,
+            decl,
+            where: 'above',
+            inScope: 1,
+            searched: [1],
+          },
           id,
         )
       }
@@ -758,6 +867,7 @@ export function buildTrace(source: string): Trace {
         if (declared.has(name))
           throw new CompileError(`“${name}” is already declared.`, n)
         declared.set(name, id)
+        mainScope.decls.push(id)
         push(
           'Check',
           `${name} is declared here as int`,
@@ -776,7 +886,14 @@ export function buildTrace(source: string): Trace {
             'Check',
             `${name} refers to its declaration above`,
             n,
-            { kind: 'check.resolve', use: id, decl, where: 'above' },
+            {
+              kind: 'check.resolve',
+              use: id,
+              decl,
+              where: 'above',
+              inScope: 1,
+              searched: [1],
+            },
             id,
           )
         } else
