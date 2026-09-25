@@ -5,6 +5,9 @@
 // yet, with the pops that reused one before it; the last pop keeps a stop
 // of its own. Spill steps always stop. A merged frame is the run's last
 // step, so the stage settles exactly as it did; `from` is where it began.
+// A run never crosses from the abandoned 18-colour attempt into the retry.
+import { attemptOf } from './trace'
+
 import type { Frame, Trace } from './trace'
 
 export function withRegisterStops(trace: Trace): Trace {
@@ -28,32 +31,42 @@ export function withRegisterStops(trace: Trace): Trace {
     else out.push(last)
     run = []
   }
-  const used = new Map<number, Set<string>>()
+  const used = new Map<string, Set<string>>()
   trace.frames.forEach((frame, i) => {
     const w = frame.why
     const next = trace.frames[i + 1]?.why
     if (w.kind === 'reg.simplify') {
       const f = backend.functions[w.fn]
-      const firstPush = f.colouring.steps.findIndex((s) => s.op === 'simplify')
+      const firstPush = attemptOf(f, w).steps.findIndex(
+        (s) => s.op === 'simplify',
+      )
       run.push(frame)
       // The first push stands alone; the rest end at the last push.
       if (
         w.step === firstPush ||
         next?.kind !== 'reg.simplify' ||
-        next.fn !== w.fn
+        next.fn !== w.fn ||
+        next.abandoned !== w.abandoned
       )
         flush()
       return
     }
     if (w.kind === 'reg.select') {
       const f = backend.functions[w.fn]
-      const colour = f.colouring.steps[w.step]?.colour ?? ''
-      const taken = used.get(w.fn) ?? new Set<string>()
-      used.set(w.fn, taken)
+      const colour = attemptOf(f, w).steps[w.step]?.colour ?? ''
+      const key = `${w.fn}:${w.abandoned ?? ''}`
+      const taken = used.get(key) ?? new Set<string>()
+      used.set(key, taken)
       const fresh = !taken.has(colour)
       taken.add(colour)
       run.push(frame)
-      if (fresh || next?.kind !== 'reg.select' || next.fn !== w.fn) flush()
+      if (
+        fresh ||
+        next?.kind !== 'reg.select' ||
+        next.fn !== w.fn ||
+        next.abandoned !== w.abandoned
+      )
+        flush()
       return
     }
     flush()
