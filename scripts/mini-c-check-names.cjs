@@ -44,7 +44,6 @@ function load(file) {
   return box.exports
 }
 const { REFERENCES } = load('reference.ts')
-const { replayedParse } = load('parse-replay.ts')
 const { withNameSteps, scopesOf } = load('scopes.ts')
 const { treePositions } = load('trace.ts')
 const { packTray, treeRows } = load('stage-layout.ts')
@@ -201,21 +200,19 @@ function check(trace) {
   }
 }
 async function main() {
-  for (const ref of REFERENCES) check(withNameSteps(replayedParse(ref.trace)))
+  for (const ref of REFERENCES) check(withNameSteps(ref.trace))
   // The resolve step carries the binding even if the recorder drops its list.
   const ref = REFERENCES.find((r) => r.name.toLowerCase() === 'loop')
   const stripped = {
     ...ref.trace,
     frames: ref.trace.frames.map((f) => ({ ...f, links: undefined })),
   }
-  check(withNameSteps(replayedParse(stripped)))
+  check(withNameSteps(stripped))
   const custom = ref.source.replace('int main() {', 'int main() {\n  int n;')
   const compiler = await import(
     `data:text/javascript;base64,${fs.readFileSync(path.join(__dirname, '../public/mini-c/compiler.js')).toString('base64')}`
   )
-  const trace = withNameSteps(
-    replayedParse(JSON.parse(compiler.trace(custom)).trace),
-  )
+  const trace = withNameSteps(JSON.parse(compiler.trace(custom)).trace)
   check(trace)
   const scopes = scopesOf(trace)
   const target = trace.frames.find(
