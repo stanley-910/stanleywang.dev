@@ -36,8 +36,8 @@ export const parentsOf = (trace: Trace) => {
 }
 
 // Groups as [open frame, sealing frame, span], matched innermost first. A
-// group seals on the step that finished it (`Frame.sealed`); recorded traces
-// that weren't rebuilt still have a closing step of their own.
+// group seals on the step that finished it (`Frame.sealed`); one still open
+// at a parse error has no sealing frame and is left out.
 export const groupsOf = (frames: Frame[]) => {
   const open: number[] = []
   const groups: { open: number; closed: number; start: number; end: number }[] =
@@ -48,10 +48,7 @@ export const groupsOf = (frames: Frame[]) => {
       groups.push({ open: at, closed: i, start: span.start, end: span.end })
   }
   frames.forEach((f, i) => {
-    if (f.why.kind === 'parse.group') {
-      if (f.why.state === 'open') open.push(i)
-      else seal(i, f.why.span)
-    }
+    if (f.why.kind === 'parse.group') open.push(i)
     for (const span of f.sealed ?? []) seal(i, span)
   })
   return groups

@@ -418,9 +418,7 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
       return `${code(w.incoming)} binds less tightly than ${code(w.pending)}, so ${code(w.pending)} closes first. Its result becomes the left input of ${code(w.incoming)}.`
     }
     case 'parse.group':
-      return w.state === 'open'
-        ? 'The parenthesis opens a group. Everything inside finishes before anything outside can see it.'
-        : `${code(text(trace, w.span))} is one piece now and can be an input like any literal.`
+      return 'The parenthesis opens a group. Everything inside finishes before anything outside can see it.'
     case 'parse.close': {
       const n = node(w.node)
       const kids = n.children.map(src)
@@ -457,6 +455,16 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
     }
     case 'parse.done':
       return `AST is complete with ${trace.nodes.length} nodes`
+    case 'parse.error': {
+      // DRAFT copy
+      const found =
+        w.token === null
+          ? 'the end of the program'
+          : code(trace.tokens[w.token].text)
+      return w.expected.length
+        ? `The parser expected ${joinOr(w.expected.map(categoryText))} here but found ${found}, so it stops.`
+        : `The parser stops at ${found}.`
+    }
     case 'check.declare': {
       const decl = node(w.decl)
       const name = trace.tokens[decl.token].text
