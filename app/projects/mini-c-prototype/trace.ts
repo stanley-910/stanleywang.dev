@@ -182,6 +182,8 @@ export type Why =
       shadows?: number
       /** A function's definition joining its forward declaration, or the other way round. */
       joins?: number
+      /** A declaration of a built-in function, joining it. */
+      builtin?: boolean
     }
   | {
       kind: 'check.resolve'
@@ -225,6 +227,8 @@ export type Why =
       node: number
       message: string
       typed: [number, string][]
+      /** The type the error is about, which has no node or place of its own. */
+      about?: string
     }
   | { kind: 'check.type'; node: number; type: string; expected?: string }
   // Type pass, compiler traces: an operator or call gets its type from its

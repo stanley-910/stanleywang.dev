@@ -180,7 +180,9 @@ export function ScopeTree({
                   {nodes[item.decl].kind === 'function' ||
                   nodes[item.decl].label.startsWith('FunDecl ')
                     ? `${nameOf(item.decl)}()`
-                    : nodes[item.decl].label}
+                    : nodes[item.decl].label.startsWith('ClassDecl ')
+                      ? nameOf(item.decl)
+                      : nodes[item.decl].label}
                 </code>
                 <span className="ac-scope-kind">{declKind(item.decl)}</span>
                 {owned.has(item.decl) &&
