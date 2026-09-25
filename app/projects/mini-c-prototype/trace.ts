@@ -4,7 +4,43 @@ export type Token = Span & {
   id: number
   text: string
   kind: 'keyword' | 'name' | 'number' | 'symbol'
+  // compiler-emitted traces: what the tokeniser read on its way to this
+  // token, in order (Tokeniser.readObserver): the whitespace and comments
+  // before it, its own characters, and the one it looked at to see where
+  // it ends
+  reads?: LexRead[]
 }
+// One character the tokeniser read, at a source offset: taken, or only
+// looked at (`look`), and what for (Tokeniser.ReadObserver lists the
+// words); or an error it reported there.
+export type LexRead =
+  | { at: number; does: LexDecision; look?: true }
+  | { at: number; error: string }
+export type LexDecision =
+  // taken: between tokens, then the first character of a token
+  | 'space'
+  | 'single'
+  | 'word'
+  | 'number'
+  | 'include'
+  | 'string'
+  | 'char'
+  | 'pair'
+  | 'slash'
+  | 'invalid'
+  // taken: the rest of a token or a comment
+  | 'continue'
+  | 'escape'
+  | 'escaped'
+  | 'bad escape'
+  | 'bad char'
+  | 'close'
+  | 'second'
+  | 'comment'
+  | 'comment end'
+  // looked at (also 'invalid'): the token ends before it
+  | 'end'
+  | 'unterminated'
 export type AstNode = Span & {
   id: number
   label: string
@@ -148,9 +184,11 @@ export type Backend = {
 export type Why =
   | { kind: 'ready' }
   | { kind: 'token'; token: number }
-  // Detailed lexer mode (detail.ts): one character of a token read, `next`
-  // set on its last one; whitespace or a comment skipped between tokens.
-  | { kind: 'lex.char'; token: number; at: number; next?: string }
+  // Detailed lexer mode (detail.ts): one of the tokeniser's reads for a
+  // token (trace.tokens[token].reads[read], at `at`), an error it reported,
+  // or whitespace or a comment skipped between tokens.
+  | { kind: 'lex.char'; token: number; read: number; at: number }
+  | { kind: 'lex.error'; token: number; read: number }
   | { kind: 'lex.skip'; start: number; end: number; comment: boolean }
   | { kind: 'parse.read'; token: number }
   | { kind: 'parse.node'; node: number }

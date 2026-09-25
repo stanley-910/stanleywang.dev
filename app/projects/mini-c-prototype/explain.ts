@@ -1,6 +1,7 @@
 // Sentences for the step popup and the hover cards. Every template is filled
 // from trace data, so the same wording serves presets and typed programs.
 // Backticks mark code spans; the page renders them as <code>.
+import { readerOf } from './detail'
 import { stackFrames } from './stack-view'
 import { instructionText, liveAdded } from './trace'
 
@@ -8,6 +9,7 @@ import type {
   AstNode,
   Frame,
   Instruction,
+  LexDecision,
   Span,
   Tag,
   Token,
@@ -332,7 +334,13 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
         : `${code(token.text)} is ${article(kind)}`
     }
     case 'lex.char':
-      return readStep(trace.tokens[w.token], w.at, w.next)
+      return readStep(trace, w)
+    case 'lex.error': {
+      // The tokeniser's own message, in the page's words.
+      const r = trace.tokens[w.token].reads?.[w.read]
+      const message = r && 'error' in r ? r.error : ''
+      return compilerError(message, trace.text ?? '')?.message ?? message
+    }
     case 'lex.skip':
       return w.comment
         ? 'Comments only matter to people. The lexer skips them, along with the whitespace around them.'
@@ -1426,25 +1434,28 @@ export function nodeKind(node: AstNode): { cls: NodeClass; kind?: string } {
   }
 }
 
-// Classes written as a rule rather than a list.
-const PATTERNS: Partial<Record<TokenClass, RegExp>> = {
-  identifier: /^[A-Za-z_][A-Za-z0-9_]*$/,
-  number: /^[0-9]+$/,
-}
-
 export type Match = 'exact' | 'prefix' | 'none'
 
 /**
  * How the characters read so far sit against each class's lexemes. While a
  * token is still being read, everything it could become is a possible match
- * (`prefix`), identifier included: the lexer only decides at the token's end.
- * With `final` (its last character) only the class it becomes is `exact`.
+ * (`prefix`): the lexemes that start with what was read, and identifier or
+ * number while the tokeniser is reading a word or a number (`reader`, its
+ * recorded decision on the token's first character). With `final`, on the
+ * step that settles the token, only the class it became is `exact`.
  */
-export function matchTable(read: string, final?: TokenClass) {
+export function matchTable(
+  read: string,
+  reader?: LexDecision,
+  final?: TokenClass,
+) {
   return (Object.keys(LEXEMES) as TokenClass[]).map((cls) => {
-    const rule = PATTERNS[cls]
+    // identifier and number list a pattern, not lexemes
+    const rule = cls === 'identifier' || cls === 'number'
     const lexemes = LEXEMES[cls].map((text) => {
-      const whole = rule ? rule.test(read) : text === read
+      const whole = rule
+        ? reader === (cls === 'identifier' ? 'word' : 'number')
+        : text === read
       const match: Match =
         final !== undefined
           ? cls === final && whole
@@ -1460,7 +1471,7 @@ export function matchTable(read: string, final?: TokenClass) {
       : lexemes.some((l) => l.match === 'prefix')
         ? 'prefix'
         : 'none'
-    return { cls, rule: !!rule, lexemes, match }
+    return { cls, rule, lexemes, match }
   })
 }
 
@@ -1477,16 +1488,80 @@ const NEXT_NAMES: Record<string, string> = {
   '': 'the end of the file',
 }
 
-function readStep(token: Token, at: number, next?: string): string {
-  const read = token.text.slice(0, at - token.start + 1)
-  if (next !== undefined) {
-    const cls = tokenKind(token)
-    let text = `The next character, ${NEXT_NAMES[next] ?? code(next)}, can't extend ${code(read)}, so the token ends here as ${article(cls)}.`
-    if (cls !== 'identifier' && PATTERNS.identifier?.test(read))
-      text += ` Words on the ${cls} list win over identifiers.`
-    return text
+// The tokeniser's decisions that settle a token: after them it is complete.
+const SETTLES: ReadonlySet<LexDecision> = new Set([
+  'single',
+  'second',
+  'close',
+  'end',
+  'unterminated',
+  'invalid',
+])
+
+/**
+ * Where a detailed-lexer step stands: the characters read so far, the kind
+ * of token the tokeniser set out to read, what it decided at this character
+ * and, on the step that settles the token, the class it became.
+ */
+export function lexState(trace: Trace, w: Extract<Why, { kind: 'lex.char' }>) {
+  const token = trace.tokens[w.token]
+  const r = token.reads?.[w.read]
+  const does = r && 'does' in r ? r.does : undefined
+  const look = !!(r && 'does' in r && r.look)
+  const text = trace.text ?? ''
+  return {
+    token,
+    read: text.slice(token.start, look ? w.at : w.at + 1),
+    char: text[w.at] ?? '',
+    reader: readerOf(token),
+    does,
+    look,
+    final: does && SETTLES.has(does) ? tokenKind(token) : undefined,
   }
-  const fits = matchTable(read)
+}
+
+function readStep(trace: Trace, w: Extract<Why, { kind: 'lex.char' }>) {
+  const { token, read, char, reader, does, look, final } = lexState(trace, w)
+  const next = NEXT_NAMES[char] ?? code(char)
+  const literal = reader === 'char' ? 'character' : 'string'
+  // DRAFT copy: every sentence here but the `end` case's and the two at the
+  // bottom, which the span-replayed steps already had.
+  switch (does) {
+    case 'end': {
+      let text = `The next character, ${next}, can't extend ${code(read)}, so the token ends here as ${article(final ?? 'token')}.`
+      if (reader === 'word' && final !== 'identifier')
+        text += ` Words on the ${final} list win over identifiers.`
+      return text
+    }
+    case 'single':
+    case 'second':
+      return `Nothing longer starts with ${code(read)}, so the token ends here as ${article(final ?? 'token')}${does === 'single' ? ', without a look at the next character' : ''}.`
+    case 'string':
+    case 'char':
+      return `${code(char)} opens a ${literal}: everything up to the closing ${code(char)} belongs to it.`
+    case 'escape':
+      return 'A backslash starts an escape: the character after it says which one.'
+    case 'escaped':
+      return `${code('\\' + char)} is an escape Mini-C knows, and stands for one character.`
+    case 'bad escape':
+      return `${code('\\' + char)} is not an escape Mini-C knows.`
+    case 'bad char':
+      return `This character can't appear inside a ${literal}.`
+    case 'close':
+      return `The closing ${code(char)} ends the ${literal}.`
+    case 'unterminated':
+      return `The line ends before the closing ${code(token.text[0])}, so the ${literal} is never closed.`
+    case 'invalid': {
+      if (!look) return `${code(char)} can't begin any Mini-C token.`
+      const longer = Object.values(LEXEMES)
+        .flat()
+        .filter((l: string) => l !== read && l.startsWith(read))
+      return `${code(read)} only begins ${joinOr(longer.map(code))}, and the next character, ${next}, doesn't finish it.`
+    }
+  }
+  if (does === 'continue' && (reader === 'string' || reader === 'char'))
+    return `${code(char)} is inside the ${literal}, so it is taken as it is.`
+  const fits = matchTable(read, reader)
     .filter((r) => r.match !== 'none')
     .map((r) =>
       r.rule
@@ -1496,9 +1571,13 @@ function readStep(token: Token, at: number, next?: string): string {
             .map((l) => code(l.text))
             .join(', ')}`,
     )
-  return fits.length > 0
-    ? `${code(read)} could still become ${joinOr(fits)}.`
-    : `${code(read)} is not in any table yet; it is part of ${article(tokenKind(token))}.`
+  const text =
+    fits.length > 0
+      ? `${code(read)} could still become ${joinOr(fits)}.`
+      : `${code(read)} is not in any table yet; it is part of ${article(tokenKind(token))}.`
+  return does === 'slash'
+    ? `${text} A second \`/\` or a \`*\` would start a comment instead.` // DRAFT copy
+    : text
 }
 
 // The real lexer and parser print their errors rather than record them

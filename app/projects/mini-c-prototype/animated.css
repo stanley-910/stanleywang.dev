@@ -431,8 +431,8 @@
   color: var(--ink);
   background: color-mix(in srgb, var(--ok) 32%, transparent);
 }
-/* Detailed lexer: characters read so far underlined, the current one a block,
-   skipped whitespace a faint band. */
+/* Detailed lexer: characters read so far underlined, the current one a block
+   (outlined when only looked at), skipped whitespace a faint band. */
 .ac-text mark.reading {
   color: var(--ink);
   background: none;
@@ -442,6 +442,11 @@
 .ac-text mark.cursor {
   color: var(--bg);
   background: var(--ink);
+}
+.ac-text mark.cursor.peek {
+  color: var(--ink);
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--ink);
 }
 .ac-text mark.skip {
   color: inherit;
