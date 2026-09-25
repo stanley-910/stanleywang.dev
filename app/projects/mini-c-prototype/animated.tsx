@@ -51,11 +51,13 @@ import { StackColumn } from './stack-column'
 import { stackFrames } from './stack-view'
 import { packTray, treeRows } from './stage-layout'
 import {
+  attemptOf,
   buildTrace,
   colouredUpTo,
   instructionText,
   liveAdded,
   liveAfterSweep,
+  rewritten,
   type Frame,
   type Token,
   type Trace,
@@ -1417,7 +1419,12 @@ export default function AnimatedCompiler() {
   const stepIndex = 'step' in w ? w.step : w.kind === 'reg.done' ? Infinity : -1
   const coloured =
     backend && frame.phase === 'Registers'
-      ? colouredUpTo(backend, fnIndex, stepIndex)
+      ? colouredUpTo(
+          backend,
+          fnIndex,
+          stepIndex,
+          'abandoned' in w ? w.abandoned : undefined,
+        )
       : undefined
   const live =
     backend && w.kind === 'reg.live'
@@ -1444,8 +1451,15 @@ export default function AnimatedCompiler() {
       : 'at' in w && w.at !== null
         ? [w.at, w.at]
         : null
+  // Functions the allocator is done with: the listing shows the code it
+  // wrote for them, saves, restores and spill code included.
+  const rewrittenFns = regView
+    ? w.kind === 'reg.done'
+      ? fnIndex + 1
+      : fnIndex
+    : 0
   const graphFn = regView ? backend.functions[fnIndex] : undefined
-  const graphSteps = graphFn ? graphFn.colouring.steps : []
+  const graphSteps = graphFn ? attemptOf(graphFn, w).steps : []
   const graphShown = regView && w.kind !== 'reg.cfg' && w.kind !== 'reg.live'
   // The allocator's stack: simplify pushes a register, select pops it. Its
   // rows are sized for the deepest it gets, so they don't shift as it grows.
@@ -3415,6 +3429,18 @@ export default function AnimatedCompiler() {
                     ).split(/\s+(.*)/)
                     const hold =
                       ins.op === 'pushRegisters' || ins.op === 'popRegisters'
+                    const lines =
+                      ins.fn !== undefined && ins.fn < rewrittenFns
+                        ? rewritten(ins)
+                        : undefined
+                    // The line the instruction became; for a placeholder,
+                    // its first save or restore.
+                    const anchor = lines
+                      ? Math.max(
+                          0,
+                          lines.findIndex((l) => !l.added),
+                        )
+                      : -1
                     // Laid out as the emit blocks are: labels on their own
                     // rows, then number, op and operands in columns.
                     return (
@@ -3433,32 +3459,65 @@ export default function AnimatedCompiler() {
                             {l}:
                           </div>
                         ))}
-                        <div
-                          data-row={i}
-                          className={`ac-ins ${current ? 'current' : ''} ${changed.has(i) ? 'changed' : ''} ${ins.dead ? 'dead' : ''}`}
-                          onMouseEnter={() => !playing && setHoverIns(i)}
-                          onMouseLeave={clearHover}
-                        >
-                          <span>{i + 1}</span>
-                          {hold ? (
-                            <code className="ac-hold">{op}</code>
-                          ) : (
-                            <>
-                              <b>{op}</b>
-                              <code>{args}</code>
-                            </>
-                          )}
-                          {live?.[i] && (
-                            <small>
-                              {live[i].out.join(' ') || '·'}
-                              {fixedAdded
-                                ?.get(i)
-                                ?.filter((r) => !r.startsWith('v'))
-                                .map((r) => <i key={r}> +{r}</i>)}
-                            </small>
-                          )}
-                          {ins.dead && <small>never runs</small>}
-                        </div>
+                        {lines?.length ? (
+                          lines.map((line, j) => {
+                            const [lineOp, lineArgs = ''] =
+                              line.text.split(/\s+(.*)/)
+                            const main = j === anchor
+                            return (
+                              <motion.div
+                                key={j}
+                                data-row={main ? i : undefined}
+                                className={`ac-ins ${line.added ? 'added' : ''} ${main && current ? 'current' : ''} ${main && ins.dead ? 'dead' : ''}`}
+                                initial={{ opacity: line.added ? 0 : 1 }}
+                                animate={{ opacity: 1 }}
+                                transition={transition}
+                                onMouseEnter={() => !playing && setHoverIns(i)}
+                                onMouseLeave={clearHover}
+                              >
+                                <span>{main ? i + 1 : ''}</span>
+                                <b>{lineOp}</b>
+                                <code>{lineArgs}</code>
+                                {main && ins.dead && <small>never runs</small>}
+                              </motion.div>
+                            )
+                          })
+                        ) : (
+                          <div
+                            data-row={i}
+                            className={`ac-ins ${current ? 'current' : ''} ${changed.has(i) ? 'changed' : ''} ${ins.dead ? 'dead' : ''}`}
+                            onMouseEnter={() => !playing && setHoverIns(i)}
+                            onMouseLeave={clearHover}
+                          >
+                            <span>{i + 1}</span>
+                            {hold ? (
+                              <code className="ac-hold">{op}</code>
+                            ) : (
+                              <>
+                                <b>{op}</b>
+                                <code>{args}</code>
+                              </>
+                            )}
+                            {live?.[i] && (
+                              <small>
+                                {live[i].out.join(' ') || '·'}
+                                {fixedAdded
+                                  ?.get(i)
+                                  ?.filter((r) => !r.startsWith('v'))
+                                  .map((r) => <i key={r}> +{r}</i>)}
+                              </small>
+                            )}
+                            {ins.dead && <small>never runs</small>}
+                            {/* DRAFT copy */}
+                            {lines?.length === 0 && (
+                              <small>
+                                {ins.op === 'pushRegisters'
+                                  ? 'nothing to save'
+                                  : 'nothing to restore'}
+                              </small>
+                            )}
+                          </div>
+                        )}
                       </motion.div>
                     )
                   })}
@@ -3483,6 +3542,7 @@ export default function AnimatedCompiler() {
                     stagger={rowStagger}
                     duration={transition.duration}
                     still={!!reduced}
+                    layout={rewrittenFns}
                     tint={(key) => {
                       const colour = coloured?.[key.split(':')[1]]
                       return colour
