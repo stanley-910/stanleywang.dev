@@ -33,6 +33,7 @@ export function EmitLanes({
   duration,
   still,
   tint,
+  layout,
 }: {
   /** Where the lanes start, px from the assembly's left. */
   left: number
@@ -54,6 +55,8 @@ export function EmitLanes({
   still: boolean
   /** Registers: a lane's physical register's colour, once it has one. */
   tint?: (key: string) => string | undefined
+  /** Changes when rows move without new ones (the allocator's added lines). */
+  layout?: number
 }) {
   const ref = useRef<SVGSVGElement>(null)
   // Row centres, measured: labels and comments sit between the rows.
@@ -74,7 +77,7 @@ export function EmitLanes({
     })
     setCentres(out)
     if (rows[0]) setHalf(rows[0].offsetHeight / 2)
-  }, [count, lanes])
+  }, [count, lanes, layout])
 
   if (columns === 0) return null
   // New rows are measured just after they render (before paint); until

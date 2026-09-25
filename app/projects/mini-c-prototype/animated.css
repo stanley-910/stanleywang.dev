@@ -1155,6 +1155,11 @@
 .ac-asm.listing .ac-ins.changed small {
   color: var(--ink);
 }
+/* Lines the allocator adds once registers are known: pushRegisters'
+   saves, popRegisters' restores and spill code. */
+.ac-asm.listing .ac-ins.added :is(b, code) {
+  color: var(--muted);
+}
 .ac-asm-head,
 .ac-asm-label {
   overflow: hidden;

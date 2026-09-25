@@ -2,7 +2,7 @@
 // from trace data, so the same wording serves presets and typed programs.
 // Backticks mark code spans; the page renders them as <code>.
 import { stackFrames } from './stack-view'
-import { instructionText, liveAdded } from './trace'
+import { attemptOf, instructionText, liveAdded } from './trace'
 
 import type {
   AstNode,
@@ -658,8 +658,9 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
     case 'reg.interfere':
       return `Two registers interfere when they are live at the same time: they cannot share a real register. ${w.nodes} virtual registers, ${w.edges} ${w.edges === 1 ? 'overlap' : 'overlaps'}${w.busiest ? `; ${code(w.busiest)} overlaps the most, with ${w.degree}` : ''}.`
     case 'reg.simplify': {
-      const st = trace.backend?.functions[w.fn]?.colouring.steps[w.step]
-      const k = trace.backend?.k ?? 0
+      const f = trace.backend?.functions[w.fn]
+      const st = f && attemptOf(f, w).steps[w.step]
+      const k = f ? attemptOf(f, w).palette.length : 0
       if (!st) return 'A register with few neighbours is set aside.'
       // DRAFT: a batch of pushes (regs-view.ts).
       if (w.from !== undefined)
@@ -669,11 +670,13 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
       return `${code(st.vr)} overlaps ${st.degree} ${st.degree === 1 ? 'other' : 'others'}, fewer than the ${k} registers available, so it is sure to get one. It is set aside on a stack and its edges come off the graph.`
     }
     case 'reg.spillCandidate': {
-      const st = trace.backend?.functions[w.fn]?.colouring.steps[w.step]
-      return `Every remaining register overlaps ${trace.backend?.k ?? 'k'} or more others. ${code(st?.vr ?? '')} has the most edges, so it is set aside as the one that may have to spill.`
+      const f = trace.backend?.functions[w.fn]
+      const st = f && attemptOf(f, w).steps[w.step]
+      return `Every remaining register overlaps ${f ? attemptOf(f, w).palette.length : 'k'} or more others. ${code(st?.vr ?? '')} has the most edges, so it is set aside as the one that may have to spill.`
     }
     case 'reg.select': {
-      const st = trace.backend?.functions[w.fn]?.colouring.steps[w.step]
+      const f = trace.backend?.functions[w.fn]
+      const st = f && attemptOf(f, w).steps[w.step]
       if (!st) return 'A register comes off the stack and takes a colour.'
       const forbidden = st.forbidden ?? []
       // DRAFT: pops that reused a register, then the one that stops play.
@@ -682,7 +685,7 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
         ? `${reused} ${reused === 1 ? 'register reuses' : 'registers reuse'} one already given out. `
         : ''
       // A register no earlier pop took is a new one; else it is reused.
-      const steps = trace.backend?.functions[w.fn]?.colouring.steps ?? []
+      const steps = f ? attemptOf(f, w).steps : []
       const fresh = !steps
         .slice(0, w.step)
         .some((p) => p.op === 'select' && p.colour === st.colour)
@@ -695,13 +698,40 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
       return `${code(st.vr)} comes off the stack. Its neighbours hold ${forbidden.map(code).join(', ')}, so it takes the next free one, ${code(st.colour ?? '')}.`
     }
     case 'reg.spill': {
-      const st = trace.backend?.functions[w.fn]?.colouring.steps[w.step]
-      return `${code(st?.vr ?? '')} comes off the stack and finds every register taken by a neighbour. It lives in memory instead: loads and stores are added around each use.`
+      const f = trace.backend?.functions[w.fn]
+      const st = f && attemptOf(f, w).steps[w.step]
+      // DRAFT copy: a spill in the 18-colour attempt only ends that attempt.
+      if (w.abandoned)
+        return `${code(st?.vr ?? '')} comes off the stack and finds all ${f ? attemptOf(f, w).palette.length : 18} registers taken by its neighbours. Spill code needs registers of its own to load and store through, so once this pass ends the allocator starts over with ${f?.colouring.palette.length ?? 16}.`
+      // DRAFT copy: the label sentence.
+      const label = st && f?.colouring.labels[st.vr]
+      return `${code(st?.vr ?? '')} comes off the stack and finds every register taken by a neighbour. It lives in memory instead: loads and stores are added around each use.${label ? ` Its word in ${code('.data')} is ${code(label)}.` : ''}`
     }
-    case 'reg.done':
+    // DRAFT copy
+    case 'reg.retry':
+      return `With all 18 registers, ${w.spills} ${w.spills === 1 ? 'value finds' : 'values find'} none free. A spilled value is loaded into a register before each read and stored from one after each write, so the allocator colours the graph again with ${w.k}, keeping ${code('$t8')} and ${code('$t9')} for that spill code.`
+    case 'reg.done': {
       if (w.fn === undefined)
         return 'Every temporary now has a physical register. Reuse kept the count small.'
-      return `${w.used} real ${w.used === 1 ? 'register covers' : 'registers cover'} every virtual one${w.spills ? `, with ${w.spills} spilled to memory` : ''}. Values that never overlap share a register.`
+      // DRAFT copy: what the rewrite turns the placeholders and spills into.
+      const fn = w.fn
+      const saves = trace.instructions.some(
+        (i) => i.fn === fn && i.op === 'pushRegisters' && i.out?.length,
+      )
+      const rewrite = [
+        ...(saves
+          ? [
+              `${code('pushRegisters')} and ${code('popRegisters')} become saves and restores of the registers in use`,
+            ]
+          : []),
+        ...(w.spills
+          ? [
+              `each spilled value is loaded through ${code('$t8')} or ${code('$t9')} before a read and stored after a write`,
+            ]
+          : []),
+      ]
+      return `${w.used} real ${w.used === 1 ? 'register covers' : 'registers cover'} every virtual one${w.spills ? `, with ${w.spills} spilled to memory` : ''}. Values that never overlap share a register.${rewrite.length ? ` In the code, ${rewrite.join(', and ')}.` : ''}`
+    }
   }
 }
 
@@ -1304,6 +1334,23 @@ export const STEP_SLIDES: {
           'real ones, so the program keeps its working values out of memory. ' +
           'The placeholders expand too: `pushRegisters` becomes one save for ' +
           'each real register in use, not all 18.',
+      },
+    ],
+  },
+  // DRAFT copy: only programs whose 18-colour attempt spills reach it.
+  {
+    phase: 'Registers',
+    starts: (frame) => frame.why.kind === 'reg.retry',
+    slides: [
+      {
+        title: 'Spilling',
+        body:
+          'A spilled value lives in a word of memory in `.data`. Before a ' +
+          'line reads it, the allocator loads it into a register; after a ' +
+          'line writes it, it stores it back. Those loads and stores need ' +
+          'registers of their own, so when the first attempt spills, the ' +
+          'allocator throws that colouring away and starts over with 16 ' +
+          'colours, keeping `$t8` and `$t9` free for spill code.',
       },
     ],
   },

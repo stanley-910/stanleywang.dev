@@ -95,9 +95,27 @@ export type Tag = {
   bytes?: number
   reverse?: boolean
 }
-// The real allocator's working, recorded per function by the compiler's
-// test utility: one CFG block per instruction, liveness sweep by sweep,
-// the interference graph, and the simplify/select order.
+// One colouring attempt (GraphColouringRegAlloc.color) as the allocator
+// ran it: its palette, the simplify/select order, and for the attempt the
+// code uses, each spilled register's word in `.data`.
+export type Colouring = {
+  palette: string[]
+  steps: {
+    op: 'simplify' | 'spillCandidate' | 'select' | 'spill'
+    vr: string
+    degree?: number
+    forbidden?: string[]
+    colour?: string
+  }[]
+  result: Record<string, string>
+  spills: string[]
+  labels: Record<string, string>
+}
+// The real allocator's working, recorded per function through its step
+// observer: one CFG block per instruction, liveness sweep by sweep, the
+// interference graph, and the colouring. When 18 colours spill, the
+// allocator starts over with 16 (keeping $t8 and $t9 for spill code):
+// `abandoned` is the first attempt, `colouring` the one the code uses.
 export type Backend = {
   k: number
   palette: string[]
@@ -116,7 +134,14 @@ export type Backend = {
     liveness: (
       | {
           sweep: number
-          changes: { block: number; in: string[]; out: string[] }[]
+          // `added`: every register that became live on the line this
+          // sweep, `$fp` and `$sp` included (in/out keep virtual ones)
+          changes: {
+            block: number
+            in: string[]
+            out: string[]
+            added: string[]
+          }[]
         }
       | {
           sweep: 'final'
@@ -129,17 +154,8 @@ export type Backend = {
       edges: [string, string][]
       degree: Record<string, number>
     }
-    colouring: {
-      steps: {
-        op: 'simplify' | 'spillCandidate' | 'select' | 'spill'
-        vr: string
-        degree?: number
-        forbidden?: string[]
-        colour?: string
-      }[]
-      result: Record<string, string>
-      spills: string[]
-    }
+    colouring: Colouring
+    abandoned?: Colouring
   }[]
 }
 // The decision behind a frame, as facts rather than prose. explain.ts turns
@@ -246,22 +262,39 @@ export type Why =
       degree: number
     }
   // `from`: the first step of a run merged into this one (regs-view.ts).
+  // `abandoned`: a step of the 18-colour attempt the allocator threw away.
   | {
       kind: 'reg.simplify'
       fn: number
       step: number
       at: number | null
       from?: number
+      abandoned?: true
     }
-  | { kind: 'reg.spillCandidate'; fn: number; step: number; at: number | null }
+  | {
+      kind: 'reg.spillCandidate'
+      fn: number
+      step: number
+      at: number | null
+      abandoned?: true
+    }
   | {
       kind: 'reg.select'
       fn: number
       step: number
       at: number | null
       from?: number
+      abandoned?: true
     }
-  | { kind: 'reg.spill'; fn: number; step: number; at: number | null }
+  | {
+      kind: 'reg.spill'
+      fn: number
+      step: number
+      at: number | null
+      abandoned?: true
+    }
+  // 18 colours spilled `spills` registers: colour again with `k`.
+  | { kind: 'reg.retry'; fn: number; spills: number; k: number }
   | { kind: 'reg.done'; fn?: number; used?: number; spills?: number }
 
 export type Frame = {
@@ -911,15 +944,53 @@ export function instructionText(
   return `${instruction.op.padEnd(7)}${[...(instruction.dest ? [instruction.dest] : []), ...instruction.args].map(map).join(', ')}`
 }
 
-/** Registers coloured by the real allocator up to and including step `step` of function `fn`. */
+/**
+ * What the allocator wrote for an instruction (its `out`), with the lines
+ * it added marked: all of pushRegisters' saves and popRegisters' restores,
+ * and around a spilled register's line its loads (`la` then `lw`, before)
+ * and its store (`la` then `sw`, after).
+ */
+export function rewritten(
+  ins: Instruction,
+): { text: string; added: boolean }[] | undefined {
+  const out = ins.out
+  if (!out) return undefined
+  if (ins.op === 'pushRegisters' || ins.op === 'popRegisters')
+    return out.map((text) => ({ text, added: true }))
+  let line = 0
+  while (
+    line + 1 < out.length &&
+    out[line].startsWith('la ') &&
+    out[line + 1].startsWith('lw ')
+  )
+    line += 2
+  return out.map((text, i) => ({ text, added: i !== line }))
+}
+
+/** The colouring attempt a Registers frame's step belongs to. */
+export function attemptOf(
+  f: Backend['functions'][number],
+  why: Why,
+): Colouring {
+  return 'abandoned' in why && why.abandoned && f.abandoned
+    ? f.abandoned
+    : f.colouring
+}
+
+/**
+ * Registers coloured by the real allocator up to and including step `step`
+ * of function `fn`, in the abandoned attempt if `abandoned`.
+ */
 export function colouredUpTo(
   backend: Backend,
   fn: number,
   step: number,
+  abandoned?: true,
 ): Record<string, string> {
   const out: Record<string, string> = {}
   for (let f = 0; f <= fn && f < backend.functions.length; f++) {
-    const steps = backend.functions[f].colouring.steps
+    const { colouring, abandoned: first } = backend.functions[f]
+    const steps = (f === fn && abandoned && first ? first : colouring).steps
     const limit = f === fn ? Math.min(step, steps.length - 1) : steps.length - 1
     for (let i = 0; i <= limit; i++) {
       const s = steps[i]
@@ -945,13 +1016,10 @@ export function liveAfterSweep(
   return out
 }
 /**
- * What each sweep of function `fn` added, by instruction id, counting every
- * register. The recorded sets keep only virtual ones, but the sweeps also
- * track `$fp` and `$sp` (a loop's second sweep is `$fp` going round the back
- * edge), so this reruns the recorder's loop (RegAllocTrace.liveness: blocks
- * in reverse, each out the union of its successors' ins) on the blocks'
- * uses, defs and successors. The rows it reports changed match the
- * recorded ones on every preset.
+ * What sweep `sweep` of function `fn` made live, by instruction id,
+ * counting every register: the recorded sets keep only virtual ones, but
+ * the sweeps also track `$fp` and `$sp` (a loop's second sweep is `$fp`
+ * going round the back edge).
  */
 export function liveAdded(
   backend: Backend,
@@ -959,25 +1027,11 @@ export function liveAdded(
   sweep: number,
 ): Map<number, string[]> {
   const f = backend.functions[fn]
-  const liveIn = new Map<number, Set<string>>()
-  const liveOut = new Map<number, Set<string>>()
   const added = new Map<number, string[]>()
-  for (let k = 1; k <= sweep; k++) {
-    added.clear()
-    for (const b of [...f.blocks].reverse()) {
-      const out = new Set(b.succ.flatMap((s) => [...(liveIn.get(s) ?? [])]))
-      const ins = new Set([...b.uses, ...[...out].filter((r) => r !== b.def)])
-      const inBefore = liveIn.get(b.id) ?? new Set()
-      const outBefore = liveOut.get(b.id) ?? new Set()
-      const grew = [
-        ...[...ins].filter((r) => !inBefore.has(r)),
-        ...[...out].filter((r) => !outBefore.has(r)),
-      ]
-      if (grew.length) added.set(f.first + b.id, [...new Set(grew)].sort())
-      liveIn.set(b.id, ins)
-      liveOut.set(b.id, out)
-    }
-  }
+  for (const sw of f.liveness)
+    if (sw.sweep === sweep && 'changes' in sw)
+      for (const c of sw.changes)
+        if (c.added.length) added.set(f.first + c.block, c.added)
   return added
 }
 
