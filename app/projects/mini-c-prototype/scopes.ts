@@ -22,7 +22,10 @@ export function scopesOf(trace: Trace): Scopes {
   trace.frames.forEach((f, i) => {
     if (f.why.kind !== 'check.declare') return
     steps.set(f.why.decl, i)
-    if (f.why.joins !== undefined) joins.set(f.why.decl, f.why.joins)
+    // The definition may come first (`int g(int a) {…} int g(int a);`).
+    if (f.why.joins === undefined) return
+    const def = trace.nodes[f.why.decl].kind === 'function'
+    joins.set(def ? f.why.decl : f.why.joins, def ? f.why.joins : f.why.decl)
   })
   return {
     scopes: trace.scopes ?? [],

@@ -180,7 +180,7 @@ export type Why =
       inScope?: number
       /** A declaration of the same name in a scope around it, now hidden. */
       shadows?: number
-      /** A function's definition joining its forward declaration. */
+      /** A function's definition joining its forward declaration, or the other way round. */
       joins?: number
     }
   | {
