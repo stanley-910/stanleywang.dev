@@ -460,18 +460,29 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
     case 'check.declare': {
       const decl = node(w.decl)
       const name = trace.tokens[decl.token].text
-      // DRAFT copy: a definition joining its forward declaration, and a
-      // declaration hiding one around it.
+      // A forward declaration is a function too.
+      const fn = decl.kind === 'function' || decl.label.startsWith('FunDecl ')
+      // DRAFT copy: a definition joining its forward declaration, a
+      // declaration of a built-in, and a declaration hiding one around it.
+      if (w.builtin)
+        return `${code(name)} is already a built-in function; this declaration matches it.`
       if (w.joins !== undefined && decl.kind !== 'function')
         return `The declaration of ${code(name)} matches its definition on line ${line(trace, node(w.joins))}: still one function.`
       if (w.joins !== undefined)
         return `The definition of ${code(name)} joins its declaration on line ${line(trace, node(w.joins))}: one function, now with a body.`
-      const hides =
-        w.shadows === undefined
-          ? ''
-          : ` From here on it hides ${code(text(trace, node(w.shadows)))} on line ${line(trace, node(w.shadows))}.`
-      if (decl.kind === 'function')
+      const hidden = w.shadows === undefined ? undefined : node(w.shadows)
+      const hides = !hidden
+        ? ''
+        : ` From here on it hides ${
+            hidden.kind === 'function' || hidden.label.startsWith('FunDecl ')
+              ? `the function ${code(trace.tokens[hidden.token].text)}`
+              : code(text(trace, hidden))
+          } on line ${line(trace, hidden)}.`
+      if (fn)
         return `The function ${code(name)} goes in ${w.scope}, so calls anywhere below it can find it.${hides}`
+      // DRAFT copy
+      if (decl.label.startsWith('ClassDecl '))
+        return `The class ${code(name)} goes in ${w.scope}.${hides}`
       if (w.where === 'param')
         return `The parameter ${code(decl.label)} goes in ${w.scope}.${hides}`
       return `${code(text(trace, decl))} puts ${code(name)} in ${w.scope}.${hides}`
@@ -514,8 +525,14 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
     }
     case 'check.nameError':
       return `The name pass reports: ${w.message}. Compilation stops after this pass.`
+    // What the error is about: a type, else what it spans (a name, a
+    // statement), or with nothing to point at the whole program, unquoted.
     case 'check.typeError':
-      return `${src(w.node)}: ${w.message}. The compiler stops here.`
+      return w.about !== undefined
+        ? `${code(w.about)}: ${w.message}. The compiler stops here.`
+        : w.node === trace.root
+          ? `${w.message[0].toUpperCase()}${w.message.slice(1)}. The compiler stops here.`
+          : `${code(text(trace, frame.span))}: ${w.message}. The compiler stops here.`
     case 'check.type': {
       const n = node(w.node)
       if (n.kind === 'declare')
