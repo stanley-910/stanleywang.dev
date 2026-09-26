@@ -95,6 +95,8 @@ const HOVER_DELAY = 250
 const VIEW_W = 680
 const VIEW_H = 480
 const CHAR_PX = 7.2
+// Space between neighbouring labels in the tree.
+const TREE_GAP = 14
 // A type badge's characters (10px).
 const TYPE_PX = 6
 const EDGE_PX = 24
@@ -556,7 +558,7 @@ export default function AnimatedCompiler() {
     return [...best.values()]
   }, [trace, titles])
   const baseTree = useMemo(
-    () => treePositions(trace, (n) => n.label.length * CHAR_PX + 2),
+    () => treePositions(trace, (n) => n.label.length * CHAR_PX + 2, TREE_GAP),
     [trace],
   )
   const parents = useMemo(() => parentsOf(trace), [trace])
@@ -1655,8 +1657,12 @@ export default function AnimatedCompiler() {
         const parent = parents.get(id)
         let x =
           baseX(id) + (parent === undefined ? 0 : (shift.get(parent) ?? 0))
-        const half = ((trace.nodes[id].label.length * CHAR_PX + 16) * fit) / 2
-        if (x - half < edge + 10 * fit) x = edge + 10 * fit + half
+        // The label width and gap baseTree packed the tree with, so a row
+        // with no badges yet already fits and nothing moves.
+        const half = ((trace.nodes[id].label.length * CHAR_PX + 2) * fit) / 2
+        const gap = TREE_GAP * fit
+        // (half a pixel of slack for rounding in the packed layout)
+        if (x - half < edge + gap - 0.5) x = edge + gap + half
         shift.set(id, x - baseX(id))
         edge = x + half + (badgeRoom.get(id) ?? 0) * fit
         right = Math.max(right, edge)
