@@ -1334,6 +1334,137 @@
   margin-top: 14px;
   font-size: 12px;
 }
+/* The type pass's panel (type-panel.tsx): the step's rule, premises over
+   a line and the conclusion under it, then what is still waiting. */
+.ac-types {
+  display: grid;
+  gap: 14px;
+  padding-top: 4px;
+}
+.ac-rule {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+}
+.ac-rule-premises {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 16px;
+}
+.ac-rule-premises .bad,
+.ac-rule.bad .ac-rule-conclusion {
+  color: var(--err);
+}
+.ac-rule-premises small {
+  color: var(--muted);
+}
+.ac-rule-premises .axiom {
+  color: var(--faint);
+}
+.ac-rule-line {
+  position: relative;
+  width: 100%;
+  border-top: 1px solid var(--ink);
+}
+.ac-rule-line span {
+  position: absolute;
+  top: -8px;
+  right: 0;
+  padding-left: 6px;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 14px;
+}
+.ac-type-stack {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--line);
+}
+.ac-type-stack li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 1px 8px;
+  color: var(--muted);
+}
+.ac-type-stack li + li {
+  border-top: 1px solid var(--line);
+}
+.ac-type-stack li.typed {
+  color: var(--ink);
+}
+.ac-type-done {
+  margin: 0;
+  color: var(--muted);
+}
+/* The step's note, in a small window over the simulation (note-window.tsx):
+   a file's name for a title, like an editor's note in the margin, a bar to
+   drag it by and a box that rolls it up to the bar. Quiet lines only: it
+   sits on a crowded stage. */
+.ac-window {
+  position: absolute;
+  z-index: 35;
+  width: min(264px, calc(100% - 16px));
+  border: 1px solid var(--line);
+  background: var(--bg);
+  font-size: 12px;
+}
+.ac-window-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 22px;
+  padding: 0 6px 0 10px;
+  border-bottom: 1px solid var(--line);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.ac-window-bar:active {
+  cursor: grabbing;
+}
+.ac-window.shut .ac-window-bar {
+  border-bottom: 0;
+}
+.ac-window-title {
+  flex: 1;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ac .ac-window-box {
+  padding: 0 2px;
+  color: var(--faint);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+.ac .ac-window-box:hover {
+  color: var(--ink);
+}
+.ac-window-body {
+  max-height: min(220px, 40vh);
+  overflow: auto;
+  padding: 8px 10px;
+  color: var(--ink);
+  line-height: 1.45;
+  white-space: pre-line;
+}
+/* What the note is about (the welcome, a slide, an error, a step title). */
+.ac-window-head {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.ac-window.err .ac-window-head {
+  color: var(--err);
+}
 .ac-stack.floating {
   position: absolute;
   z-index: 30;
