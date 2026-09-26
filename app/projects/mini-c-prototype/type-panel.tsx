@@ -5,6 +5,17 @@ import type { Trace } from './trace'
 // below it), and the expressions around the current one still waiting on
 // it for their own types, innermost first (Stanley, 2026-09-26: "the
 // intuitive typing rules, or at each point the type resolution stack").
+// Nodes that get a type, and statements that check one.
+const EXPRESSIONS = new Set([
+  'binary',
+  'unary',
+  'expr',
+  'call',
+  'name',
+  'number',
+])
+const CHECKS = new Set(['return', 'if', 'while', 'assign'])
+
 export function TypePanel({
   trace,
   source,
@@ -18,6 +29,8 @@ export function TypePanel({
   if (!why) return null
   // Every type known by this step.
   const known = new Map<number, string>()
+  // Statements that check a value (a return, a condition): whether it fit.
+  const checked = new Map<number, boolean>()
   for (const f of trace.frames.slice(0, index + 1)) {
     const w = f.why
     if (w.kind === 'check.type') known.set(w.node, w.type)
@@ -28,6 +41,7 @@ export function TypePanel({
     )
       for (const [id, type] of w.typed) known.set(id, type)
     if (w.kind === 'check.expr') known.set(w.node, w.type)
+    if (w.kind === 'check.fits') checked.set(w.node, w.ok)
   }
   const text = (id: number) => {
     const n = trace.nodes[id]
@@ -37,8 +51,11 @@ export function TypePanel({
   const parent = new Map<number, number>()
   for (const n of trace.nodes) for (const c of n.children) parent.set(c, n.id)
 
+  // A premise: code, and the type it has (none for a declaration, which
+  // is where the type comes from).
+  type Premise = { key: string; code: string; type?: string; bad?: string }
   let rule: {
-    premises: { id: number; type: string; bad?: string }[]
+    premises: Premise[]
     conclusion: string
     name: string
     ok: boolean
@@ -46,10 +63,17 @@ export function TypePanel({
   let focus: number | null = null
   if (why.kind === 'check.type') {
     focus = why.node
+    const n = trace.nodes[why.node]
+    // A declaration gives its name the declared type; a name or literal
+    // has its type outright (nothing above the line).
+    const declared = n.kind === 'declare'
+    const name = declared ? n.label.slice(n.label.lastIndexOf(' ') + 1) : ''
     rule = {
-      premises: [],
-      conclusion: `${text(why.node)} : ${why.type}`,
-      name: trace.nodes[why.node].kind === 'declare' ? 'decl' : 'name',
+      premises: declared
+        ? [{ key: 'decl', code: text(why.node).replace(/;$/, '') }]
+        : [],
+      conclusion: `${declared ? name : text(why.node)} : ${why.type}`,
+      name: declared ? 'decl' : n.kind === 'number' ? 'literal' : 'name',
       ok: true,
     }
   } else if (why.kind === 'check.expr') {
@@ -58,7 +82,8 @@ export function TypePanel({
       premises: why.typed
         .filter(([id]) => id !== why.node)
         .map(([id, type]) => ({
-          id,
+          key: String(id),
+          code: text(id),
           type,
           bad: id === why.bad ? (why.expected ?? undefined) : undefined,
         })),
@@ -73,7 +98,8 @@ export function TypePanel({
     rule = {
       premises: [
         {
-          id: why.value,
+          key: String(why.value),
+          code: text(why.value),
           type: why.type,
           bad: why.ok ? undefined : why.expected,
         },
@@ -89,28 +115,45 @@ export function TypePanel({
   }
   if (!rule || focus === null) return null
 
-  // Around the current node, out to its function: what is still waiting.
+  // What is waiting on it: the expressions around it, each typed once its
+  // parts are, then the statement that checks the value, if it does. A
+  // statement has no type, and a block checks nothing, so the list stops
+  // there.
+  // An assignment checks its value too, whether it is its own kind of node
+  // or a binary `=`.
+  const checks = (id: number) =>
+    CHECKS.has(trace.nodes[id].kind) || trace.nodes[id].label === '='
   const waiting: number[] = []
-  for (let p = parent.get(focus); p !== undefined; p = parent.get(p)) {
-    const kind = trace.nodes[p].kind
-    if (kind === 'function' || kind === 'program') break
+  let p = parent.get(focus)
+  while (
+    p !== undefined &&
+    EXPRESSIONS.has(trace.nodes[p].kind) &&
+    !checks(p)
+  ) {
     waiting.push(p)
+    p = parent.get(p)
   }
+  if (p !== undefined && checks(p)) waiting.push(p)
+  const state = (id: number) =>
+    !checks(id)
+      ? (known.get(id) ?? '?')
+      : checked.has(id)
+        ? checked.get(id)
+          ? 'ok'
+          : 'fails'
+        : 'to check'
 
   return (
     <div className="ac-types">
       <div className={`ac-rule ${rule.ok ? '' : 'bad'}`}>
         <div className="ac-rule-premises">
-          {rule.premises.length ? (
-            rule.premises.map((p) => (
-              <span key={p.id} className={p.bad ? 'bad' : ''}>
-                <code>{text(p.id)}</code> : {p.type}
-                {p.bad && <small> needs {p.bad}</small>}
-              </span>
-            ))
-          ) : (
-            <span className="axiom">declared</span>
-          )}
+          {rule.premises.map((p) => (
+            <span key={p.key} className={p.bad ? 'bad' : ''}>
+              <code>{p.code}</code>
+              {p.type && <> : {p.type}</>}
+              {p.bad && <small> needs {p.bad}</small>}
+            </span>
+          ))}
         </div>
         <div className="ac-rule-line">
           <span>{rule.name}</span>
@@ -120,14 +163,18 @@ export function TypePanel({
         </div>
       </div>
       {waiting.length > 0 && (
-        <ol className="ac-type-stack" aria-label="Waiting for their types">
-          {waiting.map((id) => (
-            <li key={id} className={known.has(id) ? 'typed' : ''}>
-              <code>{text(id)}</code>
-              <span>{known.get(id) ?? '…'}</span>
-            </li>
-          ))}
-        </ol>
+        <div>
+          <span className="ac-type-caption">waiting</span>
+          {/* Innermost first: ? until an expression has its type. */}
+          <ol className="ac-type-stack" aria-label="Waiting for their types">
+            {waiting.map((id) => (
+              <li key={id}>
+                <code>{text(id)}</code>
+                <span>{state(id)}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
       )}
     </div>
   )
