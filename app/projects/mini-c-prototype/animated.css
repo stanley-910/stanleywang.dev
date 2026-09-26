@@ -1430,7 +1430,7 @@
   border-bottom: 0;
 }
 .ac-window-title {
-  flex: 1;
+  flex: none;
   overflow: hidden;
   color: var(--muted);
   font-size: 11px;
@@ -1445,6 +1445,40 @@
   cursor: pointer;
 }
 .ac .ac-window-box:hover {
+  color: var(--ink);
+}
+.ac-window:not(.shut) .ac-window-title {
+  flex: 1;
+}
+/* Rolled up: the note's first line after the name, then a +. */
+.ac .ac-window-peek {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 1px;
+  color: var(--faint);
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+.ac .ac-window-peek > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ac .ac-window-peek:hover {
+  color: var(--ink);
+}
+/* Where the − is when it's open. */
+.ac-window-plus {
+  flex: none;
+  margin-left: auto;
+  padding: 0 2px 0 8px;
+  color: var(--faint);
+  font-size: 12px;
+}
+.ac .ac-window-peek:hover .ac-window-plus {
   color: var(--ink);
 }
 .ac-window-body {
