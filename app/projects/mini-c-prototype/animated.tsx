@@ -776,13 +776,27 @@ export default function AnimatedCompiler() {
   // the tree will show; a prefix `*` stays as typed.
   // A declaration's type tokens (`int` in `int twice(` or `int n`) are kept
   // in its node, not thrown away like `(` or `;`. They wait in the tray
-  // until the node lands, then slide into it and fade.
+  // until the node lands, then slide into it and fade. So do the other
+  // tokens a declaration or expression reads without a node of their own:
+  // `[3]` in `int a[3]`, a struct's fields, the `]` of `a[0]`, the `x` of
+  // `.x`. Each goes to the innermost node around it.
   const absorbedBy = useMemo(() => {
     const by = new Map<number, number>()
+    const anchors = new Set(trace.nodes.map((n) => n.token))
+    const width = (id: number) => trace.nodes[id].end - trace.nodes[id].start
     for (const n of trace.nodes)
       if (n.kind === 'function' || n.kind === 'declare')
         for (const t of trace.tokens)
           if (t.start >= n.start && t.id < n.token) by.set(t.id, n.id)
+    for (const n of trace.nodes) {
+      if (n.kind !== 'declare' && n.kind !== 'expr') continue
+      for (const t of trace.tokens) {
+        if (t.start < n.start || t.end > n.end || t.id < n.token) continue
+        if (anchors.has(t.id) || KEEP_HIDDEN.includes(t.text)) continue
+        const held = by.get(t.id)
+        if (held === undefined || width(n.id) < width(held)) by.set(t.id, n.id)
+      }
+    }
     return by
   }, [trace])
   const shownAt = useMemo(() => {
