@@ -1455,8 +1455,10 @@
   max-height: min(220px, 40vh);
   overflow: auto;
   padding: 8px 10px;
+  /* The title's size, in full ink: a caption under the file's name. */
   color: var(--ink);
-  line-height: 1.45;
+  font-size: 11px;
+  line-height: 1.5;
   white-space: pre-line;
 }
 /* What the note is about (the welcome, a slide, an error, a step title). */
