@@ -671,8 +671,29 @@
   height: clamp(420px, calc(100dvh - 210px), 860px);
   overflow: hidden;
   background-image: linear-gradient(var(--line) 1px, transparent 1px);
+  background-attachment: local;
   background-size: 100% 22px;
   background-position: 0 -1px;
+}
+/* Sideways, when the type pass's tree runs past the right edge on a
+   narrow stage, or emit's tree past its column; the rows scroll with it. */
+.ac-scene.scroll-x {
+  overflow-x: auto;
+}
+/* Emit's assembly, pinned while the tree scrolls under it. */
+.ac-pin-track {
+  position: relative;
+  height: 100%;
+  pointer-events: none;
+}
+.ac-pin {
+  position: sticky;
+  z-index: 3;
+  left: 0;
+  height: 100%;
+}
+.ac-pin > * {
+  pointer-events: auto;
 }
 .dark .ac-scene {
   background-image: linear-gradient(#18181b 1px, transparent 1px);
@@ -767,6 +788,18 @@
 /* Looked in, not found there. */
 .ac-scope.passed {
   border-left-style: dashed;
+}
+/* The current scope, looked in: its bold rail dashed as one 2px stripe
+   over the border, so the layout stays as the solid rail's. */
+.ac-scope.home.passed {
+  border-left-color: transparent;
+  box-shadow: none;
+  background: repeating-linear-gradient(
+      to bottom,
+      var(--ink) 0 3px,
+      transparent 3px 6px
+    )
+    left top / 2px 100% no-repeat border-box;
 }
 .ac-scope.passed:not(.home) {
   border-left-color: var(--muted);
@@ -1018,9 +1051,6 @@
   white-space: nowrap;
   pointer-events: none;
 }
-.ac-reg.address {
-  border-style: dashed;
-}
 .ac-reg.spent {
   border-color: var(--muted);
   color: var(--ink);
@@ -1066,10 +1096,6 @@
 .ac-asm.blocks {
   right: 12px;
 }
-/* Without the tree, the stack column takes the right edge. */
-.ac-scene.treeless .ac-asm.blocks {
-  right: 176px;
-}
 .ac-asm:is(.blocks, .listing) .ac-label {
   position: sticky;
   top: 0;
@@ -1077,6 +1103,12 @@
   margin: 0;
   padding: 0 0 4px 34px;
   background: var(--bg);
+}
+/* The lanes' column: where each register is live. */
+.ac-lanes-head {
+  position: absolute;
+  top: 0;
+  padding-left: 2px;
 }
 .ac-asm:is(.blocks, .listing) .ac-ins {
   display: grid;
@@ -1111,14 +1143,10 @@
   color: var(--ink);
   opacity: 1;
 }
-/* The line under the pointer; its source is marked in the editor. */
-.ac-asm.blocks .ac-ins.hover {
-  box-shadow: inset 0 0 0 1px var(--muted);
-}
-.ac-asm.blocks .ac-ins.current.hover {
-  box-shadow:
-    inset 2px 0 var(--ink),
-    inset 0 0 0 1px var(--muted);
+/* The line under the pointer: its number brightens; its source is
+   marked in the editor. */
+.ac-asm.blocks .ac-ins.hover > span {
+  color: var(--ink);
 }
 .ac-asm.listing .ac-ins.current small {
   color: var(--muted);
@@ -1189,10 +1217,10 @@
   dominant-baseline: central;
 }
 
-/* A register under focus: its lane and the lines it lives through stay;
-   the rest go faint (a filter, since motion owns their opacity). Its name
-   is underlined where it appears, green where it is written, inverted on
-   the line its lifecycle is at. */
+/* A register under focus: its lane, the lines it lives through and its
+   badge stay; the rest go faint (a filter, since motion owns their
+   opacity). Its name is underlined where it appears, green where it is
+   written, and the nodes that write and read it are outlined. */
 .ac-lane.off {
   opacity: 0.25;
 }
@@ -1203,19 +1231,11 @@
   pointer-events: auto;
   cursor: pointer;
 }
-.ac-lane circle.stage {
-  fill: var(--ink);
-  stroke: var(--bg);
-  stroke-width: 1.5;
-}
 .ac-asm.blocks :is(.ac-ins, .ac-asm-label, .ac-asm-head) {
   transition: filter 0.2s;
 }
 .ac-asm.blocks.reg-focus :is(.ac-ins:not(.live), .ac-asm-label, .ac-asm-head) {
   filter: opacity(0.3);
-}
-.ac-asm.blocks.reg-focus .ac-ins.stage {
-  box-shadow: inset 0 0 0 1px var(--ink);
 }
 .ac-arg {
   cursor: pointer;
@@ -1228,35 +1248,12 @@
 .ac-arg.focus.def {
   color: var(--ok);
 }
-.ac-arg.focus.stage {
-  background: var(--ink);
-  color: var(--bg);
-  text-decoration: none;
-}
-.ac-arg.focus.def.stage {
-  background: var(--ok);
-}
 .ac-reg[data-vr] {
   pointer-events: auto;
   cursor: pointer;
 }
 .ac-reg.off {
   filter: opacity(0.3);
-}
-.ac-reg.focus {
-  z-index: 3;
-  border-color: var(--ink);
-  background: var(--ink);
-  color: var(--bg);
-}
-.ac-reg.focus.def {
-  border-color: var(--ok);
-  background: var(--ok);
-}
-.ac-reg.focus.dies {
-  border-style: dashed;
-  background: var(--bg);
-  color: var(--ink);
 }
 .ac-piece.life {
   outline: 1px dashed var(--muted);
@@ -1271,19 +1268,54 @@
 }
 
 /* The stack column: one word per row, high addresses at the top. */
+/* Docked under the note's sentence; dragged out, it floats above
+   everything in the simulation. */
 .ac-stack {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 156px;
+  width: calc(196px + (var(--room, 5) - 5) * 1ch);
   font-size: 11px;
+  white-space: normal;
+  cursor: grab;
+  touch-action: none;
 }
+.ac-stack.docked {
+  position: relative;
+  width: min(100%, 300px);
+  margin-top: 14px;
+  font-size: 12px;
+}
+.ac-stack.floating {
+  position: absolute;
+  z-index: 30;
+  padding: 6px 0 8px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+}
+.ac-stack:active {
+  cursor: grabbing;
+}
+/* `--room`: characters kept free right of the words for the registers
+   that point at them (set per function). */
 .ac-stack .ac-label {
-  padding: 0 0 4px 34px;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 calc(var(--room, 5) * 1ch + 3px) 4px calc(5ch + 3px);
+  font-size: inherit;
+  white-space: nowrap;
+}
+/* What the right column counts: bytes above (+) or below (−) `$fp`. */
+.ac-stack .ac-label :is(span, small) {
+  font-size: 10px;
+  color: var(--faint);
+}
+/* What a word holds: the register stored in it, then its value. */
+.ac-stack-value {
+  margin: 0 auto 0 6px;
+  font-weight: 400;
+  color: var(--ink);
 }
 .ac-stack-body {
   position: relative;
-  margin: 0 34px;
+  margin: 0 calc(var(--room, 5) * 1ch + 3px) 0 calc(5ch + 3px);
 }
 .ac-stack-cell {
   position: absolute;
@@ -1304,6 +1336,17 @@
 .dark .ac-stack-cell {
   border-color: #3f3f46;
 }
+/* A long name gives way (ellipsis) before its value and offset do. */
+.ac-stack-cell > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ac-stack-cell > :is(b, small) {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
 .ac-stack-cell small {
   font-size: 10px;
   color: var(--faint);
@@ -1319,6 +1362,34 @@
   border-style: dashed;
   border-color: var(--muted) !important;
   color: var(--muted);
+}
+/* Freed by `$sp` but still to be read (the epilogue's restores). */
+.ac-stack-cell.released {
+  border-style: dashed;
+  color: var(--muted);
+}
+/* An array's middle words, folded into one row. */
+.ac-stack-cell.fold > span {
+  font-style: italic;
+  color: var(--faint);
+}
+/* On a call, the callee's frame as it will sit under `$sp`. */
+.ac-stack-cell.ghost {
+  border-style: dashed;
+  color: var(--muted);
+}
+/* A call's argument or result: the callee's name in grey. */
+.ac-stack-cell > span > i {
+  font-style: normal;
+  color: var(--faint);
+}
+.ac-stack-gap {
+  position: absolute;
+  left: 5px;
+  height: 19px;
+  line-height: 19px;
+  font-size: 10px;
+  color: var(--faint);
 }
 /* Outlined when read, tinted when written, as its instruction arrives. */
 .ac-stack-cell.read {
@@ -1351,6 +1422,15 @@
   color: var(--muted);
 }
 .ac-stack-ptr.sp::before {
+  content: '‹ ';
+  color: var(--muted);
+}
+/* Registers holding a word's address, while they are live. */
+.ac-stack-ptr.reg {
+  left: 100%;
+  padding-left: 3px;
+}
+.ac-stack-ptr.reg::before {
   content: '‹ ';
   color: var(--muted);
 }
@@ -1584,12 +1664,24 @@
     top: 8px;
     font-size: 10.5px;
   }
-  /* No room for the stack column on a phone. */
-  .ac-asm.blocks {
+  /* Treeless or not, the assembly takes the stage's width. */
+  .ac-asm.blocks,
+  .ac-scene.treeless .ac-asm.blocks {
     right: 6px;
   }
-  .ac-stack {
-    display: none;
+  /* Registers: a smaller, tighter listing leaves the lanes room right of
+     the operands. */
+  .ac-asm.listing {
+    font-size: 11px;
+  }
+  .ac-asm.listing .ac-ins {
+    grid-template-columns: 24px 6ch minmax(0, 1fr) auto;
+  }
+  .ac-asm.listing :is(.ac-label, .ac-asm-label, .ac-asm-head) {
+    padding-left: 24px;
+  }
+  .ac-asm.listing .ac-ins > span {
+    padding-right: 5px;
   }
   /* Stacked, a heavier rule tells the stage from the editor below. */
   .ac-stage {
@@ -1602,8 +1694,36 @@
     gap: 10px 12px;
     padding: 8px 0;
   }
+  /* The scrubber takes its own row, with `?` at its right end so the
+     menu opens on screen. */
   .ac-keys input {
-    flex-basis: 100%;
+    flex: 1 1 200px;
+  }
+}
+/* Small phones: tighter tabs, so all six fit beside about. */
+@media (max-width: 419px) {
+  .ac-top {
+    gap: 8px;
+  }
+  .ac-phases {
+    gap: 3px;
+  }
+  .ac-phases button,
+  .ac-about summary {
+    padding: 1px 3px;
+  }
+}
+@media (max-width: 374px) {
+  .ac-phases button,
+  .ac-about summary {
+    font-size: 11px;
+  }
+}
+/* A phone on its side: the tabs, stage and keys fit one screen once
+   scrolled to the top of the tool. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .ac-scene {
+    height: max(240px, calc(100dvh - 104px));
   }
 }
 @media (prefers-reduced-motion: reduce) {

@@ -1143,6 +1143,11 @@ since it is what makes k-colouring make sense.
   that link (341px in 0.42s at 1×, at least 0.15s), measured along the
   route (`routeLength` in `name-links.tsx`, within 1% of the browser's).
 
+## Emit review, 2026-09-25
+
+Stanley's emit review, the per-step structure it asks for, and what was
+built are in `docs/handoffs/2026-09-25-emit-structure.md`.
+
 ## Open items (not started)
 
 - Remove the TEMP Figma capture `<script>` in `page.tsx` once Figma is done with.

@@ -27,7 +27,6 @@ export function EmitLanes({
   range,
   focus,
   focused,
-  stageRow,
   onFocus,
   onBlur,
   stagger,
@@ -47,8 +46,6 @@ export function EmitLanes({
   focus: Set<string>
   /** `fn:vr` of the register under focus, which puts the rest aside. */
   focused?: string
-  /** The focused register's current line in its lifecycle. */
-  stageRow?: number
   onFocus: (key: string, pin: boolean) => void
   onBlur: () => void
   /** Seconds between one row of the block and the next. */
@@ -172,16 +169,6 @@ export function EmitLanes({
                     transition={fade(r)}
                   />
                 ))}
-              {focused === key && stageRow !== undefined && (
-                <motion.circle
-                  className="stage"
-                  cx={x}
-                  r={3.5}
-                  initial={{ cy: centres[stageRow] }}
-                  animate={{ cy: centres[stageRow] }}
-                  transition={{ duration: still ? 0 : duration }}
-                />
-              )}
               <motion.text
                 data-vr
                 x={tagX}
