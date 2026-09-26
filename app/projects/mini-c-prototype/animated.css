@@ -1335,11 +1335,19 @@
   font-size: 12px;
 }
 /* The type pass's panel (type-panel.tsx): the step's rule, premises over
-   a line and the conclusion under it, then what is still waiting. */
+   a line and the conclusion under it, then what is still waiting. Words in
+   the notes' Prose face, code in the page's own, no chips, all in ink. */
 .ac-types {
   display: grid;
-  gap: 14px;
+  gap: 16px;
   padding-top: 4px;
+  font-family: 'Notes Prose', var(--font-mono);
+  font-size: 11px;
+}
+.ac .ac-types code {
+  padding: 0;
+  background: none;
+  font-family: var(--font-mono);
 }
 .ac-rule {
   display: grid;
@@ -1351,16 +1359,11 @@
   flex-wrap: wrap;
   justify-content: center;
   gap: 4px 16px;
+  min-height: 16px;
 }
 .ac-rule-premises .bad,
 .ac-rule.bad .ac-rule-conclusion {
   color: var(--err);
-}
-.ac-rule-premises small {
-  color: var(--muted);
-}
-.ac-rule-premises .axiom {
-  color: var(--faint);
 }
 .ac-rule-line {
   position: relative;
@@ -1373,9 +1376,12 @@
   right: 0;
   padding-left: 6px;
   background: var(--bg);
-  color: var(--muted);
   font-size: 10px;
   line-height: 14px;
+}
+.ac-type-caption {
+  display: block;
+  margin-bottom: 4px;
 }
 .ac-type-stack {
   margin: 0;
@@ -1388,18 +1394,44 @@
   justify-content: space-between;
   gap: 8px;
   padding: 1px 8px;
-  color: var(--muted);
 }
 .ac-type-stack li + li {
   border-top: 1px solid var(--line);
 }
-.ac-type-stack li.typed {
-  color: var(--ink);
-}
 .ac-type-done {
   margin: 0;
-  color: var(--muted);
 }
+
+/* Trial (Stanley, 2026-09-26): the notes in the Berkeley Mono Prose build,
+   tighter and with serifed letters for running text, while code and the rest
+   of the page stay in the Def build the site serves. local() only, so it
+   shows only where Prose is installed; everyone else sees Def. */
+@font-face {
+  font-family: 'Notes Prose';
+  src: local('Berkeley Mono Prose Regular'), local('BerkeleyMonoProse-Regular');
+  font-style: normal;
+  font-weight: 400;
+}
+@font-face {
+  font-family: 'Notes Prose';
+  src: local('Berkeley Mono Prose Oblique'), local('BerkeleyMonoProse-Oblique');
+  font-style: italic;
+  font-weight: 400;
+}
+@font-face {
+  font-family: 'Notes Prose';
+  src: local('Berkeley Mono Prose Bold'), local('BerkeleyMonoProse-Bold');
+  font-style: normal;
+  font-weight: 700;
+}
+@font-face {
+  font-family: 'Notes Prose';
+  src: local('Berkeley Mono Prose Bold Oblique'),
+    local('BerkeleyMonoProse-BoldOblique');
+  font-style: italic;
+  font-weight: 700;
+}
+
 /* The step's note, in a small window over the simulation (note-window.tsx):
    a file's name for a title, like an editor's note in the margin, a bar to
    drag it by and a box that rolls it up to the bar. Quiet lines only: it
@@ -1457,9 +1489,14 @@
   padding: 8px 10px;
   /* The title's size, in full ink: a caption under the file's name. */
   color: var(--ink);
+  font-family: 'Notes Prose', var(--font-mono);
   font-size: 11px;
   line-height: 1.5;
   white-space: pre-line;
+}
+/* Code inside a note stays in the page's own face, as on the stage. */
+.ac .ac-window-body code {
+  font-family: var(--font-mono);
 }
 /* What the note is about (the welcome, a slide, an error, a step title). */
 .ac-window-head {
