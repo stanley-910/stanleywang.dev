@@ -287,7 +287,7 @@ export function Header() {
                   </Link>
                   <a
                     href="https://sh.stanleywang.dev/"
-                    className="pointer-events-auto flex translate-y-[1px] items-center justify-end font-mono text-[0.85em] text-zinc-600 transition-all duration-300 hover:-translate-x-1 dark:text-zinc-400"
+                    className="flex translate-y-[1px] items-center justify-end font-mono text-[0.85em] text-zinc-600 transition-all duration-300 hover:-translate-x-1 dark:text-zinc-400"
                     title="source ~/.sshrc"
                     target="_blank"
                     rel="noopener noreferrer"
@@ -329,7 +329,7 @@ export function Header() {
                       >
                         <GitHubLogoIcon className="h-4 w-4" />
                       </a>
-                      <ThemeSwitch className="pointer-events-auto translate-x-[2px] translate-y-[2px]" />
+                      <ThemeSwitch className="translate-x-[2px] translate-y-[2px]" />
                     </div>
                   </div>
                 </nav>

@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "check:mini-c": "node scripts/mini-c-check-names.cjs"
   },
   "dependencies": {
     "@fontsource/bad-script": "^5.2.5",

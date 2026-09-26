@@ -1,0 +1,100 @@
+digraph ast {
+  Node0 [label="Program"];
+  Node1 [label="FunDef"];
+  Node2 [label="INT"];
+  Node3 [label="Ident(main)"];
+  Node4 [label="Block"];
+  Node5 [label="VarDecl"];
+  Node6 [label="INT"];
+  Node7 [label="Ident(i)"];
+  Node8 [label="VarDecl"];
+  Node9 [label="INT"];
+  Node10 [label="Ident(sum)"];
+  Node11 [label="ExprStmt"];
+  Node12 [label="Assign"];
+  Node13 [label="Var(i)"];
+  Node14 [label="Cst(0)"];
+  Node15 [label="ExprStmt"];
+  Node16 [label="Assign"];
+  Node17 [label="Var(sum)"];
+  Node18 [label="Cst(0)"];
+  Node19 [label="While"];
+  Node20 [label="Var(i)"];
+  Node21 [label="<"];
+  Node22 [label="Cst(3)"];
+  Node23 [label="Block"];
+  Node24 [label="ExprStmt"];
+  Node25 [label="Assign"];
+  Node26 [label="Var(sum)"];
+  Node27 [label="Var(sum)"];
+  Node28 [label="+"];
+  Node29 [label="Var(i)"];
+  Node30 [label="ExprStmt"];
+  Node31 [label="Assign"];
+  Node32 [label="Var(i)"];
+  Node33 [label="Var(i)"];
+  Node34 [label="+"];
+  Node35 [label="Cst(1)"];
+  Node36 [label="Return"];
+  Node37 [label="Var(sum)"];
+  Node5 -> Node6 [label="Type"];
+  Node5 -> Node7 [label="Name"];
+  { rank=same; Node6 Node7; }
+  Node6 -> Node7 [style=invis];
+  Node4 -> Node5 [label="decl0"];
+  Node8 -> Node9 [label="Type"];
+  Node8 -> Node10 [label="Name"];
+  { rank=same; Node9 Node10; }
+  Node9 -> Node10 [style=invis];
+  Node4 -> Node8 [label="decl1"];
+  Node12 -> Node13 [label="LHS"];
+  Node12 -> Node14 [label="RHS"];
+  Node11 -> Node12;
+  Node4 -> Node11 [label="stmt0"];
+  Node16 -> Node17 [label="LHS"];
+  Node16 -> Node18 [label="RHS"];
+  Node15 -> Node16;
+  Node4 -> Node15 [label="stmt1"];
+  Node21 -> Node20;
+  Node21 -> Node22;
+  { rank=same; Node20 Node22; }
+  Node20 -> Node22 [style=invis];
+  Node28 -> Node27;
+  Node28 -> Node29;
+  { rank=same; Node27 Node29; }
+  Node27 -> Node29 [style=invis];
+  Node25 -> Node26 [label="LHS"];
+  Node25 -> Node28 [label="RHS"];
+  Node24 -> Node25;
+  Node23 -> Node24 [label="stmt0"];
+  Node34 -> Node33;
+  Node34 -> Node35;
+  { rank=same; Node33 Node35; }
+  Node33 -> Node35 [style=invis];
+  Node31 -> Node32 [label="LHS"];
+  Node31 -> Node34 [label="RHS"];
+  Node30 -> Node31;
+  Node23 -> Node30 [label="stmt1"];
+  { rank=same; Node24 Node30; }
+  Node24 -> Node30 [style=invis];
+  Node19 -> Node21 [label="Cond"];
+  Node19 -> Node23 [label="Body"];
+  { rank=same; Node21 Node23; }
+  Node21 -> Node23 [style=invis];
+  Node4 -> Node19 [label="stmt2"];
+  Node36 -> Node37;
+  Node4 -> Node36 [label="stmt3"];
+  { rank=same; Node5 Node8 Node11 Node15 Node19 Node36; }
+  Node5 -> Node8 [style=invis];
+  Node8 -> Node11 [style=invis];
+  Node11 -> Node15 [style=invis];
+  Node15 -> Node19 [style=invis];
+  Node19 -> Node36 [style=invis];
+  Node1 -> Node2 [label="Type"];
+  Node1 -> Node3 [label="Name"];
+  Node1 -> Node4 [label="Block"];
+  { rank=same; Node2 Node3 Node4; }
+  Node2 -> Node3 [style=invis];
+  Node3 -> Node4 [style=invis];
+  Node0 -> Node1;
+}

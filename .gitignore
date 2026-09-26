@@ -45,3 +45,6 @@ next-env.d.ts
 AGENTS.md
 
 # Ignore video files
+
+# Real Mini-C compiler compiled to JS (app/projects/mini-c-prototype/browser/build.sh)
+/public/mini-c/
