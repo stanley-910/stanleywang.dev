@@ -40,6 +40,7 @@ import {
 import { lanesOf, registersOf } from './lanes'
 import { linkRouter, type Box, type Route } from './link-route'
 import { NameLinks } from './name-links'
+import { NoteWindow } from './note-window'
 import { groupsOf, parentsOf, parseView } from './parse-view'
 import { compileReal, compilerLoaded, REAL_MAX_CHARS } from './real'
 import { findReference, REFERENCES } from './reference'
@@ -64,6 +65,7 @@ import {
   type Trace,
   treePositions,
 } from './trace'
+import { TypePanel } from './type-panel'
 import '@/app/styles/markdown.css'
 import './animated.css'
 
@@ -2083,20 +2085,17 @@ export default function AnimatedCompiler() {
   // Hovers replace the step text in the panel rather than float on the stage,
   // so nothing on screen says the same thing twice.
   // The name pass: the note card holds the scopes instead of a sentence.
-  const scopeCard = naming && !hoverText
   const statusText = error
     ? error.message
-    : scopeCard
-      ? 'Declarations per scope'
-      : hoverText
-        ? 'hover'
-        : intro
-          ? intro.title
-          : index === 0
-            ? 'Press space to compile your code!'
-            : frame.why.kind === 'token'
-              ? `Token: \`${trace.tokens[frame.why.token].text}\``
-              : frame.title
+    : hoverText
+      ? 'hover'
+      : intro
+        ? intro.title
+        : index === 0
+          ? 'Press space to compile your code!'
+          : frame.why.kind === 'token'
+            ? `Token: \`${trace.tokens[frame.why.token].text}\``
+            : frame.title
   const noteText =
     hoverText ??
     intro?.body ??
@@ -2109,13 +2108,19 @@ export default function AnimatedCompiler() {
     )
       ? 'The compiler stops at its first error. Fix it in the editor and it runs again.'
       : explain(trace, frame, titles))
-  // Without step titles, only the welcome and slides keep a header; an
-  // error is already spelled out in the chip above.
+  // The note's first line, over its text: what it is about, when there's
+  // a header to show (the welcome, a slide, an error, or step titles on).
   const showTitle =
     titles ||
-    scopeCard ||
     (!!intro && !hoverText) ||
-    (index === 0 && !hoverText && !error)
+    (index === 0 && !hoverText && !error) ||
+    !!error ||
+    !!hoverText
+  const heading = showTitle && statusText && (
+    <span className="ac-window-head">
+      <Prose text={statusText} />
+    </span>
+  )
   // A slide's small two-column table, under its body.
   const slideTable = !hoverText && intro?.table && (
     <table className="ac-slide-table">
@@ -2150,6 +2155,25 @@ export default function AnimatedCompiler() {
   // Hidden layers size the panel for the tallest lexer step, but only on the
   // steps themselves: the welcome and slides keep their own height.
   const sizing = !intro && index > 0
+  // What the pane under the source is showing: the phase's own record.
+  const paneLabel = charStep
+    ? 'characters'
+    : landing && !hoverText
+      ? 'node kinds'
+      : naming
+        ? 'declarations per scope'
+        : typing
+          ? 'typing rule'
+          : ''
+  // The note window first opens at the stage's top left.
+  const windowStart = () => {
+    const root = rootRef.current
+    const stage = root?.querySelector('.ac-stage')
+    if (!root || !stage) return { x: 16, y: 16 }
+    const r = root.getBoundingClientRect()
+    const s = stage.getBoundingClientRect()
+    return { x: s.left - r.left + 12, y: s.top - r.top + 12 }
+  }
   // Switching a mode keeps the place: the same recorded step in the new
   // list (from an inserted step, the recorded one after it).
   const switchLexer = (lexer: boolean) => {
@@ -2331,63 +2355,6 @@ export default function AnimatedCompiler() {
     (f) =>
       f.first < frame.instructionCount && frame.instructionCount - 1 <= f.last,
   )
-  // Docked, the stack sits under the note, so a note a line longer or
-  // shorter would nudge it on every step. The note's text keeps the tallest
-  // height it has had in this function, so the stack stays put until a note
-  // needs more room, and then (or when the next function starts) it slides
-  // to its new place instead of jumping.
-  const docked = emitStage && !stackAt
-  const noteTextRef = useRef<HTMLDivElement>(null)
-  const dockRef = useRef<HTMLDivElement>(null)
-  const [noteReserve, setNoteReserve] = useState(0)
-  const reserveFor = useRef<number | null>(null)
-  const dockTop = useRef<number | null>(null)
-  useLayoutEffect(() => {
-    const text = noteTextRef.current
-    if (!docked || !text) {
-      reserveFor.current = null
-      setNoteReserve(0)
-      return
-    }
-    const measure = () => {
-      const natural = (text.firstElementChild as HTMLElement | null)
-        ?.offsetHeight
-      if (natural === undefined) return
-      const key = stackNow?.first ?? -1
-      const fresh = reserveFor.current !== key
-      reserveFor.current = key
-      setNoteReserve((r) => (fresh ? natural : Math.max(r, natural)))
-    }
-    measure()
-    // A wider or narrower note wraps differently: start again from its
-    // natural height (a resize observer also fires once on observing, so
-    // only a change of width counts).
-    const box = text.parentElement ?? text
-    let width = box.clientWidth
-    const observer = new ResizeObserver(() => {
-      if (box.clientWidth === width) return
-      width = box.clientWidth
-      reserveFor.current = null
-      measure()
-    })
-    observer.observe(box)
-    return () => observer.disconnect()
-  }, [docked, noteText, stackNow?.first])
-  useLayoutEffect(() => {
-    const dock = dockRef.current
-    if (!dock) {
-      dockTop.current = null
-      return
-    }
-    const top = dock.offsetTop
-    const was = dockTop.current
-    dockTop.current = top
-    if (was === null || was === top || reduced) return
-    dock.animate(
-      [{ transform: `translateY(${was - top}px)` }, { transform: 'none' }],
-      { duration: 220, easing: 'ease-out' },
-    )
-  })
   const stackColumn = (at?: { x: number; y: number }) => (
     <StackColumn
       key={at ? `${at.x},${at.y}` : 'docked'}
@@ -2681,41 +2648,32 @@ export default function AnimatedCompiler() {
                 saveSplit(clampSplit(range.height + step, range.max))
               }}
             />
-            {showTitle && (
+            {paneLabel && (
               <div className="ac-bar">
-                <span className="ac-note-title">
-                  <Prose text={statusText} />
-                </span>
+                <span className="ac-note-title">{paneLabel}</span>
               </div>
             )}
             <div className="ac-note-body">
-              {frame.phase === 'Tokens' ? (
-                // Hidden layers hold the tallest step of each token class in
-                // the same grid cell, so the panel keeps one height while
-                // stepping through tokens and only grows if even that won't fit.
-                <div className="ac-note-stack">
-                  <div className="ac-note-layer">
-                    <StepNote text={noteText} token={stepToken} />
-                    {charStep && (
-                      <CharTable
-                        read={charStep.read}
-                        reader={charStep.reader}
-                        final={charStep.final}
-                      />
-                    )}
-                    {slideTable}
-                  </div>
-                  {(sizing ? tallestTokenSteps : []).map((v) => (
-                    <div
-                      key={tokenKind(v.token)}
-                      className="ac-note-layer ghost"
-                      aria-hidden="true"
+              {charStep && (
+                <CharTable
+                  read={charStep.read}
+                  reader={charStep.reader}
+                  final={charStep.final}
+                />
+              )}
+              {landing && !hoverText && (
+                <ul className="ac-lexemes" aria-label="Kinds in this class">
+                  {NODE_KINDS[landing.cls].map((kind) => (
+                    <li
+                      key={kind}
+                      className={kind === landing.kind ? 'current' : ''}
                     >
-                      <StepNote text={v.text} token={v.token} />
-                    </div>
+                      {kind}
+                    </li>
                   ))}
-                </div>
-              ) : scopeCard ? (
+                </ul>
+              )}
+              {naming && (
                 <ScopeTree
                   trace={trace}
                   scopes={scopes}
@@ -2723,55 +2681,16 @@ export default function AnimatedCompiler() {
                   step={index}
                   duration={transition.duration}
                 />
-              ) : (
-                <>
-                  {docked ? (
-                    <>
-                      <div
-                        className="ac-note-text"
-                        ref={noteTextRef}
-                        style={{ minHeight: noteReserve || undefined }}
-                      >
-                        <div>
-                          <Prose text={noteText} />
-                        </div>
-                      </div>
-                      <div ref={dockRef}>{stackColumn()}</div>
-                    </>
-                  ) : (
-                    <Prose text={noteText} />
-                  )}
-                  {landing && !hoverText && (
-                    <ul className="ac-lexemes" aria-label="Kinds in this class">
-                      {NODE_KINDS[landing.cls].map((kind) => (
-                        <li
-                          key={kind}
-                          className={kind === landing.kind ? 'current' : ''}
-                        >
-                          {kind}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  {slideTable}
-                </>
               )}
+              {typing && (
+                <TypePanel
+                  trace={trace}
+                  source={trace.text ?? source}
+                  index={index}
+                />
+              )}
+              {emitStage && !stackAt && stackColumn()}
             </div>
-            {intro && deck && deck.slides.length > 1 && (
-              <div className="ac-note-foot">
-                <button
-                  type="button"
-                  className="ac-slides"
-                  aria-label="Skip intro"
-                  onClick={() => seek(index + 1)}
-                >
-                  <span className="count">
-                    {slide}/{deck.slides.length}
-                  </span>
-                  <span className="skip">skip</span>
-                </button>
-              </div>
-            )}
           </section>
         </section>
 
@@ -3768,6 +3687,61 @@ export default function AnimatedCompiler() {
         </section>
       </div>
       {emitStage && stackAt && stackColumn(stackAt)}
+      <NoteWindow
+        title="notes.txt"
+        error={!!error}
+        live={!playing}
+        bounds={rootRef}
+        area={workRef}
+        start={windowStart}
+        foot={
+          intro &&
+          deck &&
+          deck.slides.length > 1 && (
+            <div className="ac-note-foot">
+              <button
+                type="button"
+                className="ac-slides"
+                aria-label="Skip intro"
+                onClick={() => seek(index + 1)}
+              >
+                <span className="count">
+                  {slide}/{deck.slides.length}
+                </span>
+                <span className="skip">skip</span>
+              </button>
+            </div>
+          )
+        }
+      >
+        {frame.phase === 'Tokens' ? (
+          // Hidden layers hold the tallest step of each token class in the
+          // same grid cell, so the window keeps one height while stepping
+          // through tokens and only grows if even that won't fit.
+          <div className="ac-note-stack">
+            <div className="ac-note-layer">
+              {heading}
+              <StepNote text={noteText} token={stepToken} />
+              {slideTable}
+            </div>
+            {(sizing ? tallestTokenSteps : []).map((v) => (
+              <div
+                key={tokenKind(v.token)}
+                className="ac-note-layer ghost"
+                aria-hidden="true"
+              >
+                <StepNote text={v.text} token={v.token} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <>
+            {heading}
+            <Prose text={noteText} />
+            {slideTable}
+          </>
+        )}
+      </NoteWindow>
 
       <footer className="ac-keys" aria-label="Controls">
         <button
