@@ -144,6 +144,13 @@ const INK = [
 const INLINE = /(\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|\*[A-Za-z][^*]*[A-Za-z]\*)/
 
 // Explanation strings mark code with backticks.
+/** A note's first line without its markup, for the rolled-up notes bar. */
+const plainLine = (text: string) =>
+  text
+    .split('\n')[0]
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/[`*]/g, '')
+
 function Prose({ text }: { text: string }) {
   return (
     <>
@@ -3689,6 +3696,7 @@ export default function AnimatedCompiler() {
       {emitStage && stackAt && stackColumn(stackAt)}
       <NoteWindow
         title="notes.txt"
+        peek={plainLine(noteText)}
         error={!!error}
         live={!playing}
         bounds={rootRef}

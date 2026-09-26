@@ -5,7 +5,8 @@ import type { ReactNode, RefObject } from 'react'
 // The step's explanation, in a small window of its own over the simulation,
 // so the pane under the source can hold what the phase keeps track of (the
 // stack, the scopes). A quiet window: a file's name on the bar to drag it
-// by, and a − that rolls it up to the bar alone (□ unrolls it) (Stanley,
+// by, and a − that rolls it up to the bar alone, which then reads the
+// note's first line and a +; clicking either unrolls it (Stanley,
 // 2026-09-26). Where it sits and whether it's rolled up are remembered in
 // this browser.
 const KEY = 'mini-c-note-window'
@@ -38,6 +39,7 @@ export function NoteWindow({
   start,
   children,
   foot,
+  peek,
 }: {
   title: ReactNode
   error?: boolean
@@ -52,6 +54,8 @@ export function NoteWindow({
   start: () => { x: number; y: number }
   children: ReactNode
   foot?: ReactNode
+  /** The note in one plain line, shown on the rolled-up bar. */
+  peek: string
 }) {
   const ref = useRef<HTMLElement>(null)
   const [place, setPlace] = useState<Place | null>(null)
@@ -136,15 +140,32 @@ export function NoteWindow({
         onDoubleClick={roll}
       >
         <span className="ac-window-title">{title}</span>
-        <button
-          type="button"
-          className="ac-window-box"
-          aria-label={place?.shut ? 'Expand' : 'Minimize'}
-          aria-expanded={!place?.shut}
-          onClick={roll}
-        >
-          {place?.shut ? '□' : '−'}
-        </button>
+        {place?.shut ? (
+          // Rolled up, the bar reads the note's first line, as it changes;
+          // clicking it unrolls the window.
+          <button
+            type="button"
+            className="ac-window-peek"
+            aria-label="Expand notes"
+            aria-expanded={false}
+            onClick={roll}
+          >
+            <span>{peek}</span>
+            <span className="ac-window-plus" aria-hidden="true">
+              +
+            </span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="ac-window-box"
+            aria-label="Minimize"
+            aria-expanded
+            onClick={roll}
+          >
+            −
+          </button>
+        )}
       </div>
       {!place?.shut && (
         <>
