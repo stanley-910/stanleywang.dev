@@ -44,7 +44,7 @@ function load(file) {
   return box.exports
 }
 const { REFERENCES } = load('reference.ts')
-const { withNameSteps, scopesOf } = load('scopes.ts')
+const { scopesOf } = load('scopes.ts')
 const { treePositions } = load('trace.ts')
 const { packTray, treeRows } = load('stage-layout.ts')
 const { linkRouter } = load('link-route.ts')
@@ -135,9 +135,13 @@ let routes = 0,
 function check(trace) {
   const scopes = scopesOf(trace)
   const done = trace.frames.find((f) => f.why.kind === 'check.namesDone')
-  for (const f of trace.frames.filter((f) => f.why.kind === 'check.resolve')) {
+  trace.frames.forEach((f, step) => {
+    if (f.why.kind !== 'check.resolve') return
+    // Without a list the page binds the step's own pair (animated.tsx).
     assert(
-      f.links.some(([u, d]) => u === f.why.use && d === f.why.decl),
+      (f.links ?? [[f.why.use, f.why.decl]]).some(
+        ([u, d]) => u === f.why.use && d === f.why.decl,
+      ),
       'Current resolve always has its route pair',
     )
     const html = renderToStaticMarkup(
@@ -145,6 +149,7 @@ function check(trace) {
         trace,
         scopes,
         frame: f,
+        step,
         duration: 0,
       }),
     )
@@ -154,13 +159,14 @@ function check(trace) {
       'One current scope',
     )
     assert(html.includes('found ok'), 'Scope declaration lights with lookup')
-  }
+  })
   if (done) {
     const html = renderToStaticMarkup(
       React.createElement(ScopeTree, {
         trace,
         scopes,
         frame: done,
+        step: trace.frames.indexOf(done),
         duration: 0,
       }),
     )
@@ -200,19 +206,19 @@ function check(trace) {
   }
 }
 async function main() {
-  for (const ref of REFERENCES) check(withNameSteps(ref.trace))
+  for (const ref of REFERENCES) check(ref.trace)
   // The resolve step carries the binding even if the recorder drops its list.
   const ref = REFERENCES.find((r) => r.name.toLowerCase() === 'loop')
   const stripped = {
     ...ref.trace,
     frames: ref.trace.frames.map((f) => ({ ...f, links: undefined })),
   }
-  check(withNameSteps(stripped))
+  check(stripped)
   const custom = ref.source.replace('int main() {', 'int main() {\n  int n;')
   const compiler = await import(
     `data:text/javascript;base64,${fs.readFileSync(path.join(__dirname, '../public/mini-c/compiler.js')).toString('base64')}`
   )
-  const trace = withNameSteps(JSON.parse(compiler.trace(custom)).trace)
+  const trace = JSON.parse(compiler.trace(custom)).trace
   check(trace)
   const scopes = scopesOf(trace)
   const target = trace.frames.find(
@@ -220,13 +226,14 @@ async function main() {
       f.why.kind === 'check.resolve' &&
       trace.nodes[f.why.use].kind === 'assign' &&
       trace.tokens[trace.nodes[f.why.use].token].text === 'sum' &&
-      scopes.scopeOf(f.why.use) > 1,
+      f.why.inScope > 1,
   )
   const html = renderToStaticMarkup(
     React.createElement(ScopeTree, {
       trace,
       scopes,
       frame: target,
+      step: trace.frames.indexOf(target),
       duration: 0,
     }),
   )

@@ -55,7 +55,8 @@ export function NameLinks({
         const r = routes.get(`${use}-${decl}`)
         const active =
           !hoverOnly &&
-          frame.why.kind === 'check.resolve' &&
+          (frame.why.kind === 'check.resolve' ||
+            frame.why.kind === 'check.link') &&
           frame.why.use === use
         if (!r || !(all || active || hover === use || hover === decl))
           return null
