@@ -1,3 +1,4 @@
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 
 import type { ReactNode, RefObject } from 'react'
@@ -5,12 +6,16 @@ import type { ReactNode, RefObject } from 'react'
 // The step's explanation, in a small window of its own over the simulation,
 // so the pane under the source can hold what the phase keeps track of (the
 // stack, the scopes). A quiet window: a file's name on the bar to drag it
-// by, and a − that rolls it up to the bar alone, which then reads the
-// note's first line and a +; clicking either unrolls it (Stanley,
-// 2026-09-26). Where it sits and whether it's rolled up are remembered in
+// by, and a − that rolls it up into its top-left corner, to the name and
+// a + that grows it back out (Stanley, 2026-09-26). Where it sits and whether it's rolled up are remembered in
 // this browser.
 const KEY = 'mini-c-note-window'
 const MARGIN = 8
+const OPEN_W = 264
+// Advance of one character of the 11px title.
+const TITLE_CH = 6.6
+// The page's easing for cards that open and close (animated.tsx).
+const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number]
 
 type Place = { x: number; y: number; shut: boolean }
 
@@ -39,9 +44,8 @@ export function NoteWindow({
   start,
   children,
   foot,
-  peek,
 }: {
-  title: ReactNode
+  title: string
   error?: boolean
   /** Announce changes (off while playing). */
   live: boolean
@@ -54,10 +58,9 @@ export function NoteWindow({
   start: () => { x: number; y: number }
   children: ReactNode
   foot?: ReactNode
-  /** The note in one plain line, shown on the rolled-up bar. */
-  peek: string
 }) {
   const ref = useRef<HTMLElement>(null)
+  const still = useReducedMotion()
   const [place, setPlace] = useState<Place | null>(null)
   const drag = useRef<{ dx: number; dy: number } | null>(null)
 
@@ -106,11 +109,20 @@ export function NoteWindow({
       return next
     })
 
+  const shut = !!place?.shut
+  // Rolled up it is just the name and a +, exactly as wide as those
+  // (monospace, 6.6px a character at 11px, plus the bar's padding).
+  const width = shut ? Math.ceil(title.length * TITLE_CH + 39) : OPEN_W
+  const timing = { duration: still ? 0 : 0.22, ease: EASE }
+
   return (
-    <section
+    <motion.section
       ref={ref}
-      className={`ac-window ${place?.shut ? 'shut' : ''} ${error ? 'err' : ''}`}
+      className={`ac-window ${shut ? 'shut' : ''} ${error ? 'err' : ''}`}
       aria-label="Current step"
+      initial={false}
+      animate={{ width }}
+      transition={timing}
       style={
         place
           ? { left: place.x, top: place.y }
@@ -140,41 +152,41 @@ export function NoteWindow({
         onDoubleClick={roll}
       >
         <span className="ac-window-title">{title}</span>
-        {place?.shut ? (
-          // Rolled up, the bar reads the note's first line, as it changes;
-          // clicking it unrolls the window.
-          <button
-            type="button"
-            className="ac-window-peek"
-            aria-label="Expand notes"
-            aria-expanded={false}
-            onClick={roll}
-          >
-            <span>{peek}</span>
-            <span className="ac-window-plus" aria-hidden="true">
-              +
-            </span>
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="ac-window-box"
-            aria-label="Minimize"
-            aria-expanded
-            onClick={roll}
-          >
-            −
-          </button>
-        )}
+        <button
+          type="button"
+          className="ac-window-box"
+          aria-label={shut ? 'Expand notes' : 'Minimize notes'}
+          aria-expanded={!shut}
+          onClick={roll}
+        >
+          {shut ? '+' : '−'}
+        </button>
       </div>
-      {!place?.shut && (
-        <>
-          <div className="ac-window-body" aria-live={live ? 'polite' : 'off'}>
-            {children}
-          </div>
-          {foot}
-        </>
-      )}
-    </section>
+      {/* Anchored at its top left: rolling up shrinks it into that corner,
+          unrolling grows it back out, as a lexeme's card opens. */}
+      <AnimatePresence initial={false}>
+        {!shut && (
+          <motion.div
+            key="open"
+            className="ac-window-open"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={timing}
+          >
+            {/* Laid out at the open width throughout, so the text wraps
+                the same while the window grows and its height is right. */}
+            <div
+              className="ac-window-body"
+              style={{ width: OPEN_W - 2 }}
+              aria-live={live ? 'polite' : 'off'}
+            >
+              {children}
+            </div>
+            {foot}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.section>
   )
 }
