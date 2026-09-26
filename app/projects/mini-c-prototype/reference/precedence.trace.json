@@ -47,7 +47,7 @@
     {"phase": "Parse", "title": "Read 4 as a literal", "span": {"start": 22, "end": 23}, "tokenCount": 13, "consumed": [0, 1, 2, 3, 4, 5, 6], "nodes": [0, 1, 2, 4], "attached": [], "focus": 4, "why": {"kind": "parse.node", "node": 4}, "instructionCount": 0, "allocationCount": 0},
     {"phase": "Parse", "title": "+ takes 4 as its left side and waits for the right", "span": {"start": 22, "end": 25}, "tokenCount": 13, "consumed": [0, 1, 2, 3, 4, 5, 6, 7], "nodes": [0, 1, 2, 4, 3], "attached": [4], "focus": 3, "why": {"kind": "parse.wait", "node": 3, "child": 4}, "instructionCount": 0, "allocationCount": 0},
     {"phase": "Parse", "title": "Read 2 as a literal", "span": {"start": 26, "end": 27}, "tokenCount": 13, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8], "nodes": [0, 1, 2, 4, 3, 6], "attached": [4], "focus": 6, "why": {"kind": "parse.node", "node": 6}, "instructionCount": 0, "allocationCount": 0},
-    {"phase": "Parse", "title": "× binds tighter than +, so 2 goes to × first", "span": {"start": 28, "end": 29}, "tokenCount": 13, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], "nodes": [0, 1, 2, 4, 3, 6], "attached": [4], "focus": 5, "why": {"kind": "parse.precedence", "pending": "+", "incoming": "×", "relation": "tighter", "child": 6}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "× binds tighter than +, so 2 goes to × first", "span": {"start": 28, "end": 29}, "tokenCount": 13, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8], "nodes": [0, 1, 2, 4, 3, 6], "attached": [4], "focus": 5, "why": {"kind": "parse.precedence", "pending": "+", "incoming": "×", "relation": "tighter", "child": 6}, "instructionCount": 0, "allocationCount": 0},
     {"phase": "Parse", "title": "× takes 2 as its left side and waits for the right", "span": {"start": 26, "end": 29}, "tokenCount": 13, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], "nodes": [0, 1, 2, 4, 3, 6, 5], "attached": [4, 6], "focus": 5, "why": {"kind": "parse.wait", "node": 5, "child": 6}, "instructionCount": 0, "allocationCount": 0},
     {"phase": "Parse", "title": "Read 3 as a literal", "span": {"start": 30, "end": 31}, "tokenCount": 13, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "nodes": [0, 1, 2, 4, 3, 6, 5, 7], "attached": [4, 6], "focus": 7, "why": {"kind": "parse.node", "node": 7}, "instructionCount": 0, "allocationCount": 0},
     {"phase": "Parse", "title": "× closes over 2 * 3", "span": {"start": 26, "end": 31}, "tokenCount": 13, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "nodes": [0, 1, 2, 4, 3, 6, 5, 7], "attached": [4, 6, 7], "focus": 5, "why": {"kind": "parse.close", "node": 5}, "instructionCount": 0, "allocationCount": 0},
@@ -73,39 +73,40 @@
     {"phase": "Registers", "title": "Sweep 1: 16 live sets filled", "span": {"start": 0, "end": 0}, "tokenCount": 13, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], "nodes": [0, 1, 2, 4, 3, 6, 5, 7], "attached": [4, 6, 7, 5, 3, 2, 1], "focus": 0, "why": {"kind": "reg.live", "fn": 0, "sweep": 1, "changed": 16}, "instructionCount": 18, "allocationCount": 0},
     {"phase": "Registers", "title": "Sweep 2: nothing changes, liveness is settled", "span": {"start": 0, "end": 0}, "tokenCount": 13, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], "nodes": [0, 1, 2, 4, 3, 6, 5, 7], "attached": [4, 6, 7, 5, 3, 2, 1], "focus": 0, "why": {"kind": "reg.live", "fn": 0, "sweep": 2, "changed": 0}, "instructionCount": 18, "allocationCount": 0},
     {"phase": "Registers", "title": "5 virtual registers, 4 overlaps", "span": {"start": 0, "end": 0}, "tokenCount": 13, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], "nodes": [0, 1, 2, 4, 3, 6, 5, 7], "attached": [4, 6, 7, 5, 3, 2, 1], "focus": 0, "why": {"kind": "reg.interfere", "fn": 0, "nodes": 5, "edges": 4, "busiest": "v0", "degree": 3}, "instructionCount": 18, "allocationCount": 0},
-    {"phase": "Registers", "title": "v3 set aside, 1 neighbour", "span": {"start": 26, "end": 31}, "tokenCount": 13, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], "nodes": [0, 1, 2, 4, 3, 6, 5, 7], "attached": [4, 6, 7, 5, 3, 2, 1], "focus": 5, "why": {"kind": "reg.simplify", "fn": 0, "step": 0, "at": 9}, "instructionCount": 18, "allocationCount": 0},
-    {"phase": "Registers", "title": "v1 set aside, 2 neighbours", "span": {"start": 26, "end": 27}, "tokenCount": 13, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], "nodes": [0, 1, 2, 4, 3, 6, 5, 7], "attached": [4, 6, 7, 5, 3, 2, 1], "focus": 6, "why": {"kind": "reg.simplify", "fn": 0, "step": 1, "at": 6}, "instructionCount": 18, "allocationCount": 0},
-    {"phase": "Registers", "title": "v0 set aside, 1 neighbour", "span": {"start": 22, "end": 23}, "tokenCount": 13, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], "nodes": [0, 1, 2, 4, 3, 6, 5, 7], "attached": [4, 6, 7, 5, 3, 2, 1], "focus": 4, "why": {"kind": "reg.simplify", "fn": 0, "step": 2, "at": 5}, "instructionCount": 18, "allocationCount": 0},
-    {"phase": "Registers", "title": "v4 set aside, 0 neighbours", "span": {"start": 22, "end": 31}, "tokenCount": 13, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], "nodes": [0, 1, 2, 4, 3, 6, 5, 7], "attached": [4, 6, 7, 5, 3, 2, 1], "focus": 3, "why": {"kind": "reg.simplify", "fn": 0, "step": 3, "at": 10}, "instructionCount": 18, "allocationCount": 0},
+    {"phase": "Registers", "title": "v0 set aside, 3 neighbours", "span": {"start": 22, "end": 23}, "tokenCount": 13, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], "nodes": [0, 1, 2, 4, 3, 6, 5, 7], "attached": [4, 6, 7, 5, 3, 2, 1], "focus": 4, "why": {"kind": "reg.simplify", "fn": 0, "step": 0, "at": 5}, "instructionCount": 18, "allocationCount": 0},
+    {"phase": "Registers", "title": "v4 set aside, 0 neighbours", "span": {"start": 22, "end": 31}, "tokenCount": 13, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], "nodes": [0, 1, 2, 4, 3, 6, 5, 7], "attached": [4, 6, 7, 5, 3, 2, 1], "focus": 3, "why": {"kind": "reg.simplify", "fn": 0, "step": 1, "at": 10}, "instructionCount": 18, "allocationCount": 0},
+    {"phase": "Registers", "title": "v1 set aside, 1 neighbour", "span": {"start": 26, "end": 27}, "tokenCount": 13, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], "nodes": [0, 1, 2, 4, 3, 6, 5, 7], "attached": [4, 6, 7, 5, 3, 2, 1], "focus": 6, "why": {"kind": "reg.simplify", "fn": 0, "step": 2, "at": 6}, "instructionCount": 18, "allocationCount": 0},
+    {"phase": "Registers", "title": "v3 set aside, 0 neighbours", "span": {"start": 26, "end": 31}, "tokenCount": 13, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], "nodes": [0, 1, 2, 4, 3, 6, 5, 7], "attached": [4, 6, 7, 5, 3, 2, 1], "focus": 5, "why": {"kind": "reg.simplify", "fn": 0, "step": 3, "at": 9}, "instructionCount": 18, "allocationCount": 0},
     {"phase": "Registers", "title": "v2 set aside, 0 neighbours", "span": {"start": 30, "end": 31}, "tokenCount": 13, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], "nodes": [0, 1, 2, 4, 3, 6, 5, 7], "attached": [4, 6, 7, 5, 3, 2, 1], "focus": 7, "why": {"kind": "reg.simplify", "fn": 0, "step": 4, "at": 7}, "instructionCount": 18, "allocationCount": 0},
     {"phase": "Registers", "title": "v2 gets $t0", "span": {"start": 30, "end": 31}, "tokenCount": 13, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], "nodes": [0, 1, 2, 4, 3, 6, 5, 7], "attached": [4, 6, 7, 5, 3, 2, 1], "focus": 7, "why": {"kind": "reg.select", "fn": 0, "step": 5, "at": 7}, "instructionCount": 18, "allocationCount": 1},
-    {"phase": "Registers", "title": "v4 gets $t0", "span": {"start": 22, "end": 31}, "tokenCount": 13, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], "nodes": [0, 1, 2, 4, 3, 6, 5, 7], "attached": [4, 6, 7, 5, 3, 2, 1], "focus": 3, "why": {"kind": "reg.select", "fn": 0, "step": 6, "at": 10}, "instructionCount": 18, "allocationCount": 2},
-    {"phase": "Registers", "title": "v0 gets $t1", "span": {"start": 22, "end": 23}, "tokenCount": 13, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], "nodes": [0, 1, 2, 4, 3, 6, 5, 7], "attached": [4, 6, 7, 5, 3, 2, 1], "focus": 4, "why": {"kind": "reg.select", "fn": 0, "step": 7, "at": 5}, "instructionCount": 18, "allocationCount": 3},
-    {"phase": "Registers", "title": "v1 gets $t2", "span": {"start": 26, "end": 27}, "tokenCount": 13, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], "nodes": [0, 1, 2, 4, 3, 6, 5, 7], "attached": [4, 6, 7, 5, 3, 2, 1], "focus": 6, "why": {"kind": "reg.select", "fn": 0, "step": 8, "at": 6}, "instructionCount": 18, "allocationCount": 4},
-    {"phase": "Registers", "title": "v3 gets $t0", "span": {"start": 26, "end": 31}, "tokenCount": 13, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], "nodes": [0, 1, 2, 4, 3, 6, 5, 7], "attached": [4, 6, 7, 5, 3, 2, 1], "focus": 5, "why": {"kind": "reg.select", "fn": 0, "step": 9, "at": 9}, "instructionCount": 18, "allocationCount": 5},
+    {"phase": "Registers", "title": "v3 gets $t0", "span": {"start": 26, "end": 31}, "tokenCount": 13, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], "nodes": [0, 1, 2, 4, 3, 6, 5, 7], "attached": [4, 6, 7, 5, 3, 2, 1], "focus": 5, "why": {"kind": "reg.select", "fn": 0, "step": 6, "at": 9}, "instructionCount": 18, "allocationCount": 2},
+    {"phase": "Registers", "title": "v1 gets $t1", "span": {"start": 26, "end": 27}, "tokenCount": 13, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], "nodes": [0, 1, 2, 4, 3, 6, 5, 7], "attached": [4, 6, 7, 5, 3, 2, 1], "focus": 6, "why": {"kind": "reg.select", "fn": 0, "step": 7, "at": 6}, "instructionCount": 18, "allocationCount": 3},
+    {"phase": "Registers", "title": "v4 gets $t0", "span": {"start": 22, "end": 31}, "tokenCount": 13, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], "nodes": [0, 1, 2, 4, 3, 6, 5, 7], "attached": [4, 6, 7, 5, 3, 2, 1], "focus": 3, "why": {"kind": "reg.select", "fn": 0, "step": 8, "at": 10}, "instructionCount": 18, "allocationCount": 4},
+    {"phase": "Registers", "title": "v0 gets $t2", "span": {"start": 22, "end": 23}, "tokenCount": 13, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], "nodes": [0, 1, 2, 4, 3, 6, 5, 7], "attached": [4, 6, 7, 5, 3, 2, 1], "focus": 4, "why": {"kind": "reg.select", "fn": 0, "step": 9, "at": 5}, "instructionCount": 18, "allocationCount": 5},
     {"phase": "Registers", "title": "main: 5 virtual registers fit in 3 real ones", "span": {"start": 0, "end": 0}, "tokenCount": 13, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], "nodes": [0, 1, 2, 4, 3, 6, 5, 7], "attached": [4, 6, 7, 5, 3, 2, 1], "focus": 0, "why": {"kind": "reg.done", "fn": 0, "used": 3, "spills": 0}, "instructionCount": 18, "allocationCount": 5}
   ],
   "instructions": [
-    {"id": 0, "fn": 0, "text": "addi $sp,$sp,-4", "op": "addi", "dest": "$sp", "args": ["$sp"], "node": 0, "labels": ["main"]},
-    {"id": 1, "fn": 0, "text": "sw $fp,0($sp)", "op": "sw", "dest": null, "args": ["$fp", "$sp"], "node": 0, "labels": []},
-    {"id": 2, "fn": 0, "text": "addiu $fp,$sp,0", "op": "addiu", "dest": "$fp", "args": ["$sp"], "node": 0, "labels": []},
-    {"id": 3, "fn": 0, "text": "addiu $sp,$sp,-4", "op": "addiu", "dest": "$sp", "args": ["$sp"], "node": 0, "labels": []},
-    {"id": 4, "fn": 0, "text": "pushRegisters", "op": "pushRegisters", "dest": null, "args": [], "node": 0, "labels": []},
-    {"id": 5, "fn": 0, "text": "li v0,4", "op": "li", "dest": "v0", "args": [], "node": 4, "labels": []},
-    {"id": 6, "fn": 0, "text": "li v1,2", "op": "li", "dest": "v1", "args": [], "node": 6, "labels": []},
-    {"id": 7, "fn": 0, "text": "li v2,3", "op": "li", "dest": "v2", "args": [], "node": 7, "labels": []},
-    {"id": 8, "fn": 0, "text": "mult v1,v2", "op": "mult", "dest": null, "args": ["v1", "v2"], "node": 5, "labels": []},
-    {"id": 9, "fn": 0, "text": "mflo v3", "op": "mflo", "dest": "v3", "args": [], "node": 5, "labels": []},
-    {"id": 10, "fn": 0, "text": "addu v4,v0,v3", "op": "addu", "dest": "v4", "args": ["v0", "v3"], "node": 3, "labels": []},
-    {"id": 11, "fn": 0, "text": "sw v4,4($fp)", "op": "sw", "dest": null, "args": ["v4", "$fp"], "node": 2, "labels": []},
-    {"id": 12, "fn": 0, "text": "j main_epilogue", "op": "j", "dest": null, "args": [], "node": 2, "labels": []},
-    {"id": 13, "fn": 0, "text": "popRegisters", "op": "popRegisters", "dest": null, "args": [], "node": 0, "labels": ["main_epilogue"]},
-    {"id": 14, "fn": 0, "text": "addi $sp,$fp,4", "op": "addi", "dest": "$sp", "args": ["$fp"], "node": 0, "labels": []},
-    {"id": 15, "fn": 0, "text": "lw $fp,0($fp)", "op": "lw", "dest": "$fp", "args": ["$fp"], "node": 0, "labels": []},
-    {"id": 16, "fn": 0, "text": "li $v0,10", "op": "li", "dest": "$v0", "args": [], "node": 0, "labels": []},
-    {"id": 17, "fn": 0, "text": "syscall", "op": "syscall", "dest": null, "args": [], "node": 0, "labels": []}
+    {"id": 0, "fn": 0, "text": "addi $sp,$sp,-4", "op": "addi", "dest": "$sp", "args": ["$sp"], "node": 0, "labels": ["main"], "tag": {"role": "reserve", "for": "fp"}, "out": ["addi $sp,$sp,-4"]},
+    {"id": 1, "fn": 0, "text": "sw $fp,0($sp)", "op": "sw", "dest": null, "args": ["$fp", "$sp"], "node": 0, "labels": [], "tag": {"role": "save", "reg": "fp"}, "out": ["sw $fp,0($sp)"]},
+    {"id": 2, "fn": 0, "text": "addiu $fp,$sp,0", "op": "addiu", "dest": "$fp", "args": ["$sp"], "node": 0, "labels": [], "tag": {"role": "set-fp"}, "out": ["addiu $fp,$sp,0"]},
+    {"id": 3, "fn": 0, "text": "addiu $sp,$sp,-4", "op": "addiu", "dest": "$sp", "args": ["$sp"], "node": 0, "labels": [], "tag": {"role": "reserve", "for": "locals", "fun": "main"}, "out": ["addiu $sp,$sp,-4"]},
+    {"id": 4, "fn": 0, "text": "pushRegisters", "op": "pushRegisters", "dest": null, "args": [], "node": 0, "labels": [], "tag": {"role": "push-registers"}, "out": ["addiu $sp,$sp,-4", "sw $t0,0($sp)", "addiu $sp,$sp,-4", "sw $t1,0($sp)", "addiu $sp,$sp,-4", "sw $t2,0($sp)"]},
+    {"id": 5, "fn": 0, "text": "li v0,4", "op": "li", "dest": "v0", "args": [], "node": 4, "labels": [], "out": ["li $t2,4"]},
+    {"id": 6, "fn": 0, "text": "li v1,2", "op": "li", "dest": "v1", "args": [], "node": 6, "labels": [], "out": ["li $t1,2"]},
+    {"id": 7, "fn": 0, "text": "li v2,3", "op": "li", "dest": "v2", "args": [], "node": 7, "labels": [], "out": ["li $t0,3"]},
+    {"id": 8, "fn": 0, "text": "mult v1,v2", "op": "mult", "dest": null, "args": ["v1", "v2"], "node": 5, "labels": [], "out": ["mult $t1,$t0"]},
+    {"id": 9, "fn": 0, "text": "mflo v3", "op": "mflo", "dest": "v3", "args": [], "node": 5, "labels": [], "out": ["mflo $t0"]},
+    {"id": 10, "fn": 0, "text": "addu v4,v0,v3", "op": "addu", "dest": "v4", "args": ["v0", "v3"], "node": 3, "labels": [], "out": ["addu $t0,$t2,$t0"]},
+    {"id": 11, "fn": 0, "text": "sw v4,4($fp)", "op": "sw", "dest": null, "args": ["v4", "$fp"], "node": 2, "labels": [], "tag": {"role": "store", "into": "return", "fun": "main"}, "out": ["sw $t0,4($fp)"]},
+    {"id": 12, "fn": 0, "text": "j main_epilogue", "op": "j", "dest": null, "args": [], "node": 2, "labels": [], "tag": {"role": "jump.epilogue", "fun": "main"}, "out": ["j main_epilogue"]},
+    {"id": 13, "fn": 0, "text": "popRegisters", "op": "popRegisters", "dest": null, "args": [], "node": 0, "labels": ["main_epilogue"], "tag": {"role": "pop-registers"}, "out": ["lw $t2,0($sp)", "addiu $sp,$sp,4", "lw $t1,0($sp)", "addiu $sp,$sp,4", "lw $t0,0($sp)", "addiu $sp,$sp,4"]},
+    {"id": 14, "fn": 0, "text": "addi $sp,$fp,4", "op": "addi", "dest": "$sp", "args": ["$fp"], "node": 0, "labels": [], "tag": {"role": "release", "for": "frame"}, "out": ["addi $sp,$fp,4"]},
+    {"id": 15, "fn": 0, "text": "lw $fp,0($fp)", "op": "lw", "dest": "$fp", "args": ["$fp"], "node": 0, "labels": [], "tag": {"role": "restore", "reg": "fp"}, "out": ["lw $fp,0($fp)"]},
+    {"id": 16, "fn": 0, "text": "li $v0,10", "op": "li", "dest": "$v0", "args": [], "node": 0, "labels": [], "tag": {"role": "syscall.code", "call": "exit"}, "out": ["li $v0,10"]},
+    {"id": 17, "fn": 0, "text": "syscall", "op": "syscall", "dest": null, "args": [], "node": 0, "labels": [], "tag": {"role": "syscall", "call": "exit"}, "out": ["syscall"]}
   ],
-  "registers": {"v0": "$t1", "v1": "$t2", "v2": "$t0", "v3": "$t0", "v4": "$t0"},
+  "registers": {"v0": "$t2", "v1": "$t1", "v2": "$t0", "v3": "$t0", "v4": "$t0"},
+  "layout": {"structs": {}, "globals": [], "functions": [{"name": "main", "node": 0, "return": {"off": 4, "size": 4, "type": {"k": "int"}}, "params": [], "locals": []}]},
   "backend": {
     "k": 18,
     "palette": ["$t0","$t1","$t2","$t3","$t4","$t5","$t6","$t7","$t8","$t9","$s0","$s1","$s2","$s3","$s4","$s5","$s6","$s7"],
@@ -467,22 +468,22 @@
           "steps": [
             {
               "op": "simplify",
-              "vr": "v3",
-              "degree": 1
+              "vr": "v0",
+              "degree": 3
+            },
+            {
+              "op": "simplify",
+              "vr": "v4",
+              "degree": 0
             },
             {
               "op": "simplify",
               "vr": "v1",
-              "degree": 2
-            },
-            {
-              "op": "simplify",
-              "vr": "v0",
               "degree": 1
             },
             {
               "op": "simplify",
-              "vr": "v4",
+              "vr": "v3",
               "degree": 0
             },
             {
@@ -498,32 +499,32 @@
             },
             {
               "op": "select",
-              "vr": "v4",
+              "vr": "v3",
               "forbidden": [],
               "colour": "$t0"
             },
             {
               "op": "select",
-              "vr": "v0",
+              "vr": "v1",
               "forbidden": ["$t0"],
               "colour": "$t1"
             },
             {
               "op": "select",
-              "vr": "v1",
-              "forbidden": ["$t0","$t1"],
-              "colour": "$t2"
+              "vr": "v4",
+              "forbidden": [],
+              "colour": "$t0"
             },
             {
               "op": "select",
-              "vr": "v3",
-              "forbidden": ["$t1"],
-              "colour": "$t0"
+              "vr": "v0",
+              "forbidden": ["$t0","$t1"],
+              "colour": "$t2"
             }
           ],
           "result": {
-            "v0": "$t1",
-            "v1": "$t2",
+            "v0": "$t2",
+            "v1": "$t1",
             "v2": "$t0",
             "v3": "$t0",
             "v4": "$t0"

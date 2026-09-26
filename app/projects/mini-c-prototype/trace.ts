@@ -41,6 +41,59 @@ export type Instruction = {
   // no path reaches it (the jump after a `return` inside `if` or `while`),
   // so the allocator's control-flow graph leaves it out
   dead?: boolean
+  // what codegen said the line is for, and what the register allocator
+  // turned it into (pushRegisters as its pushes, spill loads and stores)
+  tag?: Tag
+  out?: string[]
+}
+// Storage an expression names (ParseTrace.placeJson): its declaration's
+// node and the byte offset in it where both are known at compile time.
+// `through` is set instead when it is reached through a pointer.
+export type Place = {
+  text: string
+  var: number | null
+  off: number | null
+  size: number
+  through?: string | null
+}
+// CodeGen.tag, recorded by ParseTrace: a role and facts about the line.
+export type Tag = {
+  role:
+    | 'reserve' // `for`: fp, ra, locals, arg (`param`), result
+    | 'save' // `reg`: fp, ra
+    | 'set-fp'
+    | 'push-registers'
+    | 'pop-registers'
+    | 'release' // `for`: frame, call
+    | 'restore' // `reg`: fp, ra
+    | 'return'
+    | 'addr' // `of`: the address of a place
+    | 'load' // `of`
+    | 'store' // `into`
+    | 'index.size'
+    | 'index.scale'
+    | 'call'
+    | 'jump.epilogue'
+    | 'syscall.arg'
+    | 'syscall.code'
+    | 'syscall'
+    | 'syscall.result'
+    | `copy.${'from' | 'to' | 'count' | 'test' | 'load' | 'store' | 'step' | 'countdown' | 'loop'}`
+  for?: string
+  reg?: string
+  of?: Place | 'return' | 'result'
+  into?: Place | 'return'
+  param?: Place
+  call?: string
+  fun?: string
+  through?: string
+  offset?: number
+  size?: number
+  // struct copies: into what, from what, how many bytes, high to low
+  to?: Place | 'return' | null
+  from?: Place | null
+  bytes?: number
+  reverse?: boolean
 }
 // The real allocator's working, recorded per function by the compiler's
 // test utility: one CFG block per instruction, liveness sweep by sweep,
@@ -243,6 +296,41 @@ export type Trace = {
   ast?: string
   sem?: string[]
   backend?: Backend
+  layout?: Layout
+}
+// The storage MemAllocCodeGen gave each declaration (ParseTrace's
+// layoutJson): the emit phase's stack draws these words.
+export type CType =
+  | { k: 'int' | 'char' | 'void' | 'other' }
+  | { k: 'ptr'; to: CType }
+  | { k: 'array'; of: CType; n: number }
+  | { k: 'struct'; name: string }
+export type Storage = {
+  name: string
+  node: number | null
+  size: number
+  type: CType
+  /** Bytes from `$fp`: parameters above it, locals below. */
+  off?: number
+  /** Globals: the `.data` label. */
+  label?: string
+}
+export type Layout = {
+  structs: Record<
+    string,
+    {
+      size: number
+      fields: { name: string; off: number; size: number; type: CType }[]
+    }
+  >
+  globals: Storage[]
+  functions: {
+    name: string
+    node: number | null
+    return: { off: number; size: number; type: CType } | null
+    params: Storage[]
+    locals: Storage[]
+  }[]
 }
 class CompileError extends Error {
   constructor(
@@ -285,17 +373,18 @@ export function buildTrace(source: string): Trace {
       allocationCount: 0,
     })
   try {
-    if (source.length > 1200)
-      throw new CompileError('Keep this sketch under 1,200 characters.', {
-        start: 0,
-        end: source.length,
-      })
     push(
       'Tokens',
       'Press play. Follow the source into a tree.',
       { start: 0, end: 0 },
       { kind: 'ready' },
     )
+    // After the first frame, so the page always has one to show.
+    if (source.length > 1200)
+      throw new CompileError('Keep this sketch under 1,200 characters.', {
+        start: 0,
+        end: source.length,
+      })
     for (let offset = 0; offset < source.length; ) {
       if (/\s/.test(source[offset])) {
         offset++

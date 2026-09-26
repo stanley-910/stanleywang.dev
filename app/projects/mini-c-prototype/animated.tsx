@@ -2,6 +2,7 @@
 import {
   AnimatePresence,
   motion,
+  useDragControls,
   useReducedMotion,
   type MotionStyle,
 } from 'motion/react'
@@ -9,6 +10,7 @@ import {
   type CSSProperties,
   Fragment,
   type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -719,7 +721,10 @@ export default function AnimatedCompiler() {
     for (const b of regs)
       room.set(
         b.node,
-        Math.max(room.get(b.node) ?? 0, b.reg.length * TYPE_PX + 13),
+        Math.max(
+          room.get(b.node) ?? 0,
+          (b.reg.length + (b.address ? 2 : 0)) * TYPE_PX + 13,
+        ),
       )
     return room
   }, [regs])
@@ -748,6 +753,31 @@ export default function AnimatedCompiler() {
   } | null>(null)
   // Once parsing starts, a `*` that multiplies waits in the tray as the `×`
   // the tree will show; a prefix `*` stays as typed.
+  // A declaration's type tokens (`int` in `int twice(` or `int n`) are kept
+  // in its node, not thrown away like `(` or `;`. They wait in the tray
+  // until the node lands, then slide into it and fade.
+  const absorbedBy = useMemo(() => {
+    const by = new Map<number, number>()
+    for (const n of trace.nodes)
+      if (n.kind === 'function' || n.kind === 'declare')
+        for (const t of trace.tokens)
+          if (t.start >= n.start && t.id < n.token) by.set(t.id, n.id)
+    return by
+  }, [trace])
+  const shownAt = useMemo(() => {
+    const at = new Map<number, number>()
+    trace.frames.forEach((f, i) => {
+      for (const id of f.nodes) if (!at.has(id)) at.set(id, i)
+    })
+    return at
+  }, [trace])
+  // A type token's state this step: waiting, sliding into its node, or gone.
+  const absorbed = (id: number) => {
+    const node = absorbedBy.get(id)
+    const at = node === undefined ? undefined : shownAt.get(node)
+    if (node === undefined || at === undefined) return undefined
+    return at > index ? 'waiting' : at === index ? 'sliding' : 'gone'
+  }
   const times = useMemo(
     () =>
       new Set(
@@ -785,16 +815,20 @@ export default function AnimatedCompiler() {
   const [hoverToken, setHoverToken] = useState<number | null>(null)
   // Clicking a token toggles class lists on every token card until clicked again.
   const [cardOpen, setCardOpen] = useState(false)
+  // The stack column: docked in the note card, or floating where it was
+  // dropped (top left, in the simulation's coordinates).
+  const [stackAt, setStackAt] = useState<{ x: number; y: number } | null>(null)
+  const stackDrag = useDragControls()
+  const stackStart = useRef<ReactPointerEvent | null>(null)
+  const noteRef = useRef<HTMLElement>(null)
   const [hoverIns, setHoverIns] = useState<number | null>(null)
   const [hoverVr, setHoverVr] = useState<string | null>(null)
-  // A virtual register under focus in emit (`fn:vr`), stepped through its
-  // lifecycle: the line that writes it, then each line that reads it. A
-  // hover plays it once; a click pins it for the keys. It holds for the
-  // step it was picked on.
+  // A virtual register under focus in emit (`fn:vr`): where it is written
+  // and read, all at once (Stanley, 2026-09-25: no replay of its life). A
+  // hover shows it; a click pins it. It holds for the step it was picked on.
   const [regFocus, setRegFocus] = useState<{
     key: string
     pinned: boolean
-    stage: number
     at: number
   } | null>(null)
   const [editing, setEditing] = useState(false)
@@ -944,6 +978,14 @@ export default function AnimatedCompiler() {
   const reduced = useReducedMotion()
   const index = Math.min(step, trace.frames.length - 1)
   const frame = trace.frames[index]
+  // Which way the last step went. Stepping back doesn't replay the step it
+  // lands on: its sequences (rows in turn, a register travelling up the
+  // tree, the name pass's walk, a link drawing) settle straight to where
+  // that step ends, with plain tweens.
+  const stepped = useRef({ index, back: false })
+  if (stepped.current.index !== index)
+    stepped.current = { index, back: index < stepped.current.index }
+  const back = stepped.current.back
   const last = trace.frames.length - 1
   const end = index === last
   const error = end ? trace.error : undefined
@@ -973,14 +1015,9 @@ export default function AnimatedCompiler() {
         (i) => i < frame.instructionCount,
       )
     : []
-  const stage = regFocus ? regFocus.stage % Math.max(1, lifecycle.length) : 0
-  const stageRow = focusLane ? lifecycle[stage] : undefined
-  const stageNode =
-    stageRow === undefined ? undefined : trace.instructions[stageRow].node
-  const focusAsm =
-    stageNode === undefined || stageNode === null
-      ? undefined
-      : trace.nodes[stageNode]
+  // The source marks the node that writes it.
+  const defNode = focusLane ? trace.instructions[focusLane.def].node : null
+  const focusAsm = defNode === null ? undefined : trace.nodes[defNode]
   // A declaration reads as its type and name (`int n`), in the source as
   // on the stage, not the name alone.
   const declSpan = (decl: number) => ({
@@ -1009,29 +1046,13 @@ export default function AnimatedCompiler() {
       pin
         ? f?.pinned && f.key === key && f.at === index
           ? null
-          : {
-              key,
-              pinned: true,
-              stage: f?.key === key && f.at === index ? f.stage : 0,
-              at: index,
-            }
+          : { key, pinned: true, at: index }
         : f?.pinned && f.at === index
           ? f
-          : { key, pinned: false, stage: 0, at: index },
+          : { key, pinned: false, at: index },
     )
   }
   const blurReg = () => setRegFocus((f) => (f?.pinned ? f : null))
-  // A hover plays the lifecycle once, a stage at a time.
-  const lifeLength = lifecycle.length
-  useEffect(() => {
-    if (!regFocus || regFocus.pinned || regFocus.stage >= lifeLength - 1) return
-    const timer = setTimeout(
-      () =>
-        setRegFocus((f) => (f && !f.pinned ? { ...f, stage: f.stage + 1 } : f)),
-      900 / speed,
-    )
-    return () => clearTimeout(timer)
-  }, [regFocus, lifeLength, speed])
   // A click anywhere but on a register lets a pinned one go.
   const pinned = !!focusLane && !!regFocus?.pinned
   useEffect(() => {
@@ -1235,7 +1256,7 @@ export default function AnimatedCompiler() {
   // 0.14s an edge. Each edge draws during its share of the curve, with the
   // curve's own slice as its easing, so the speed carries across edges.
   const walkTime =
-    reduced || !walk.length
+    reduced || back || !walk.length
       ? 0
       : walk.length <= 3
         ? (0.5 * walk.length) / 3
@@ -1317,19 +1338,9 @@ export default function AnimatedCompiler() {
       }
       if (event.metaKey || event.ctrlKey || event.altKey) return
       const key = event.key
-      // A pinned register takes the step keys: they loop its lifecycle.
-      if (pinned && /^([hjkl]|Arrow(Left|Right)|Escape)$/.test(key)) {
+      if (pinned && key === 'Escape') {
         event.preventDefault()
-        if (key === 'Escape') return setRegFocus(null)
-        const by = key === 'h' || key === 'k' || key === 'ArrowLeft' ? -1 : 1
-        setRegFocus(
-          (f) =>
-            f && {
-              ...f,
-              stage: (f.stage + by + lifeLength) % Math.max(1, lifeLength),
-            },
-        )
-        return
+        return setRegFocus(null)
       }
       if (event.code === 'Space' && !target?.closest('button,summary')) {
         event.preventDefault()
@@ -1346,7 +1357,7 @@ export default function AnimatedCompiler() {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [move, play, seek, bumpSpeed, jumpTab, pinned, lifeLength])
+  }, [move, play, seek, bumpSpeed, jumpTab, pinned])
 
   useEffect(() => {
     const scene = sceneRef.current
@@ -1552,15 +1563,26 @@ export default function AnimatedCompiler() {
   const squeeze = late && !emitStage ? 11 / 12 : 1
   const treeWidth = tree.width * squeeze
   // Spread a small tree out, shrink a wide one; shrinking scales text too.
-  const spread = Math.min(treeRoom / treeWidth, 3)
+  // Emit's two columns don't shrink it: a tree wider than its column
+  // keeps its size and the column scrolls sideways under the assembly,
+  // which stays put (Stanley, 2026-09-25).
+  const spread = Math.min(
+    twoColumn ? Math.max(treeRoom / treeWidth, 1) : treeRoom / treeWidth,
+    3,
+  )
   const fit = Math.min(1, spread)
-  const treeLeft = EDGE_PX + (treeRoom - treeWidth * spread) / 2
+  const treeLeft = EDGE_PX + Math.max(0, (treeRoom - treeWidth * spread) / 2)
+  const emitOver = twoColumn ? Math.max(0, treeWidth - treeRoom) : 0
   // Type pass: the tree stays where the checks left it. Row by row, top
   // down, a node whose label and badge would run into the one left of it
   // moves right just enough, and its subtree moves with it. Only if that
   // runs off the stage does the whole tree slide left. So a step moves
   // nothing unless its new badge needs the space. In pixels, since badges
   // don't stretch with the layout's spread.
+  // How far the type pass's tree runs past the stage's right edge; the
+  // stage scrolls sideways that far rather than squeeze it (Stanley,
+  // 2026-09-25).
+  let typedOver = 0
   const typedShift = (() => {
     if (!typing) return undefined
     const shift = new Map<number, number>()
@@ -1572,6 +1594,7 @@ export default function AnimatedCompiler() {
       rows.set(row, [...(rows.get(row) ?? []), n.id])
     }
     let right = -Infinity
+    let left = Infinity
     for (const row of [...rows.keys()].sort((a, b) => a - b)) {
       let edge = -Infinity
       const ids = rows.get(row) ?? []
@@ -1585,12 +1608,40 @@ export default function AnimatedCompiler() {
         shift.set(id, x - baseX(id))
         edge = x + half + (badgeRoom.get(id) ?? 0) * fit
         right = Math.max(right, edge)
+        left = Math.min(left, x - half)
       }
     }
-    const over = right - (EDGE_PX + treeRoom)
-    if (over > 0) for (const [id, d] of shift) shift.set(id, d - over)
+    // Slide left only as far as the stage's left edge; past that (a wide
+    // tree on a phone), the rest runs off the right and the stage scrolls.
+    const end = EDGE_PX + treeRoom
+    const slide = Math.min(
+      Math.max(0, right - end),
+      Math.max(0, left - EDGE_PX),
+    )
+    typedOver = Math.max(0, right - slide - end)
+    for (const [id, d] of shift) shift.set(id, d - slide)
     return shift
   })()
+  const over = typedOver + emitOver
+  // Back to the left once nothing runs past the edge.
+  useEffect(() => {
+    if (!over && sceneRef.current) sceneRef.current.scrollLeft = 0
+  }, [over])
+  // Emit: a step whose node sits out of the tree's column scrolls it in.
+  useEffect(() => {
+    const scene = sceneRef.current
+    if (!emitOver || !scene) return
+    const node = scene.querySelector<HTMLElement>('.ac-piece.focused')
+    if (!node) return
+    const box = node.getBoundingClientRect()
+    const x = box.left - scene.getBoundingClientRect().left
+    const seen = asmLeft - 16
+    if (x >= 16 && x + box.width <= seen) return
+    scene.scrollTo({
+      left: scene.scrollLeft + x + box.width / 2 - seen / 2,
+      behavior: reduced ? 'auto' : 'smooth',
+    })
+  }, [index, emitOver, asmLeft, reduced])
   const deck = decks.get(index)
   const intro = slide > 0 ? deck?.slides[slide - 1] : undefined
   // On a slide the tabs show the phase it opens.
@@ -1652,89 +1703,6 @@ export default function AnimatedCompiler() {
     const w = (trace.nodes[id].label.length * CHAR_PX + 6) * fit
     return { x: c.x - w / 2, y: c.y - pieceHalf, w, h: pieceHalf * 2 }
   }
-  // The stack's corner of the tree's half: the one covering the least of
-  // the tree (badges included), sized for the trace's deepest frame so it
-  // stays put from step to step. Top left wins a tie.
-  const stackAt = (() => {
-    if (!twoColumn || !stacks.length) return undefined
-    const w = 156
-    const h =
-      22 +
-      ASM_ROW *
-        Math.max(
-          ...stacks.map(
-            (f) => (f.top - Math.min(...f.poses.map((p) => p.sp))) / 4 + 1,
-          ),
-        )
-    const boxes = trace.nodes.map((n) => {
-      const b = pieceBox(n.id)
-      return { ...b, w: b.w + (room?.get(n.id) ?? 0) * spread }
-    })
-    // Bottom corners first: the tree hangs from the top, so they are the
-    // emptiest, and the column keeps clear of the root's edges.
-    const corners = [
-      { x: 12, y: sceneHeight - h - 12 },
-      { x: asmLeft - w - 12, y: sceneHeight - h - 12 },
-      { x: 12, y: 12 },
-      { x: asmLeft - w - 12, y: 12 },
-    ]
-    // Points along every edge, sampled from the curve edgePath draws.
-    const edgePoints = trace.nodes.flatMap((n) =>
-      n.children.flatMap((c) => {
-        const p = toPx(point(n.id)),
-          q = toPx(point(c))
-        const y0 = p.y + pieceHalf,
-          y1 = q.y - pieceHalf,
-          mid = (y0 + y1) / 2
-        return Array.from({ length: 13 }, (_, k) => {
-          const t = k / 12,
-            u = 1 - t
-          return {
-            x:
-              (u * u * u + 3 * u * u * t) * p.x +
-              (3 * u * t * t + t * t * t) * q.x,
-            y: u * u * u * y0 + 3 * u * t * (u + t) * mid + t * t * t * y1,
-          }
-        })
-      }),
-    )
-    // With a margin, so a label merely touching the column counts too.
-    const cover = (c: { x: number; y: number }) =>
-      boxes.reduce(
-        (sum, b) =>
-          sum +
-          Math.max(0, Math.min(c.x + w, b.x + b.w) - Math.max(c.x, b.x) + 16) *
-            Math.max(0, Math.min(c.y + h, b.y + b.h) - Math.max(c.y, b.y) + 16),
-        0,
-      ) +
-      edgePoints.filter(
-        (e) =>
-          e.x > c.x - 8 &&
-          e.x < c.x + w + 8 &&
-          e.y > c.y - 8 &&
-          e.y < c.y + h + 8,
-      ).length *
-        200
-    return corners.reduce((best, c) => (cover(c) < cover(best) ? c : best))
-  })()
-  // The focused register on the tree: beside the node that writes it, then
-  // under each node that reads it, in the order of its lines.
-  const focusBadge = (() => {
-    if (!focusLane || stageRow === undefined) return undefined
-    const born = trace.instructions[focusLane.def].node
-    const at = trace.instructions[stageRow].node
-    if (born === null || at === null) return undefined
-    const width = (focusLane.vr.length * TYPE_PX + 8) * fit
-    const box = pieceBox(born)
-    const p =
-      stage === 0 || at === born
-        ? { x: box.x + box.w + 5 * fit + width / 2, y: box.y + box.h / 2 }
-        : { x: toPx(point(at)).x, y: toPx(point(at)).y + pieceHalf + 9 * fit }
-    return {
-      left: `${(p.x / sceneWidth) * 100}%`,
-      top: `${(p.y / sceneHeight) * 100}%`,
-    }
-  })()
   // A name with no declaration still searches: its line heads for the top
   // of the tree, where the outermost scope is, and comes back empty.
   const missing =
@@ -1765,7 +1733,8 @@ export default function AnimatedCompiler() {
       return { text: sig, state: `need ${w.ok ? 'ok' : 'bad'}`, delay: 0 }
     const typed = typedStep.get(id) ?? functionType.get(id)
     if (!typed || typed.step > index) return undefined
-    const fresh = typed.step === index
+    // Stepping back, a badge already there doesn't fade in again.
+    const fresh = typed.step === index && !back
     const states = fresh ? ['new'] : []
     let text = typed.type
     let delay = 0
@@ -1950,7 +1919,7 @@ export default function AnimatedCompiler() {
       })),
   ]
   const shownInstructions = trace.instructions.slice(0, frame.instructionCount)
-  const rowStagger = transition.duration * 0.35
+  const rowStagger = back ? 0 : transition.duration * 0.35
   const functionNames = new Set(
     trace.nodes.filter((n) => n.kind === 'function').map((n) => n.label),
   )
@@ -1958,7 +1927,9 @@ export default function AnimatedCompiler() {
     (t) =>
       !parsed ||
       (!owners.has(t.id) &&
-        !(frame.consumed.includes(t.id) && KEEP_HIDDEN.includes(t.text))),
+        (absorbed(t.id) === undefined
+          ? !(frame.consumed.includes(t.id) && KEEP_HIDDEN.includes(t.text))
+          : absorbed(t.id) !== 'gone')),
   )
   const tokenPoints = packTray(tray, sceneWidth)
   const scanningRow = tokenPoints[Math.max(0, frame.tokenCount - 1)]?.y || 30
@@ -1972,27 +1943,8 @@ export default function AnimatedCompiler() {
     : undefined
   const lines = source.split('\n')
   const line = source.slice(0, activeSpan.start).split('\n').length
-  // Draft copy: where the focused register is in its life.
-  const focusText =
-    focusLane && stageRow !== undefined
-      ? stage === 0
-        ? `\`${focusLane.vr}\` is born on line ${stageRow + 1}: \`${trace.instructions[stageRow].op}\` writes it.${
-            lifecycle.length > 1
-              ? ` Read on line${lifecycle.length > 2 ? 's' : ''} ${lifecycle
-                  .slice(1)
-                  .map((r) => r + 1)
-                  .join(', ')}.`
-              : focusLane.last >= frame.instructionCount
-                ? ' Nothing reads it yet.'
-                : ' Nothing reads it.'
-          }`
-        : stageRow === focusLane.last
-          ? `Line ${stageRow + 1} reads \`${focusLane.vr}\` for the last time. It dies here, and its register is free again.`
-          : `Line ${stageRow + 1} reads \`${focusLane.vr}\`. ${stageRow === lifecycle[lifecycle.length - 1] ? 'A later line reads it again.' : `Still live: line ${lifecycle[stage + 1] + 1} reads it again.`}`
-      : undefined
   const hoverText =
-    focusText ??
-    (hoverIns !== null && !playing && !emitStage
+    hoverIns !== null && !playing && !emitStage
       ? instructionHover(
           trace,
           trace.instructions[hoverIns],
@@ -2002,7 +1954,7 @@ export default function AnimatedCompiler() {
         )
       : hoverVr !== null && !playing
         ? registerHover(trace, fnIndex, hoverVr, coloured?.[hoverVr])
-        : undefined)
+        : undefined
   // Hovers replace the step text in the panel rather than float on the stage,
   // so nothing on screen says the same thing twice.
   // The name pass: the note card holds the scopes instead of a sentence.
@@ -2253,6 +2205,34 @@ export default function AnimatedCompiler() {
           width: cardAt.closed.width,
         })
 
+  const stackColumn = (at?: { x: number; y: number }) => (
+    <StackColumn
+      key={at ? `${at.x},${at.y}` : 'docked'}
+      frame={stacks.find(
+        (f) =>
+          f.first < frame.instructionCount &&
+          frame.instructionCount - 1 <= f.last,
+      )}
+      count={frame.instructionCount}
+      from={back ? null : (currentRange?.[0] ?? null)}
+      row={ASM_ROW}
+      stagger={rowStagger}
+      duration={transition.duration}
+      still={!!reduced}
+      step={index}
+      at={at}
+      bounds={rootRef}
+      dock={noteRef}
+      controls={stackDrag}
+      pickup={stackStart}
+      onUndock={(to, event) => {
+        stackStart.current = event
+        setStackAt(to)
+      }}
+      onMove={setStackAt}
+      onDock={() => setStackAt(null)}
+    />
+  )
   return (
     <section
       ref={rootRef}
@@ -2474,6 +2454,7 @@ export default function AnimatedCompiler() {
             </button>
           )}
           <section
+            ref={noteRef}
             className={`ac-note ${error ? 'err' : ''}`}
             aria-label="Current step"
             aria-live={playing ? 'off' : 'polite'}
@@ -2559,6 +2540,7 @@ export default function AnimatedCompiler() {
               ) : (
                 <>
                   <Prose text={noteText} />
+                  {emitStage && !stackAt && stackColumn()}
                   {landing && !hoverText && (
                     <ul className="ac-lexemes" aria-label="Kinds in this class">
                       {NODE_KINDS[landing.cls].map((kind) => (
@@ -2595,12 +2577,13 @@ export default function AnimatedCompiler() {
 
         <section className="ac-stage" aria-label="Animated compiler stage">
           <div
-            className={`ac-scene ${emitStage && !emitTreeShown ? 'treeless' : ''}`}
+            className={`ac-scene ${emitStage && !emitTreeShown ? 'treeless' : ''} ${over ? 'scroll-x' : ''}`}
             ref={sceneRef}
           >
             <svg
               className="ac-edges"
-              viewBox={`0 0 ${sceneWidth} ${sceneHeight}`}
+              viewBox={`0 0 ${sceneWidth + over} ${sceneHeight}`}
+              style={over ? { width: sceneWidth + over } : undefined}
               aria-hidden="true"
             >
               <AnimatePresence>
@@ -2758,7 +2741,7 @@ export default function AnimatedCompiler() {
                   routes={linkRoutes}
                   frame={frame}
                   hover={hover}
-                  reduced={!!reduced}
+                  reduced={!!reduced || back}
                   duration={transition.duration}
                   missing={naming ? missing?.use : undefined}
                 />
@@ -2770,22 +2753,31 @@ export default function AnimatedCompiler() {
                   const node =
                     nodeId === undefined ? undefined : trace.nodes[nodeId]
                   const consumed = frame.consumed.includes(token.id)
+                  const typeToken =
+                    parsed && !node ? absorbed(token.id) : undefined
+                  if (typeToken === 'gone') return null
                   if (
                     parsed &&
                     consumed &&
                     !node &&
+                    typeToken === undefined &&
                     KEEP_HIDDEN.includes(token.text)
                   )
                     return null
                   const tokenPoint = tokenPoints[token.id] || { x: 340, y: 30 }
+                  const sliding = typeToken === 'sliding'
+                  const into = absorbedBy.get(token.id)
                   const p = node
                     ? point(node.id)
-                    : { x: tokenPoint.x, y: tokenPoint.y - trayOffset }
-                  if (!node && (p.y < 8 || p.y > 150)) return null
-                  // A focused register moves the focus to its line's node.
+                    : sliding && into !== undefined
+                      ? point(into)
+                      : { x: tokenPoint.x, y: tokenPoint.y - trayOffset }
+                  if (!node && !sliding && (p.y < 8 || p.y > 150)) return null
+                  // A focused register moves the focus to the node that
+                  // writes it.
                   const focused = node
                     ? (focusLane
-                        ? stageNode === node.id
+                        ? defNode === node.id
                         : frame.focus === node.id) || hover === node.id
                     : // A step about a node lights the node, even one
                       // anchored at this token (the root, at the first).
@@ -2846,8 +2838,8 @@ export default function AnimatedCompiler() {
                       animate={{
                         left: (p.x / 680) * 100 + '%',
                         top: (p.y / 480) * 100 + '%',
-                        scale: node ? fit : 1,
-                        opacity: 1,
+                        scale: node ? fit : sliding ? fit * 0.8 : 1,
+                        opacity: sliding ? [1, 1, 0] : 1,
                       }}
                       exit={{ opacity: 0 }}
                       transition={transition}
@@ -2928,7 +2920,8 @@ export default function AnimatedCompiler() {
                     // Centres in scene pixels; a badge sits just right of its
                     // node's box and shrinks with the tree, as a type badge
                     // does, so it fits the room the layout keeps for it.
-                    const width = (b.reg.length * TYPE_PX + 8) * fit
+                    const width =
+                      ((b.reg.length + (b.address ? 2 : 0)) * TYPE_PX + 8) * fit
                     const box = pieceBox(b.node)
                     const held = {
                       x: box.x + box.w + 5 * fit + width / 2,
@@ -2956,10 +2949,13 @@ export default function AnimatedCompiler() {
                         )
                         .map((q) => (q.use - from) * rowStagger + travel),
                     )
-                    const shows = fresh
-                      ? Math.max((b.def - from) * rowStagger, arrive)
-                      : 0
-                    const spent = b.state.endsWith('spent')
+                    const shows =
+                      fresh && !back
+                        ? Math.max((b.def - from) * rowStagger, arrive)
+                        : 0
+                    // Stepping back, a spent badge just fades where it was.
+                    const gone = back && b.state.endsWith('spent')
+                    const spent = !back && b.state.endsWith('spent')
                     // A spent badge rides the edge up into the node that
                     // reads it, then goes.
                     let path = [held]
@@ -3002,9 +2998,10 @@ export default function AnimatedCompiler() {
                     ]
                     return (
                       <motion.span
-                        key={`reg-${b.reg}`}
+                        // A register written twice (both arms of `&&`) has a badge per write.
+                        key={`reg-${b.reg}-${b.def}`}
                         data-vr
-                        className={`ac-reg ${b.address ? 'address' : ''} ${b.state} ${focusLane ? 'off' : ''}`}
+                        className={`ac-reg ${b.address ? 'address' : ''} ${b.state} ${focusLane && focusLane.vr !== b.reg ? 'off' : ''}`}
                         onMouseEnter={() =>
                           focusReg(
                             `${trace.instructions[b.def].fn}:${b.reg}`,
@@ -3034,7 +3031,7 @@ export default function AnimatedCompiler() {
                                 top: [held, ...path].map((q) => pct(q).top),
                                 opacity: fresh ? [0, 0, 1, 1, 0] : [1, 1, 0],
                               }
-                            : { ...pct(held), opacity: 1 }
+                            : { ...pct(held), opacity: gone ? 0 : 1 }
                         }
                         exit={{ opacity: 0 }}
                         transition={
@@ -3055,25 +3052,13 @@ export default function AnimatedCompiler() {
                         }
                         aria-hidden
                       >
-                        {b.reg}
+                        {/* An address points at its word in the stack. */}
+                        {b.address ? `${b.reg} →` : b.reg}
                       </motion.span>
                     )
                   },
                 )}
             </AnimatePresence>
-            {focusBadge && (!emitStage || emitTreeShown) && (
-              <motion.span
-                key={`focus-${regFocus?.key}`}
-                className={`ac-reg focus ${stage === 0 ? 'def' : ''} ${stageRow === focusLane?.last && stage > 0 ? 'dies' : ''}`}
-                style={{ x: '-50%', y: '-50%', scale: fit }}
-                initial={{ opacity: 0, ...focusBadge }}
-                animate={{ opacity: 1, ...focusBadge }}
-                transition={transition}
-                aria-hidden
-              >
-                {focusLane?.vr}
-              </motion.span>
-            )}
             {card && cardAt && cardBox && (
               <motion.div
                 key={card.key}
@@ -3253,136 +3238,149 @@ export default function AnimatedCompiler() {
                 })}
             </AnimatePresence>
             {emitStage && (
-              <>
-                <motion.div
-                  className={`ac-asm blocks ${focusLane ? 'reg-focus' : ''}`}
-                  ref={instructionRef}
-                  style={{ left: emitTreeShown ? asmLeft : 12 }}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={transition}
-                >
-                  <div className="ac-label">; virtual registers</div>
-                  {shownInstructions.map((ins, i) => {
-                    const current =
-                      currentRange !== null &&
-                      i >= currentRange[0] &&
-                      i <= currentRange[1]
-                    // A block's rows arrive one after another.
-                    const enter = {
-                      ...transition,
-                      delay: current ? (i - currentRange[0]) * rowStagger : 0,
-                    }
-                    const head = asmHeads.get(i)
-                    const [op, args = ''] = (ins.text ?? ins.op).split(
-                      /\s+(.*)/,
-                    )
-                    const hold =
-                      ins.op === 'pushRegisters' || ins.op === 'popRegisters'
-                    return (
-                      <Fragment key={`instruction-${i}`}>
-                        {ins.labels?.map((l) => (
-                          <motion.div
-                            key={l}
-                            className={`ac-asm-label ${functionNames.has(l) ? 'fn' : ''}`}
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={enter}
-                          >
-                            {l}:
-                          </motion.div>
-                        ))}
-                        {head && (
-                          <motion.div
-                            className="ac-asm-head"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={enter}
-                          >
-                            ; {head}
-                          </motion.div>
-                        )}
-                        <motion.div
-                          data-row={i}
-                          className={`ac-ins ${current ? 'current' : ''} ${ins.dead ? 'dead' : ''} ${i === hoverIns && !playing ? 'hover' : ''} ${focusLane && i >= focusLane.def && i <= focusLane.last ? 'live' : ''} ${i === stageRow ? 'stage' : ''}`}
-                          initial={{ opacity: 0, y: 4 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={enter}
-                          onMouseEnter={() => !playing && setHoverIns(i)}
-                          onMouseLeave={clearHover}
+              // The assembly stays put while a wide tree scrolls: a track
+              // as wide as the scroll, and in it a sticky pane the stage's
+              // width.
+              <div
+                className="ac-pin-track"
+                style={{ width: sceneWidth + over }}
+              >
+                <div className="ac-pin" style={{ width: sceneWidth }}>
+                  <motion.div
+                    className={`ac-asm blocks ${focusLane ? 'reg-focus' : ''}`}
+                    ref={instructionRef}
+                    style={{ left: emitTreeShown ? asmLeft : 12 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={transition}
+                  >
+                    <div className="ac-label">
+                      ; virtual registers
+                      {/* Over the lanes, once the first register is written. */}
+                      {lanes.lanes.some(
+                        (l) => l.def < frame.instructionCount,
+                      ) && (
+                        <motion.span
+                          className="ac-lanes-head"
+                          style={{
+                            left: `min(${lanesAt}px, 100% - ${lanesW}px)`,
+                          }}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={transition}
                         >
-                          <span>{i + 1}</span>
-                          {hold ? (
-                            <code className="ac-hold">{op}</code>
-                          ) : (
-                            <>
-                              <b>{op}</b>
-                              <code>
-                                {args.split(/\b(v\d+)\b/).map((part, j) => {
-                                  if (j % 2 === 0) return part
-                                  const key = `${ins.fn}:${part}`
-                                  const on =
-                                    key === regFocus?.key && !!focusLane
-                                  return (
-                                    <span
-                                      key={j}
-                                      data-vr
-                                      className={`ac-arg ${on ? 'focus' : ''} ${on && j === 1 && i === focusLane.def ? 'def' : ''} ${on && i === stageRow ? 'stage' : ''}`}
-                                      onMouseEnter={() => focusReg(key, false)}
-                                      onMouseLeave={blurReg}
-                                      onClick={() => focusReg(key, true)}
-                                    >
-                                      {part}
-                                    </span>
-                                  )
-                                })}
-                              </code>
-                            </>
-                          )}
-                        </motion.div>
-                      </Fragment>
-                    )
-                  })}
-                  <EmitLanes
-                    left={lanesAt}
-                    lanes={lanes.lanes}
-                    columns={lanes.columns}
-                    count={frame.instructionCount}
-                    range={currentRange}
-                    focused={focusLane && regFocus?.key}
-                    stageRow={stageRow}
-                    onFocus={focusReg}
-                    onBlur={blurReg}
-                    focus={
-                      new Set(
-                        hoverIns !== null && !playing
-                          ? registersOf(trace.instructions[hoverIns]).map(
-                              (r) => `${trace.instructions[hoverIns].fn}:${r}`,
-                            )
-                          : [],
+                          ; live
+                        </motion.span>
+                      )}
+                    </div>
+                    {shownInstructions.map((ins, i) => {
+                      const current =
+                        currentRange !== null &&
+                        i >= currentRange[0] &&
+                        i <= currentRange[1]
+                      // A block's rows arrive one after another.
+                      const enter = {
+                        ...transition,
+                        delay: current ? (i - currentRange[0]) * rowStagger : 0,
+                      }
+                      const head = asmHeads.get(i)
+                      const [op, args = ''] = (ins.text ?? ins.op).split(
+                        /\s+(.*)/,
                       )
-                    }
-                    stagger={rowStagger}
-                    duration={transition.duration}
-                    still={!!reduced}
-                  />
-                </motion.div>
-                <StackColumn
-                  frame={stacks.find(
-                    (f) =>
-                      f.first < frame.instructionCount &&
-                      frame.instructionCount - 1 <= f.last,
-                  )}
-                  count={frame.instructionCount}
-                  from={currentRange?.[0] ?? null}
-                  row={ASM_ROW}
-                  stagger={rowStagger}
-                  duration={transition.duration}
-                  still={!!reduced}
-                  step={index}
-                  at={stackAt}
-                />
-              </>
+                      const hold =
+                        ins.op === 'pushRegisters' || ins.op === 'popRegisters'
+                      return (
+                        <Fragment key={`instruction-${i}`}>
+                          {ins.labels?.map((l) => (
+                            <motion.div
+                              key={l}
+                              className={`ac-asm-label ${functionNames.has(l) ? 'fn' : ''}`}
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={enter}
+                            >
+                              {l}:
+                            </motion.div>
+                          ))}
+                          {head && (
+                            <motion.div
+                              className="ac-asm-head"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={enter}
+                            >
+                              ; {head}
+                            </motion.div>
+                          )}
+                          <motion.div
+                            data-row={i}
+                            className={`ac-ins ${current ? 'current' : ''} ${ins.dead ? 'dead' : ''} ${i === hoverIns && !playing ? 'hover' : ''} ${focusLane && i >= focusLane.def && i <= focusLane.last ? 'live' : ''}`}
+                            initial={{ opacity: 0, y: 4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={enter}
+                            onMouseEnter={() => !playing && setHoverIns(i)}
+                            onMouseLeave={clearHover}
+                          >
+                            <span>{i + 1}</span>
+                            {hold ? (
+                              <code className="ac-hold">{op}</code>
+                            ) : (
+                              <>
+                                <b>{op}</b>
+                                <code>
+                                  {args.split(/\b(v\d+)\b/).map((part, j) => {
+                                    if (j % 2 === 0) return part
+                                    const key = `${ins.fn}:${part}`
+                                    const on =
+                                      key === regFocus?.key && !!focusLane
+                                    return (
+                                      <span
+                                        key={j}
+                                        data-vr
+                                        className={`ac-arg ${on ? 'focus' : ''} ${on && j === 1 && i === focusLane.def ? 'def' : ''}`}
+                                        onMouseEnter={() =>
+                                          focusReg(key, false)
+                                        }
+                                        onMouseLeave={blurReg}
+                                        onClick={() => focusReg(key, true)}
+                                      >
+                                        {part}
+                                      </span>
+                                    )
+                                  })}
+                                </code>
+                              </>
+                            )}
+                          </motion.div>
+                        </Fragment>
+                      )
+                    })}
+                    <EmitLanes
+                      left={lanesAt}
+                      lanes={lanes.lanes}
+                      columns={lanes.columns}
+                      count={frame.instructionCount}
+                      range={back ? null : currentRange}
+                      focused={focusLane && regFocus?.key}
+                      onFocus={focusReg}
+                      onBlur={blurReg}
+                      focus={
+                        new Set(
+                          hoverIns !== null && !playing
+                            ? registersOf(trace.instructions[hoverIns]).map(
+                                (r) =>
+                                  `${trace.instructions[hoverIns].fn}:${r}`,
+                              )
+                            : [],
+                        )
+                      }
+                      stagger={rowStagger}
+                      duration={transition.duration}
+                      still={!!reduced}
+                    />
+                  </motion.div>
+                </div>
+              </div>
             )}
             {late && !emitStage && (
               <motion.div
@@ -3523,6 +3521,7 @@ export default function AnimatedCompiler() {
           </div>
         </section>
       </div>
+      {emitStage && stackAt && stackColumn(stackAt)}
 
       <footer className="ac-keys" aria-label="Controls">
         <button

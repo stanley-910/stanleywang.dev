@@ -1,6 +1,7 @@
 // Sentences for the step popup and the hover cards. Every template is filled
 // from trace data, so the same wording serves presets and typed programs.
 // Backticks mark code spans; the page renders them as <code>.
+import { stackFrames } from './stack-view'
 import { instructionText, liveAdded } from './trace'
 
 import type {
@@ -8,6 +9,7 @@ import type {
   Frame,
   Instruction,
   Span,
+  Tag,
   Token,
   Trace,
   Why,
@@ -59,6 +61,176 @@ const list = (items: string[]) =>
   items.length < 3
     ? items.join(' and ')
     : `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`
+
+// DRAFT copy. A line with nothing more specific to say: the instruction
+// and what it does to its operands, decoded from its text alone (Stanley,
+// 2026-09-25: "this goes into this", addressing through a pointer or at an
+// offset).
+const ARITH: Record<string, string> = {
+  add: '+',
+  addu: '+',
+  addi: '+',
+  addiu: '+',
+  sub: '−',
+  subu: '−',
+  mul: '×',
+  and: 'AND',
+  andi: 'AND',
+  or: 'OR',
+  ori: 'OR',
+  xor: 'XOR',
+  xori: 'XOR',
+  nor: 'NOR',
+}
+const WIDTH: Record<string, string> = {
+  lw: 'word',
+  sw: 'word',
+  lb: 'byte',
+  lbu: 'byte',
+  sb: 'byte',
+  lh: 'half-word',
+  lhu: 'half-word',
+  sh: 'half-word',
+}
+/** A stack word's name in a sentence: `x`, `twice`'s `n`. */
+function called(name: string) {
+  const m = /^(\w+): (.*)$/.exec(name)
+  if (m)
+    return m[2] === 'return'
+      ? `${code(m[1])}'s return slot`
+      : `${code(m[1])}'s ${code(m[2])}`
+  if (name === 'return') return 'the return slot'
+  if (name === "caller's $fp") return `the caller's ${code('$fp')}`
+  if (name.startsWith('saved ')) return `the saved ${code(name.slice(6))}`
+  return code(name)
+}
+
+/** A place a tag names, as `called` takes it: `pair.right`, `twice: n`,
+ * `return`. */
+function placeName(
+  p: Tag['of'] | Tag['to'] | undefined,
+  t: Tag,
+): string | undefined {
+  if (!p) return undefined
+  if (p === 'return') return 'return'
+  if (p === 'result') return `${t.call}: return`
+  return t.call ? `${t.call}: ${p.text}` : p.text
+}
+
+/** What a line's tag names (CodeGen.tag): the word it loads or stores,
+ * the address it forms, the words it reserves. */
+function named(ins: Instruction): {
+  touch?: string
+  address?: string
+  reserve?: string
+} {
+  const t = ins.tag
+  if (!t) return {}
+  if (t.role === 'load') return { touch: placeName(t.of, t) }
+  if (t.role === 'store') return { touch: placeName(t.into, t) }
+  if (t.role === 'save' || t.role === 'restore')
+    return { touch: t.reg === 'fp' ? "caller's $fp" : '$ra' }
+  if (t.role === 'addr' && t.through !== 'param')
+    return { address: placeName(t.of, t) }
+  if (t.role === 'reserve' && t.for === 'arg')
+    return { reserve: `${t.call}: ${t.param?.text}` }
+  if (t.role === 'reserve' && t.for === 'result')
+    return { reserve: `${t.call}: return` }
+  return {}
+}
+
+// DRAFT copy. The byte loop CodeGen.emitStructCopy writes for a struct
+// assignment, argument or return, line by line.
+function copyNote(ins: Instruction, t: Tag): string {
+  const c = code
+  const [op, rest = ''] = (ins.text ?? ins.op).split(/\s+(.*)/)
+  const a = rest.split(',').map((x) => x.trim())
+  const from = placeName(t.from ?? undefined, { role: t.role })
+  const to = placeName(t.to ?? undefined, { role: t.role })
+  const end = t.reverse ? 'last' : 'first'
+  switch (t.role) {
+    case 'copy.from':
+      return `A struct is copied a byte at a time. ${c(a[0])} starts at the ${end} byte of ${from ? called(from) : 'the source'}.`
+    case 'copy.to':
+      return `${c(a[0])} starts at the ${end} byte of ${to ? called(to) : 'the destination'}.`
+    case 'copy.count':
+      return `${c(a[0])} counts the bytes still to copy: ${t.bytes}.`
+    case 'copy.test':
+      return `${c(op)} leaves the loop once none are left.`
+    case 'copy.load':
+      return `${c(op)} reads one byte of ${from ? called(from) : 'the source'} into ${c(a[0])}.`
+    case 'copy.store':
+      return `${c(op)} writes it into ${to ? called(to) : 'the destination'}.`
+    case 'copy.step':
+      return `${c(a[0])} moves one byte ${t.reverse ? 'down' : 'up'}.`
+    case 'copy.countdown':
+      return 'One byte fewer to go.'
+    default:
+      return `${c(op)} goes back for the next byte.`
+  }
+}
+
+function operandNote(ins: Instruction): string {
+  const t = ins.text ?? ins.op
+  const [op, rest = ''] = t.split(/\s+(.*)/)
+  const a = rest.split(',').map((x) => x.trim())
+  const c = code
+  if (ins.tag?.role.startsWith('copy.')) return copyNote(ins, ins.tag)
+  // The word it loads or stores and the address it forms, as codegen
+  // tagged the line.
+  const known = named(ins)
+  // `k(base)`: through a pointer, or at an offset from one.
+  const at = (m: string) => {
+    const [, k = '0', base = m] = /^(-?\d+)\((.+)\)$/.exec(m) ?? []
+    const n = Number(k)
+    const where =
+      n === 0
+        ? `the ${WIDTH[op]} ${c(base)} points at`
+        : `the ${WIDTH[op]} ${Math.abs(n)} bytes ${n < 0 ? 'below' : 'above'} where ${c(base)} points`
+    return known?.touch ? `${where}, ${called(known.touch)}` : where
+  }
+  if (op in WIDTH && op.startsWith('l'))
+    return known?.touch
+      ? `${c(op)} loads ${at(a[1])}, into ${c(a[0])}.`
+      : `${c(op)} loads ${at(a[1])} into ${c(a[0])}.`
+  if (op in WIDTH)
+    return `${c(op)} stores ${op === 'sb' ? `the low byte of ${c(a[0])}` : c(a[0])} into ${at(a[1])}.`
+  if (op in ARITH) {
+    const of = known?.address ? `the address of ${called(known.address)}` : ''
+    if (/^-?\d+$/.test(a[2] ?? '') && Number(a[2]) === 0 && ARITH[op] === '+')
+      return `${c(op)} copies ${c(a[1])} into ${c(a[0])}${of ? `: ${of}` : ''}.`
+    if (a[1] === '$fp' || a[1] === '$sp') {
+      const n = Number(a[2])
+      return `${c(op)}: ${c(a[0])} = ${c(a[1])} ${n < 0 ? '−' : '+'} ${Math.abs(n)}, ${of || `an address ${Math.abs(n)} bytes ${n < 0 ? 'below' : 'above'} ${c(a[1])}`}.`
+    }
+    return `${c(op)}: ${c(a[1])} ${ARITH[op]} ${c(a[2])} goes into ${c(a[0])}${of ? `, ${of}` : ''}.`
+  }
+  if (op === 'slt' || op === 'sltu' || op === 'slti' || op === 'sltiu')
+    return `${c(op)}: ${c(a[0])} becomes 1 (true) if ${c(a[1])} < ${c(a[2])}, else 0 (false).`
+  if (op === 'sll' || op === 'srl' || op === 'sra')
+    return `${c(op)}: ${c(a[1])} shifted ${op === 'sll' ? 'left' : 'right'} by ${a[2]} goes into ${c(a[0])}.`
+  if (op === 'mult')
+    return `${c(op)}: ${c(a[0])} × ${c(a[1])} goes into the special register ${c('lo')}.`
+  if (op === 'div')
+    return `${c(op)}: ${c(a[0])} ÷ ${c(a[1])}; the quotient goes into ${c('lo')}, the remainder into ${c('hi')}.`
+  if (op === 'mflo' || op === 'mfhi')
+    return `${c(op)} copies ${c(op.slice(2))} into ${c(a[0])}.`
+  if (op === 'li') return `${c(op)}: ${c(a[1])} goes into ${c(a[0])}.`
+  if (op === 'la')
+    return `${c(op)}: the address of ${c(a[1])}, a global, goes into ${c(a[0])}.`
+  if (op === 'move') return `${c(op)} copies ${c(a[1])} into ${c(a[0])}.`
+  if (op === 'beqz' || op === 'bnez')
+    return `${c(op)} jumps to ${c(a[1])} if ${c(a[0])} is ${op === 'beqz' ? '' : 'not '}0.`
+  if (op === 'beq' || op === 'bne')
+    return `${c(op)} jumps to ${c(a[2])} if ${c(a[0])} ${op === 'beq' ? '=' : '≠'} ${c(a[1])}.`
+  if (op === 'j') return `${c(op)} jumps to ${c(a[0])}.`
+  if (op === 'jal')
+    return `${c(op)} calls ${c(a[0])}, keeping the way back in ${c('$ra')}.`
+  if (op === 'jr') return `${c(op)} jumps to the address in ${c(a[0])}.`
+  if (op === 'syscall')
+    return `${c(op)} asks the system for the service numbered in ${c('$v0')}.`
+  return `${c(t)}.`
+}
 
 const text = (trace: Trace, span: Span) =>
   (trace.text ?? '').slice(span.start, span.end)
@@ -197,7 +369,15 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
         case 'assign':
           return `${code(tok.text)} started as an identifier, but the ${code('=')} after it makes it the target of an assignment expression.`
         case 'function':
-          return `${code(n.label)} started as an identifier, but a type, a name and a ${code('(')} can only begin a function, so it becomes a function declaration.`
+          // syntax_grammar.txt: `type IDENT "(" params ")"` begins fundecl or
+          // fundef; the block after `)` makes it a FunDef, a `;` a FunDecl.
+          // The type before the name slides into the node (animated.tsx
+          // `absorbed`): it is kept there as the return type.
+          const type = trace.tokens
+            .filter((t) => t.start >= n.start && t.id < n.token)
+            .map((t) => t.text)
+            .join(' ')
+          return `${code(n.label)} started as an identifier, but a type and a name followed by ${code('(')} begin a function, and the block after its ${code(')')} makes it a function definition.${type ? ` ${code(type)} goes inside it as the return type.` : ''}`
         case 'block':
           return parent?.kind === 'function'
             ? `${code('{')} started as a delimiter, and after ${code(parent.label)}'s parameters it opens the body, a block statement.`
@@ -387,11 +567,19 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
         }
       }
       const dead = run.find((i) => i.dead)
-      const said = w.of
+      const line = w.of
         ? explainLine(trace, n, w.of, w.from)
         : w.parts && w.parts.length > 1
           ? explainBlock(trace, w.parts)
           : explainMips(trace, n, run)
+      // DRAFT: the first virtual register opens the live-range lanes.
+      const firstDef = trace.instructions.findIndex((i) =>
+        /^v\d+$/.test(i.dest ?? ''),
+      )
+      const said =
+        firstDef >= w.from && firstDef <= w.to
+          ? `From here on, every value gets a virtual register, and the lanes on the right track its life: live from the line that writes it to the last line that reads it. ${line}`
+          : line
       return dead
         ? `${said} ${run.length === 1 ? 'It' : code(dead.text ?? dead.op)} never runs: the jump before it always leaves first, so the register allocator drops it.`
         : said
@@ -578,25 +766,41 @@ function explainLine(
   const run = trace.instructions.slice(of.from, of.to + 1)
   const k = at - of.from
   const ins = run[k]
-  const jal = run.findIndex((i) => i.op === 'jal')
+  if (ins.tag?.role.startsWith('copy.')) return copyNote(ins, ins.tag)
+  const jal = run.findIndex((i) => i.tag?.role === 'call')
   if (jal >= 0) {
     const callee = code(trace.tokens[n.token].text)
+    const tag = ins.tag
+    const known = named(ins)
     if (k === jal)
       return `${code('jal')} jumps into ${callee} and keeps the way back in ${code('$ra')}.`
-    if (k > jal)
-      return ins.op === 'lw'
-        ? `Back from ${callee}, the result is read into ${code(ins.dest ?? '')}.`
-        : 'What the call pushed comes off the stack.'
-    if (ins.op === 'sw')
-      return `The argument ${code(ins.args[0] ?? '')} goes into it.`
-    return run[k + 1]?.op === 'jal'
-      ? 'A word for the result, which the function writes before it returns.'
-      : 'A word on the stack for an argument.'
+    if (tag?.role.startsWith('copy.')) return copyNote(ins, tag)
+    if (tag?.role === 'load' || (tag?.role === 'addr' && tag.of === 'result'))
+      return `Back from ${callee}, the result is read into ${code(ins.dest ?? '')}.`
+    if (tag?.role === 'release')
+      return 'What the call pushed comes off the stack.'
+    if (tag?.role === 'store')
+      return known.touch
+        ? `The argument ${code(ins.args[0] ?? '')} goes into it: ${called(known.touch)}.`
+        : `The argument ${code(ins.args[0] ?? '')} goes into it.`
+    if (tag?.role === 'reserve' && tag.for === 'result')
+      return 'A word for the result, which the function writes before it returns.'
+    if (tag?.role === 'reserve' && known.reserve)
+      return `A word on the stack for ${called(known.reserve)}.`
+    return operandNote(ins)
   }
   switch (n.kind) {
     case 'name': {
-      if (ins.op === 'lw')
-        return `Then the word at that address, into ${code(ins.dest ?? '')}.`
+      // Only a local's own word has a sentence of its own.
+      if (
+        !(ins.op === 'lw' && /^lw\s+v\d+,0\(v\d+\)$/.test(ins.text ?? '')) &&
+        !/^addiu?\s+v\d+,\$fp,-?\d+$/.test(ins.text ?? '')
+      )
+        return operandNote(ins)
+      if (ins.op === 'lw') {
+        const base = /\((v\d+)\)/.exec(ins.text ?? '')?.[1] ?? ''
+        return `Load the word at ${code(base)}, offset 0, so ${code(n.label)} itself, into ${code(ins.dest ?? '')}.`
+      }
       const offset = Number(/,(-?\d+)$/.exec(ins.text ?? '')?.[1] ?? 0)
       // A name loaded again in the same function: the compiler reloads it
       // on every use.
@@ -610,9 +814,10 @@ function explainLine(
             trace.nodes[i.node].kind === 'name' &&
             trace.nodes[i.node].label === n.label,
         )
+      const where = `${Math.abs(offset)} bytes ${offset < 0 ? 'below' : 'above'} ${code('$fp')}`
       if (again)
-        return `${code(n.label)} again, from the same slot. The compiler loads a name each time it is used, even twice in a row.`
-      return `${code(n.label)}'s slot, ${Math.abs(offset)} bytes ${offset < 0 ? 'below' : 'above'} ${code('$fp')}, was fixed when the prologue laid out the frame. First its address.`
+        return `${code(ins.dest ?? '')} points at ${code(n.label)}'s word again: the compiler loads a name each time it is used, even twice in a row.`
+      return `${code(ins.dest ?? '')} points at ${code(n.label)}'s word, ${where}. That offset was fixed when the prologue laid out the frame.`
     }
     case 'binary':
       if (ins.op === 'mult')
@@ -621,12 +826,19 @@ function explainLine(
         return `${code('mflo')} copies it into ${code(ins.dest ?? '')}.`
       break
     case 'return':
-      return ins.op === 'j'
-        ? "Then a jump to the function's exit code."
-        : "The value goes into the frame's return slot, where the caller reads it."
+      if (ins.tag?.role === 'jump.epilogue')
+        return "Then a jump to the function's exit code."
+      if (ins.tag?.role === 'store')
+        return "The value goes into the frame's return slot, where the caller reads it."
+      break
   }
-  return k === 0 ? explainMips(trace, n, run) : `Then ${code(ins.text ?? '')}.`
+  // The first line of a kind with its own story tells it; everything
+  // else says what the line does to its operands.
+  return k === 0 && TOLD.has(n.kind)
+    ? explainMips(trace, n, run)
+    : operandNote(ins)
 }
+const TOLD = new Set(['number', 'name', 'binary', 'assign', 'return', 'while'])
 
 // Line by line, DRAFT copy: one line of a prologue or epilogue.
 function explainFrameLine(
@@ -639,54 +851,61 @@ function explainFrameLine(
   const k = at - of.from
   const t = run[k].text ?? run[k].op
   const fn = code(n.label)
-  if (t === 'pushRegisters')
-    return 'A placeholder: the allocator decides later which registers to save here.'
-  if (t === 'popRegisters')
-    return `${fn} is done. The registers saved at the start come back here.`
-  if (t === 'sw $fp,0($sp)')
-    return "The caller's frame pointer is saved in it, to put back at the end."
-  if (t === 'addiu $fp,$sp,0')
-    return `${code('$fp')} now marks this frame. Everything in it sits a fixed distance from ${code('$fp')}, while ${code('$sp')} keeps moving.`
-  if (t.startsWith('sw $ra'))
-    return `${code('$ra')}, the address to return to, is saved.`
-  if (t.startsWith('lw $ra')) return 'The return address comes back.'
-  if (t.startsWith('lw $fp')) return "The caller's frame pointer comes back."
-  if (t === 'jr $ra') return `${code('jr $ra')} returns to the caller.`
-  if (t === 'li $v0,10')
-    return `${fn} has no caller to return to. System call 10 ends the program.`
-  if (t === 'syscall') return 'The program ends.'
-  if (t.startsWith('addi $sp,$fp'))
-    return `${code('$sp')} goes back to where the caller left it.`
-  if (k === 0)
-    return `${fn} starts by building its stack frame. First, a word for the caller's frame pointer.`
-  if (run[k + 1]?.text?.startsWith('sw $ra'))
-    return 'A word for the return address.'
-  // The last move of $sp makes room for the locals, which the function's
-  // lines address below $fp.
-  const words = -Number(t.split(',').pop()) / 4
-  const locals = new Set<string>()
-  const fnRun = trace.instructions.filter((i) => i.fn === run[k].fn)
-  for (const i of fnRun) {
-    const offset = /\$fp,(-\d+)$/.exec(i.text ?? '')?.[1]
-    const owner = i.node === null ? undefined : trace.nodes[i.node]
-    if (offset && owner && (owner.kind === 'name' || owner.kind === 'assign'))
-      locals.add(owner.label.replace(/\s*=$/, ''))
+  // What codegen said the line is for (FunCodeGen's tags).
+  const tag = run[k].tag
+  const is = (role: Tag['role'], what?: string) =>
+    tag?.role === role &&
+    (what === undefined || tag.for === what || tag.reg === what)
+  // GraphColouringRegAlloc expands both once registers are allocated.
+  if (is('push-registers')) {
+    // GraphColouringRegAlloc saves every register the function is given.
+    const saved = stackFrames(trace).find((f) => f.name === n.label)?.saved
+    const which = saved?.length
+      ? ` Here that is ${list(saved.map(code))}, ${saved.length === 1 ? 'one word' : `${saved.length} words`}.`
+      : ''
+    return `${code('pushRegisters')} is the compiler's own placeholder, not MIPS. Once registers are allocated it becomes one ${code('sw')} per register ${fn} uses, so the caller's values survive; ${code('popRegisters')} loads them back at the end.${which}`
   }
-  const named = [...locals].map(code)
+  if (is('pop-registers'))
+    return `${fn} is done. ${code('popRegisters')} becomes the loads that bring back the registers saved at the start.`
+  if (is('save', 'fp'))
+    return `The caller's frame pointer goes in that word. Whoever called ${fn} expects its own frame back, so the epilogue restores ${code('$fp')} from here.`
+  if (is('set-fp'))
+    return `${code('$fp')} now marks this frame. Everything in it sits a fixed distance from ${code('$fp')}, while ${code('$sp')} keeps moving.`
+  if (is('save', 'ra'))
+    return `${code('$ra')}, the address to return to, is saved.`
+  if (is('restore', 'ra')) return 'The return address comes back.'
+  if (is('restore', 'fp')) return "The caller's frame pointer comes back."
+  if (is('return')) return `${code('jr $ra')} returns to the caller.`
+  if (is('syscall.code'))
+    return `${fn} has no caller to return to. System call 10 ends the program.`
+  if (is('syscall')) return 'The program ends.'
+  if (is('release', 'frame'))
+    return `${code('$sp')} goes back to where the caller left it.`
+  if (is('reserve', 'fp'))
+    return `${fn} starts by building its stack frame. First it allocates a word (4 bytes) for its caller's frame pointer.`
+  if (is('reserve', 'ra')) return 'A word for the return address.'
+  if (!is('reserve', 'locals')) return operandNote(run[k])
+  // The last move of $sp makes room for the locals, where the compiler
+  // put them (trace.layout, from MemAllocCodeGen).
+  const words = -Number(t.split(',').pop()) / 4
+  const layout = trace.layout?.functions.find((f) => f.name === n.label)
+  const locals = (layout?.locals ?? []).map((l) =>
+    l.size === 4 ? code(l.name) : `${code(l.name)} (${l.size} bytes)`,
+  )
+  const used = (layout?.locals ?? []).reduce(
+    (sum, l) => sum + Math.ceil(l.size / 4),
+    0,
+  )
   // The compiler lays out locals below a word it keeps for `$ra`
-  // (MemAllocCodeGen). `main` never saves `$ra`, so that word stays empty;
-  // any other function pushed `$ra` already, so its frame ends a word low.
-  const spare = words - named.length
-  const savedRa = run.some((i) => i.text?.startsWith('sw $ra'))
-  const room = named.length ? `Room for ${list(named)}` : ''
-  if (spare !== 1) return room ? `${room}.` : `${fn} has no locals.`
-  if (!savedRa)
-    return room
-      ? `${room}. The word at ${code('-4')} stays empty: the compiler keeps it for ${code('$ra')}, which ${fn} never saves.`
-      : `One word, left empty: the compiler keeps it for ${code('$ra')}, which ${fn} never saves.`
+  // (MemAllocCodeGen). Other functions push `$ra` into it; `main` never
+  // saves `$ra`, so there that word stays empty.
+  const spare = words - used
+  const savedRa = run.some((i) => i.tag?.role === 'save' && i.tag.reg === 'ra')
+  const room = locals.length ? `Room for ${list(locals)}` : ''
+  if (spare !== 1 || savedRa) return room ? `${room}.` : `${fn} has no locals.`
   return room
-    ? `${room}, and one word never used: the compiler counts ${code('$ra')}'s slot again.`
-    : `One word, never used: ${fn} has no locals, but the compiler counts ${code('$ra')}'s slot again.`
+    ? `${room}. The word at ${code('-4')} stays empty: other functions keep ${code('$ra')}, the address to jump back to, there, but ${fn} ends with a system call instead of returning, so it never saves it.`
+    : `One word, left empty: other functions keep ${code('$ra')}, the address to jump back to, there, but ${fn} ends with a system call instead of returning.`
 }
 
 /** Sentence for one run of real MIPS from one node. */
@@ -715,29 +934,43 @@ function explainMips(trace: Trace, n: AstNode, run: Instruction[]): string {
         : `The literal ${code(n.label)} goes into ${code(first.dest ?? '')}, a fresh virtual register. There is no limit on these yet.`
     }
     case 'name':
+      if (!/^addiu?\s+v\d+,\$fp,-?\d+$/.test(first.text ?? ''))
+        return operandNote(first)
       if (ops.includes('lw'))
         return `${code(n.label)} lives in the stack frame. ${line(first)} works out its address and ${line(last)} loads the value into ${code(last.dest ?? '')}.`
       return `${line(first)} works out where ${code(n.label)} lives in the frame.`
     case 'binary': {
-      const op = OP_NAMES[n.label] ?? 'the operation'
+      const op = OP_NAMES[n.label]
+      // A plain operation on two registers; anything else (address
+      // arithmetic, a load, a copy) says what the line itself does.
+      if (!op || !/^\w+\s+v\d+,v\d+,v\d+$/.test(first.text ?? ''))
+        return operandNote(first)
       if (ops.includes('mflo'))
         return `${line(first)} computes the ${op}. MIPS keeps the product in a special register, so ${line(last)} copies it into ${code(last.dest ?? '')}.`
       if (first.op === 'slt' || first.op === 'sltu')
-        return `${line(first)} sets ${code(first.dest ?? '')} to 1 when ${code(first.args[0])} is below ${code(first.args[1])}, else 0. That value is what the loop tests.`
+        return `${code(first.dest ?? '')} becomes 1 (true) if ${code(first.args[0])} < ${code(first.args[1])}, else 0 (false): the condition the loop tests next.`
       return `The ${op} of ${code(first.args[0])} and ${code(first.args[1])} goes into ${code(first.dest ?? '')}. Both sides were computed on the lines above: children come before parents.`
     }
     case 'assign':
-      if (ops.includes('sw'))
-        return `The value goes into ${code(name(n.label))}'s slot, at the address worked out first.`
-      return `An assignment works out where ${code(name(n.label))} lives before the value on the right, so its address comes first.`
+      if (/^sw\s+v\d+,0\(v\d+\)$/.test(last.text ?? '')) {
+        const value = /^sw\s+(v\d+)/.exec(last.text ?? '')?.[1] ?? ''
+        const at = /\((v\d+)\)/.exec(last.text ?? '')?.[1] ?? ''
+        return `The value in ${code(value)} is stored in ${code(name(n.label))}'s word, the one ${code(at)} points at.`
+      }
+      if (!/^addiu?\s+v\d+,\$fp,-?\d+$/.test(first.text ?? ''))
+        return operandNote(first)
+      return `${code(first.dest ?? '')} points at ${code(name(n.label))}'s word first, so the value has somewhere to go once the right-hand side is worked out.`
     case 'return':
+      if (first.tag?.role !== 'store') return operandNote(first)
       return `${line(first)} writes the value into the frame's return slot, and ${line(last)} skips to the function's exit code.`
     case 'while':
       if (ops.includes('beqz'))
         return `${code('beqz')} leaves the loop when the condition is 0. Otherwise the body follows.`
       return `${code('j')} goes back to the top to test the condition again.`
     default:
-      return `${run.map(line).join(', ')} ${run.length === 1 ? 'is' : 'are'} emitted for ${src}.`
+      return run.length === 1
+        ? operandNote(first)
+        : `${run.map(line).join(', ')} are emitted for ${src}.`
   }
 }
 
