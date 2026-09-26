@@ -1477,7 +1477,7 @@ export const NODE_KINDS = {
 export type NodeClass = keyof typeof NODE_KINDS
 
 // ParseTrace.java names what it collapses by class: `StructTypeDecl s`,
-// `FunDecl f`, `ArrayAccess`, and so on.
+// `FunDecl f`, `ArrayAccess`, `FieldAccess .x`, and so on.
 const DECL_KINDS: Record<string, string> = {
   StructTypeDecl: 'struct',
   FunDecl: 'prototype',
@@ -1539,7 +1539,7 @@ export function nodeKind(node: AstNode): { cls: NodeClass; kind?: string } {
     case 'unary':
       return { cls: 'expression', kind: 'operator' }
     default:
-      return { cls: 'expression', kind: EXPR_KINDS[node.label] }
+      return { cls: 'expression', kind: EXPR_KINDS[node.label.split(' ')[0]] }
   }
 }
 

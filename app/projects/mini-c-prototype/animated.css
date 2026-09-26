@@ -86,7 +86,8 @@
     )
     center / calc(100% - 4px) 100% no-repeat;
 }
-.ac [data-reveal]::-webkit-scrollbar-thumb,
+.ac [data-reveal~='y']::-webkit-scrollbar-thumb:vertical,
+.ac [data-reveal~='x']::-webkit-scrollbar-thumb:horizontal,
 .ac ::-webkit-scrollbar-thumb:hover,
 .ac ::-webkit-scrollbar-thumb:active {
   --thumb: var(--ink);
@@ -135,6 +136,37 @@
   from,
   to {
     --rail: var(--line);
+  }
+}
+/* The source also scrolls sideways (long lines): a second rail along its
+   bottom edge, on its own timeline. */
+.ac.bare .ac-source {
+  border-bottom: 9px solid transparent;
+  background-image: repeating-linear-gradient(
+      to bottom,
+      var(--rail, transparent) 0 2px,
+      transparent 2px 5px
+    ),
+    repeating-linear-gradient(
+      to right,
+      var(--rail-x, transparent) 0 2px,
+      transparent 2px 5px
+    );
+  background-position:
+    right 4px top,
+    left bottom 4px;
+  background-size:
+    1px 100%,
+    100% 1px;
+  animation:
+    ac-rail both,
+    ac-rail-x both;
+  animation-timeline: scroll(self), scroll(self x);
+}
+@keyframes ac-rail-x {
+  from,
+  to {
+    --rail-x: var(--line);
   }
 }
 .ac button {
@@ -362,6 +394,11 @@
   color: var(--faint);
   text-align: right;
   user-select: none;
+  /* Line numbers stay put while a long line scrolls the pane sideways. */
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: var(--bg);
 }
 .ac-gutter span {
   display: block;
@@ -376,6 +413,10 @@
   position: relative;
   display: grid;
   padding: 8px 10px 8px 0;
+  /* As wide as the longest line (--cols, set in animated.tsx), so the pane
+     scrolls sideways and shows its rail rather than clipping. */
+  min-width: calc(var(--cols, 0) * 1ch + 10px);
+  font-family: var(--font-mono);
 }
 .ac-text pre,
 .ac-text textarea {
@@ -1292,6 +1333,180 @@
   width: min(100%, 300px);
   margin-top: 14px;
   font-size: 12px;
+}
+/* The type pass's panel (type-panel.tsx): the step's rule, premises over
+   a line and the conclusion under it, then what is still waiting. Words in
+   the notes' Prose face, code in the page's own, no chips, all in ink. */
+.ac-types {
+  display: grid;
+  gap: 16px;
+  padding-top: 4px;
+  font-family: 'Notes Prose', var(--font-mono);
+  font-size: 11px;
+}
+.ac .ac-types code {
+  padding: 0;
+  background: none;
+  font-family: var(--font-mono);
+}
+.ac-rule {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+}
+.ac-rule-premises {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 16px;
+  min-height: 16px;
+}
+.ac-rule-premises .bad,
+.ac-rule.bad .ac-rule-conclusion {
+  color: var(--err);
+}
+.ac-rule-line {
+  position: relative;
+  width: 100%;
+  border-top: 1px solid var(--ink);
+}
+.ac-rule-line span {
+  position: absolute;
+  top: -8px;
+  right: 0;
+  padding-left: 6px;
+  background: var(--bg);
+  font-size: 10px;
+  line-height: 14px;
+}
+.ac-type-caption {
+  display: block;
+  margin-bottom: 4px;
+}
+.ac-type-stack {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--line);
+}
+.ac-type-stack li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 1px 8px;
+}
+.ac-type-stack li + li {
+  border-top: 1px solid var(--line);
+}
+.ac-type-done {
+  margin: 0;
+}
+
+/* Trial (Stanley, 2026-09-26): the notes in the Berkeley Mono Prose build,
+   tighter and with serifed letters for running text, while code and the rest
+   of the page stay in the Def build the site serves. local() only, so it
+   shows only where Prose is installed; everyone else sees Def. */
+@font-face {
+  font-family: 'Notes Prose';
+  src: local('Berkeley Mono Prose Regular'), local('BerkeleyMonoProse-Regular');
+  font-style: normal;
+  font-weight: 400;
+}
+@font-face {
+  font-family: 'Notes Prose';
+  src: local('Berkeley Mono Prose Oblique'), local('BerkeleyMonoProse-Oblique');
+  font-style: italic;
+  font-weight: 400;
+}
+@font-face {
+  font-family: 'Notes Prose';
+  src: local('Berkeley Mono Prose Bold'), local('BerkeleyMonoProse-Bold');
+  font-style: normal;
+  font-weight: 700;
+}
+@font-face {
+  font-family: 'Notes Prose';
+  src: local('Berkeley Mono Prose Bold Oblique'),
+    local('BerkeleyMonoProse-BoldOblique');
+  font-style: italic;
+  font-weight: 700;
+}
+
+/* The step's note, in a small window over the simulation (note-window.tsx):
+   a file's name for a title, like an editor's note in the margin, a bar to
+   drag it by and a box that rolls it up to the bar. Quiet lines only: it
+   sits on a crowded stage. */
+.ac-window {
+  position: absolute;
+  z-index: 35;
+  /* Its width is animated (note-window.tsx); this only caps it. */
+  max-width: calc(100% - 16px);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  font-size: 12px;
+}
+.ac-window-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 22px;
+  padding: 0 6px 0 10px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.ac-window-bar:active {
+  cursor: grabbing;
+}
+/* The line under the bar goes with the body as it rolls up. */
+.ac-window-open {
+  overflow: hidden;
+  border-top: 1px solid var(--line);
+}
+.ac-window-title {
+  flex: none;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ac .ac-window-box {
+  margin-left: auto;
+  padding: 0 2px;
+  color: var(--faint);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+.ac .ac-window-box:hover {
+  color: var(--ink);
+}
+.ac-window-body {
+  max-height: min(220px, 40vh);
+  overflow: auto;
+  padding: 8px 10px;
+  /* The title's size, in full ink: a caption under the file's name. */
+  color: var(--ink);
+  font-family: 'Notes Prose', var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+/* Code inside a note stays in the page's own face, as on the stage. */
+.ac .ac-window-body code {
+  font-family: var(--font-mono);
+}
+/* What the note is about (the welcome, a slide, an error, a step title). */
+.ac-window-head {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.ac-window.err .ac-window-head {
+  color: var(--err);
 }
 .ac-stack.floating {
   position: absolute;
