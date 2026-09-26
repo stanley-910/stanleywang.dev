@@ -86,7 +86,8 @@
     )
     center / calc(100% - 4px) 100% no-repeat;
 }
-.ac [data-reveal]::-webkit-scrollbar-thumb,
+.ac [data-reveal~='y']::-webkit-scrollbar-thumb:vertical,
+.ac [data-reveal~='x']::-webkit-scrollbar-thumb:horizontal,
 .ac ::-webkit-scrollbar-thumb:hover,
 .ac ::-webkit-scrollbar-thumb:active {
   --thumb: var(--ink);
@@ -135,6 +136,37 @@
   from,
   to {
     --rail: var(--line);
+  }
+}
+/* The source also scrolls sideways (long lines): a second rail along its
+   bottom edge, on its own timeline. */
+.ac.bare .ac-source {
+  border-bottom: 9px solid transparent;
+  background-image: repeating-linear-gradient(
+      to bottom,
+      var(--rail, transparent) 0 2px,
+      transparent 2px 5px
+    ),
+    repeating-linear-gradient(
+      to right,
+      var(--rail-x, transparent) 0 2px,
+      transparent 2px 5px
+    );
+  background-position:
+    right 4px top,
+    left bottom 4px;
+  background-size:
+    1px 100%,
+    100% 1px;
+  animation:
+    ac-rail both,
+    ac-rail-x both;
+  animation-timeline: scroll(self), scroll(self x);
+}
+@keyframes ac-rail-x {
+  from,
+  to {
+    --rail-x: var(--line);
   }
 }
 .ac button {
@@ -362,6 +394,11 @@
   color: var(--faint);
   text-align: right;
   user-select: none;
+  /* Line numbers stay put while a long line scrolls the pane sideways. */
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: var(--bg);
 }
 .ac-gutter span {
   display: block;
@@ -376,6 +413,10 @@
   position: relative;
   display: grid;
   padding: 8px 10px 8px 0;
+  /* As wide as the longest line (--cols, set in animated.tsx), so the pane
+     scrolls sideways and shows its rail rather than clipping. */
+  min-width: calc(var(--cols, 0) * 1ch + 10px);
+  font-family: var(--font-mono);
 }
 .ac-text pre,
 .ac-text textarea {

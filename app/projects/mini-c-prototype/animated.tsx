@@ -90,6 +90,8 @@ const isTypeStep = (f: Frame) =>
 const speeds = [0.5, 1, 1.5, 2]
 const KEEP_HIDDEN = ['int', '(', ')', '{', '}', ';', '=', ',']
 const HOVER_DELAY = 250
+// How long the pointer rests on a scrollbar before its thumb shows.
+const DWELL_MS = 150
 // Stage geometry: pieces live in a 680 × 480 viewBox stretched over the scene,
 // but their text is fixed-size CSS pixels, so layout works in pixels.
 const VIEW_W = 680
@@ -104,6 +106,8 @@ const EDGE_PX = 24
 const CARD_CHAR_PX = 6.6
 // Line height of the source editor; matches --row on .ac-source.
 const SOURCE_ROW = 19
+// Width of the editor's line-number gutter; matches .ac-source's columns.
+const GUTTER_PX = 34
 // The emit pane's rows and stack words, one to one with the editor's.
 const ASM_ROW = SOURCE_ROW
 // One character of the assembly's 12px monospace.
@@ -917,16 +921,18 @@ export default function AnimatedCompiler() {
     } catch {}
   }
   // A scrollbar's thumb shows while its pane is scrolled by hand, and while
-  // the pointer is on the scrollbar, but not when a step scrolls the pane
-  // (the assembly follows the current row) or the pane is only hovered.
+  // the pointer rests on the scrollbar, but not when a step scrolls the pane
+  // (the assembly follows the current row), the pane is only hovered, or the
+  // pointer just crosses the bar on its way in. Only the axis scrolled or
+  // hovered lights: data-reveal holds "x", "y" or both.
   // An attribute rather than a class, so a render doesn't clear it.
   const rootRef = useRef<HTMLElement>(null)
   useEffect(() => {
     const root = rootRef.current
     if (!root) return
     const timers = new Map<Element, ReturnType<typeof setTimeout>>()
-    const reveal = (pane: Element, ms: number) => {
-      pane.setAttribute('data-reveal', '')
+    const reveal = (pane: Element, axes: string, ms: number) => {
+      pane.setAttribute('data-reveal', axes)
       clearTimeout(timers.get(pane))
       timers.set(
         pane,
@@ -951,17 +957,56 @@ export default function AnimatedCompiler() {
     }
     const scrolled = (e: Event) => {
       const pane = paneOf(e.target)
-      if (pane) reveal(pane, 900)
+      if (!pane) return
+      const axes =
+        e instanceof WheelEvent
+          ? Math.abs(e.deltaX) > Math.abs(e.deltaY)
+            ? 'x'
+            : 'y'
+          : 'x y'
+      reveal(pane, axes, 900)
     }
+    // The bar the pointer is resting on; it lights after DWELL_MS there.
+    let resting: {
+      pane: Element
+      axis: string
+      timer: ReturnType<typeof setTimeout>
+    } | null = null
     const moved = (e: PointerEvent) => {
       const pane = paneOf(e.target)
-      if (!pane) return
-      // The scrollbar is what lies past the pane's client area.
-      const box = pane.getBoundingClientRect()
-      const onBar =
-        e.clientX > box.left + pane.clientLeft + pane.clientWidth ||
-        e.clientY > box.top + pane.clientTop + pane.clientHeight
-      if (onBar) reveal(pane, 600)
+      // A scrollbar is what lies past the pane's client area, on an axis
+      // that scrolls (an empty gutter kept by scrollbar-gutter isn't one).
+      let axis: string | null = null
+      if (pane) {
+        const box = pane.getBoundingClientRect()
+        if (
+          pane.scrollHeight > pane.clientHeight &&
+          e.clientX > box.left + pane.clientLeft + pane.clientWidth
+        )
+          axis = 'y'
+        else if (
+          pane.scrollWidth > pane.clientWidth &&
+          e.clientY > box.top + pane.clientTop + pane.clientHeight
+        )
+          axis = 'x'
+      }
+      if (!pane || !axis) {
+        if (resting) clearTimeout(resting.timer)
+        resting = null
+        return
+      }
+      // Already lit: keep it lit while the pointer stays on it.
+      if (pane.getAttribute('data-reveal')?.includes(axis)) {
+        reveal(pane, axis, 600)
+        return
+      }
+      if (resting?.pane === pane && resting.axis === axis) return
+      if (resting) clearTimeout(resting.timer)
+      const on = { pane, axis }
+      resting = {
+        ...on,
+        timer: setTimeout(() => reveal(on.pane, on.axis, 600), DWELL_MS),
+      }
     }
     root.addEventListener('wheel', scrolled, { passive: true })
     root.addEventListener('touchmove', scrolled, { passive: true })
@@ -971,6 +1016,7 @@ export default function AnimatedCompiler() {
       root.removeEventListener('touchmove', scrolled)
       root.removeEventListener('pointermove', moved)
       for (const t of timers.values()) clearTimeout(t)
+      if (resting) clearTimeout(resting.timer)
     }
   }, [])
   const saveWidth = (width: number | null) => {
@@ -1414,13 +1460,22 @@ export default function AnimatedCompiler() {
   }, [])
 
   // Keep the active line third from the top, and again whenever the source
-  // is resized (a tall note shrinks it mid-token).
+  // is resized (a tall note shrinks it mid-token). Sideways, the pane stays
+  // at its left edge unless the step's mark would be out of view.
   useEffect(() => {
     const pane = scrollRef.current
     if (!pane || editing) return
     const row = source.slice(0, activeSpan.start).split('\n').length
     const scroll = () => {
       pane.scrollTop = Math.max(0, (row - 3) * SOURCE_ROW)
+      const mark =
+        pane.querySelector<HTMLElement>('.ac-text mark.cursor') ??
+        pane.querySelector<HTMLElement>('.ac-text mark')
+      const x = mark?.offsetLeft ?? 0
+      const width = Math.min(mark?.offsetWidth ?? 0, 80)
+      const seen = pane.clientWidth - GUTTER_PX
+      if (x < pane.scrollLeft || x + width > pane.scrollLeft + seen - 16)
+        pane.scrollLeft = x < seen * 0.8 ? 0 : x - seen * 0.3
     }
     scroll()
     const observer = new ResizeObserver(scroll)
@@ -2005,6 +2060,13 @@ export default function AnimatedCompiler() {
       ].sort((a, b) => a.start - b.start)
     : undefined
   const lines = source.split('\n')
+  // The longest line, in characters (a tab as its two columns): the text
+  // column is that wide, so a long line scrolls the whole pane sideways
+  // instead of hiding inside the textarea.
+  const columns = Math.max(
+    0,
+    ...lines.map((l) => l.replace(/\t/g, '  ').length),
+  )
   const line = source.slice(0, activeSpan.start).split('\n').length
   const hoverText =
     hoverIns !== null && !playing && !emitStage
@@ -2265,14 +2327,71 @@ export default function AnimatedCompiler() {
           width: cardAt.closed.width,
         })
 
+  const stackNow = stacks.find(
+    (f) =>
+      f.first < frame.instructionCount && frame.instructionCount - 1 <= f.last,
+  )
+  // Docked, the stack sits under the note, so a note a line longer or
+  // shorter would nudge it on every step. The note's text keeps the tallest
+  // height it has had in this function, so the stack stays put until a note
+  // needs more room, and then (or when the next function starts) it slides
+  // to its new place instead of jumping.
+  const docked = emitStage && !stackAt
+  const noteTextRef = useRef<HTMLDivElement>(null)
+  const dockRef = useRef<HTMLDivElement>(null)
+  const [noteReserve, setNoteReserve] = useState(0)
+  const reserveFor = useRef<number | null>(null)
+  const dockTop = useRef<number | null>(null)
+  useLayoutEffect(() => {
+    const text = noteTextRef.current
+    if (!docked || !text) {
+      reserveFor.current = null
+      setNoteReserve(0)
+      return
+    }
+    const measure = () => {
+      const natural = (text.firstElementChild as HTMLElement | null)
+        ?.offsetHeight
+      if (natural === undefined) return
+      const key = stackNow?.first ?? -1
+      const fresh = reserveFor.current !== key
+      reserveFor.current = key
+      setNoteReserve((r) => (fresh ? natural : Math.max(r, natural)))
+    }
+    measure()
+    // A wider or narrower note wraps differently: start again from its
+    // natural height (a resize observer also fires once on observing, so
+    // only a change of width counts).
+    const box = text.parentElement ?? text
+    let width = box.clientWidth
+    const observer = new ResizeObserver(() => {
+      if (box.clientWidth === width) return
+      width = box.clientWidth
+      reserveFor.current = null
+      measure()
+    })
+    observer.observe(box)
+    return () => observer.disconnect()
+  }, [docked, noteText, stackNow?.first])
+  useLayoutEffect(() => {
+    const dock = dockRef.current
+    if (!dock) {
+      dockTop.current = null
+      return
+    }
+    const top = dock.offsetTop
+    const was = dockTop.current
+    dockTop.current = top
+    if (was === null || was === top || reduced) return
+    dock.animate(
+      [{ transform: `translateY(${was - top}px)` }, { transform: 'none' }],
+      { duration: 220, easing: 'ease-out' },
+    )
+  })
   const stackColumn = (at?: { x: number; y: number }) => (
     <StackColumn
       key={at ? `${at.x},${at.y}` : 'docked'}
-      frame={stacks.find(
-        (f) =>
-          f.first < frame.instructionCount &&
-          frame.instructionCount - 1 <= f.last,
-      )}
+      frame={stackNow}
       count={frame.instructionCount}
       from={back ? null : (currentRange?.[0] ?? null)}
       row={ASM_ROW}
@@ -2419,7 +2538,10 @@ export default function AnimatedCompiler() {
                 </span>
               ))}
             </div>
-            <div className="ac-text">
+            <div
+              className="ac-text"
+              style={{ '--cols': columns } as CSSProperties}
+            >
               {!editing && (
                 <pre aria-label="Highlighted source">
                   <code>
@@ -2603,8 +2725,22 @@ export default function AnimatedCompiler() {
                 />
               ) : (
                 <>
-                  <Prose text={noteText} />
-                  {emitStage && !stackAt && stackColumn()}
+                  {docked ? (
+                    <>
+                      <div
+                        className="ac-note-text"
+                        ref={noteTextRef}
+                        style={{ minHeight: noteReserve || undefined }}
+                      >
+                        <div>
+                          <Prose text={noteText} />
+                        </div>
+                      </div>
+                      <div ref={dockRef}>{stackColumn()}</div>
+                    </>
+                  ) : (
+                    <Prose text={noteText} />
+                  )}
                   {landing && !hoverText && (
                     <ul className="ac-lexemes" aria-label="Kinds in this class">
                       {NODE_KINDS[landing.cls].map((kind) => (
