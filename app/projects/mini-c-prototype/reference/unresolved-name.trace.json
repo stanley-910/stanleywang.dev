@@ -1,0 +1,63 @@
+{
+  "source": "unresolved-name.c",
+  "text": "int main() {\n  return missing + 1;\n}\n",
+  "tokens": [
+    {"id": 0, "text": "int", "kind": "keyword", "start": 0, "end": 3, "reads": [{"at": 0, "does": "word"}, {"at": 1, "does": "continue"}, {"at": 2, "does": "continue"}, {"at": 3, "does": "end", "look": true}]},
+    {"id": 1, "text": "main", "kind": "name", "start": 4, "end": 8, "reads": [{"at": 3, "does": "space"}, {"at": 4, "does": "word"}, {"at": 5, "does": "continue"}, {"at": 6, "does": "continue"}, {"at": 7, "does": "continue"}, {"at": 8, "does": "end", "look": true}]},
+    {"id": 2, "text": "(", "kind": "symbol", "start": 8, "end": 9, "reads": [{"at": 8, "does": "single"}]},
+    {"id": 3, "text": ")", "kind": "symbol", "start": 9, "end": 10, "reads": [{"at": 9, "does": "single"}]},
+    {"id": 4, "text": "{", "kind": "symbol", "start": 11, "end": 12, "reads": [{"at": 10, "does": "space"}, {"at": 11, "does": "single"}]},
+    {"id": 5, "text": "return", "kind": "keyword", "start": 15, "end": 21, "reads": [{"at": 12, "does": "space"}, {"at": 13, "does": "space"}, {"at": 14, "does": "space"}, {"at": 15, "does": "word"}, {"at": 16, "does": "continue"}, {"at": 17, "does": "continue"}, {"at": 18, "does": "continue"}, {"at": 19, "does": "continue"}, {"at": 20, "does": "continue"}, {"at": 21, "does": "end", "look": true}]},
+    {"id": 6, "text": "missing", "kind": "name", "start": 22, "end": 29, "reads": [{"at": 21, "does": "space"}, {"at": 22, "does": "word"}, {"at": 23, "does": "continue"}, {"at": 24, "does": "continue"}, {"at": 25, "does": "continue"}, {"at": 26, "does": "continue"}, {"at": 27, "does": "continue"}, {"at": 28, "does": "continue"}, {"at": 29, "does": "end", "look": true}]},
+    {"id": 7, "text": "+", "kind": "symbol", "start": 30, "end": 31, "reads": [{"at": 29, "does": "space"}, {"at": 30, "does": "single"}]},
+    {"id": 8, "text": "1", "kind": "number", "start": 32, "end": 33, "reads": [{"at": 31, "does": "space"}, {"at": 32, "does": "number"}, {"at": 33, "does": "end", "look": true}]},
+    {"id": 9, "text": ";", "kind": "symbol", "start": 33, "end": 34, "reads": [{"at": 33, "does": "single"}]},
+    {"id": 10, "text": "}", "kind": "symbol", "start": 35, "end": 36, "reads": [{"at": 34, "does": "space"}, {"at": 35, "does": "single"}]}
+  ],
+  "nodes": [
+    {"id": 0, "label": "main", "kind": "function", "start": 0, "end": 36, "children": [1], "token": 1},
+    {"id": 1, "label": "{ }", "kind": "block", "start": 11, "end": 36, "children": [2], "token": 4},
+    {"id": 2, "label": "return", "kind": "return", "start": 15, "end": 34, "children": [3], "token": 5},
+    {"id": 3, "label": "+", "kind": "binary", "start": 22, "end": 33, "children": [4, 5], "token": 7},
+    {"id": 4, "label": "missing", "kind": "name", "start": 22, "end": 29, "children": [], "token": 6},
+    {"id": 5, "label": "1", "kind": "number", "start": 32, "end": 33, "children": [], "token": 8}
+  ],
+  "frames": [
+    {"phase": "Tokens", "title": "Press play. Follow the source", "span": {"start": 0, "end": 0}, "tokenCount": 0, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "ready"}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Keyword  ·  int", "span": {"start": 0, "end": 3}, "tokenCount": 1, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 0}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Identifier  ·  main", "span": {"start": 4, "end": 8}, "tokenCount": 2, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 1}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  (", "span": {"start": 8, "end": 9}, "tokenCount": 3, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 2}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  )", "span": {"start": 9, "end": 10}, "tokenCount": 4, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 3}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  {", "span": {"start": 11, "end": 12}, "tokenCount": 5, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 4}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Keyword  ·  return", "span": {"start": 15, "end": 21}, "tokenCount": 6, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 5}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Identifier  ·  missing", "span": {"start": 22, "end": 29}, "tokenCount": 7, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 6}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  +", "span": {"start": 30, "end": 31}, "tokenCount": 8, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 7}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Integer  ·  1", "span": {"start": 32, "end": 33}, "tokenCount": 9, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 8}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  ;", "span": {"start": 33, "end": 34}, "tokenCount": 10, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 9}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  }", "span": {"start": 35, "end": 36}, "tokenCount": 11, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 10}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Function main: parameters, then the body", "span": {"start": 0, "end": 36}, "tokenCount": 11, "consumed": [0, 1], "nodes": [0], "attached": [], "focus": 0, "why": {"kind": "parse.node", "node": 0}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "A block: declarations, then statements", "span": {"start": 11, "end": 36}, "tokenCount": 11, "consumed": [0, 1, 2, 3, 4], "nodes": [0, 1], "attached": [], "focus": 1, "why": {"kind": "parse.node", "node": 1}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "return: read the value", "span": {"start": 15, "end": 34}, "tokenCount": 11, "consumed": [0, 1, 2, 3, 4, 5], "nodes": [0, 1, 2], "attached": [], "focus": 2, "why": {"kind": "parse.node", "node": 2}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Read missing as a name", "span": {"start": 22, "end": 29}, "tokenCount": 11, "consumed": [0, 1, 2, 3, 4, 5, 6], "nodes": [0, 1, 2, 4], "attached": [], "focus": 4, "why": {"kind": "parse.node", "node": 4}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "+ takes missing as its left side and waits for the right", "span": {"start": 22, "end": 31}, "tokenCount": 11, "consumed": [0, 1, 2, 3, 4, 5, 6, 7], "nodes": [0, 1, 2, 4, 3], "attached": [4], "focus": 3, "why": {"kind": "parse.wait", "node": 3, "child": 4}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Read 1 as a literal", "span": {"start": 32, "end": 33}, "tokenCount": 11, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8], "nodes": [0, 1, 2, 4, 3, 5], "attached": [4], "focus": 5, "why": {"kind": "parse.node", "node": 5}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "+ closes over missing + 1", "span": {"start": 22, "end": 33}, "tokenCount": 11, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8], "nodes": [0, 1, 2, 4, 3, 5], "attached": [4, 5], "focus": 3, "why": {"kind": "parse.close", "node": 3}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "return takes missing + 1", "span": {"start": 15, "end": 34}, "tokenCount": 11, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], "nodes": [0, 1, 2, 4, 3, 5], "attached": [4, 5, 3], "focus": 2, "why": {"kind": "parse.close", "node": 2}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "The block closes", "span": {"start": 11, "end": 36}, "tokenCount": 11, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "nodes": [0, 1, 2, 4, 3, 5], "attached": [4, 5, 3, 2], "focus": 1, "why": {"kind": "parse.close", "node": 1}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Function main is complete", "span": {"start": 0, "end": 36}, "tokenCount": 11, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "nodes": [0, 1, 2, 4, 3, 5], "attached": [4, 5, 3, 2, 1], "focus": 0, "why": {"kind": "parse.close", "node": 0}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Tree complete: 6 nodes", "span": {"start": 0, "end": 36}, "tokenCount": 11, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "nodes": [0, 1, 2, 4, 3, 5], "attached": [4, 5, 3, 2, 1], "focus": 0, "why": {"kind": "parse.done", "root": 0}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Check", "title": "main is declared in the global scope", "span": {"start": 4, "end": 8}, "tokenCount": 11, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "nodes": [0, 1, 2, 4, 3, 5], "attached": [4, 5, 3, 2, 1], "focus": 0, "why": {"kind": "check.declare", "decl": 0, "where": "global", "scope": "the global scope", "inScope": 0}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Check", "title": "No declaration for missing", "span": {"start": 22, "end": 29}, "tokenCount": 11, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "nodes": [0, 1, 2, 4, 3, 5], "attached": [4, 5, 3, 2, 1], "focus": 4, "why": {"kind": "check.unresolved", "use": 4, "inScope": 1, "searched": [1, 0]}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Check", "title": "1 name has no declaration", "span": {"start": 0, "end": 36}, "tokenCount": 11, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "nodes": [0, 1, 2, 4, 3, 5], "attached": [4, 5, 3, 2, 1], "focus": 0, "why": {"kind": "check.namesDone", "unresolved": 1, "errors": 1}, "instructionCount": 0, "allocationCount": 0}
+  ],
+  "instructions": [],
+  "registers": {},
+  "root": 0,
+  "ast": "Program(FunDef(INT,main,Block(Return(BinOp(VarExpr(missing),ADD,IntLiteral(1))))))",
+  "scopes": [
+    {"id": 0, "node": null, "parent": null, "kind": "global", "label": "global", "decls": [0], "builtins": ["print_s", "print_i", "print_c", "read_c", "read_i", "mcmalloc"]},
+    {"id": 1, "node": 0, "parent": 0, "kind": "function", "label": "main", "decls": []}
+  ],
+  "sem": ["semantic error: UNDEFINED_SYMBOL: variable is not declared | at=2:10 | variable='missing'", "semantic error: UNDEFINED_SYMBOL: variable expression has no resolved declaration | at=2:10 | variable='missing'", "semantic error: TYPE_MISMATCH: binary operator requires INT operands | at=2:18 | operator='+' | lhs=unknown | rhs=int", "semantic error: RETURN_MISMATCH: return type mismatch | at=2:3 | function='main' | expected=int | actual=unknown", "Semantic analysis: Failed (4 errors)"],
+  "error": {"message": "“missing” has no declaration.", "start": 22, "end": 29}
+}

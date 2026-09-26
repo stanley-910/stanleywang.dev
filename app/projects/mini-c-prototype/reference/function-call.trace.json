@@ -1,0 +1,1063 @@
+{
+  "source": "function-call.c",
+  "text": "int twice(int n) {\n  return n + n;\n}\n\nint main() {\n  return twice(6);\n}\n",
+  "tokens": [
+    {"id": 0, "text": "int", "kind": "keyword", "start": 0, "end": 3, "reads": [{"at": 0, "does": "word"}, {"at": 1, "does": "continue"}, {"at": 2, "does": "continue"}, {"at": 3, "does": "end", "look": true}]},
+    {"id": 1, "text": "twice", "kind": "name", "start": 4, "end": 9, "reads": [{"at": 3, "does": "space"}, {"at": 4, "does": "word"}, {"at": 5, "does": "continue"}, {"at": 6, "does": "continue"}, {"at": 7, "does": "continue"}, {"at": 8, "does": "continue"}, {"at": 9, "does": "end", "look": true}]},
+    {"id": 2, "text": "(", "kind": "symbol", "start": 9, "end": 10, "reads": [{"at": 9, "does": "single"}]},
+    {"id": 3, "text": "int", "kind": "keyword", "start": 10, "end": 13, "reads": [{"at": 10, "does": "word"}, {"at": 11, "does": "continue"}, {"at": 12, "does": "continue"}, {"at": 13, "does": "end", "look": true}]},
+    {"id": 4, "text": "n", "kind": "name", "start": 14, "end": 15, "reads": [{"at": 13, "does": "space"}, {"at": 14, "does": "word"}, {"at": 15, "does": "end", "look": true}]},
+    {"id": 5, "text": ")", "kind": "symbol", "start": 15, "end": 16, "reads": [{"at": 15, "does": "single"}]},
+    {"id": 6, "text": "{", "kind": "symbol", "start": 17, "end": 18, "reads": [{"at": 16, "does": "space"}, {"at": 17, "does": "single"}]},
+    {"id": 7, "text": "return", "kind": "keyword", "start": 21, "end": 27, "reads": [{"at": 18, "does": "space"}, {"at": 19, "does": "space"}, {"at": 20, "does": "space"}, {"at": 21, "does": "word"}, {"at": 22, "does": "continue"}, {"at": 23, "does": "continue"}, {"at": 24, "does": "continue"}, {"at": 25, "does": "continue"}, {"at": 26, "does": "continue"}, {"at": 27, "does": "end", "look": true}]},
+    {"id": 8, "text": "n", "kind": "name", "start": 28, "end": 29, "reads": [{"at": 27, "does": "space"}, {"at": 28, "does": "word"}, {"at": 29, "does": "end", "look": true}]},
+    {"id": 9, "text": "+", "kind": "symbol", "start": 30, "end": 31, "reads": [{"at": 29, "does": "space"}, {"at": 30, "does": "single"}]},
+    {"id": 10, "text": "n", "kind": "name", "start": 32, "end": 33, "reads": [{"at": 31, "does": "space"}, {"at": 32, "does": "word"}, {"at": 33, "does": "end", "look": true}]},
+    {"id": 11, "text": ";", "kind": "symbol", "start": 33, "end": 34, "reads": [{"at": 33, "does": "single"}]},
+    {"id": 12, "text": "}", "kind": "symbol", "start": 35, "end": 36, "reads": [{"at": 34, "does": "space"}, {"at": 35, "does": "single"}]},
+    {"id": 13, "text": "int", "kind": "keyword", "start": 38, "end": 41, "reads": [{"at": 36, "does": "space"}, {"at": 37, "does": "space"}, {"at": 38, "does": "word"}, {"at": 39, "does": "continue"}, {"at": 40, "does": "continue"}, {"at": 41, "does": "end", "look": true}]},
+    {"id": 14, "text": "main", "kind": "name", "start": 42, "end": 46, "reads": [{"at": 41, "does": "space"}, {"at": 42, "does": "word"}, {"at": 43, "does": "continue"}, {"at": 44, "does": "continue"}, {"at": 45, "does": "continue"}, {"at": 46, "does": "end", "look": true}]},
+    {"id": 15, "text": "(", "kind": "symbol", "start": 46, "end": 47, "reads": [{"at": 46, "does": "single"}]},
+    {"id": 16, "text": ")", "kind": "symbol", "start": 47, "end": 48, "reads": [{"at": 47, "does": "single"}]},
+    {"id": 17, "text": "{", "kind": "symbol", "start": 49, "end": 50, "reads": [{"at": 48, "does": "space"}, {"at": 49, "does": "single"}]},
+    {"id": 18, "text": "return", "kind": "keyword", "start": 53, "end": 59, "reads": [{"at": 50, "does": "space"}, {"at": 51, "does": "space"}, {"at": 52, "does": "space"}, {"at": 53, "does": "word"}, {"at": 54, "does": "continue"}, {"at": 55, "does": "continue"}, {"at": 56, "does": "continue"}, {"at": 57, "does": "continue"}, {"at": 58, "does": "continue"}, {"at": 59, "does": "end", "look": true}]},
+    {"id": 19, "text": "twice", "kind": "name", "start": 60, "end": 65, "reads": [{"at": 59, "does": "space"}, {"at": 60, "does": "word"}, {"at": 61, "does": "continue"}, {"at": 62, "does": "continue"}, {"at": 63, "does": "continue"}, {"at": 64, "does": "continue"}, {"at": 65, "does": "end", "look": true}]},
+    {"id": 20, "text": "(", "kind": "symbol", "start": 65, "end": 66, "reads": [{"at": 65, "does": "single"}]},
+    {"id": 21, "text": "6", "kind": "number", "start": 66, "end": 67, "reads": [{"at": 66, "does": "number"}, {"at": 67, "does": "end", "look": true}]},
+    {"id": 22, "text": ")", "kind": "symbol", "start": 67, "end": 68, "reads": [{"at": 67, "does": "single"}]},
+    {"id": 23, "text": ";", "kind": "symbol", "start": 68, "end": 69, "reads": [{"at": 68, "does": "single"}]},
+    {"id": 24, "text": "}", "kind": "symbol", "start": 70, "end": 71, "reads": [{"at": 69, "does": "space"}, {"at": 70, "does": "single"}]}
+  ],
+  "nodes": [
+    {"id": 0, "label": "twice", "kind": "function", "start": 0, "end": 36, "children": [1, 2], "token": 1},
+    {"id": 1, "label": "int n", "kind": "declare", "start": 10, "end": 15, "children": [], "token": 4},
+    {"id": 2, "label": "{ }", "kind": "block", "start": 17, "end": 36, "children": [3], "token": 6},
+    {"id": 3, "label": "return", "kind": "return", "start": 21, "end": 34, "children": [4], "token": 7},
+    {"id": 4, "label": "+", "kind": "binary", "start": 28, "end": 33, "children": [5, 6], "token": 9},
+    {"id": 5, "label": "n", "kind": "name", "start": 28, "end": 29, "children": [], "token": 8},
+    {"id": 6, "label": "n", "kind": "name", "start": 32, "end": 33, "children": [], "token": 10},
+    {"id": 7, "label": "main", "kind": "function", "start": 38, "end": 71, "children": [8], "token": 14},
+    {"id": 8, "label": "{ }", "kind": "block", "start": 49, "end": 71, "children": [9], "token": 17},
+    {"id": 9, "label": "return", "kind": "return", "start": 53, "end": 69, "children": [10], "token": 18},
+    {"id": 10, "label": "twice()", "kind": "call", "start": 60, "end": 68, "children": [11], "token": 19},
+    {"id": 11, "label": "6", "kind": "number", "start": 66, "end": 67, "children": [], "token": 21},
+    {"id": 12, "label": "global", "kind": "program", "start": 0, "end": 72, "children": [0, 7], "token": 0}
+  ],
+  "frames": [
+    {"phase": "Tokens", "title": "Press play. Follow the source", "span": {"start": 0, "end": 0}, "tokenCount": 0, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "ready"}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Keyword  ·  int", "span": {"start": 0, "end": 3}, "tokenCount": 1, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 0}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Identifier  ·  twice", "span": {"start": 4, "end": 9}, "tokenCount": 2, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 1}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  (", "span": {"start": 9, "end": 10}, "tokenCount": 3, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 2}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Keyword  ·  int", "span": {"start": 10, "end": 13}, "tokenCount": 4, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 3}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Identifier  ·  n", "span": {"start": 14, "end": 15}, "tokenCount": 5, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 4}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  )", "span": {"start": 15, "end": 16}, "tokenCount": 6, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 5}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  {", "span": {"start": 17, "end": 18}, "tokenCount": 7, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 6}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Keyword  ·  return", "span": {"start": 21, "end": 27}, "tokenCount": 8, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 7}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Identifier  ·  n", "span": {"start": 28, "end": 29}, "tokenCount": 9, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 8}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  +", "span": {"start": 30, "end": 31}, "tokenCount": 10, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 9}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Identifier  ·  n", "span": {"start": 32, "end": 33}, "tokenCount": 11, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 10}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  ;", "span": {"start": 33, "end": 34}, "tokenCount": 12, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 11}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  }", "span": {"start": 35, "end": 36}, "tokenCount": 13, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 12}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Keyword  ·  int", "span": {"start": 38, "end": 41}, "tokenCount": 14, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 13}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Identifier  ·  main", "span": {"start": 42, "end": 46}, "tokenCount": 15, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 14}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  (", "span": {"start": 46, "end": 47}, "tokenCount": 16, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 15}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  )", "span": {"start": 47, "end": 48}, "tokenCount": 17, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 16}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  {", "span": {"start": 49, "end": 50}, "tokenCount": 18, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 17}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Keyword  ·  return", "span": {"start": 53, "end": 59}, "tokenCount": 19, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 18}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Identifier  ·  twice", "span": {"start": 60, "end": 65}, "tokenCount": 20, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 19}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  (", "span": {"start": 65, "end": 66}, "tokenCount": 21, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 20}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Integer  ·  6", "span": {"start": 66, "end": 67}, "tokenCount": 22, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 21}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  )", "span": {"start": 67, "end": 68}, "tokenCount": 23, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 22}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  ;", "span": {"start": 68, "end": 69}, "tokenCount": 24, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 23}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Tokens", "title": "Symbol  ·  }", "span": {"start": 70, "end": 71}, "tokenCount": 25, "consumed": [], "nodes": [], "attached": [], "focus": null, "why": {"kind": "token", "token": 24}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "global: one declaration after another", "span": {"start": 0, "end": 72}, "tokenCount": 25, "consumed": [], "nodes": [12], "attached": [], "focus": 12, "why": {"kind": "parse.node", "node": 12}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Function twice: parameters, then the body", "span": {"start": 0, "end": 36}, "tokenCount": 25, "consumed": [0, 1], "nodes": [12, 0], "attached": [], "focus": 0, "why": {"kind": "parse.node", "node": 0}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Declare n as int", "span": {"start": 10, "end": 15}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4], "nodes": [12, 0, 1], "attached": [], "focus": 1, "why": {"kind": "parse.node", "node": 1}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "A block: declarations, then statements", "span": {"start": 17, "end": 36}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6], "nodes": [12, 0, 1, 2], "attached": [1], "focus": 2, "why": {"kind": "parse.node", "node": 2}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "return: read the value", "span": {"start": 21, "end": 34}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7], "nodes": [12, 0, 1, 2, 3], "attached": [1], "focus": 3, "why": {"kind": "parse.node", "node": 3}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Read n as a name", "span": {"start": 28, "end": 29}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8], "nodes": [12, 0, 1, 2, 3, 5], "attached": [1], "focus": 5, "why": {"kind": "parse.node", "node": 5}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "+ takes n as its left side and waits for the right", "span": {"start": 28, "end": 31}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], "nodes": [12, 0, 1, 2, 3, 5, 4], "attached": [1, 5], "focus": 4, "why": {"kind": "parse.wait", "node": 4, "child": 5}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Read n as a name", "span": {"start": 32, "end": 33}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "nodes": [12, 0, 1, 2, 3, 5, 4, 6], "attached": [1, 5], "focus": 6, "why": {"kind": "parse.node", "node": 6}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "+ closes over n + n", "span": {"start": 28, "end": 33}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "nodes": [12, 0, 1, 2, 3, 5, 4, 6], "attached": [1, 5, 6], "focus": 4, "why": {"kind": "parse.close", "node": 4}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "return takes n + n", "span": {"start": 21, "end": 34}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], "nodes": [12, 0, 1, 2, 3, 5, 4, 6], "attached": [1, 5, 6, 4], "focus": 3, "why": {"kind": "parse.close", "node": 3}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "The block closes", "span": {"start": 17, "end": 36}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], "nodes": [12, 0, 1, 2, 3, 5, 4, 6], "attached": [1, 5, 6, 4, 3], "focus": 2, "why": {"kind": "parse.close", "node": 2}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Function twice is complete", "span": {"start": 0, "end": 36}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], "nodes": [12, 0, 1, 2, 3, 5, 4, 6], "attached": [1, 5, 6, 4, 3, 2], "focus": 0, "why": {"kind": "parse.close", "node": 0}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Function main: parameters, then the body", "span": {"start": 38, "end": 71}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7], "attached": [1, 5, 6, 4, 3, 2, 0], "focus": 7, "why": {"kind": "parse.node", "node": 7}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "A block: declarations, then statements", "span": {"start": 49, "end": 71}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8], "attached": [1, 5, 6, 4, 3, 2, 0], "focus": 8, "why": {"kind": "parse.node", "node": 8}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "return: read the value", "span": {"start": 53, "end": 69}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9], "attached": [1, 5, 6, 4, 3, 2, 0], "focus": 9, "why": {"kind": "parse.node", "node": 9}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Call twice: read the arguments", "span": {"start": 60, "end": 68}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10], "attached": [1, 5, 6, 4, 3, 2, 0], "focus": 10, "why": {"kind": "parse.node", "node": 10}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Read 6 as a literal", "span": {"start": 66, "end": 67}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0], "focus": 11, "why": {"kind": "parse.node", "node": 11}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "twice has its 1 argument", "span": {"start": 60, "end": 68}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11], "focus": 10, "why": {"kind": "parse.close", "node": 10}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "return takes twice(6)", "span": {"start": 53, "end": 69}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10], "focus": 9, "why": {"kind": "parse.close", "node": 9}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "The block closes", "span": {"start": 49, "end": 71}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9], "focus": 8, "why": {"kind": "parse.close", "node": 8}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Function main is complete", "span": {"start": 38, "end": 71}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8], "focus": 7, "why": {"kind": "parse.close", "node": 7}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "All declarations read", "span": {"start": 0, "end": 72}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 12, "why": {"kind": "parse.close", "node": 12}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Parse", "title": "Tree complete: 13 nodes", "span": {"start": 0, "end": 72}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 12, "why": {"kind": "parse.done", "root": 12}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Check", "title": "twice is declared in the global scope", "span": {"start": 4, "end": 9}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 0, "why": {"kind": "check.declare", "decl": 0, "where": "global", "scope": "the global scope", "inScope": 0}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Check", "title": "n is declared in twice's scope", "span": {"start": 14, "end": 15}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 1, "why": {"kind": "check.declare", "decl": 1, "where": "param", "scope": "twice's scope", "inScope": 1}, "instructionCount": 0, "allocationCount": 0},
+    {"phase": "Check", "title": "n refers to its declaration in the parameters", "span": {"start": 28, "end": 29}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 5, "why": {"kind": "check.resolve", "use": 5, "decl": 1, "where": "param", "inScope": 1, "searched": [1], "up": 0}, "instructionCount": 0, "allocationCount": 0, "links": [[5, 1]]},
+    {"phase": "Check", "title": "n refers to its declaration in the parameters", "span": {"start": 32, "end": 33}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 6, "why": {"kind": "check.resolve", "use": 6, "decl": 1, "where": "param", "inScope": 1, "searched": [1], "up": 0}, "instructionCount": 0, "allocationCount": 0, "links": [[5, 1], [6, 1]]},
+    {"phase": "Check", "title": "main is declared in the global scope", "span": {"start": 42, "end": 46}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 7, "why": {"kind": "check.declare", "decl": 7, "where": "global", "scope": "the global scope", "inScope": 0}, "instructionCount": 0, "allocationCount": 0, "links": [[5, 1], [6, 1]]},
+    {"phase": "Check", "title": "twice calls the function defined above", "span": {"start": 60, "end": 68}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 10, "why": {"kind": "check.resolve", "use": 10, "decl": 0, "where": "above", "inScope": 2, "searched": [2, 0], "up": 1}, "instructionCount": 0, "allocationCount": 0, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Check", "title": "Every name has a declaration", "span": {"start": 0, "end": 72}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 12, "why": {"kind": "check.namesDone", "unresolved": 0, "errors": 0}, "instructionCount": 0, "allocationCount": 0, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Check", "title": "n has type int", "span": {"start": 10, "end": 15}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 1, "why": {"kind": "check.type", "node": 1, "type": "int"}, "instructionCount": 0, "allocationCount": 0, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Check", "title": "n + n has type int", "span": {"start": 28, "end": 33}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 4, "why": {"kind": "check.expr", "node": 4, "type": "int", "typed": [[5, "int"], [6, "int"], [4, "int"]], "ok": true}, "instructionCount": 0, "allocationCount": 0, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Check", "title": "return has type int, as twice returns int", "span": {"start": 21, "end": 34}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 3, "why": {"kind": "check.fits", "node": 3, "value": 4, "rule": "return", "type": "int", "expected": "int", "ok": true, "typed": []}, "instructionCount": 0, "allocationCount": 0, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Check", "title": "twice(6) has type int", "span": {"start": 60, "end": 68}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 10, "why": {"kind": "check.expr", "node": 10, "type": "int", "typed": [[11, "int"], [10, "int"]], "ok": true}, "instructionCount": 0, "allocationCount": 0, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Check", "title": "return has type int, as main returns int", "span": {"start": 53, "end": 69}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 9, "why": {"kind": "check.fits", "node": 9, "value": 10, "rule": "return", "type": "int", "expected": "int", "ok": true, "typed": []}, "instructionCount": 0, "allocationCount": 0, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Check", "title": "Every expression has a type", "span": {"start": 0, "end": 72}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 12, "why": {"kind": "check.typesDone"}, "instructionCount": 0, "allocationCount": 0, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Emit", "title": "twice: frame set up, 6 instructions", "span": {"start": 0, "end": 36}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 0, "why": {"kind": "emit.prologue", "node": 0, "from": 0, "to": 5}, "instructionCount": 6, "allocationCount": 0, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Emit", "title": "addi v1,$fp,8  ·  lw v0,0(v1)", "span": {"start": 28, "end": 29}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 5, "why": {"kind": "emit.instr", "node": 5, "from": 6, "to": 7}, "instructionCount": 8, "allocationCount": 0, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Emit", "title": "addi v3,$fp,8  ·  lw v2,0(v3)", "span": {"start": 32, "end": 33}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 6, "why": {"kind": "emit.instr", "node": 6, "from": 8, "to": 9}, "instructionCount": 10, "allocationCount": 0, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Emit", "title": "addu v4,v0,v2", "span": {"start": 28, "end": 33}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 4, "why": {"kind": "emit.instr", "node": 4, "from": 10, "to": 10}, "instructionCount": 11, "allocationCount": 0, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Emit", "title": "sw v4,4($fp)  ·  j twice_epilogue", "span": {"start": 21, "end": 34}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 3, "why": {"kind": "emit.instr", "node": 3, "from": 11, "to": 12}, "instructionCount": 13, "allocationCount": 0, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Emit", "title": "twice: frame restored", "span": {"start": 0, "end": 36}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 0, "why": {"kind": "emit.epilogue", "node": 0, "from": 13, "to": 17}, "instructionCount": 18, "allocationCount": 0, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Emit", "title": "main: frame set up, 5 instructions", "span": {"start": 38, "end": 71}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 7, "why": {"kind": "emit.prologue", "node": 7, "from": 18, "to": 22}, "instructionCount": 23, "allocationCount": 0, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Emit", "title": "li v5,6", "span": {"start": 66, "end": 67}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 11, "why": {"kind": "emit.instr", "node": 11, "from": 23, "to": 23}, "instructionCount": 24, "allocationCount": 0, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Emit", "title": "jal twice  ·  6 lines", "span": {"start": 60, "end": 68}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 10, "why": {"kind": "emit.instr", "node": 10, "from": 24, "to": 29}, "instructionCount": 30, "allocationCount": 0, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Emit", "title": "sw v6,4($fp)  ·  j main_epilogue", "span": {"start": 53, "end": 69}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 9, "why": {"kind": "emit.instr", "node": 9, "from": 30, "to": 31}, "instructionCount": 32, "allocationCount": 0, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Emit", "title": "main: frame restored", "span": {"start": 38, "end": 71}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 7, "why": {"kind": "emit.epilogue", "node": 7, "from": 32, "to": 36}, "instructionCount": 37, "allocationCount": 0, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Registers", "title": "twice: 18 instructions, straight line", "span": {"start": 0, "end": 0}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 0, "why": {"kind": "reg.cfg", "fn": 0, "blocks": 18, "back": []}, "instructionCount": 37, "allocationCount": 0, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Registers", "title": "Sweep 1: 18 live sets filled", "span": {"start": 0, "end": 0}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 0, "why": {"kind": "reg.live", "fn": 0, "sweep": 1, "changed": 18}, "instructionCount": 37, "allocationCount": 0, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Registers", "title": "Sweep 2: nothing changes, liveness is settled", "span": {"start": 0, "end": 0}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 0, "why": {"kind": "reg.live", "fn": 0, "sweep": 2, "changed": 0}, "instructionCount": 37, "allocationCount": 0, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Registers", "title": "5 virtual registers, 2 overlaps", "span": {"start": 0, "end": 0}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 0, "why": {"kind": "reg.interfere", "fn": 0, "nodes": 5, "edges": 2, "busiest": "v0", "degree": 2}, "instructionCount": 37, "allocationCount": 0, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Registers", "title": "v1 set aside, 0 neighbours", "span": {"start": 28, "end": 29}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 5, "why": {"kind": "reg.simplify", "fn": 0, "step": 0, "at": 6}, "instructionCount": 37, "allocationCount": 0, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Registers", "title": "v0 set aside, 2 neighbours", "span": {"start": 28, "end": 29}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 5, "why": {"kind": "reg.simplify", "fn": 0, "step": 1, "at": 7}, "instructionCount": 37, "allocationCount": 0, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Registers", "title": "v3 set aside, 0 neighbours", "span": {"start": 32, "end": 33}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 6, "why": {"kind": "reg.simplify", "fn": 0, "step": 2, "at": 8}, "instructionCount": 37, "allocationCount": 0, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Registers", "title": "v2 set aside, 0 neighbours", "span": {"start": 32, "end": 33}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 6, "why": {"kind": "reg.simplify", "fn": 0, "step": 3, "at": 9}, "instructionCount": 37, "allocationCount": 0, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Registers", "title": "v4 set aside, 0 neighbours", "span": {"start": 28, "end": 33}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 4, "why": {"kind": "reg.simplify", "fn": 0, "step": 4, "at": 10}, "instructionCount": 37, "allocationCount": 0, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Registers", "title": "v4 gets $t0", "span": {"start": 28, "end": 33}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 4, "why": {"kind": "reg.select", "fn": 0, "step": 5, "at": 10}, "instructionCount": 37, "allocationCount": 1, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Registers", "title": "v2 gets $t0", "span": {"start": 32, "end": 33}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 6, "why": {"kind": "reg.select", "fn": 0, "step": 6, "at": 9}, "instructionCount": 37, "allocationCount": 2, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Registers", "title": "v3 gets $t0", "span": {"start": 32, "end": 33}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 6, "why": {"kind": "reg.select", "fn": 0, "step": 7, "at": 8}, "instructionCount": 37, "allocationCount": 3, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Registers", "title": "v0 gets $t1", "span": {"start": 28, "end": 29}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 5, "why": {"kind": "reg.select", "fn": 0, "step": 8, "at": 7}, "instructionCount": 37, "allocationCount": 4, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Registers", "title": "v1 gets $t0", "span": {"start": 28, "end": 29}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 5, "why": {"kind": "reg.select", "fn": 0, "step": 9, "at": 6}, "instructionCount": 37, "allocationCount": 5, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Registers", "title": "twice: 5 virtual registers fit in 2 real ones", "span": {"start": 0, "end": 0}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 0, "why": {"kind": "reg.done", "fn": 0, "used": 2, "spills": 0}, "instructionCount": 37, "allocationCount": 5, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Registers", "title": "main: 19 instructions, straight line", "span": {"start": 38, "end": 38}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 7, "why": {"kind": "reg.cfg", "fn": 1, "blocks": 19, "back": []}, "instructionCount": 37, "allocationCount": 5, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Registers", "title": "Sweep 1: 17 live sets filled", "span": {"start": 38, "end": 38}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 7, "why": {"kind": "reg.live", "fn": 1, "sweep": 1, "changed": 17}, "instructionCount": 37, "allocationCount": 5, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Registers", "title": "Sweep 2: nothing changes, liveness is settled", "span": {"start": 38, "end": 38}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 7, "why": {"kind": "reg.live", "fn": 1, "sweep": 2, "changed": 0}, "instructionCount": 37, "allocationCount": 5, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Registers", "title": "2 virtual registers, 0 overlaps", "span": {"start": 38, "end": 38}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 7, "why": {"kind": "reg.interfere", "fn": 1, "nodes": 2, "edges": 0, "busiest": "v5", "degree": 0}, "instructionCount": 37, "allocationCount": 5, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Registers", "title": "v5 set aside, 0 neighbours", "span": {"start": 66, "end": 67}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 11, "why": {"kind": "reg.simplify", "fn": 1, "step": 0, "at": 23}, "instructionCount": 37, "allocationCount": 5, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Registers", "title": "v6 set aside, 0 neighbours", "span": {"start": 60, "end": 68}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 10, "why": {"kind": "reg.simplify", "fn": 1, "step": 1, "at": 28}, "instructionCount": 37, "allocationCount": 5, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Registers", "title": "v6 gets $t0", "span": {"start": 60, "end": 68}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 10, "why": {"kind": "reg.select", "fn": 1, "step": 2, "at": 28}, "instructionCount": 37, "allocationCount": 6, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Registers", "title": "v5 gets $t0", "span": {"start": 66, "end": 67}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 11, "why": {"kind": "reg.select", "fn": 1, "step": 3, "at": 23}, "instructionCount": 37, "allocationCount": 7, "links": [[5, 1], [6, 1], [10, 0]]},
+    {"phase": "Registers", "title": "main: 2 virtual registers fit in 1 real one", "span": {"start": 38, "end": 38}, "tokenCount": 25, "consumed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], "nodes": [12, 0, 1, 2, 3, 5, 4, 6, 7, 8, 9, 10, 11], "attached": [1, 5, 6, 4, 3, 2, 0, 11, 10, 9, 8, 7], "focus": 7, "why": {"kind": "reg.done", "fn": 1, "used": 1, "spills": 0}, "instructionCount": 37, "allocationCount": 7, "links": [[5, 1], [6, 1], [10, 0]]}
+  ],
+  "instructions": [
+    {"id": 0, "fn": 0, "text": "addi $sp,$sp,-4", "op": "addi", "dest": "$sp", "args": ["$sp"], "node": 0, "labels": ["twice"], "tag": {"role": "reserve", "for": "fp"}, "out": ["addi $sp,$sp,-4"]},
+    {"id": 1, "fn": 0, "text": "sw $fp,0($sp)", "op": "sw", "dest": null, "args": ["$fp", "$sp"], "node": 0, "labels": [], "tag": {"role": "save", "reg": "fp"}, "out": ["sw $fp,0($sp)"]},
+    {"id": 2, "fn": 0, "text": "addiu $fp,$sp,0", "op": "addiu", "dest": "$fp", "args": ["$sp"], "node": 0, "labels": [], "tag": {"role": "set-fp"}, "out": ["addiu $fp,$sp,0"]},
+    {"id": 3, "fn": 0, "text": "addiu $sp,$sp,-4", "op": "addiu", "dest": "$sp", "args": ["$sp"], "node": 0, "labels": [], "tag": {"role": "reserve", "for": "ra"}, "out": ["addiu $sp,$sp,-4"]},
+    {"id": 4, "fn": 0, "text": "sw $ra,0($sp)", "op": "sw", "dest": null, "args": ["$ra", "$sp"], "node": 0, "labels": [], "tag": {"role": "save", "reg": "ra"}, "out": ["sw $ra,0($sp)"]},
+    {"id": 5, "fn": 0, "text": "pushRegisters", "op": "pushRegisters", "dest": null, "args": [], "node": 0, "labels": [], "tag": {"role": "push-registers"}, "out": ["addiu $sp,$sp,-4", "sw $t0,0($sp)", "addiu $sp,$sp,-4", "sw $t1,0($sp)"]},
+    {"id": 6, "fn": 0, "text": "addi v1,$fp,8", "op": "addi", "dest": "v1", "args": ["$fp"], "node": 5, "labels": [], "tag": {"role": "addr", "of": {"text": "n", "var": 1, "off": 0, "size": 4, "through": null}}, "out": ["addi $t0,$fp,8"]},
+    {"id": 7, "fn": 0, "text": "lw v0,0(v1)", "op": "lw", "dest": "v0", "args": ["v1"], "node": 5, "labels": [], "tag": {"role": "load", "of": {"text": "n", "var": 1, "off": 0, "size": 4, "through": null}}, "out": ["lw $t1,0($t0)"]},
+    {"id": 8, "fn": 0, "text": "addi v3,$fp,8", "op": "addi", "dest": "v3", "args": ["$fp"], "node": 6, "labels": [], "tag": {"role": "addr", "of": {"text": "n", "var": 1, "off": 0, "size": 4, "through": null}}, "out": ["addi $t0,$fp,8"]},
+    {"id": 9, "fn": 0, "text": "lw v2,0(v3)", "op": "lw", "dest": "v2", "args": ["v3"], "node": 6, "labels": [], "tag": {"role": "load", "of": {"text": "n", "var": 1, "off": 0, "size": 4, "through": null}}, "out": ["lw $t0,0($t0)"]},
+    {"id": 10, "fn": 0, "text": "addu v4,v0,v2", "op": "addu", "dest": "v4", "args": ["v0", "v2"], "node": 4, "labels": [], "out": ["addu $t0,$t1,$t0"]},
+    {"id": 11, "fn": 0, "text": "sw v4,4($fp)", "op": "sw", "dest": null, "args": ["v4", "$fp"], "node": 3, "labels": [], "tag": {"role": "store", "into": "return", "fun": "twice"}, "out": ["sw $t0,4($fp)"]},
+    {"id": 12, "fn": 0, "text": "j twice_epilogue", "op": "j", "dest": null, "args": [], "node": 3, "labels": [], "tag": {"role": "jump.epilogue", "fun": "twice"}, "out": ["j twice_epilogue"]},
+    {"id": 13, "fn": 0, "text": "popRegisters", "op": "popRegisters", "dest": null, "args": [], "node": 0, "labels": ["twice_epilogue"], "tag": {"role": "pop-registers"}, "out": ["lw $t1,0($sp)", "addiu $sp,$sp,4", "lw $t0,0($sp)", "addiu $sp,$sp,4"]},
+    {"id": 14, "fn": 0, "text": "addi $sp,$fp,4", "op": "addi", "dest": "$sp", "args": ["$fp"], "node": 0, "labels": [], "tag": {"role": "release", "for": "frame"}, "out": ["addi $sp,$fp,4"]},
+    {"id": 15, "fn": 0, "text": "lw $ra,-4($fp)", "op": "lw", "dest": "$ra", "args": ["$fp"], "node": 0, "labels": [], "tag": {"role": "restore", "reg": "ra"}, "out": ["lw $ra,-4($fp)"]},
+    {"id": 16, "fn": 0, "text": "lw $fp,0($fp)", "op": "lw", "dest": "$fp", "args": ["$fp"], "node": 0, "labels": [], "tag": {"role": "restore", "reg": "fp"}, "out": ["lw $fp,0($fp)"]},
+    {"id": 17, "fn": 0, "text": "jr $ra", "op": "jr", "dest": null, "args": ["$ra"], "node": 0, "labels": [], "tag": {"role": "return"}, "out": ["jr $ra"]},
+    {"id": 18, "fn": 1, "text": "addi $sp,$sp,-4", "op": "addi", "dest": "$sp", "args": ["$sp"], "node": 7, "labels": ["main"], "tag": {"role": "reserve", "for": "fp"}, "out": ["addi $sp,$sp,-4"]},
+    {"id": 19, "fn": 1, "text": "sw $fp,0($sp)", "op": "sw", "dest": null, "args": ["$fp", "$sp"], "node": 7, "labels": [], "tag": {"role": "save", "reg": "fp"}, "out": ["sw $fp,0($sp)"]},
+    {"id": 20, "fn": 1, "text": "addiu $fp,$sp,0", "op": "addiu", "dest": "$fp", "args": ["$sp"], "node": 7, "labels": [], "tag": {"role": "set-fp"}, "out": ["addiu $fp,$sp,0"]},
+    {"id": 21, "fn": 1, "text": "addiu $sp,$sp,-4", "op": "addiu", "dest": "$sp", "args": ["$sp"], "node": 7, "labels": [], "tag": {"role": "reserve", "for": "locals", "fun": "main"}, "out": ["addiu $sp,$sp,-4"]},
+    {"id": 22, "fn": 1, "text": "pushRegisters", "op": "pushRegisters", "dest": null, "args": [], "node": 7, "labels": [], "tag": {"role": "push-registers"}, "out": ["addiu $sp,$sp,-4", "sw $t0,0($sp)"]},
+    {"id": 23, "fn": 1, "text": "li v5,6", "op": "li", "dest": "v5", "args": [], "node": 11, "labels": [], "out": ["li $t0,6"]},
+    {"id": 24, "fn": 1, "text": "addi $sp,$sp,-4", "op": "addi", "dest": "$sp", "args": ["$sp"], "node": 10, "labels": [], "tag": {"role": "reserve", "for": "arg", "call": "twice", "param": {"text": "n", "var": 1, "off": 0, "size": 4}}, "out": ["addi $sp,$sp,-4"]},
+    {"id": 25, "fn": 1, "text": "sw v5,0($sp)", "op": "sw", "dest": null, "args": ["v5", "$sp"], "node": 10, "labels": [], "tag": {"role": "store", "into": {"text": "n", "var": 1, "off": 0, "size": 4}, "call": "twice"}, "out": ["sw $t0,0($sp)"]},
+    {"id": 26, "fn": 1, "text": "addi $sp,$sp,-4", "op": "addi", "dest": "$sp", "args": ["$sp"], "node": 10, "labels": [], "tag": {"role": "reserve", "for": "result", "call": "twice"}, "out": ["addi $sp,$sp,-4"]},
+    {"id": 27, "fn": 1, "text": "jal twice", "op": "jal", "dest": null, "args": [], "node": 10, "labels": [], "tag": {"role": "call", "call": "twice"}, "out": ["jal twice"]},
+    {"id": 28, "fn": 1, "text": "lw v6,0($sp)", "op": "lw", "dest": "v6", "args": ["$sp"], "node": 10, "labels": [], "tag": {"role": "load", "of": "result", "call": "twice"}, "out": ["lw $t0,0($sp)"]},
+    {"id": 29, "fn": 1, "text": "addi $sp,$sp,8", "op": "addi", "dest": "$sp", "args": ["$sp"], "node": 10, "labels": [], "tag": {"role": "release", "for": "call", "call": "twice"}, "out": ["addi $sp,$sp,8"]},
+    {"id": 30, "fn": 1, "text": "sw v6,4($fp)", "op": "sw", "dest": null, "args": ["v6", "$fp"], "node": 9, "labels": [], "tag": {"role": "store", "into": "return", "fun": "main"}, "out": ["sw $t0,4($fp)"]},
+    {"id": 31, "fn": 1, "text": "j main_epilogue", "op": "j", "dest": null, "args": [], "node": 9, "labels": [], "tag": {"role": "jump.epilogue", "fun": "main"}, "out": ["j main_epilogue"]},
+    {"id": 32, "fn": 1, "text": "popRegisters", "op": "popRegisters", "dest": null, "args": [], "node": 7, "labels": ["main_epilogue"], "tag": {"role": "pop-registers"}, "out": ["lw $t0,0($sp)", "addiu $sp,$sp,4"]},
+    {"id": 33, "fn": 1, "text": "addi $sp,$fp,4", "op": "addi", "dest": "$sp", "args": ["$fp"], "node": 7, "labels": [], "tag": {"role": "release", "for": "frame"}, "out": ["addi $sp,$fp,4"]},
+    {"id": 34, "fn": 1, "text": "lw $fp,0($fp)", "op": "lw", "dest": "$fp", "args": ["$fp"], "node": 7, "labels": [], "tag": {"role": "restore", "reg": "fp"}, "out": ["lw $fp,0($fp)"]},
+    {"id": 35, "fn": 1, "text": "li $v0,10", "op": "li", "dest": "$v0", "args": [], "node": 7, "labels": [], "tag": {"role": "syscall.code", "call": "exit"}, "out": ["li $v0,10"]},
+    {"id": 36, "fn": 1, "text": "syscall", "op": "syscall", "dest": null, "args": [], "node": 7, "labels": [], "tag": {"role": "syscall", "call": "exit"}, "out": ["syscall"]}
+  ],
+  "registers": {"v0": "$t1", "v1": "$t0", "v2": "$t0", "v3": "$t0", "v4": "$t0", "v5": "$t0", "v6": "$t0"},
+  "layout": {"structs": {}, "globals": [], "functions": [{"name": "twice", "node": 0, "return": {"off": 4, "size": 4, "type": {"k": "int"}}, "params": [{"name": "n", "node": 1, "off": 8, "size": 4, "type": {"k": "int"}}], "locals": []}, {"name": "main", "node": 7, "return": {"off": 4, "size": 4, "type": {"k": "int"}}, "params": [], "locals": []}]},
+  "backend": {
+    "k": 18,
+    "palette": ["$t0","$t1","$t2","$t3","$t4","$t5","$t6","$t7","$t8","$t9","$s0","$s1","$s2","$s3","$s4","$s5","$s6","$s7"],
+    "functions": [
+      {
+        "name": "twice",
+        "node": 0,
+        "first": 0,
+        "blocks": [
+          {
+            "id": 0,
+            "labels": ["twice"],
+            "text": "addi $sp,$sp,-4",
+            "def": "$sp",
+            "uses": ["$sp"],
+            "succ": [1]
+          },
+          {
+            "id": 1,
+            "labels": [],
+            "text": "sw $fp,0($sp)",
+            "def": null,
+            "uses": ["$fp","$sp"],
+            "succ": [2]
+          },
+          {
+            "id": 2,
+            "labels": [],
+            "text": "addiu $fp,$sp,0",
+            "def": "$fp",
+            "uses": ["$sp"],
+            "succ": [3]
+          },
+          {
+            "id": 3,
+            "labels": [],
+            "text": "addiu $sp,$sp,-4",
+            "def": "$sp",
+            "uses": ["$sp"],
+            "succ": [4]
+          },
+          {
+            "id": 4,
+            "labels": [],
+            "text": "sw $ra,0($sp)",
+            "def": null,
+            "uses": ["$ra","$sp"],
+            "succ": [5]
+          },
+          {
+            "id": 5,
+            "labels": [],
+            "text": "pushRegisters",
+            "def": null,
+            "uses": [],
+            "succ": [6]
+          },
+          {
+            "id": 6,
+            "labels": [],
+            "text": "addi v1,$fp,8",
+            "def": "v1",
+            "uses": ["$fp"],
+            "succ": [7]
+          },
+          {
+            "id": 7,
+            "labels": [],
+            "text": "lw v0,0(v1)",
+            "def": "v0",
+            "uses": ["v1"],
+            "succ": [8]
+          },
+          {
+            "id": 8,
+            "labels": [],
+            "text": "addi v3,$fp,8",
+            "def": "v3",
+            "uses": ["$fp"],
+            "succ": [9]
+          },
+          {
+            "id": 9,
+            "labels": [],
+            "text": "lw v2,0(v3)",
+            "def": "v2",
+            "uses": ["v3"],
+            "succ": [10]
+          },
+          {
+            "id": 10,
+            "labels": [],
+            "text": "addu v4,v0,v2",
+            "def": "v4",
+            "uses": ["v0","v2"],
+            "succ": [11]
+          },
+          {
+            "id": 11,
+            "labels": [],
+            "text": "sw v4,4($fp)",
+            "def": null,
+            "uses": ["v4","$fp"],
+            "succ": [12]
+          },
+          {
+            "id": 12,
+            "labels": [],
+            "text": "j twice_epilogue",
+            "def": null,
+            "uses": [],
+            "succ": [13]
+          },
+          {
+            "id": 13,
+            "labels": ["twice_epilogue"],
+            "text": "popRegisters",
+            "def": null,
+            "uses": [],
+            "succ": [14]
+          },
+          {
+            "id": 14,
+            "labels": [],
+            "text": "addi $sp,$fp,4",
+            "def": "$sp",
+            "uses": ["$fp"],
+            "succ": [15]
+          },
+          {
+            "id": 15,
+            "labels": [],
+            "text": "lw $ra,-4($fp)",
+            "def": "$ra",
+            "uses": ["$fp"],
+            "succ": [16]
+          },
+          {
+            "id": 16,
+            "labels": [],
+            "text": "lw $fp,0($fp)",
+            "def": "$fp",
+            "uses": ["$fp"],
+            "succ": [17]
+          },
+          {
+            "id": 17,
+            "labels": [],
+            "text": "jr $ra",
+            "def": null,
+            "uses": ["$ra"],
+            "succ": []
+          }
+        ],
+        "liveness": [
+          {
+            "sweep": 1,
+            "changes": [
+              {
+                "block": 17,
+                "in": [],
+                "out": [],
+                "added": ["$ra"]
+              },
+              {
+                "block": 16,
+                "in": [],
+                "out": [],
+                "added": ["$fp","$ra"]
+              },
+              {
+                "block": 15,
+                "in": [],
+                "out": [],
+                "added": ["$fp","$ra"]
+              },
+              {
+                "block": 14,
+                "in": [],
+                "out": [],
+                "added": ["$fp"]
+              },
+              {
+                "block": 13,
+                "in": [],
+                "out": [],
+                "added": ["$fp"]
+              },
+              {
+                "block": 12,
+                "in": [],
+                "out": [],
+                "added": ["$fp"]
+              },
+              {
+                "block": 11,
+                "in": ["v4"],
+                "out": [],
+                "added": ["$fp","v4"]
+              },
+              {
+                "block": 10,
+                "in": ["v0","v2"],
+                "out": ["v4"],
+                "added": ["$fp","v0","v2","v4"]
+              },
+              {
+                "block": 9,
+                "in": ["v0","v3"],
+                "out": ["v0","v2"],
+                "added": ["$fp","v0","v2","v3"]
+              },
+              {
+                "block": 8,
+                "in": ["v0"],
+                "out": ["v0","v3"],
+                "added": ["$fp","v0","v3"]
+              },
+              {
+                "block": 7,
+                "in": ["v1"],
+                "out": ["v0"],
+                "added": ["$fp","v0","v1"]
+              },
+              {
+                "block": 6,
+                "in": [],
+                "out": ["v1"],
+                "added": ["$fp","v1"]
+              },
+              {
+                "block": 5,
+                "in": [],
+                "out": [],
+                "added": ["$fp"]
+              },
+              {
+                "block": 4,
+                "in": [],
+                "out": [],
+                "added": ["$fp","$ra","$sp"]
+              },
+              {
+                "block": 3,
+                "in": [],
+                "out": [],
+                "added": ["$fp","$ra","$sp"]
+              },
+              {
+                "block": 2,
+                "in": [],
+                "out": [],
+                "added": ["$fp","$ra","$sp"]
+              },
+              {
+                "block": 1,
+                "in": [],
+                "out": [],
+                "added": ["$fp","$ra","$sp"]
+              },
+              {
+                "block": 0,
+                "in": [],
+                "out": [],
+                "added": ["$fp","$ra","$sp"]
+              }
+            ]
+          },
+          {
+            "sweep": 2,
+            "changes": []
+          },
+          {
+            "sweep": "final",
+            "deadDefs": [],
+            "blocks": [
+              {
+                "block": 0,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 1,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 2,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 3,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 4,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 5,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 6,
+                "in": [],
+                "out": ["v1"]
+              },
+              {
+                "block": 7,
+                "in": ["v1"],
+                "out": ["v0"]
+              },
+              {
+                "block": 8,
+                "in": ["v0"],
+                "out": ["v0","v3"]
+              },
+              {
+                "block": 9,
+                "in": ["v0","v3"],
+                "out": ["v0","v2"]
+              },
+              {
+                "block": 10,
+                "in": ["v0","v2"],
+                "out": ["v4"]
+              },
+              {
+                "block": 11,
+                "in": ["v4"],
+                "out": []
+              },
+              {
+                "block": 12,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 13,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 14,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 15,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 16,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 17,
+                "in": [],
+                "out": []
+              }
+            ]
+          }
+        ],
+        "interference": {
+          "nodes": ["v0","v1","v2","v3","v4"],
+          "edges": [
+            ["v0","v2"],
+            ["v0","v3"]
+          ],
+          "degree": {
+            "v0": 2,
+            "v1": 0,
+            "v2": 1,
+            "v3": 1,
+            "v4": 0
+          }
+        },
+        "colouring": {
+          "palette": ["$t0","$t1","$t2","$t3","$t4","$t5","$t6","$t7","$t8","$t9","$s0","$s1","$s2","$s3","$s4","$s5","$s6","$s7"],
+          "steps": [
+            {
+              "op": "simplify",
+              "vr": "v1",
+              "degree": 0
+            },
+            {
+              "op": "simplify",
+              "vr": "v0",
+              "degree": 2
+            },
+            {
+              "op": "simplify",
+              "vr": "v3",
+              "degree": 0
+            },
+            {
+              "op": "simplify",
+              "vr": "v2",
+              "degree": 0
+            },
+            {
+              "op": "simplify",
+              "vr": "v4",
+              "degree": 0
+            },
+            {
+              "op": "select",
+              "vr": "v4",
+              "forbidden": [],
+              "colour": "$t0"
+            },
+            {
+              "op": "select",
+              "vr": "v2",
+              "forbidden": [],
+              "colour": "$t0"
+            },
+            {
+              "op": "select",
+              "vr": "v3",
+              "forbidden": [],
+              "colour": "$t0"
+            },
+            {
+              "op": "select",
+              "vr": "v0",
+              "forbidden": ["$t0"],
+              "colour": "$t1"
+            },
+            {
+              "op": "select",
+              "vr": "v1",
+              "forbidden": [],
+              "colour": "$t0"
+            }
+          ],
+          "result": {
+            "v0": "$t1",
+            "v1": "$t0",
+            "v2": "$t0",
+            "v3": "$t0",
+            "v4": "$t0"
+          },
+          "spills": [],
+          "labels": {}
+        }
+      },
+      {
+        "name": "main",
+        "node": 7,
+        "first": 18,
+        "blocks": [
+          {
+            "id": 0,
+            "labels": ["main"],
+            "text": "addi $sp,$sp,-4",
+            "def": "$sp",
+            "uses": ["$sp"],
+            "succ": [1]
+          },
+          {
+            "id": 1,
+            "labels": [],
+            "text": "sw $fp,0($sp)",
+            "def": null,
+            "uses": ["$fp","$sp"],
+            "succ": [2]
+          },
+          {
+            "id": 2,
+            "labels": [],
+            "text": "addiu $fp,$sp,0",
+            "def": "$fp",
+            "uses": ["$sp"],
+            "succ": [3]
+          },
+          {
+            "id": 3,
+            "labels": [],
+            "text": "addiu $sp,$sp,-4",
+            "def": "$sp",
+            "uses": ["$sp"],
+            "succ": [4]
+          },
+          {
+            "id": 4,
+            "labels": [],
+            "text": "pushRegisters",
+            "def": null,
+            "uses": [],
+            "succ": [5]
+          },
+          {
+            "id": 5,
+            "labels": [],
+            "text": "li v5,6",
+            "def": "v5",
+            "uses": [],
+            "succ": [6]
+          },
+          {
+            "id": 6,
+            "labels": [],
+            "text": "addi $sp,$sp,-4",
+            "def": "$sp",
+            "uses": ["$sp"],
+            "succ": [7]
+          },
+          {
+            "id": 7,
+            "labels": [],
+            "text": "sw v5,0($sp)",
+            "def": null,
+            "uses": ["v5","$sp"],
+            "succ": [8]
+          },
+          {
+            "id": 8,
+            "labels": [],
+            "text": "addi $sp,$sp,-4",
+            "def": "$sp",
+            "uses": ["$sp"],
+            "succ": [9]
+          },
+          {
+            "id": 9,
+            "labels": [],
+            "text": "jal twice",
+            "def": null,
+            "uses": [],
+            "succ": [10]
+          },
+          {
+            "id": 10,
+            "labels": [],
+            "text": "lw v6,0($sp)",
+            "def": "v6",
+            "uses": ["$sp"],
+            "succ": [11]
+          },
+          {
+            "id": 11,
+            "labels": [],
+            "text": "addi $sp,$sp,8",
+            "def": "$sp",
+            "uses": ["$sp"],
+            "succ": [12]
+          },
+          {
+            "id": 12,
+            "labels": [],
+            "text": "sw v6,4($fp)",
+            "def": null,
+            "uses": ["v6","$fp"],
+            "succ": [13]
+          },
+          {
+            "id": 13,
+            "labels": [],
+            "text": "j main_epilogue",
+            "def": null,
+            "uses": [],
+            "succ": [14]
+          },
+          {
+            "id": 14,
+            "labels": ["main_epilogue"],
+            "text": "popRegisters",
+            "def": null,
+            "uses": [],
+            "succ": [15]
+          },
+          {
+            "id": 15,
+            "labels": [],
+            "text": "addi $sp,$fp,4",
+            "def": "$sp",
+            "uses": ["$fp"],
+            "succ": [16]
+          },
+          {
+            "id": 16,
+            "labels": [],
+            "text": "lw $fp,0($fp)",
+            "def": "$fp",
+            "uses": ["$fp"],
+            "succ": [17]
+          },
+          {
+            "id": 17,
+            "labels": [],
+            "text": "li $v0,10",
+            "def": "$v0",
+            "uses": [],
+            "succ": [18]
+          },
+          {
+            "id": 18,
+            "labels": [],
+            "text": "syscall",
+            "def": null,
+            "uses": [],
+            "succ": []
+          }
+        ],
+        "liveness": [
+          {
+            "sweep": 1,
+            "changes": [
+              {
+                "block": 16,
+                "in": [],
+                "out": [],
+                "added": ["$fp"]
+              },
+              {
+                "block": 15,
+                "in": [],
+                "out": [],
+                "added": ["$fp"]
+              },
+              {
+                "block": 14,
+                "in": [],
+                "out": [],
+                "added": ["$fp"]
+              },
+              {
+                "block": 13,
+                "in": [],
+                "out": [],
+                "added": ["$fp"]
+              },
+              {
+                "block": 12,
+                "in": ["v6"],
+                "out": [],
+                "added": ["$fp","v6"]
+              },
+              {
+                "block": 11,
+                "in": ["v6"],
+                "out": ["v6"],
+                "added": ["$fp","$sp","v6"]
+              },
+              {
+                "block": 10,
+                "in": [],
+                "out": ["v6"],
+                "added": ["$fp","$sp","v6"]
+              },
+              {
+                "block": 9,
+                "in": [],
+                "out": [],
+                "added": ["$fp","$sp"]
+              },
+              {
+                "block": 8,
+                "in": [],
+                "out": [],
+                "added": ["$fp","$sp"]
+              },
+              {
+                "block": 7,
+                "in": ["v5"],
+                "out": [],
+                "added": ["$fp","$sp","v5"]
+              },
+              {
+                "block": 6,
+                "in": ["v5"],
+                "out": ["v5"],
+                "added": ["$fp","$sp","v5"]
+              },
+              {
+                "block": 5,
+                "in": [],
+                "out": ["v5"],
+                "added": ["$fp","$sp","v5"]
+              },
+              {
+                "block": 4,
+                "in": [],
+                "out": [],
+                "added": ["$fp","$sp"]
+              },
+              {
+                "block": 3,
+                "in": [],
+                "out": [],
+                "added": ["$fp","$sp"]
+              },
+              {
+                "block": 2,
+                "in": [],
+                "out": [],
+                "added": ["$fp","$sp"]
+              },
+              {
+                "block": 1,
+                "in": [],
+                "out": [],
+                "added": ["$fp","$sp"]
+              },
+              {
+                "block": 0,
+                "in": [],
+                "out": [],
+                "added": ["$fp","$sp"]
+              }
+            ]
+          },
+          {
+            "sweep": 2,
+            "changes": []
+          },
+          {
+            "sweep": "final",
+            "deadDefs": [],
+            "blocks": [
+              {
+                "block": 0,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 1,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 2,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 3,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 4,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 5,
+                "in": [],
+                "out": ["v5"]
+              },
+              {
+                "block": 6,
+                "in": ["v5"],
+                "out": ["v5"]
+              },
+              {
+                "block": 7,
+                "in": ["v5"],
+                "out": []
+              },
+              {
+                "block": 8,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 9,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 10,
+                "in": [],
+                "out": ["v6"]
+              },
+              {
+                "block": 11,
+                "in": ["v6"],
+                "out": ["v6"]
+              },
+              {
+                "block": 12,
+                "in": ["v6"],
+                "out": []
+              },
+              {
+                "block": 13,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 14,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 15,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 16,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 17,
+                "in": [],
+                "out": []
+              },
+              {
+                "block": 18,
+                "in": [],
+                "out": []
+              }
+            ]
+          }
+        ],
+        "interference": {
+          "nodes": ["v5","v6"],
+          "edges": [],
+          "degree": {
+            "v5": 0,
+            "v6": 0
+          }
+        },
+        "colouring": {
+          "palette": ["$t0","$t1","$t2","$t3","$t4","$t5","$t6","$t7","$t8","$t9","$s0","$s1","$s2","$s3","$s4","$s5","$s6","$s7"],
+          "steps": [
+            {
+              "op": "simplify",
+              "vr": "v5",
+              "degree": 0
+            },
+            {
+              "op": "simplify",
+              "vr": "v6",
+              "degree": 0
+            },
+            {
+              "op": "select",
+              "vr": "v6",
+              "forbidden": [],
+              "colour": "$t0"
+            },
+            {
+              "op": "select",
+              "vr": "v5",
+              "forbidden": [],
+              "colour": "$t0"
+            }
+          ],
+          "result": {
+            "v5": "$t0",
+            "v6": "$t0"
+          },
+          "spills": [],
+          "labels": {}
+        }
+      }
+    ]
+  },
+  "root": 12,
+  "ast": "Program(FunDef(INT,twice,VarDecl(INT,n),Block(Return(BinOp(VarExpr(n),ADD,VarExpr(n))))),FunDef(INT,main,Block(Return(FunCallExpr(twice,IntLiteral(6))))))",
+  "scopes": [
+    {"id": 0, "node": null, "parent": null, "kind": "global", "label": "global", "decls": [0, 7], "builtins": ["print_s", "print_i", "print_c", "read_c", "read_i", "mcmalloc"]},
+    {"id": 1, "node": 0, "parent": 0, "kind": "function", "label": "twice", "decls": [1]},
+    {"id": 2, "node": 7, "parent": 0, "kind": "function", "label": "main", "decls": []}
+  ],
+  "sem": ["Semantic analysis: Pass"]
+}

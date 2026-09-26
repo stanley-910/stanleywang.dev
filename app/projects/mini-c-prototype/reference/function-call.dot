@@ -1,0 +1,56 @@
+digraph ast {
+  Node0 [label="Program"];
+  Node1 [label="FunDef"];
+  Node2 [label="INT"];
+  Node3 [label="Ident(twice)"];
+  Node4 [label="Block"];
+  Node5 [label="Return"];
+  Node6 [label="Var(n)"];
+  Node7 [label="+"];
+  Node8 [label="Var(n)"];
+  Node9 [label="VarDecl"];
+  Node10 [label="INT"];
+  Node11 [label="Ident(n)"];
+  Node12 [label="FunDef"];
+  Node13 [label="INT"];
+  Node14 [label="Ident(main)"];
+  Node15 [label="Block"];
+  Node16 [label="Return"];
+  Node17 [label="FunCallExpr"];
+  Node18 [label="Ident(twice)"];
+  Node19 [label="Cst(6)"];
+  Node7 -> Node6;
+  Node7 -> Node8;
+  { rank=same; Node6 Node8; }
+  Node6 -> Node8 [style=invis];
+  Node5 -> Node7;
+  Node4 -> Node5 [label="stmt0"];
+  { rank=same; Node5; }
+  Node1 -> Node2 [label="Type"];
+  Node1 -> Node3 [label="Name"];
+  Node9 -> Node10 [label="Type"];
+  Node9 -> Node11 [label="Name"];
+  { rank=same; Node10 Node11; }
+  Node10 -> Node11 [style=invis];
+  Node1 -> Node9 [label="param0"];
+  Node1 -> Node4 [label="Block"];
+  { rank=same; Node2 Node3 Node9 Node4; }
+  Node2 -> Node3 [style=invis];
+  Node3 -> Node9 [style=invis];
+  Node9 -> Node4 [style=invis];
+  Node0 -> Node1;
+  Node17 -> Node18;
+  Node17 -> Node19 [label="arg0"];
+  { rank=same; Node18 Node19; }
+  Node18 -> Node19 [style=invis];
+  Node16 -> Node17;
+  Node15 -> Node16 [label="stmt0"];
+  { rank=same; Node16; }
+  Node12 -> Node13 [label="Type"];
+  Node12 -> Node14 [label="Name"];
+  Node12 -> Node15 [label="Block"];
+  { rank=same; Node13 Node14 Node15; }
+  Node13 -> Node14 [style=invis];
+  Node14 -> Node15 [style=invis];
+  Node0 -> Node12;
+}

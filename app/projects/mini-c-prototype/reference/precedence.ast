@@ -1,0 +1,1 @@
+Program(FunDef(INT,main,Block(Return(BinOp(IntLiteral(4),ADD,BinOp(IntLiteral(2),MUL,IntLiteral(3)))))))
