@@ -40,6 +40,7 @@ import {
 import { lanesOf, registersOf } from './lanes'
 import { linkRouter, type Box, type Route } from './link-route'
 import { NameLinks } from './name-links'
+import { NoteWindow } from './note-window'
 import { groupsOf, parentsOf, parseView } from './parse-view'
 import { compileReal, compilerLoaded, REAL_MAX_CHARS } from './real'
 import { findReference, REFERENCES } from './reference'
@@ -64,6 +65,7 @@ import {
   type Trace,
   treePositions,
 } from './trace'
+import { TypePanel } from './type-panel'
 import '@/app/styles/markdown.css'
 import './animated.css'
 
@@ -90,11 +92,15 @@ const isTypeStep = (f: Frame) =>
 const speeds = [0.5, 1, 1.5, 2]
 const KEEP_HIDDEN = ['int', '(', ')', '{', '}', ';', '=', ',']
 const HOVER_DELAY = 250
+// How long the pointer rests on a scrollbar before its thumb shows.
+const DWELL_MS = 150
 // Stage geometry: pieces live in a 680 × 480 viewBox stretched over the scene,
 // but their text is fixed-size CSS pixels, so layout works in pixels.
 const VIEW_W = 680
 const VIEW_H = 480
 const CHAR_PX = 7.2
+// Space between neighbouring labels in the tree.
+const TREE_GAP = 14
 // A type badge's characters (10px).
 const TYPE_PX = 6
 const EDGE_PX = 24
@@ -102,6 +108,8 @@ const EDGE_PX = 24
 const CARD_CHAR_PX = 6.6
 // Line height of the source editor; matches --row on .ac-source.
 const SOURCE_ROW = 19
+// Width of the editor's line-number gutter; matches .ac-source's columns.
+const GUTTER_PX = 34
 // The emit pane's rows and stack words, one to one with the editor's.
 const ASM_ROW = SOURCE_ROW
 // One character of the assembly's 12px monospace.
@@ -556,7 +564,7 @@ export default function AnimatedCompiler() {
     return [...best.values()]
   }, [trace, titles])
   const baseTree = useMemo(
-    () => treePositions(trace, (n) => n.label.length * CHAR_PX + 2),
+    () => treePositions(trace, (n) => n.label.length * CHAR_PX + 2, TREE_GAP),
     [trace],
   )
   const parents = useMemo(() => parentsOf(trace), [trace])
@@ -776,13 +784,27 @@ export default function AnimatedCompiler() {
   // the tree will show; a prefix `*` stays as typed.
   // A declaration's type tokens (`int` in `int twice(` or `int n`) are kept
   // in its node, not thrown away like `(` or `;`. They wait in the tray
-  // until the node lands, then slide into it and fade.
+  // until the node lands, then slide into it and fade. So do the other
+  // tokens a declaration or expression reads without a node of their own:
+  // `[3]` in `int a[3]`, a struct's fields, the `]` of `a[0]`, the `x` of
+  // `.x`. Each goes to the innermost node around it.
   const absorbedBy = useMemo(() => {
     const by = new Map<number, number>()
+    const anchors = new Set(trace.nodes.map((n) => n.token))
+    const width = (id: number) => trace.nodes[id].end - trace.nodes[id].start
     for (const n of trace.nodes)
       if (n.kind === 'function' || n.kind === 'declare')
         for (const t of trace.tokens)
           if (t.start >= n.start && t.id < n.token) by.set(t.id, n.id)
+    for (const n of trace.nodes) {
+      if (n.kind !== 'declare' && n.kind !== 'expr') continue
+      for (const t of trace.tokens) {
+        if (t.start < n.start || t.end > n.end || t.id < n.token) continue
+        if (anchors.has(t.id) || KEEP_HIDDEN.includes(t.text)) continue
+        const held = by.get(t.id)
+        if (held === undefined || width(n.id) < width(held)) by.set(t.id, n.id)
+      }
+    }
     return by
   }, [trace])
   const shownAt = useMemo(() => {
@@ -901,16 +923,18 @@ export default function AnimatedCompiler() {
     } catch {}
   }
   // A scrollbar's thumb shows while its pane is scrolled by hand, and while
-  // the pointer is on the scrollbar, but not when a step scrolls the pane
-  // (the assembly follows the current row) or the pane is only hovered.
+  // the pointer rests on the scrollbar, but not when a step scrolls the pane
+  // (the assembly follows the current row), the pane is only hovered, or the
+  // pointer just crosses the bar on its way in. Only the axis scrolled or
+  // hovered lights: data-reveal holds "x", "y" or both.
   // An attribute rather than a class, so a render doesn't clear it.
   const rootRef = useRef<HTMLElement>(null)
   useEffect(() => {
     const root = rootRef.current
     if (!root) return
     const timers = new Map<Element, ReturnType<typeof setTimeout>>()
-    const reveal = (pane: Element, ms: number) => {
-      pane.setAttribute('data-reveal', '')
+    const reveal = (pane: Element, axes: string, ms: number) => {
+      pane.setAttribute('data-reveal', axes)
       clearTimeout(timers.get(pane))
       timers.set(
         pane,
@@ -935,17 +959,56 @@ export default function AnimatedCompiler() {
     }
     const scrolled = (e: Event) => {
       const pane = paneOf(e.target)
-      if (pane) reveal(pane, 900)
+      if (!pane) return
+      const axes =
+        e instanceof WheelEvent
+          ? Math.abs(e.deltaX) > Math.abs(e.deltaY)
+            ? 'x'
+            : 'y'
+          : 'x y'
+      reveal(pane, axes, 900)
     }
+    // The bar the pointer is resting on; it lights after DWELL_MS there.
+    let resting: {
+      pane: Element
+      axis: string
+      timer: ReturnType<typeof setTimeout>
+    } | null = null
     const moved = (e: PointerEvent) => {
       const pane = paneOf(e.target)
-      if (!pane) return
-      // The scrollbar is what lies past the pane's client area.
-      const box = pane.getBoundingClientRect()
-      const onBar =
-        e.clientX > box.left + pane.clientLeft + pane.clientWidth ||
-        e.clientY > box.top + pane.clientTop + pane.clientHeight
-      if (onBar) reveal(pane, 600)
+      // A scrollbar is what lies past the pane's client area, on an axis
+      // that scrolls (an empty gutter kept by scrollbar-gutter isn't one).
+      let axis: string | null = null
+      if (pane) {
+        const box = pane.getBoundingClientRect()
+        if (
+          pane.scrollHeight > pane.clientHeight &&
+          e.clientX > box.left + pane.clientLeft + pane.clientWidth
+        )
+          axis = 'y'
+        else if (
+          pane.scrollWidth > pane.clientWidth &&
+          e.clientY > box.top + pane.clientTop + pane.clientHeight
+        )
+          axis = 'x'
+      }
+      if (!pane || !axis) {
+        if (resting) clearTimeout(resting.timer)
+        resting = null
+        return
+      }
+      // Already lit: keep it lit while the pointer stays on it.
+      if (pane.getAttribute('data-reveal')?.includes(axis)) {
+        reveal(pane, axis, 600)
+        return
+      }
+      if (resting?.pane === pane && resting.axis === axis) return
+      if (resting) clearTimeout(resting.timer)
+      const on = { pane, axis }
+      resting = {
+        ...on,
+        timer: setTimeout(() => reveal(on.pane, on.axis, 600), DWELL_MS),
+      }
     }
     root.addEventListener('wheel', scrolled, { passive: true })
     root.addEventListener('touchmove', scrolled, { passive: true })
@@ -955,6 +1018,7 @@ export default function AnimatedCompiler() {
       root.removeEventListener('touchmove', scrolled)
       root.removeEventListener('pointermove', moved)
       for (const t of timers.values()) clearTimeout(t)
+      if (resting) clearTimeout(resting.timer)
     }
   }, [])
   const saveWidth = (width: number | null) => {
@@ -1398,13 +1462,22 @@ export default function AnimatedCompiler() {
   }, [])
 
   // Keep the active line third from the top, and again whenever the source
-  // is resized (a tall note shrinks it mid-token).
+  // is resized (a tall note shrinks it mid-token). Sideways, the pane stays
+  // at its left edge unless the step's mark would be out of view.
   useEffect(() => {
     const pane = scrollRef.current
     if (!pane || editing) return
     const row = source.slice(0, activeSpan.start).split('\n').length
     const scroll = () => {
       pane.scrollTop = Math.max(0, (row - 3) * SOURCE_ROW)
+      const mark =
+        pane.querySelector<HTMLElement>('.ac-text mark.cursor') ??
+        pane.querySelector<HTMLElement>('.ac-text mark')
+      const x = mark?.offsetLeft ?? 0
+      const width = Math.min(mark?.offsetWidth ?? 0, 80)
+      const seen = pane.clientWidth - GUTTER_PX
+      if (x < pane.scrollLeft || x + width > pane.scrollLeft + seen - 16)
+        pane.scrollLeft = x < seen * 0.8 ? 0 : x - seen * 0.3
     }
     scroll()
     const observer = new ResizeObserver(scroll)
@@ -1641,8 +1714,12 @@ export default function AnimatedCompiler() {
         const parent = parents.get(id)
         let x =
           baseX(id) + (parent === undefined ? 0 : (shift.get(parent) ?? 0))
-        const half = ((trace.nodes[id].label.length * CHAR_PX + 16) * fit) / 2
-        if (x - half < edge + 10 * fit) x = edge + 10 * fit + half
+        // The label width and gap baseTree packed the tree with, so a row
+        // with no badges yet already fits and nothing moves.
+        const half = ((trace.nodes[id].label.length * CHAR_PX + 2) * fit) / 2
+        const gap = TREE_GAP * fit
+        // (half a pixel of slack for rounding in the packed layout)
+        if (x - half < edge + gap - 0.5) x = edge + gap + half
         shift.set(id, x - baseX(id))
         edge = x + half + (badgeRoom.get(id) ?? 0) * fit
         right = Math.max(right, edge)
@@ -1985,6 +2062,13 @@ export default function AnimatedCompiler() {
       ].sort((a, b) => a.start - b.start)
     : undefined
   const lines = source.split('\n')
+  // The longest line, in characters (a tab as its two columns): the text
+  // column is that wide, so a long line scrolls the whole pane sideways
+  // instead of hiding inside the textarea.
+  const columns = Math.max(
+    0,
+    ...lines.map((l) => l.replace(/\t/g, '  ').length),
+  )
   const line = source.slice(0, activeSpan.start).split('\n').length
   const hoverText =
     hoverIns !== null && !playing && !emitStage
@@ -2001,20 +2085,17 @@ export default function AnimatedCompiler() {
   // Hovers replace the step text in the panel rather than float on the stage,
   // so nothing on screen says the same thing twice.
   // The name pass: the note card holds the scopes instead of a sentence.
-  const scopeCard = naming && !hoverText
   const statusText = error
     ? error.message
-    : scopeCard
-      ? 'Declarations per scope'
-      : hoverText
-        ? 'hover'
-        : intro
-          ? intro.title
-          : index === 0
-            ? 'Press space to compile your code!'
-            : frame.why.kind === 'token'
-              ? `Token: \`${trace.tokens[frame.why.token].text}\``
-              : frame.title
+    : hoverText
+      ? 'hover'
+      : intro
+        ? intro.title
+        : index === 0
+          ? 'Press space to compile your code!'
+          : frame.why.kind === 'token'
+            ? `Token: \`${trace.tokens[frame.why.token].text}\``
+            : frame.title
   const noteText =
     hoverText ??
     intro?.body ??
@@ -2027,13 +2108,19 @@ export default function AnimatedCompiler() {
     )
       ? 'The compiler stops at its first error. Fix it in the editor and it runs again.'
       : explain(trace, frame, titles))
-  // Without step titles, only the welcome and slides keep a header; an
-  // error is already spelled out in the chip above.
+  // The note's first line, over its text: what it is about, when there's
+  // a header to show (the welcome, a slide, an error, or step titles on).
   const showTitle =
     titles ||
-    scopeCard ||
     (!!intro && !hoverText) ||
-    (index === 0 && !hoverText && !error)
+    (index === 0 && !hoverText && !error) ||
+    !!error ||
+    !!hoverText
+  const heading = showTitle && statusText && (
+    <span className="ac-window-head">
+      <Prose text={statusText} />
+    </span>
+  )
   // A slide's small two-column table, under its body.
   const slideTable = !hoverText && intro?.table && (
     <table className="ac-slide-table">
@@ -2068,6 +2155,25 @@ export default function AnimatedCompiler() {
   // Hidden layers size the panel for the tallest lexer step, but only on the
   // steps themselves: the welcome and slides keep their own height.
   const sizing = !intro && index > 0
+  // What the pane under the source is showing: the phase's own record.
+  const paneLabel = charStep
+    ? 'characters'
+    : landing && !hoverText
+      ? 'node kinds'
+      : naming
+        ? 'declarations per scope'
+        : typing
+          ? 'typing rule'
+          : ''
+  // The note window first opens at the stage's top left.
+  const windowStart = () => {
+    const root = rootRef.current
+    const stage = root?.querySelector('.ac-stage')
+    if (!root || !stage) return { x: 16, y: 16 }
+    const r = root.getBoundingClientRect()
+    const s = stage.getBoundingClientRect()
+    return { x: s.left - r.left + 12, y: s.top - r.top + 12 }
+  }
   // Switching a mode keeps the place: the same recorded step in the new
   // list (from an inserted step, the recorded one after it).
   const switchLexer = (lexer: boolean) => {
@@ -2245,14 +2351,14 @@ export default function AnimatedCompiler() {
           width: cardAt.closed.width,
         })
 
+  const stackNow = stacks.find(
+    (f) =>
+      f.first < frame.instructionCount && frame.instructionCount - 1 <= f.last,
+  )
   const stackColumn = (at?: { x: number; y: number }) => (
     <StackColumn
       key={at ? `${at.x},${at.y}` : 'docked'}
-      frame={stacks.find(
-        (f) =>
-          f.first < frame.instructionCount &&
-          frame.instructionCount - 1 <= f.last,
-      )}
+      frame={stackNow}
       count={frame.instructionCount}
       from={back ? null : (currentRange?.[0] ?? null)}
       row={ASM_ROW}
@@ -2399,7 +2505,10 @@ export default function AnimatedCompiler() {
                 </span>
               ))}
             </div>
-            <div className="ac-text">
+            <div
+              className="ac-text"
+              style={{ '--cols': columns } as CSSProperties}
+            >
               {!editing && (
                 <pre aria-label="Highlighted source">
                   <code>
@@ -2539,41 +2648,32 @@ export default function AnimatedCompiler() {
                 saveSplit(clampSplit(range.height + step, range.max))
               }}
             />
-            {showTitle && (
+            {paneLabel && (
               <div className="ac-bar">
-                <span className="ac-note-title">
-                  <Prose text={statusText} />
-                </span>
+                <span className="ac-note-title">{paneLabel}</span>
               </div>
             )}
             <div className="ac-note-body">
-              {frame.phase === 'Tokens' ? (
-                // Hidden layers hold the tallest step of each token class in
-                // the same grid cell, so the panel keeps one height while
-                // stepping through tokens and only grows if even that won't fit.
-                <div className="ac-note-stack">
-                  <div className="ac-note-layer">
-                    <StepNote text={noteText} token={stepToken} />
-                    {charStep && (
-                      <CharTable
-                        read={charStep.read}
-                        reader={charStep.reader}
-                        final={charStep.final}
-                      />
-                    )}
-                    {slideTable}
-                  </div>
-                  {(sizing ? tallestTokenSteps : []).map((v) => (
-                    <div
-                      key={tokenKind(v.token)}
-                      className="ac-note-layer ghost"
-                      aria-hidden="true"
+              {charStep && (
+                <CharTable
+                  read={charStep.read}
+                  reader={charStep.reader}
+                  final={charStep.final}
+                />
+              )}
+              {landing && !hoverText && (
+                <ul className="ac-lexemes" aria-label="Kinds in this class">
+                  {NODE_KINDS[landing.cls].map((kind) => (
+                    <li
+                      key={kind}
+                      className={kind === landing.kind ? 'current' : ''}
                     >
-                      <StepNote text={v.text} token={v.token} />
-                    </div>
+                      {kind}
+                    </li>
                   ))}
-                </div>
-              ) : scopeCard ? (
+                </ul>
+              )}
+              {naming && (
                 <ScopeTree
                   trace={trace}
                   scopes={scopes}
@@ -2581,41 +2681,16 @@ export default function AnimatedCompiler() {
                   step={index}
                   duration={transition.duration}
                 />
-              ) : (
-                <>
-                  <Prose text={noteText} />
-                  {emitStage && !stackAt && stackColumn()}
-                  {landing && !hoverText && (
-                    <ul className="ac-lexemes" aria-label="Kinds in this class">
-                      {NODE_KINDS[landing.cls].map((kind) => (
-                        <li
-                          key={kind}
-                          className={kind === landing.kind ? 'current' : ''}
-                        >
-                          {kind}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  {slideTable}
-                </>
               )}
+              {typing && (
+                <TypePanel
+                  trace={trace}
+                  source={trace.text ?? source}
+                  index={index}
+                />
+              )}
+              {emitStage && !stackAt && stackColumn()}
             </div>
-            {intro && deck && deck.slides.length > 1 && (
-              <div className="ac-note-foot">
-                <button
-                  type="button"
-                  className="ac-slides"
-                  aria-label="Skip intro"
-                  onClick={() => seek(index + 1)}
-                >
-                  <span className="count">
-                    {slide}/{deck.slides.length}
-                  </span>
-                  <span className="skip">skip</span>
-                </button>
-              </div>
-            )}
           </section>
         </section>
 
@@ -3612,6 +3687,61 @@ export default function AnimatedCompiler() {
         </section>
       </div>
       {emitStage && stackAt && stackColumn(stackAt)}
+      <NoteWindow
+        title="notes.txt"
+        error={!!error}
+        live={!playing}
+        bounds={rootRef}
+        area={workRef}
+        start={windowStart}
+        foot={
+          intro &&
+          deck &&
+          deck.slides.length > 1 && (
+            <div className="ac-note-foot">
+              <button
+                type="button"
+                className="ac-slides"
+                aria-label="Skip intro"
+                onClick={() => seek(index + 1)}
+              >
+                <span className="count">
+                  {slide}/{deck.slides.length}
+                </span>
+                <span className="skip">skip</span>
+              </button>
+            </div>
+          )
+        }
+      >
+        {frame.phase === 'Tokens' ? (
+          // Hidden layers hold the tallest step of each token class in the
+          // same grid cell, so the window keeps one height while stepping
+          // through tokens and only grows if even that won't fit.
+          <div className="ac-note-stack">
+            <div className="ac-note-layer">
+              {heading}
+              <StepNote text={noteText} token={stepToken} />
+              {slideTable}
+            </div>
+            {(sizing ? tallestTokenSteps : []).map((v) => (
+              <div
+                key={tokenKind(v.token)}
+                className="ac-note-layer ghost"
+                aria-hidden="true"
+              >
+                <StepNote text={v.text} token={v.token} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <>
+            {heading}
+            <Prose text={noteText} />
+            {slideTable}
+          </>
+        )}
+      </NoteWindow>
 
       <footer className="ac-keys" aria-label="Controls">
         <button
