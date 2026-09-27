@@ -195,9 +195,34 @@ function savedBy(trace: Trace, fn: number): string[] {
 
 const built = new WeakMap<Trace, StackFrame[]>()
 
+/** Declarations bigger than this aren't drawn: a column of a million words
+ * helps no one, and naming each of them would stall the page. */
+export const MAX_DRAWN_BYTES = 4096
+
+/** The first declaration too big to draw, if any; then no frame is built. */
+export function tooBig(trace: Trace) {
+  const layout = trace.layout
+  if (!layout) return undefined
+  return [
+    ...layout.globals,
+    ...layout.functions.flatMap((f) => [...f.params, ...f.locals]),
+    // Its size worked out here too, from the type: the compiler's own
+    // (a Java int) overflows for int a[2147483647] and comes out negative.
+  ].find(
+    (s) =>
+      s.size > MAX_DRAWN_BYTES ||
+      s.size < 0 ||
+      sizeOf(s.type, layout) > MAX_DRAWN_BYTES,
+  )
+}
+
 export function stackFrames(trace: Trace): StackFrame[] {
   const cached = built.get(trace)
   if (cached) return cached
+  if (tooBig(trace)) {
+    built.set(trace, [])
+    return []
+  }
   const out: StackFrame[] = []
   const ins = trace.instructions
   const layout = trace.layout
