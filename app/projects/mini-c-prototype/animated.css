@@ -98,6 +98,22 @@
   --from: 2px;
   --to: 7px;
 }
+/* PROTOTYPE: while a rail is bent (rail-curve.ts draws it), the straight
+   one hides under it. */
+.ac [data-curve~='y']::-webkit-scrollbar-track:vertical,
+.ac [data-curve~='x']::-webkit-scrollbar-track:horizontal {
+  background: none;
+}
+.ac[data-curving] ::-webkit-scrollbar-thumb {
+  --thumb: transparent !important;
+  --glow: transparent !important;
+}
+.ac.bare [data-curve~='y'] {
+  --rail: transparent !important;
+}
+.ac.bare [data-curve~='x'] {
+  --rail-x: transparent !important;
+}
 .ac ::-webkit-scrollbar-corner {
   background: transparent;
 }
@@ -717,26 +733,37 @@
   height: clamp(420px, calc(100dvh - 210px), 860px);
   overflow: hidden;
   background-image: linear-gradient(var(--line) 1px, transparent 1px);
-  background-attachment: local;
-  background-size: 100% 22px;
-  background-position: 0 -1px;
+  /* The rows pan and zoom with the canvas (canvas-zoom.ts). */
+  background-size: 100% calc(22px * var(--zoom, 1));
+  background-position: 0 calc(var(--pan-y, 0px) - 1px);
+  /* PROTOTYPE (wayfinder: stage canvas): two fingers pan and pinch it;
+     one finger is left to the page. */
+  touch-action: pan-y;
 }
-/* Sideways, when the type pass's tree runs past the right edge on a
-   narrow stage, or emit's tree past its column; the rows scroll with it. */
-.ac-scene.scroll-x {
-  overflow-x: auto;
+/* Everything on the stage, as one layer that pans and zooms. Past the
+   right edge (the type pass's tree on a narrow stage, or emit's tree past
+   its column) it runs on, and panning reaches it. */
+.ac-canvas {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
 }
-/* Emit's assembly, pinned while the tree scrolls under it. */
+/* A pane on it that has scrolled to its end doesn't pass the wheel on to
+   the page. */
+.ac-canvas * {
+  overscroll-behavior: contain;
+}
+/* Emit's assembly, pinned while the tree pans under it. */
 .ac-pin-track {
   position: relative;
   height: 100%;
   pointer-events: none;
 }
 .ac-pin {
-  position: sticky;
+  position: relative;
   z-index: 3;
-  left: 0;
   height: 100%;
+  transform: translateX(var(--pin, 0px));
 }
 .ac-pin > * {
   pointer-events: auto;
@@ -1737,6 +1764,16 @@
 .ac-counter {
   margin-left: auto;
   color: var(--muted);
+}
+.ac-fit {
+  margin-left: auto;
+  color: var(--muted);
+}
+.ac-fit:hover {
+  color: var(--ink);
+}
+.ac-fit + .ac-counter {
+  margin-left: 0;
 }
 
 /* Footer key bar, Commit-Mono style. */

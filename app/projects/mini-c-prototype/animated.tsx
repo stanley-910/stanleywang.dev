@@ -19,6 +19,7 @@ import {
   useState,
 } from 'react'
 
+import { startCanvas, type Canvas } from './canvas-zoom'
 import { detailTrace } from './detail'
 import { EmitLanes, lanesWidth } from './emit-lanes'
 import { withEmitBlocks, withEmitLines } from './emit-view'
@@ -42,6 +43,7 @@ import { linkRouter, type Box, type Route } from './link-route'
 import { NameLinks } from './name-links'
 import { NoteWindow } from './note-window'
 import { groupsOf, parentsOf, parseView } from './parse-view'
+import { startRailCurve } from './rail-curve'
 import { compileReal, compilerLoaded, REAL_MAX_CHARS } from './real'
 import { findReference, REFERENCES } from './reference'
 import { badgesAt, regBadges } from './reg-badges'
@@ -949,6 +951,9 @@ export default function AnimatedCompiler() {
     const root = rootRef.current
     if (!root) return
     const timers = new Map<Element, ReturnType<typeof setTimeout>>()
+    // PROTOTYPE: the thumb is a swell in the rail (rail-curve.ts), which
+    // does its own lighting, on a scroll and on a dwell.
+    const curve = startRailCurve(root)
     const reveal = (pane: Element, axes: string, ms: number) => {
       pane.setAttribute('data-reveal', axes)
       clearTimeout(timers.get(pane))
@@ -974,6 +979,7 @@ export default function AnimatedCompiler() {
       return null
     }
     const scrolled = (e: Event) => {
+      if (curve) return
       const pane = paneOf(e.target)
       if (!pane) return
       const axes =
@@ -991,6 +997,7 @@ export default function AnimatedCompiler() {
       timer: ReturnType<typeof setTimeout>
     } | null = null
     const moved = (e: PointerEvent) => {
+      if (curve) return
       const pane = paneOf(e.target)
       // A scrollbar is what lies past the pane's client area, on an axis
       // that scrolls (an empty gutter kept by scrollbar-gutter isn't one).
@@ -1035,6 +1042,7 @@ export default function AnimatedCompiler() {
       root.removeEventListener('pointermove', moved)
       for (const t of timers.values()) clearTimeout(t)
       if (resting) clearTimeout(resting.timer)
+      curve?.()
     }
   }, [])
   const saveWidth = (width: number | null) => {
@@ -1072,6 +1080,10 @@ export default function AnimatedCompiler() {
   const textRef = useRef<HTMLTextAreaElement>(null)
   const instructionRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<HTMLDivElement>(null)
+  // PROTOTYPE (wayfinder: stage canvas): the stage pans and zooms.
+  const canvasRef = useRef<HTMLDivElement>(null)
+  const canvas = useRef<Canvas | null>(null)
+  const [zoomed, setZoomed] = useState(false)
   const [sceneWidth, setSceneWidth] = useState(VIEW_W)
   const [sceneHeight, setSceneHeight] = useState(VIEW_H)
   // The phone layout's smaller pieces (animated.css, max-width 640px).
@@ -1458,6 +1470,7 @@ export default function AnimatedCompiler() {
       } else if (key === 'h' || key === 'k') move(-1)
       else if (key === 'l' || key === 'j') move(1)
       else if (key === 'r') seek(0)
+      else if (key === '0') canvas.current?.home(!reduced)
       else if (key === 'e') textRef.current?.focus()
       else if (key === '-') bumpSpeed(-1)
       else if (key === '=' || key === '+') bumpSpeed(1)
@@ -1467,7 +1480,7 @@ export default function AnimatedCompiler() {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [move, play, seek, bumpSpeed, jumpTab, pinned])
+  }, [move, play, seek, bumpSpeed, jumpTab, pinned, reduced])
 
   useEffect(() => {
     const scene = sceneRef.current
@@ -1480,6 +1493,18 @@ export default function AnimatedCompiler() {
     observer.observe(scene)
     return () => observer.disconnect()
   }, [])
+  useEffect(() => {
+    const scene = sceneRef.current,
+      layer = canvasRef.current
+    if (!scene || !layer) return
+    canvas.current = startCanvas(scene, layer, (home) => setZoomed(!home))
+    return () => {
+      canvas.current?.stop()
+      canvas.current = null
+    }
+  }, [])
+  // A new program starts fitted.
+  useEffect(() => canvas.current?.home(false), [trace])
 
   // Keep the active line third from the top, and again whenever the source
   // is resized (a tall note shrinks it mid-token). Sideways, the pane stays
@@ -1759,24 +1784,22 @@ export default function AnimatedCompiler() {
     return shift
   })()
   const over = typedOver + emitOver
-  // Back to the left once nothing runs past the edge.
-  useEffect(() => {
-    if (!over && sceneRef.current) sceneRef.current.scrollLeft = 0
-  }, [over])
-  // Emit: a step whose node sits out of the tree's column scrolls it in.
+  // The canvas's bounds: the stage, and whatever runs past its right edge.
+  useEffect(
+    () => canvas.current?.size(sceneWidth + over, sceneHeight),
+    [sceneWidth, sceneHeight, over],
+  )
+  // Emit: a step whose node sits out of the tree's column pans it in.
   useEffect(() => {
     const scene = sceneRef.current
-    if (!emitOver || !scene) return
+    if (!emitOver || !scene || !canvas.current) return
     const node = scene.querySelector<HTMLElement>('.ac-piece.focused')
     if (!node) return
     const box = node.getBoundingClientRect()
     const x = box.left - scene.getBoundingClientRect().left
-    const seen = asmLeft - 16
+    const seen = (asmLeft - 16) * canvas.current.view().k
     if (x >= 16 && x + box.width <= seen) return
-    scene.scrollTo({
-      left: scene.scrollLeft + x + box.width / 2 - seen / 2,
-      behavior: reduced ? 'auto' : 'smooth',
-    })
+    canvas.current.panBy(seen / 2 - x - box.width / 2, 0, !reduced)
   }, [index, emitOver, asmLeft, reduced])
   const deck = decks.get(index)
   const intro = slide > 0 ? deck?.slides[slide - 1] : undefined
@@ -2727,990 +2750,1024 @@ export default function AnimatedCompiler() {
 
         <section className="ac-stage" aria-label="Animated compiler stage">
           <div
-            className={`ac-scene ${emitStage && !emitTreeShown ? 'treeless' : ''} ${over ? 'scroll-x' : ''}`}
+            className={`ac-scene ${emitStage && !emitTreeShown ? 'treeless' : ''}`}
             ref={sceneRef}
           >
-            <svg
-              className="ac-edges"
-              viewBox={`0 0 ${sceneWidth + over} ${sceneHeight}`}
-              style={over ? { width: sceneWidth + over } : undefined}
-              aria-hidden="true"
-            >
-              <AnimatePresence>
-                {!regView &&
-                  frame.nodes.flatMap((id) => {
-                    const n = trace.nodes[id]
-                    return n.children
-                      .filter((child) => frame.attached.includes(child))
-                      .map((child) => {
-                        const d = edgeUp(id, child)
-                        return (
-                          <motion.path
-                            key={`${id}-${child}`}
-                            d={d}
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth={1}
-                            initial={{ d, pathLength: 0, opacity: 0 }}
-                            animate={{
-                              d,
-                              pathLength: 1,
-                              // The finished tree is lit throughout.
-                              opacity:
-                                frame.focus === id ||
-                                frame.why.kind === 'parse.done'
-                                  ? 1
-                                  : 0.45,
-                            }}
-                            exit={{ pathLength: 0, opacity: 0 }}
-                            transition={transition}
-                          />
-                        )
-                      })
-                  })}
-                {working.held.map(([holder, id]) => {
-                  // A dashed socket: shown, not yet attached. A node shown
-                  // this step was called for, so its socket draws down from
-                  // the holder as the call descends; one adopted from an
-                  // earlier step (`4` moving under `+`) only fades in. A
-                  // dash pattern can't also carry pathLength, so a solid
-                  // mask draws instead.
-                  const d = edgePath(holder, id)
-                  const key = `held-${holder}-${id}`
-                  const called =
-                    index > 0 && !trace.frames[index - 1].nodes.includes(id)
-                  return (
-                    <motion.g
-                      key={key}
-                      initial={{ opacity: called ? 0.5 : 0 }}
-                      animate={{ opacity: 0.5 }}
-                      exit={{ opacity: 0 }}
-                      transition={transition}
-                    >
-                      {called && (
-                        <mask
-                          id={key}
-                          maskUnits="userSpaceOnUse"
-                          x={0}
-                          y={0}
-                          width={sceneWidth}
-                          height={sceneHeight}
-                        >
-                          <motion.path
-                            d={d}
-                            fill="none"
-                            stroke="#fff"
-                            strokeWidth={4}
-                            initial={{ d, pathLength: 0 }}
-                            animate={{ d, pathLength: 1 }}
-                            transition={transition}
-                          />
-                        </mask>
-                      )}
-                      <motion.path
-                        className="ac-held"
-                        d={d}
-                        fill="none"
-                        strokeWidth={1}
-                        mask={called ? `url(#${key})` : undefined}
-                        initial={{ d }}
-                        animate={{ d }}
-                        transition={transition}
-                      />
-                    </motion.g>
-                  )
-                })}
-                {working.group &&
-                  (() => {
-                    // Brackets around the group being read, solid once its
-                    // `)` is read.
-                    const g = working.group
-                    const ids = g.nodes.length ? g.nodes : [g.slot]
-                    // All in pixels, so the brackets keep their shape
-                    // however the stage is stretched.
-                    const half = (id: number) =>
-                      (trace.nodes[id].label.length * CHAR_PX * fit) / 2 + 12
-                    const at = ids.map((id) => toPx(point(id)))
-                    const xs = at.flatMap((p, i) => [
-                      p.x - half(ids[i]),
-                      p.x + half(ids[i]),
-                    ])
-                    const ys = at.map((p) => p.y)
-                    const x0 = Math.min(...xs),
-                      x1 = Math.max(...xs)
-                    const y0 = Math.min(...ys) - pieceHalf - 8,
-                      y1 = Math.max(...ys) + pieceHalf + 8
-                    const my = (y0 + y1) / 2
-                    const left = `M ${x0 + 5} ${y0} Q ${x0 - 5} ${my}, ${x0 + 5} ${y1}`
-                    const right = `M ${x1 - 5} ${y0} Q ${x1 + 5} ${my}, ${x1 - 5} ${y1}`
-                    return [left, right].map((d, i) => (
-                      <motion.path
-                        key={`group-${i}`}
-                        className={`ac-group ${g.closed ? 'closed' : ''}`}
-                        d={d}
-                        fill="none"
-                        strokeWidth={1}
-                        initial={{ d, opacity: 0 }}
-                        animate={{ d, opacity: g.closed ? 0.9 : 0.5 }}
+            <div className="ac-canvas" ref={canvasRef}>
+              <svg
+                className="ac-edges"
+                viewBox={`0 0 ${sceneWidth + over} ${sceneHeight}`}
+                style={over ? { width: sceneWidth + over } : undefined}
+                aria-hidden="true"
+              >
+                <AnimatePresence>
+                  {!regView &&
+                    frame.nodes.flatMap((id) => {
+                      const n = trace.nodes[id]
+                      return n.children
+                        .filter((child) => frame.attached.includes(child))
+                        .map((child) => {
+                          const d = edgeUp(id, child)
+                          return (
+                            <motion.path
+                              key={`${id}-${child}`}
+                              d={d}
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth={1}
+                              initial={{ d, pathLength: 0, opacity: 0 }}
+                              animate={{
+                                d,
+                                pathLength: 1,
+                                // The finished tree is lit throughout.
+                                opacity:
+                                  frame.focus === id ||
+                                  frame.why.kind === 'parse.done'
+                                    ? 1
+                                    : 0.45,
+                              }}
+                              exit={{ pathLength: 0, opacity: 0 }}
+                              transition={transition}
+                            />
+                          )
+                        })
+                    })}
+                  {working.held.map(([holder, id]) => {
+                    // A dashed socket: shown, not yet attached. A node shown
+                    // this step was called for, so its socket draws down from
+                    // the holder as the call descends; one adopted from an
+                    // earlier step (`4` moving under `+`) only fades in. A
+                    // dash pattern can't also carry pathLength, so a solid
+                    // mask draws instead.
+                    const d = edgePath(holder, id)
+                    const key = `held-${holder}-${id}`
+                    const called =
+                      index > 0 && !trace.frames[index - 1].nodes.includes(id)
+                    return (
+                      <motion.g
+                        key={key}
+                        initial={{ opacity: called ? 0.5 : 0 }}
+                        animate={{ opacity: 0.5 }}
                         exit={{ opacity: 0 }}
                         transition={transition}
-                      />
-                    ))
-                  })()}
-              </AnimatePresence>
-              {naming && walkTime > 0 && (
-                <g key={`walk-${index}`} className="ac-walk">
-                  {walk.map(([parent, child, down], i) => (
-                    <motion.path
-                      key={`${parent}-${child}`}
-                      d={down ? edgePath(parent, child) : edgeUp(parent, child)}
-                      fill="none"
-                      initial={{ pathLength: 0, opacity: 1 }}
-                      animate={{ pathLength: 1, opacity: 0 }}
-                      transition={{
-                        pathLength: {
-                          delay: walkEdge(i).delay / speed,
-                          duration: walkEdge(i).duration / speed,
-                          ease: walkEdge(i).ease,
-                        },
-                        opacity: {
-                          delay: (walkTime + 0.42) / speed,
-                          duration: 0.4 / speed,
-                        },
-                      }}
-                    />
-                  ))}
-                </g>
-              )}
-              {linkRoutes && (
-                <NameLinks
-                  delay={walkTime / speed}
-                  hoverOnly={!naming}
-                  key={`${source}|${detailed}|${emitBlocks}|${index}|${slide}`}
-                  links={links}
-                  routes={linkRoutes}
-                  frame={frame}
-                  hover={hover}
-                  reduced={!!reduced || back}
-                  duration={transition.duration}
-                  missing={naming ? missing?.use : undefined}
-                />
-              )}
-            </svg>
-            <AnimatePresence>
-              {!regView &&
-                pieces.map(({ token, nodeId, key }) => {
-                  const node =
-                    nodeId === undefined ? undefined : trace.nodes[nodeId]
-                  const consumed = frame.consumed.includes(token.id)
-                  const typeToken =
-                    parsed && !node ? absorbed(token.id) : undefined
-                  if (typeToken === 'gone') return null
-                  if (
-                    parsed &&
-                    consumed &&
-                    !node &&
-                    typeToken === undefined &&
-                    KEEP_HIDDEN.includes(token.text)
-                  )
-                    return null
-                  const tokenPoint = tokenPoints[token.id] || { x: 340, y: 30 }
-                  const sliding = typeToken === 'sliding'
-                  const into = absorbedBy.get(token.id)
-                  const p = node
-                    ? point(node.id)
-                    : sliding && into !== undefined
-                      ? point(into)
-                      : { x: tokenPoint.x, y: tokenPoint.y - trayOffset }
-                  if (!node && !sliding && (p.y < 8 || p.y > 150)) return null
-                  // A focused register moves the focus to the node that
-                  // writes it.
-                  const focused = node
-                    ? (focusLane
-                        ? defNode === node.id
-                        : frame.focus === node.id) || hover === node.id
-                    : // A step about a node lights the node, even one
-                      // anchored at this token (the root, at the first).
-                      frame.focus === null && token.start === frame.span.start
-                  const life =
-                    node !== undefined &&
-                    lifecycle.some(
-                      (r) => trace.instructions[r].node === node.id,
-                    )
-                  const pending =
-                    node !== undefined &&
-                    node.children.some(
-                      (child) => !frame.attached.includes(child),
-                    )
-                  const declaredAt =
-                    node === undefined ? undefined : declaredStep.get(node.id)
-                  const declared =
-                    declaredAt !== undefined && declaredAt <= index && naming
-                  const allFound =
-                    naming && frame.why.kind === 'check.namesDone'
-                  const found =
-                    (allFound &&
-                      links.some(
-                        ([u, d]) => u === node?.id || d === node?.id,
-                      )) ||
-                    (naming &&
-                      node !== undefined &&
-                      (resolve?.decl === node.id || resolve?.use === node.id))
-                  // Uses have a quiet outline; declarations are filled.
-                  const use =
-                    (allFound && links.some(([u]) => u === node?.id)) ||
-                    (naming && node !== undefined && resolve?.use === node.id)
-                  const missingAt =
-                    node === undefined ? undefined : missingStep.get(node.id)
-                  const missing =
-                    missingAt !== undefined &&
-                    missingAt <= index &&
-                    frame.phase === 'Check'
-                  const badge =
-                    node && frame.phase === 'Check'
-                      ? typeBadge(node.id)
-                      : undefined
-                  return (
-                    <motion.button
-                      key={key}
-                      style={
-                        {
-                          x: '-50%',
-                          y: '-50%',
-                        } as MotionStyle
-                      }
-                      className={`ac-piece ${node ? 'node' : 'token'} kind-${token.kind} ${focused ? 'focused' : ''} ${pending ? 'pending' : ''} ${compact ? 'small' : ''} ${node && node.id === working.preview ? 'preview' : ''} ${node && working.outside.includes(node.id) ? 'outside' : ''} ${declared ? 'declared' : ''} ${found ? 'found' : ''} ${use ? 'use' : ''} ${missing ? 'missing' : ''} ${life ? 'life' : ''}`}
-                      initial={{
-                        left: '-5%',
-                        top: (Math.min(tokenPoint.y, 98) / 480) * 100 + '%',
-                        opacity: 0,
-                      }}
-                      animate={{
-                        left: (p.x / 680) * 100 + '%',
-                        top: (p.y / 480) * 100 + '%',
-                        scale: node ? fit : sliding ? fit * 0.8 : 1,
-                        opacity: sliding ? [1, 1, 0] : 1,
-                      }}
-                      exit={{ opacity: 0 }}
-                      transition={transition}
-                      onMouseEnter={() =>
-                        !playing && hoverSoon(node?.id, token.id)
-                      }
-                      onMouseLeave={clearHover}
-                      onFocus={() => hoverSoon(node?.id, token.id)}
-                      onBlur={(e) => {
-                        // Moving to another piece is not leaving: clearing
-                        // here unmounted the card between mousedown and
-                        // click, so a clicked card popped open unanimated.
-                        const to = e.relatedTarget as Element | null
-                        if (!to?.closest('.ac-piece')) clearHover()
-                      }}
-                      onClick={() => {
-                        setPlaying(false)
-                        if (node) setHover(node.id)
-                        else setHoverToken(token.id)
-                        setCardOpen((open) => !open)
-                      }}
-                      aria-label={
-                        node
-                          ? `AST ${node.kind}: ${node.label}`
-                          : `Token ${token.text}, ${tokenKind(token)}`
-                      }
-                    >
-                      {node
-                        ? node.label
-                        : parsed && times.has(token.id)
-                          ? '×'
-                          : token.text}
-                      {!parsed && focused && <small>{tokenKind(token)}</small>}
-                      {landing &&
-                        node &&
-                        (w.kind === 'parse.node' || w.kind === 'parse.wait') &&
-                        node.id === w.node && (
-                          <small className={`ac-class ${landingSpot ?? ''}`}>
-                            {landing.cls}
-                          </small>
+                      >
+                        {called && (
+                          <mask
+                            id={key}
+                            maskUnits="userSpaceOnUse"
+                            x={0}
+                            y={0}
+                            width={sceneWidth}
+                            height={sceneHeight}
+                          >
+                            <motion.path
+                              d={d}
+                              fill="none"
+                              stroke="#fff"
+                              strokeWidth={4}
+                              initial={{ d, pathLength: 0 }}
+                              animate={{ d, pathLength: 1 }}
+                              transition={transition}
+                            />
+                          </mask>
                         )}
-                      {node && working.cue?.node === node.id && (
-                        <small className="ac-cue">{working.cue.text}</small>
-                      )}
-                      {badge && (
-                        // Keyed by step so a landing replays on the next one.
-                        <small
-                          key={index}
-                          className={`ac-type ${badge.state}`}
-                          style={
-                            {
-                              '--delay': `${badge.delay}s`,
-                              '--land': `${transition.duration}s`,
-                            } as CSSProperties
-                          }
-                        >
-                          {badge.text.includes('→') ? (
-                            <>
-                              {badge.text.slice(0, badge.text.indexOf('→'))}
-                              <span className="returns">
-                                {badge.text.slice(badge.text.indexOf('→'))}
-                              </span>
-                            </>
-                          ) : (
-                            badge.text
-                          )}
-                        </small>
-                      )}
-                    </motion.button>
-                  )
-                })}
-            </AnimatePresence>
-            <AnimatePresence>
-              {frame.phase === 'Emit' &&
-                (!emitStage || emitTreeShown) &&
-                badgesAt(regs, frame.instructionCount, currentRange).map(
-                  (b, _, poses) => {
-                    // Centres in scene pixels; a badge sits just right of its
-                    // node's box and shrinks with the tree, as a type badge
-                    // does, so it fits the room the layout keeps for it.
-                    const width =
-                      ((b.reg.length + (b.address ? 2 : 0)) * TYPE_PX + 8) * fit
-                    const box = pieceBox(b.node)
-                    const held = {
-                      x: box.x + box.w + 5 * fit + width / 2,
-                      y: box.y + box.h / 2,
-                    }
-                    const pct = (p: { x: number; y: number }) => ({
-                      left: `${(p.x / sceneWidth) * 100}%`,
-                      top: `${(p.y / sceneHeight) * 100}%`,
-                    })
-                    const from = currentRange?.[0] ?? 0
-                    // A read register takes its time up the edge; it is the
-                    // point of the operation's step.
-                    const travel = transition.duration * 1.5
-                    const fresh = b.state.startsWith('new')
-                    // A result waits for the registers it is made from to
-                    // arrive.
-                    const arrive = Math.max(
-                      0,
-                      ...poses
-                        .filter(
-                          (q) =>
-                            q.state.endsWith('spent') &&
-                            q.to === b.node &&
-                            q.node !== b.node,
-                        )
-                        .map((q) => (q.use - from) * rowStagger + travel),
+                        <motion.path
+                          className="ac-held"
+                          d={d}
+                          fill="none"
+                          strokeWidth={1}
+                          mask={called ? `url(#${key})` : undefined}
+                          initial={{ d }}
+                          animate={{ d }}
+                          transition={transition}
+                        />
+                      </motion.g>
                     )
-                    const shows =
-                      fresh && !back
-                        ? Math.max((b.def - from) * rowStagger, arrive)
-                        : 0
-                    // Stepping back, a spent badge just fades where it was.
-                    const gone = back && b.state.endsWith('spent')
-                    const spent = !back && b.state.endsWith('spent')
-                    // A spent badge rides the edge up into the node that
-                    // reads it, then goes.
-                    let path = [held]
-                    if (spent && b.to !== null && b.to !== b.node) {
-                      const c = toPx(point(b.node)),
-                        p = toPx(point(b.to))
-                      const bottom = { x: p.x, y: p.y + pieceHalf }
-                      path =
-                        parents.get(b.node) === b.to
-                          ? [
-                              held,
-                              { x: c.x, y: c.y - pieceHalf },
-                              { x: (c.x + p.x) / 2, y: (c.y + p.y) / 2 },
-                              bottom,
-                            ]
-                          : [held, bottom]
+                  })}
+                  {working.group &&
+                    (() => {
+                      // Brackets around the group being read, solid once its
+                      // `)` is read.
+                      const g = working.group
+                      const ids = g.nodes.length ? g.nodes : [g.slot]
+                      // All in pixels, so the brackets keep their shape
+                      // however the stage is stretched.
+                      const half = (id: number) =>
+                        (trace.nodes[id].label.length * CHAR_PX * fit) / 2 + 12
+                      const at = ids.map((id) => toPx(point(id)))
+                      const xs = at.flatMap((p, i) => [
+                        p.x - half(ids[i]),
+                        p.x + half(ids[i]),
+                      ])
+                      const ys = at.map((p) => p.y)
+                      const x0 = Math.min(...xs),
+                        x1 = Math.max(...xs)
+                      const y0 = Math.min(...ys) - pieceHalf - 8,
+                        y1 = Math.max(...ys) + pieceHalf + 8
+                      const my = (y0 + y1) / 2
+                      const left = `M ${x0 + 5} ${y0} Q ${x0 - 5} ${my}, ${x0 + 5} ${y1}`
+                      const right = `M ${x1 - 5} ${y0} Q ${x1 + 5} ${my}, ${x1 - 5} ${y1}`
+                      return [left, right].map((d, i) => (
+                        <motion.path
+                          key={`group-${i}`}
+                          className={`ac-group ${g.closed ? 'closed' : ''}`}
+                          d={d}
+                          fill="none"
+                          strokeWidth={1}
+                          initial={{ d, opacity: 0 }}
+                          animate={{ d, opacity: g.closed ? 0.9 : 0.5 }}
+                          exit={{ opacity: 0 }}
+                          transition={transition}
+                        />
+                      ))
+                    })()}
+                </AnimatePresence>
+                {naming && walkTime > 0 && (
+                  <g key={`walk-${index}`} className="ac-walk">
+                    {walk.map(([parent, child, down], i) => (
+                      <motion.path
+                        key={`${parent}-${child}`}
+                        d={
+                          down ? edgePath(parent, child) : edgeUp(parent, child)
+                        }
+                        fill="none"
+                        initial={{ pathLength: 0, opacity: 1 }}
+                        animate={{ pathLength: 1, opacity: 0 }}
+                        transition={{
+                          pathLength: {
+                            delay: walkEdge(i).delay / speed,
+                            duration: walkEdge(i).duration / speed,
+                            ease: walkEdge(i).ease,
+                          },
+                          opacity: {
+                            delay: (walkTime + 0.42) / speed,
+                            duration: 0.4 / speed,
+                          },
+                        }}
+                      />
+                    ))}
+                  </g>
+                )}
+                {linkRoutes && (
+                  <NameLinks
+                    delay={walkTime / speed}
+                    hoverOnly={!naming}
+                    key={`${source}|${detailed}|${emitBlocks}|${index}|${slide}`}
+                    links={links}
+                    routes={linkRoutes}
+                    frame={frame}
+                    hover={hover}
+                    reduced={!!reduced || back}
+                    duration={transition.duration}
+                    missing={naming ? missing?.use : undefined}
+                  />
+                )}
+              </svg>
+              <AnimatePresence>
+                {!regView &&
+                  pieces.map(({ token, nodeId, key }) => {
+                    const node =
+                      nodeId === undefined ? undefined : trace.nodes[nodeId]
+                    const consumed = frame.consumed.includes(token.id)
+                    const typeToken =
+                      parsed && !node ? absorbed(token.id) : undefined
+                    if (typeToken === 'gone') return null
+                    if (
+                      parsed &&
+                      consumed &&
+                      !node &&
+                      typeToken === undefined &&
+                      KEEP_HIDDEN.includes(token.text)
+                    )
+                      return null
+                    const tokenPoint = tokenPoints[token.id] || {
+                      x: 340,
+                      y: 30,
                     }
-                    const leaves = (b.use - from) * rowStagger
-                    const total = leaves + travel + transition.duration * 0.3
-                    const at = (t: number) => (total ? t / total : 1)
-                    // It waits until the row that reads it, then moves.
-                    const times =
-                      path.length === 1
-                        ? [0, 1]
-                        : [
-                            0,
-                            ...path.map((_, i) =>
-                              at(
-                                leaves +
-                                  (travel * i) / Math.max(1, path.length - 1),
-                              ),
-                            ),
-                          ]
-                    // In as it is written, out once it has arrived.
-                    const arrived = leaves + travel
-                    const fade = [
-                      at(Math.min(shows, arrived)),
-                      at(Math.min(shows + transition.duration * 0.3, arrived)),
-                      at(arrived),
-                    ]
+                    const sliding = typeToken === 'sliding'
+                    const into = absorbedBy.get(token.id)
+                    const p = node
+                      ? point(node.id)
+                      : sliding && into !== undefined
+                        ? point(into)
+                        : { x: tokenPoint.x, y: tokenPoint.y - trayOffset }
+                    if (!node && !sliding && (p.y < 8 || p.y > 150)) return null
+                    // A focused register moves the focus to the node that
+                    // writes it.
+                    const focused = node
+                      ? (focusLane
+                          ? defNode === node.id
+                          : frame.focus === node.id) || hover === node.id
+                      : // A step about a node lights the node, even one
+                        // anchored at this token (the root, at the first).
+                        frame.focus === null && token.start === frame.span.start
+                    const life =
+                      node !== undefined &&
+                      lifecycle.some(
+                        (r) => trace.instructions[r].node === node.id,
+                      )
+                    const pending =
+                      node !== undefined &&
+                      node.children.some(
+                        (child) => !frame.attached.includes(child),
+                      )
+                    const declaredAt =
+                      node === undefined ? undefined : declaredStep.get(node.id)
+                    const declared =
+                      declaredAt !== undefined && declaredAt <= index && naming
+                    const allFound =
+                      naming && frame.why.kind === 'check.namesDone'
+                    const found =
+                      (allFound &&
+                        links.some(
+                          ([u, d]) => u === node?.id || d === node?.id,
+                        )) ||
+                      (naming &&
+                        node !== undefined &&
+                        (resolve?.decl === node.id || resolve?.use === node.id))
+                    // Uses have a quiet outline; declarations are filled.
+                    const use =
+                      (allFound && links.some(([u]) => u === node?.id)) ||
+                      (naming && node !== undefined && resolve?.use === node.id)
+                    const missingAt =
+                      node === undefined ? undefined : missingStep.get(node.id)
+                    const missing =
+                      missingAt !== undefined &&
+                      missingAt <= index &&
+                      frame.phase === 'Check'
+                    const badge =
+                      node && frame.phase === 'Check'
+                        ? typeBadge(node.id)
+                        : undefined
                     return (
-                      <motion.span
-                        // A register written twice (both arms of `&&`) has a badge per write.
-                        key={`reg-${b.reg}-${b.def}`}
-                        data-vr
-                        className={`ac-reg ${b.address ? 'address' : ''} ${b.state} ${focusLane && focusLane.vr !== b.reg ? 'off' : ''}`}
-                        onMouseEnter={() =>
-                          focusReg(
-                            `${trace.instructions[b.def].fn}:${b.reg}`,
-                            false,
-                          )
-                        }
-                        onMouseLeave={blurReg}
-                        onClick={() =>
-                          focusReg(
-                            `${trace.instructions[b.def].fn}:${b.reg}`,
-                            true,
-                          )
-                        }
+                      <motion.button
+                        key={key}
                         style={
                           {
                             x: '-50%',
                             y: '-50%',
-                            scale: fit,
-                            '--delay': `${shows}s`,
                           } as MotionStyle
                         }
-                        initial={{ opacity: 0, ...pct(held) }}
-                        animate={
-                          spent
-                            ? {
-                                left: [held, ...path].map((q) => pct(q).left),
-                                top: [held, ...path].map((q) => pct(q).top),
-                                opacity: fresh ? [0, 0, 1, 1, 0] : [1, 1, 0],
-                              }
-                            : { ...pct(held), opacity: gone ? 0 : 1 }
-                        }
+                        className={`ac-piece ${node ? 'node' : 'token'} kind-${token.kind} ${focused ? 'focused' : ''} ${pending ? 'pending' : ''} ${compact ? 'small' : ''} ${node && node.id === working.preview ? 'preview' : ''} ${node && working.outside.includes(node.id) ? 'outside' : ''} ${declared ? 'declared' : ''} ${found ? 'found' : ''} ${use ? 'use' : ''} ${missing ? 'missing' : ''} ${life ? 'life' : ''}`}
+                        initial={{
+                          left: '-5%',
+                          top: (Math.min(tokenPoint.y, 98) / 480) * 100 + '%',
+                          opacity: 0,
+                        }}
+                        animate={{
+                          left: (p.x / 680) * 100 + '%',
+                          top: (p.y / 480) * 100 + '%',
+                          scale: node ? fit : sliding ? fit * 0.8 : 1,
+                          opacity: sliding ? [1, 1, 0] : 1,
+                        }}
                         exit={{ opacity: 0 }}
-                        transition={
-                          spent
-                            ? {
-                                duration: total,
-                                ease: 'easeInOut',
-                                left: { duration: total, times },
-                                top: { duration: total, times },
-                                opacity: {
-                                  duration: total,
-                                  times: fresh
-                                    ? [0, ...fade, 1]
-                                    : [0, fade[2], 1],
-                                },
-                              }
-                            : { ...transition, delay: shows }
+                        transition={transition}
+                        onMouseEnter={() =>
+                          !playing && hoverSoon(node?.id, token.id)
                         }
-                        aria-hidden
+                        onMouseLeave={clearHover}
+                        onFocus={() => hoverSoon(node?.id, token.id)}
+                        onBlur={(e) => {
+                          // Moving to another piece is not leaving: clearing
+                          // here unmounted the card between mousedown and
+                          // click, so a clicked card popped open unanimated.
+                          const to = e.relatedTarget as Element | null
+                          if (!to?.closest('.ac-piece')) clearHover()
+                        }}
+                        onClick={() => {
+                          setPlaying(false)
+                          if (node) setHover(node.id)
+                          else setHoverToken(token.id)
+                          setCardOpen((open) => !open)
+                        }}
+                        aria-label={
+                          node
+                            ? `AST ${node.kind}: ${node.label}`
+                            : `Token ${token.text}, ${tokenKind(token)}`
+                        }
                       >
-                        {/* An address points at its word in the stack. */}
-                        {b.address ? `${b.reg} →` : b.reg}
-                      </motion.span>
-                    )
-                  },
-                )}
-            </AnimatePresence>
-            {card && cardAt && cardBox && (
-              <motion.div
-                key={card.key}
-                className="ac-hover"
-                initial={false}
-                animate={cardBox}
-                transition={{ duration: reduced ? 0 : 0.22, ease: EASE }}
-              >
-                {card.title}
-                <AnimatePresence initial={false}>
-                  {cardOpen && card.list.length > 0 && (
-                    <motion.div
-                      className="ac-hover-list"
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: reduced ? 0 : 0.22, ease: EASE }}
-                    >
-                      <ul
-                        className="ac-lexemes"
-                        aria-label={card.label}
-                        style={{ width: openWidth - 22 }}
-                      >
-                        {card.list.map((lexeme) => (
-                          <li
-                            key={lexeme}
-                            className={lexeme === card.current ? 'current' : ''}
+                        {node
+                          ? node.label
+                          : parsed && times.has(token.id)
+                            ? '×'
+                            : token.text}
+                        {!parsed && focused && (
+                          <small>{tokenKind(token)}</small>
+                        )}
+                        {landing &&
+                          node &&
+                          (w.kind === 'parse.node' ||
+                            w.kind === 'parse.wait') &&
+                          node.id === w.node && (
+                            <small className={`ac-class ${landingSpot ?? ''}`}>
+                              {landing.cls}
+                            </small>
+                          )}
+                        {node && working.cue?.node === node.id && (
+                          <small className="ac-cue">{working.cue.text}</small>
+                        )}
+                        {badge && (
+                          // Keyed by step so a landing replays on the next one.
+                          <small
+                            key={index}
+                            className={`ac-type ${badge.state}`}
+                            style={
+                              {
+                                '--delay': `${badge.delay}s`,
+                                '--land': `${transition.duration}s`,
+                              } as CSSProperties
+                            }
                           >
-                            {lexeme}
-                          </li>
-                        ))}
-                      </ul>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            )}
-            {graphFn && (
-              <svg
-                className="ac-graph"
-                viewBox={`0 0 ${sceneWidth} ${sceneHeight}`}
-                aria-label="Interference graph"
-              >
-                <AnimatePresence>
-                  {graphShown &&
-                    graphFn.interference.edges.map(([a, b]) => {
-                      const p = graphPoint(a),
-                        q = graphPoint(b)
-                      const gone = onStack.has(a) || onStack.has(b)
-                      // At a stop, only the current register's edges stay:
-                      // they are what its choice depends on.
-                      const mine = stepVr === a || stepVr === b
-                      return (
-                        <motion.line
-                          key={`ig-${a}-${b}`}
-                          x1={(p.x * sceneWidth) / VIEW_W}
-                          y1={(p.y * sceneHeight) / VIEW_H}
-                          x2={(q.x * sceneWidth) / VIEW_W}
-                          y2={(q.y * sceneHeight) / VIEW_H}
-                          stroke="currentColor"
-                          strokeWidth={1}
-                          initial={{ pathLength: 0, opacity: 0 }}
-                          animate={{
-                            pathLength: 1,
-                            opacity: mine
-                              ? 0.9
-                              : stepVr !== undefined || gone
-                                ? 0.1
-                                : 0.6,
-                          }}
-                          exit={{ opacity: 0 }}
-                          transition={transition}
-                        />
+                            {badge.text.includes('→') ? (
+                              <>
+                                {badge.text.slice(0, badge.text.indexOf('→'))}
+                                <span className="returns">
+                                  {badge.text.slice(badge.text.indexOf('→'))}
+                                </span>
+                              </>
+                            ) : (
+                              badge.text
+                            )}
+                          </small>
+                        )}
+                      </motion.button>
+                    )
+                  })}
+              </AnimatePresence>
+              <AnimatePresence>
+                {frame.phase === 'Emit' &&
+                  (!emitStage || emitTreeShown) &&
+                  badgesAt(regs, frame.instructionCount, currentRange).map(
+                    (b, _, poses) => {
+                      // Centres in scene pixels; a badge sits just right of its
+                      // node's box and shrinks with the tree, as a type badge
+                      // does, so it fits the room the layout keeps for it.
+                      const width =
+                        ((b.reg.length + (b.address ? 2 : 0)) * TYPE_PX + 8) *
+                        fit
+                      const box = pieceBox(b.node)
+                      const held = {
+                        x: box.x + box.w + 5 * fit + width / 2,
+                        y: box.y + box.h / 2,
+                      }
+                      const pct = (p: { x: number; y: number }) => ({
+                        left: `${(p.x / sceneWidth) * 100}%`,
+                        top: `${(p.y / sceneHeight) * 100}%`,
+                      })
+                      const from = currentRange?.[0] ?? 0
+                      // A read register takes its time up the edge; it is the
+                      // point of the operation's step.
+                      const travel = transition.duration * 1.5
+                      const fresh = b.state.startsWith('new')
+                      // A result waits for the registers it is made from to
+                      // arrive.
+                      const arrive = Math.max(
+                        0,
+                        ...poses
+                          .filter(
+                            (q) =>
+                              q.state.endsWith('spent') &&
+                              q.to === b.node &&
+                              q.node !== b.node,
+                          )
+                          .map((q) => (q.use - from) * rowStagger + travel),
                       )
-                    })}
-                </AnimatePresence>
-              </svg>
-            )}
-            <AnimatePresence>
-              {graphFn &&
-                graphShown &&
-                graphFn.interference.nodes.map((vr) => {
-                  const p = graphPoint(vr)
-                  const colour = coloured?.[vr]
-                  const idx = colour ? paletteIndex(colour) : -1
-                  return (
-                    <motion.button
-                      key={`vr-${vr}`}
-                      className={`ac-vr ${vr === stepVr && !onStack.has(vr) ? 'focused' : ''} ${onStack.has(vr) ? 'aside' : ''} ${spilled.has(vr) ? 'spilled' : ''} ${colour ? 'coloured' : ''}`}
-                      style={
-                        {
+                      const shows =
+                        fresh && !back
+                          ? Math.max((b.def - from) * rowStagger, arrive)
+                          : 0
+                      // Stepping back, a spent badge just fades where it was.
+                      const gone = back && b.state.endsWith('spent')
+                      const spent = !back && b.state.endsWith('spent')
+                      // A spent badge rides the edge up into the node that
+                      // reads it, then goes.
+                      let path = [held]
+                      if (spent && b.to !== null && b.to !== b.node) {
+                        const c = toPx(point(b.node)),
+                          p = toPx(point(b.to))
+                        const bottom = { x: p.x, y: p.y + pieceHalf }
+                        path =
+                          parents.get(b.node) === b.to
+                            ? [
+                                held,
+                                { x: c.x, y: c.y - pieceHalf },
+                                { x: (c.x + p.x) / 2, y: (c.y + p.y) / 2 },
+                                bottom,
+                              ]
+                            : [held, bottom]
+                      }
+                      const leaves = (b.use - from) * rowStagger
+                      const total = leaves + travel + transition.duration * 0.3
+                      const at = (t: number) => (total ? t / total : 1)
+                      // It waits until the row that reads it, then moves.
+                      const times =
+                        path.length === 1
+                          ? [0, 1]
+                          : [
+                              0,
+                              ...path.map((_, i) =>
+                                at(
+                                  leaves +
+                                    (travel * i) / Math.max(1, path.length - 1),
+                                ),
+                              ),
+                            ]
+                      // In as it is written, out once it has arrived.
+                      const arrived = leaves + travel
+                      const fade = [
+                        at(Math.min(shows, arrived)),
+                        at(
+                          Math.min(shows + transition.duration * 0.3, arrived),
+                        ),
+                        at(arrived),
+                      ]
+                      return (
+                        <motion.span
+                          // A register written twice (both arms of `&&`) has a badge per write.
+                          key={`reg-${b.reg}-${b.def}`}
+                          data-vr
+                          className={`ac-reg ${b.address ? 'address' : ''} ${b.state} ${focusLane && focusLane.vr !== b.reg ? 'off' : ''}`}
+                          onMouseEnter={() =>
+                            focusReg(
+                              `${trace.instructions[b.def].fn}:${b.reg}`,
+                              false,
+                            )
+                          }
+                          onMouseLeave={blurReg}
+                          onClick={() =>
+                            focusReg(
+                              `${trace.instructions[b.def].fn}:${b.reg}`,
+                              true,
+                            )
+                          }
+                          style={
+                            {
+                              x: '-50%',
+                              y: '-50%',
+                              scale: fit,
+                              '--delay': `${shows}s`,
+                            } as MotionStyle
+                          }
+                          initial={{ opacity: 0, ...pct(held) }}
+                          animate={
+                            spent
+                              ? {
+                                  left: [held, ...path].map((q) => pct(q).left),
+                                  top: [held, ...path].map((q) => pct(q).top),
+                                  opacity: fresh ? [0, 0, 1, 1, 0] : [1, 1, 0],
+                                }
+                              : { ...pct(held), opacity: gone ? 0 : 1 }
+                          }
+                          exit={{ opacity: 0 }}
+                          transition={
+                            spent
+                              ? {
+                                  duration: total,
+                                  ease: 'easeInOut',
+                                  left: { duration: total, times },
+                                  top: { duration: total, times },
+                                  opacity: {
+                                    duration: total,
+                                    times: fresh
+                                      ? [0, ...fade, 1]
+                                      : [0, fade[2], 1],
+                                  },
+                                }
+                              : { ...transition, delay: shows }
+                          }
+                          aria-hidden
+                        >
+                          {/* An address points at its word in the stack. */}
+                          {b.address ? `${b.reg} →` : b.reg}
+                        </motion.span>
+                      )
+                    },
+                  )}
+              </AnimatePresence>
+              {card && cardAt && cardBox && (
+                <motion.div
+                  key={card.key}
+                  className="ac-hover"
+                  initial={false}
+                  animate={cardBox}
+                  transition={{ duration: reduced ? 0 : 0.22, ease: EASE }}
+                >
+                  {card.title}
+                  <AnimatePresence initial={false}>
+                    {cardOpen && card.list.length > 0 && (
+                      <motion.div
+                        className="ac-hover-list"
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{
+                          duration: reduced ? 0 : 0.22,
+                          ease: EASE,
+                        }}
+                      >
+                        <ul
+                          className="ac-lexemes"
+                          aria-label={card.label}
+                          style={{ width: openWidth - 22 }}
+                        >
+                          {card.list.map((lexeme) => (
+                            <li
+                              key={lexeme}
+                              className={
+                                lexeme === card.current ? 'current' : ''
+                              }
+                            >
+                              {lexeme}
+                            </li>
+                          ))}
+                        </ul>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              )}
+              {graphFn && (
+                <svg
+                  className="ac-graph"
+                  viewBox={`0 0 ${sceneWidth} ${sceneHeight}`}
+                  aria-label="Interference graph"
+                >
+                  <AnimatePresence>
+                    {graphShown &&
+                      graphFn.interference.edges.map(([a, b]) => {
+                        const p = graphPoint(a),
+                          q = graphPoint(b)
+                        const gone = onStack.has(a) || onStack.has(b)
+                        // At a stop, only the current register's edges stay:
+                        // they are what its choice depends on.
+                        const mine = stepVr === a || stepVr === b
+                        return (
+                          <motion.line
+                            key={`ig-${a}-${b}`}
+                            x1={(p.x * sceneWidth) / VIEW_W}
+                            y1={(p.y * sceneHeight) / VIEW_H}
+                            x2={(q.x * sceneWidth) / VIEW_W}
+                            y2={(q.y * sceneHeight) / VIEW_H}
+                            stroke="currentColor"
+                            strokeWidth={1}
+                            initial={{ pathLength: 0, opacity: 0 }}
+                            animate={{
+                              pathLength: 1,
+                              opacity: mine
+                                ? 0.9
+                                : stepVr !== undefined || gone
+                                  ? 0.1
+                                  : 0.6,
+                            }}
+                            exit={{ opacity: 0 }}
+                            transition={transition}
+                          />
+                        )
+                      })}
+                  </AnimatePresence>
+                </svg>
+              )}
+              <AnimatePresence>
+                {graphFn &&
+                  graphShown &&
+                  graphFn.interference.nodes.map((vr) => {
+                    const p = graphPoint(vr)
+                    const colour = coloured?.[vr]
+                    const idx = colour ? paletteIndex(colour) : -1
+                    return (
+                      <motion.button
+                        key={`vr-${vr}`}
+                        className={`ac-vr ${vr === stepVr && !onStack.has(vr) ? 'focused' : ''} ${onStack.has(vr) ? 'aside' : ''} ${spilled.has(vr) ? 'spilled' : ''} ${colour ? 'coloured' : ''}`}
+                        style={
+                          {
+                            x: '-50%',
+                            y: '-50%',
+                            '--c': colour ? INK[idx % INK.length] : undefined,
+                          } as MotionStyle
+                        }
+                        initial={{
+                          opacity: 0,
+                          left: `${(p.x / 680) * 100}%`,
+                          top: `${(p.y / 480) * 100}%`,
+                        }}
+                        animate={{
+                          // On the stack, it leaves an outline behind.
+                          opacity: onStack.has(vr) ? 0.3 : 1,
+                          left: `${(p.x / 680) * 100}%`,
+                          top: `${(p.y / 480) * 100}%`,
+                        }}
+                        exit={{ opacity: 0 }}
+                        transition={transition}
+                        onMouseEnter={() => !playing && setHoverVr(vr)}
+                        onMouseLeave={clearHover}
+                        onFocus={() => setHoverVr(vr)}
+                        onBlur={clearHover}
+                        aria-label={`Virtual register ${vr}${colour ? `, now ${colour}` : ''}`}
+                      >
+                        {vr}
+                        {colour && <small>{colour}</small>}
+                      </motion.button>
+                    )
+                  })}
+              </AnimatePresence>
+              {graphFn && graphShown && deepest > 0 && (
+                // Open at the top, as deep as the stack gets.
+                <div
+                  className="ac-pile-box"
+                  style={{
+                    top: pileBottom - deepest * pileRow - 2,
+                    width: PILE_W + 4,
+                    height: deepest * pileRow + 4,
+                  }}
+                >
+                  <span className="ac-label">; stack</span>
+                </div>
+              )}
+              <AnimatePresence>
+                {graphFn &&
+                  graphShown &&
+                  stack.map((e, i) => {
+                    // Pushed from its place in the graph, popped back to it.
+                    const home = toPx(graphPoint(e.vr))
+                    const slot = {
+                      left: 12 + PILE_W / 2,
+                      top: pileBottom - (i + 0.5) * pileRow,
+                    }
+                    return (
+                      <motion.span
+                        key={`pile-${fnIndex}-${e.vr}`}
+                        className={`ac-pile ${e.vr === stepVr ? 'focused' : ''} ${e.candidate ? 'candidate' : ''}`}
+                        style={{
                           x: '-50%',
                           y: '-50%',
-                          '--c': colour ? INK[idx % INK.length] : undefined,
-                        } as MotionStyle
-                      }
-                      initial={{
-                        opacity: 0,
-                        left: `${(p.x / 680) * 100}%`,
-                        top: `${(p.y / 480) * 100}%`,
-                      }}
-                      animate={{
-                        // On the stack, it leaves an outline behind.
-                        opacity: onStack.has(vr) ? 0.3 : 1,
-                        left: `${(p.x / 680) * 100}%`,
-                        top: `${(p.y / 480) * 100}%`,
-                      }}
-                      exit={{ opacity: 0 }}
-                      transition={transition}
-                      onMouseEnter={() => !playing && setHoverVr(vr)}
-                      onMouseLeave={clearHover}
-                      onFocus={() => setHoverVr(vr)}
-                      onBlur={clearHover}
-                      aria-label={`Virtual register ${vr}${colour ? `, now ${colour}` : ''}`}
-                    >
-                      {vr}
-                      {colour && <small>{colour}</small>}
-                    </motion.button>
-                  )
-                })}
-            </AnimatePresence>
-            {graphFn && graphShown && deepest > 0 && (
-              // Open at the top, as deep as the stack gets.
-              <div
-                className="ac-pile-box"
-                style={{
-                  top: pileBottom - deepest * pileRow - 2,
-                  width: PILE_W + 4,
-                  height: deepest * pileRow + 4,
-                }}
-              >
-                <span className="ac-label">; stack</span>
-              </div>
-            )}
-            <AnimatePresence>
-              {graphFn &&
-                graphShown &&
-                stack.map((e, i) => {
-                  // Pushed from its place in the graph, popped back to it.
-                  const home = toPx(graphPoint(e.vr))
-                  const slot = {
-                    left: 12 + PILE_W / 2,
-                    top: pileBottom - (i + 0.5) * pileRow,
-                  }
-                  return (
-                    <motion.span
-                      key={`pile-${fnIndex}-${e.vr}`}
-                      className={`ac-pile ${e.vr === stepVr ? 'focused' : ''} ${e.candidate ? 'candidate' : ''}`}
-                      style={{
-                        x: '-50%',
-                        y: '-50%',
-                        width: PILE_W,
-                        height: pileRow - 3,
-                        lineHeight: `${pileRow - 5}px`,
-                      }}
-                      initial={{ left: home.x, top: home.y, opacity: 1 }}
-                      animate={{ ...slot, opacity: 1 }}
-                      exit={{
-                        left: home.x,
-                        top: home.y,
-                        opacity: 0,
-                        // It fades as it lands back in the graph.
-                        transition: {
-                          ...transition,
-                          opacity: {
-                            duration: transition.duration * 0.3,
-                            delay: transition.duration * 0.7,
+                          width: PILE_W,
+                          height: pileRow - 3,
+                          lineHeight: `${pileRow - 5}px`,
+                        }}
+                        initial={{ left: home.x, top: home.y, opacity: 1 }}
+                        animate={{ ...slot, opacity: 1 }}
+                        exit={{
+                          left: home.x,
+                          top: home.y,
+                          opacity: 0,
+                          // It fades as it lands back in the graph.
+                          transition: {
+                            ...transition,
+                            opacity: {
+                              duration: transition.duration * 0.3,
+                              delay: transition.duration * 0.7,
+                            },
                           },
-                        },
-                      }}
+                        }}
+                        transition={transition}
+                        aria-hidden
+                      >
+                        {e.vr}
+                      </motion.span>
+                    )
+                  })}
+              </AnimatePresence>
+              {emitStage && (
+                // The assembly stays put while a wide tree scrolls: a track
+                // as wide as the scroll, and in it a sticky pane the stage's
+                // width.
+                <div
+                  className="ac-pin-track"
+                  style={{ width: sceneWidth + over }}
+                >
+                  <div className="ac-pin" style={{ width: sceneWidth }}>
+                    <motion.div
+                      className={`ac-asm blocks ${focusLane ? 'reg-focus' : ''}`}
+                      ref={instructionRef}
+                      style={{ left: emitTreeShown ? asmLeft : 12 }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
                       transition={transition}
-                      aria-hidden
                     >
-                      {e.vr}
-                    </motion.span>
-                  )
-                })}
-            </AnimatePresence>
-            {emitStage && (
-              // The assembly stays put while a wide tree scrolls: a track
-              // as wide as the scroll, and in it a sticky pane the stage's
-              // width.
-              <div
-                className="ac-pin-track"
-                style={{ width: sceneWidth + over }}
-              >
-                <div className="ac-pin" style={{ width: sceneWidth }}>
-                  <motion.div
-                    className={`ac-asm blocks ${focusLane ? 'reg-focus' : ''}`}
-                    ref={instructionRef}
-                    style={{ left: emitTreeShown ? asmLeft : 12 }}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={transition}
-                  >
-                    <div className="ac-label">
-                      ; virtual registers
-                      {/* Over the lanes, once the first register is written. */}
-                      {lanes.lanes.some(
-                        (l) => l.def < frame.instructionCount,
-                      ) && (
-                        <motion.span
-                          className="ac-lanes-head"
-                          style={{
-                            left: `min(${lanesAt}px, 100% - ${lanesW}px)`,
-                          }}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={transition}
-                        >
-                          ; live
-                        </motion.span>
-                      )}
-                    </div>
+                      <div className="ac-label">
+                        ; virtual registers
+                        {/* Over the lanes, once the first register is written. */}
+                        {lanes.lanes.some(
+                          (l) => l.def < frame.instructionCount,
+                        ) && (
+                          <motion.span
+                            className="ac-lanes-head"
+                            style={{
+                              left: `min(${lanesAt}px, 100% - ${lanesW}px)`,
+                            }}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={transition}
+                          >
+                            ; live
+                          </motion.span>
+                        )}
+                      </div>
+                      {shownInstructions.map((ins, i) => {
+                        const current =
+                          currentRange !== null &&
+                          i >= currentRange[0] &&
+                          i <= currentRange[1]
+                        // A block's rows arrive one after another.
+                        const enter = {
+                          ...transition,
+                          delay: current
+                            ? (i - currentRange[0]) * rowStagger
+                            : 0,
+                        }
+                        const head = asmHeads.get(i)
+                        const [op, args = ''] = (ins.text ?? ins.op).split(
+                          /\s+(.*)/,
+                        )
+                        const hold =
+                          ins.op === 'pushRegisters' ||
+                          ins.op === 'popRegisters'
+                        return (
+                          <Fragment key={`instruction-${i}`}>
+                            {ins.labels?.map((l) => (
+                              <motion.div
+                                key={l}
+                                className={`ac-asm-label ${functionNames.has(l) ? 'fn' : ''}`}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={enter}
+                              >
+                                {l}:
+                              </motion.div>
+                            ))}
+                            {head && (
+                              <motion.div
+                                className="ac-asm-head"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={enter}
+                              >
+                                ; {head}
+                              </motion.div>
+                            )}
+                            <motion.div
+                              data-row={i}
+                              className={`ac-ins ${current ? 'current' : ''} ${ins.dead ? 'dead' : ''} ${i === hoverIns && !playing ? 'hover' : ''} ${focusLane && i >= focusLane.def && i <= focusLane.last ? 'live' : ''}`}
+                              initial={{ opacity: 0, y: 4 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={enter}
+                              onMouseEnter={() => !playing && setHoverIns(i)}
+                              onMouseLeave={clearHover}
+                            >
+                              <span>{i + 1}</span>
+                              {hold ? (
+                                <code className="ac-hold">{op}</code>
+                              ) : (
+                                <>
+                                  <b>{op}</b>
+                                  <code>
+                                    {args.split(/\b(v\d+)\b/).map((part, j) => {
+                                      if (j % 2 === 0) return part
+                                      const key = `${ins.fn}:${part}`
+                                      const on =
+                                        key === regFocus?.key && !!focusLane
+                                      return (
+                                        <span
+                                          key={j}
+                                          data-vr
+                                          className={`ac-arg ${on ? 'focus' : ''} ${on && j === 1 && i === focusLane.def ? 'def' : ''}`}
+                                          onMouseEnter={() =>
+                                            focusReg(key, false)
+                                          }
+                                          onMouseLeave={blurReg}
+                                          onClick={() => focusReg(key, true)}
+                                        >
+                                          {part}
+                                        </span>
+                                      )
+                                    })}
+                                  </code>
+                                </>
+                              )}
+                            </motion.div>
+                          </Fragment>
+                        )
+                      })}
+                      <EmitLanes
+                        left={lanesAt}
+                        lanes={lanes.lanes}
+                        columns={lanes.columns}
+                        count={frame.instructionCount}
+                        range={back ? null : currentRange}
+                        focused={focusLane && regFocus?.key}
+                        onFocus={focusReg}
+                        onBlur={blurReg}
+                        focus={
+                          new Set(
+                            hoverIns !== null && !playing
+                              ? registersOf(trace.instructions[hoverIns]).map(
+                                  (r) =>
+                                    `${trace.instructions[hoverIns].fn}:${r}`,
+                                )
+                              : [],
+                          )
+                        }
+                        stagger={rowStagger}
+                        duration={transition.duration}
+                        still={!!reduced}
+                      />
+                    </motion.div>
+                  </div>
+                </div>
+              )}
+              {late && !emitStage && (
+                <motion.div
+                  className="ac-asm listing"
+                  ref={instructionRef}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={transition}
+                >
+                  <div className="ac-label">
+                    {frame.phase === 'Registers'
+                      ? '; physical registers'
+                      : '; virtual registers'}
+                  </div>
+                  <AnimatePresence>
                     {shownInstructions.map((ins, i) => {
-                      const current =
-                        currentRange !== null &&
-                        i >= currentRange[0] &&
-                        i <= currentRange[1]
-                      // A block's rows arrive one after another.
-                      const enter = {
-                        ...transition,
-                        delay: current ? (i - currentRange[0]) * rowStagger : 0,
-                      }
-                      const head = asmHeads.get(i)
-                      const [op, args = ''] = (ins.text ?? ins.op).split(
-                        /\s+(.*)/,
-                      )
+                      const current = currentRange
+                        ? i >= currentRange[0] && i <= currentRange[1]
+                        : (i === shownInstructions.length - 1 &&
+                            frame.phase === 'Emit') ||
+                          (!backend && i === frame.allocationCount - 1)
+                      const registers =
+                        frame.phase !== 'Registers'
+                          ? undefined
+                          : (coloured ??
+                            (i < frame.allocationCount
+                              ? trace.registers
+                              : undefined))
+                      const [op, args = ''] = instructionText(
+                        ins,
+                        registers,
+                      ).split(/\s+(.*)/)
                       const hold =
                         ins.op === 'pushRegisters' || ins.op === 'popRegisters'
+                      const lines =
+                        ins.fn !== undefined && ins.fn < rewrittenFns
+                          ? rewritten(ins)
+                          : undefined
+                      // The line the instruction became; for a placeholder,
+                      // its first save or restore.
+                      const anchor = lines
+                        ? Math.max(
+                            0,
+                            lines.findIndex((l) => !l.added),
+                          )
+                        : -1
+                      // Laid out as the emit blocks are: labels on their own
+                      // rows, then number, op and operands in columns.
                       return (
-                        <Fragment key={`instruction-${i}`}>
+                        <motion.div
+                          key={`instruction-${i}`}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={transition}
+                        >
                           {ins.labels?.map((l) => (
-                            <motion.div
+                            <div
                               key={l}
                               className={`ac-asm-label ${functionNames.has(l) ? 'fn' : ''}`}
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              transition={enter}
                             >
                               {l}:
-                            </motion.div>
+                            </div>
                           ))}
-                          {head && (
-                            <motion.div
-                              className="ac-asm-head"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              transition={enter}
+                          {lines?.length ? (
+                            lines.map((line, j) => {
+                              const [lineOp, lineArgs = ''] =
+                                line.text.split(/\s+(.*)/)
+                              const main = j === anchor
+                              return (
+                                <motion.div
+                                  key={j}
+                                  data-row={main ? i : undefined}
+                                  className={`ac-ins ${line.added ? 'added' : ''} ${main && current ? 'current' : ''} ${main && ins.dead ? 'dead' : ''}`}
+                                  initial={{ opacity: line.added ? 0 : 1 }}
+                                  animate={{ opacity: 1 }}
+                                  transition={transition}
+                                  onMouseEnter={() =>
+                                    !playing && setHoverIns(i)
+                                  }
+                                  onMouseLeave={clearHover}
+                                >
+                                  <span>{main ? i + 1 : ''}</span>
+                                  <b>{lineOp}</b>
+                                  <code>{lineArgs}</code>
+                                  {main && ins.dead && (
+                                    <small>never runs</small>
+                                  )}
+                                </motion.div>
+                              )
+                            })
+                          ) : (
+                            <div
+                              data-row={i}
+                              className={`ac-ins ${current ? 'current' : ''} ${changed.has(i) ? 'changed' : ''} ${ins.dead ? 'dead' : ''}`}
+                              onMouseEnter={() => !playing && setHoverIns(i)}
+                              onMouseLeave={clearHover}
                             >
-                              ; {head}
-                            </motion.div>
+                              <span>{i + 1}</span>
+                              {hold ? (
+                                <code className="ac-hold">{op}</code>
+                              ) : (
+                                <>
+                                  <b>{op}</b>
+                                  <code>{args}</code>
+                                </>
+                              )}
+                              {live?.[i] && (
+                                <small>
+                                  {live[i].out.join(' ') || '·'}
+                                  {fixedAdded
+                                    ?.get(i)
+                                    ?.filter((r) => !r.startsWith('v'))
+                                    .map((r) => <i key={r}> +{r}</i>)}
+                                </small>
+                              )}
+                              {ins.dead && <small>never runs</small>}
+                              {/* DRAFT copy */}
+                              {lines?.length === 0 && (
+                                <small>
+                                  {ins.op === 'pushRegisters'
+                                    ? 'nothing to save'
+                                    : 'nothing to restore'}
+                                </small>
+                              )}
+                            </div>
                           )}
-                          <motion.div
-                            data-row={i}
-                            className={`ac-ins ${current ? 'current' : ''} ${ins.dead ? 'dead' : ''} ${i === hoverIns && !playing ? 'hover' : ''} ${focusLane && i >= focusLane.def && i <= focusLane.last ? 'live' : ''}`}
-                            initial={{ opacity: 0, y: 4 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={enter}
-                            onMouseEnter={() => !playing && setHoverIns(i)}
-                            onMouseLeave={clearHover}
-                          >
-                            <span>{i + 1}</span>
-                            {hold ? (
-                              <code className="ac-hold">{op}</code>
-                            ) : (
-                              <>
-                                <b>{op}</b>
-                                <code>
-                                  {args.split(/\b(v\d+)\b/).map((part, j) => {
-                                    if (j % 2 === 0) return part
-                                    const key = `${ins.fn}:${part}`
-                                    const on =
-                                      key === regFocus?.key && !!focusLane
-                                    return (
-                                      <span
-                                        key={j}
-                                        data-vr
-                                        className={`ac-arg ${on ? 'focus' : ''} ${on && j === 1 && i === focusLane.def ? 'def' : ''}`}
-                                        onMouseEnter={() =>
-                                          focusReg(key, false)
-                                        }
-                                        onMouseLeave={blurReg}
-                                        onClick={() => focusReg(key, true)}
-                                      >
-                                        {part}
-                                      </span>
-                                    )
-                                  })}
-                                </code>
-                              </>
-                            )}
-                          </motion.div>
-                        </Fragment>
+                        </motion.div>
                       )
                     })}
+                  </AnimatePresence>
+                  {/* Emit's lanes carry on: each takes its register's colour
+                    once the allocator picks one. The liveness sweeps use
+                    this column for their sets instead. */}
+                  {regView && w.kind !== 'reg.live' && (
                     <EmitLanes
                       left={lanesAt}
                       lanes={lanes.lanes}
                       columns={lanes.columns}
                       count={frame.instructionCount}
-                      range={back ? null : currentRange}
-                      focused={focusLane && regFocus?.key}
-                      onFocus={focusReg}
-                      onBlur={blurReg}
+                      range={null}
                       focus={
                         new Set(
-                          hoverIns !== null && !playing
-                            ? registersOf(trace.instructions[hoverIns]).map(
-                                (r) =>
-                                  `${trace.instructions[hoverIns].fn}:${r}`,
-                              )
-                            : [],
+                          stepVr === undefined ? [] : [`${fnIndex}:${stepVr}`],
                         )
                       }
+                      onFocus={() => {}}
+                      onBlur={() => {}}
                       stagger={rowStagger}
                       duration={transition.duration}
                       still={!!reduced}
+                      layout={rewrittenFns}
+                      tint={(key) => {
+                        const colour = coloured?.[key.split(':')[1]]
+                        return colour
+                          ? INK[paletteIndex(colour) % INK.length]
+                          : undefined
+                      }}
                     />
-                  </motion.div>
-                </div>
-              </div>
-            )}
-            {late && !emitStage && (
-              <motion.div
-                className="ac-asm listing"
-                ref={instructionRef}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={transition}
-              >
-                <div className="ac-label">
-                  {frame.phase === 'Registers'
-                    ? '; physical registers'
-                    : '; virtual registers'}
-                </div>
-                <AnimatePresence>
-                  {shownInstructions.map((ins, i) => {
-                    const current = currentRange
-                      ? i >= currentRange[0] && i <= currentRange[1]
-                      : (i === shownInstructions.length - 1 &&
-                          frame.phase === 'Emit') ||
-                        (!backend && i === frame.allocationCount - 1)
-                    const registers =
-                      frame.phase !== 'Registers'
-                        ? undefined
-                        : (coloured ??
-                          (i < frame.allocationCount
-                            ? trace.registers
-                            : undefined))
-                    const [op, args = ''] = instructionText(
-                      ins,
-                      registers,
-                    ).split(/\s+(.*)/)
-                    const hold =
-                      ins.op === 'pushRegisters' || ins.op === 'popRegisters'
-                    const lines =
-                      ins.fn !== undefined && ins.fn < rewrittenFns
-                        ? rewritten(ins)
-                        : undefined
-                    // The line the instruction became; for a placeholder,
-                    // its first save or restore.
-                    const anchor = lines
-                      ? Math.max(
-                          0,
-                          lines.findIndex((l) => !l.added),
+                  )}
+                  {frame.phase === 'Registers' && !backend && (
+                    <div className="ac-regs">
+                      {Object.entries(trace.registers)
+                        .filter(([v]) =>
+                          trace.instructions
+                            .slice(0, frame.allocationCount)
+                            .some((ins) => ins.dest === v),
                         )
-                      : -1
-                    // Laid out as the emit blocks are: labels on their own
-                    // rows, then number, op and operands in columns.
-                    return (
-                      <motion.div
-                        key={`instruction-${i}`}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={transition}
-                      >
-                        {ins.labels?.map((l) => (
-                          <div
-                            key={l}
-                            className={`ac-asm-label ${functionNames.has(l) ? 'fn' : ''}`}
+                        .map(([v, r]) => (
+                          <motion.span
+                            key={v}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={transition}
                           >
-                            {l}:
-                          </div>
+                            {v}→{r}
+                          </motion.span>
                         ))}
-                        {lines?.length ? (
-                          lines.map((line, j) => {
-                            const [lineOp, lineArgs = ''] =
-                              line.text.split(/\s+(.*)/)
-                            const main = j === anchor
-                            return (
-                              <motion.div
-                                key={j}
-                                data-row={main ? i : undefined}
-                                className={`ac-ins ${line.added ? 'added' : ''} ${main && current ? 'current' : ''} ${main && ins.dead ? 'dead' : ''}`}
-                                initial={{ opacity: line.added ? 0 : 1 }}
-                                animate={{ opacity: 1 }}
-                                transition={transition}
-                                onMouseEnter={() => !playing && setHoverIns(i)}
-                                onMouseLeave={clearHover}
-                              >
-                                <span>{main ? i + 1 : ''}</span>
-                                <b>{lineOp}</b>
-                                <code>{lineArgs}</code>
-                                {main && ins.dead && <small>never runs</small>}
-                              </motion.div>
-                            )
-                          })
-                        ) : (
-                          <div
-                            data-row={i}
-                            className={`ac-ins ${current ? 'current' : ''} ${changed.has(i) ? 'changed' : ''} ${ins.dead ? 'dead' : ''}`}
-                            onMouseEnter={() => !playing && setHoverIns(i)}
-                            onMouseLeave={clearHover}
-                          >
-                            <span>{i + 1}</span>
-                            {hold ? (
-                              <code className="ac-hold">{op}</code>
-                            ) : (
-                              <>
-                                <b>{op}</b>
-                                <code>{args}</code>
-                              </>
-                            )}
-                            {live?.[i] && (
-                              <small>
-                                {live[i].out.join(' ') || '·'}
-                                {fixedAdded
-                                  ?.get(i)
-                                  ?.filter((r) => !r.startsWith('v'))
-                                  .map((r) => <i key={r}> +{r}</i>)}
-                              </small>
-                            )}
-                            {ins.dead && <small>never runs</small>}
-                            {/* DRAFT copy */}
-                            {lines?.length === 0 && (
-                              <small>
-                                {ins.op === 'pushRegisters'
-                                  ? 'nothing to save'
-                                  : 'nothing to restore'}
-                              </small>
-                            )}
-                          </div>
-                        )}
-                      </motion.div>
-                    )
-                  })}
-                </AnimatePresence>
-                {/* Emit's lanes carry on: each takes its register's colour
-                    once the allocator picks one. The liveness sweeps use
-                    this column for their sets instead. */}
-                {regView && w.kind !== 'reg.live' && (
-                  <EmitLanes
-                    left={lanesAt}
-                    lanes={lanes.lanes}
-                    columns={lanes.columns}
-                    count={frame.instructionCount}
-                    range={null}
-                    focus={
-                      new Set(
-                        stepVr === undefined ? [] : [`${fnIndex}:${stepVr}`],
-                      )
-                    }
-                    onFocus={() => {}}
-                    onBlur={() => {}}
-                    stagger={rowStagger}
-                    duration={transition.duration}
-                    still={!!reduced}
-                    layout={rewrittenFns}
-                    tint={(key) => {
-                      const colour = coloured?.[key.split(':')[1]]
-                      return colour
-                        ? INK[paletteIndex(colour) % INK.length]
-                        : undefined
-                    }}
-                  />
-                )}
-                {frame.phase === 'Registers' && !backend && (
-                  <div className="ac-regs">
-                    {Object.entries(trace.registers)
-                      .filter(([v]) =>
-                        trace.instructions
-                          .slice(0, frame.allocationCount)
-                          .some((ins) => ins.dest === v),
-                      )
-                      .map(([v, r]) => (
-                        <motion.span
-                          key={v}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={transition}
-                        >
-                          {v}→{r}
-                        </motion.span>
-                      ))}
-                  </div>
-                )}
-              </motion.div>
-            )}
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </div>
           </div>
           <div className="ac-status">
+            {zoomed && (
+              <button
+                type="button"
+                className="ac-fit"
+                onClick={() => canvas.current?.home(!reduced)}
+              >
+                fit
+              </button>
+            )}
             <span className="ac-counter">
               {String(index).padStart(2, '0')}/{String(last).padStart(2, '0')}
             </span>
