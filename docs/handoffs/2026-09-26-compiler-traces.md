@@ -46,8 +46,41 @@ Rebuild the bundle: `MINI_C=~/worktrees/mini-c-compiler/2026-09-25_showcase-trac
 - `int a[x];` shows `int[0] a` in the partial tree (the size it carries on with).
 - An unterminated literal at the end of the file still says "The line ends".
 - New sentences from the agents are marked `// DRAFT copy`.
-- Before the page goes public: input and trace size limits, the stack view's
-  per-element array expansion, JSON escaping of control characters, and
-  program text inside explanation markup. A site safety audit (GPT-6 Astra)
-  is saved outside the repo in the Claude project handoffs folder.
+- Done 2026-09-27, when the page went public: editor size cap, the stack
+  view's per-element array expansion, JSON escaping of control characters,
+  program text inside explanation markup, worker settling, ?frame= checks.
+  The site-wide items of the safety audit (GPT-6 Astra, saved outside the
+  repo in the Claude project handoffs folder) are still open.
 - `reference/*.asm` and `*.regalloc.json` are stale; nothing reads them.
+
+## Held for later (Stanley, 2026-09-27)
+
+Shipped first: the compiler page's crash and abuse fixes (see the commit of
+this date). These wait:
+
+- Scrollbar: instead of the dashed rail, the dashes curve up to the left
+  while scrolling, brightest at the peak of the curve, with easing so small
+  fast scrolls cede and the curve melds back into the dashed line a little
+  after scrolling stops (so the user sees where they ended). Not intrusive,
+  especially on panes that only scroll a little, where the peak would run
+  from top to bottom.
+- Intro copy (Stanley's draft, verbatim): "Welcome to an interactive
+  demonstration of the compiler I wrote for a subset of the C programming
+  language! It follows the traces of [how to say compiler that is bundled in
+  this demo,] so every step you see is true to the actual process of how
+  your code would be compiled into a target assembly language. In this case,
+  we are targeting MIPs … Feel free to try out your own C code or edit the
+  examples!" Note: the bundle is TeaVM compiling the Java to JavaScript
+  (public/mini-c/compiler.js) run in a Web Worker, not WASM.
+- The notes window's title shows a short form of the heading inside it
+  (lexer.txt rather than notes.txt for "Where do we start?").
+- About: how the compiler was bundled into a working browser version,
+  keeping the McGill part.
+- Code and tree references in the notes (a name, a node, `$ra`) get the
+  inline code highlight or a background, to tell them apart from prose.
+- Empty initial state: something while the compiler loads, or a small
+  loading animation or sequence, instead of a blank stage.
+- The notes window shifts slightly once its scrollbar appears (the rail's
+  room changes its width).
+- Resizable notes window: height and width, height only as far as the note
+  needs; width bounded so it can't get too wide or too narrow.

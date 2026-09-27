@@ -57,7 +57,9 @@ const SYMBOL_ROLES: Record<string, string> = {
   '&': 'takes the address of what follows',
 }
 
-const code = (s: string) => `\`${s}\``
+// A backtick inside (a string literal's) would end the code span early, so
+// it shows as the look-alike ˋ instead.
+const code = (s: string) => `\`${s.replace(/`/g, 'ˋ')}\``
 /** "a", "a and b", "a, b, and c" */
 const list = (items: string[]) =>
   items.length < 3

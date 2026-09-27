@@ -49,7 +49,7 @@ import { withRegisterStops } from './regs-view'
 import { ScopeTree } from './scope-tree'
 import { scopesOf } from './scopes'
 import { StackColumn } from './stack-column'
-import { stackFrames } from './stack-view'
+import { MAX_DRAWN_BYTES, stackFrames, tooBig } from './stack-view'
 import { packTray, treeRows } from './stage-layout'
 import {
   attemptOf,
@@ -92,6 +92,10 @@ const isTypeStep = (f: Frame) =>
 const speeds = [0.5, 1, 1.5, 2]
 const KEEP_HIDDEN = ['int', '(', ')', '{', '}', ';', '=', ',']
 const HOVER_DELAY = 250
+// The most the editor takes: four times what the compiler will run
+// (REAL_MAX_CHARS), so a longer program is told it's too long, and a huge
+// paste stops here.
+const MAX_EDIT_CHARS = 4 * REAL_MAX_CHARS
 // How long the pointer rests on a scrollbar before its thumb shows.
 const DWELL_MS = 150
 // Stage geometry: pieces live in a 680 × 480 viewBox stretched over the scene,
@@ -143,6 +147,18 @@ const INK = [
 // inner edges, so a lone `*` operator in prose stays literal).
 const INLINE = /(\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|\*[A-Za-z][^*]*[A-Za-z]\*)/
 
+// Links only to where the page's own copy links: text from a visitor's
+// program (a string, an error message) can't add one.
+const LINK_HOSTS = new Set(['matklad.github.io'])
+const linkable = (href: string) => {
+  try {
+    const url = new URL(href)
+    return url.protocol === 'https:' && LINK_HOSTS.has(url.hostname)
+  } catch {
+    return false
+  }
+}
+
 // Explanation strings mark code with backticks.
 function Prose({ text }: { text: string }) {
   return (
@@ -154,7 +170,7 @@ function Prose({ text }: { text: string }) {
           <span key={i}>
             {part.split(INLINE).map((run, j) => {
               const link = /^\[([^\]]+)\]\(([^)]+)\)$/.exec(run)
-              if (link)
+              if (link && linkable(link[2]))
                 return (
                   <a
                     key={j}
@@ -1061,7 +1077,11 @@ export default function AnimatedCompiler() {
   // The phone layout's smaller pieces (animated.css, max-width 640px).
   const [narrow, setNarrow] = useState(false)
   const reduced = useReducedMotion()
-  const index = Math.min(step, trace.frames.length - 1)
+  // A whole step within the trace, whatever set it (a link's ?frame=0.5).
+  const index = Math.max(
+    0,
+    Math.min(Number.isSafeInteger(step) ? step : 0, trace.frames.length - 1),
+  )
   const frame = trace.frames[index]
   // Which way the last step went. Stepping back doesn't replay the step it
   // lands on: its sequences (rows in turn, a register travelling up the
@@ -1281,7 +1301,7 @@ export default function AnimatedCompiler() {
     if (q.get('titles') === 'on') setTitles(true)
     if (q.get('emit') === 'blocks') setEmitBlocks(true)
     const at = Number(q.get('frame'))
-    if (at > 0) setStep(at)
+    if (Number.isSafeInteger(at) && at > 0) setStep(at)
     setLinked(true)
   }, [])
   useEffect(() => {
@@ -1494,6 +1514,7 @@ export default function AnimatedCompiler() {
   }, [frame.instructionCount, frame.allocationCount, index])
 
   const update = (text: string) => {
+    if (text.length > MAX_EDIT_CHARS) text = text.slice(0, MAX_EDIT_CHARS)
     setSource(text)
     setStep(0)
     setSlide(0)
@@ -2351,6 +2372,7 @@ export default function AnimatedCompiler() {
           width: cardAt.closed.width,
         })
 
+  const oversized = useMemo(() => tooBig(trace), [trace])
   const stackNow = stacks.find(
     (f) =>
       f.first < frame.instructionCount && frame.instructionCount - 1 <= f.last,
@@ -2571,6 +2593,9 @@ export default function AnimatedCompiler() {
                 ref={textRef}
                 aria-label="Edit C source"
                 value={source}
+                // Past the compiler's limit it says so; past this, nothing
+                // more is taken, so a huge paste can't swamp the editor.
+                maxLength={MAX_EDIT_CHARS}
                 rows={lines.length}
                 spellCheck={false}
                 onFocus={() => {
@@ -2690,6 +2715,12 @@ export default function AnimatedCompiler() {
                 />
               )}
               {emitStage && !stackAt && stackColumn()}
+              {emitStage && oversized && (
+                // DRAFT copy
+                <p className="ac-type-done">
+                  {`${oversized.name} takes ${oversized.size.toLocaleString()} bytes, too many to draw the stack (over ${MAX_DRAWN_BYTES.toLocaleString()}).`}
+                </p>
+              )}
             </div>
           </section>
         </section>
