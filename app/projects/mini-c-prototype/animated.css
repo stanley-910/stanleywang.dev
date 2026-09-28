@@ -222,6 +222,10 @@
   letter-spacing: 0.04em;
 }
 
+/* A phone's way back to the projects (the phone block below). */
+.ac-home {
+  display: none;
+}
 /* Top line: numbered phases, about. */
 .ac-top {
   display: flex;
@@ -953,6 +957,50 @@
 }
 .ac-listsplit.foot:is(:hover, :focus-visible, :active) {
   background: linear-gradient(var(--muted) 1px, transparent 1px);
+}
+/* A phone's grips (animated.tsx, flowSplit): a finger-sized strip with a
+   short bar at its middle, since a finger can't hover to find an edge.
+   Each is centred on the division it moves: the line between the stage
+   and the listing, and the 6px gaps above the source's box and the dock
+   (the phone block below). */
+.ac-flowsplit {
+  position: absolute;
+  right: 0;
+  left: 0;
+  z-index: 6;
+  height: 22px;
+  cursor: row-resize;
+  touch-action: none;
+}
+.ac-flowsplit::before {
+  content: '';
+  position: absolute;
+  top: 9.5px;
+  left: calc(50% - 18px);
+  width: 36px;
+  height: 3px;
+  background: var(--faint);
+}
+/* (on the listing's top line: a no-height mark between the stage's
+   canvas and the listing, the strip centred on it) */
+.ac-flowsplit-at {
+  position: relative;
+  z-index: 6;
+  flex: none;
+  height: 0;
+}
+.ac-flowsplit.listing {
+  top: -11px;
+}
+/* (in the gap over the source's box or the dock: its middle, 3px up) */
+.ac-flowsplit:is(.editor, .note) {
+  top: -14.5px;
+}
+.ac-flowsplit:is(:active, :focus-visible) {
+  outline: none;
+}
+.ac-flowsplit:is(:active, :focus-visible)::before {
+  background: var(--ink);
 }
 .ac-listing-scroll:focus-visible {
   outline: 1px solid var(--ink);
@@ -2003,6 +2051,16 @@ button.ac-proof-name {
   white-space: nowrap;
 }
 
+/* The note and the controls: no box of their own, except docked to the
+   bottom of a phone's screen (below). The menu's reset and speed are the
+   phone's; wider bars have their own. */
+.ac-dock {
+  display: contents;
+}
+.ac-keys .ac-cramped {
+  display: none;
+}
+
 /* Footer key bar, Commit-Mono style. */
 .ac-keys {
   display: flex;
@@ -2095,14 +2153,57 @@ button.ac-proof-name {
   }
 }
 @media (max-width: 640px) {
-  /* One row: the phases from the left, scrolling if they must; about
-     keeps the right end. */
-  /* A phone's page is already all tool. */
-  .ac-max {
+  /* A phone: the tool is the whole screen, like an app, and nothing
+     scrolls the page. Top to bottom: the way back and the phases, the
+     stage (taking whatever height is left), the listing, the source, the
+     side pane's name, and the dock. Panes resize by their edges
+     (animated.tsx, flowSplit), and the stage gives or takes the room
+     (Stanley, 2026-09-28). */
+  html:has(.ac-dock),
+  body:has(.ac-dock) {
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  .ac {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    width: auto;
+    height: 100dvh;
+    left: 0;
+    margin: 0;
+    padding: env(safe-area-inset-top) 12px 0;
+    overflow: hidden;
+    transform: none;
+    background: var(--bg);
+  }
+  .ac-max,
+  .ac-back {
     display: none;
   }
+  /* One row: back, then the phases, scrolling if they must. About moves
+     to the "?" menu. */
   .ac-top {
-    gap: 14px;
+    flex: none;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 0 6px;
+  }
+  .ac-home {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    margin-left: -8px;
+    color: var(--muted);
+  }
+  .ac-home svg {
+    width: 20px;
+    height: 20px;
+    stroke-width: 1.75;
   }
   .ac-phases {
     flex: 1 1 0;
@@ -2112,15 +2213,28 @@ button.ac-proof-name {
     overflow-x: auto;
   }
   .ac-about {
+    position: static;
     flex: none;
   }
+  .ac-about summary {
+    display: none;
+  }
   .ac-about > div {
-    width: min(340px, calc(100vw - 32px));
+    top: 40px;
+    right: 12px;
+    width: min(340px, calc(100vw - 24px));
+    max-height: calc(100dvh - 120px);
+    overflow: auto;
   }
   .ac-work {
-    grid-template-columns: 1fr;
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    min-height: 0;
   }
   .ac-editor {
+    position: relative;
+    flex: none;
     height: auto;
     min-height: 0;
     border-right: 0;
@@ -2128,17 +2242,48 @@ button.ac-proof-name {
   .ac-source,
   .ac-source[data-sized='true'] {
     flex: none;
-    height: 132px;
   }
   .ac-split,
   .ac-colsplit {
     display: none;
   }
-  .ac-note-body {
-    min-height: 88px;
+  /* The source and the side pane share one slot, its height the source's
+     (animated.tsx, --flow-source): the pane shows only its name until
+     its box opens it in the source's place, so the stage never gives up
+     room to it. */
+  .ac-source,
+  .ac-source[data-sized='true'] {
+    height: var(--flow-source, 132px);
+  }
+  .ac-editor:has(.ac-note.open) .ac-source {
+    display: none;
+  }
+  .ac-note {
+    flex: none;
+  }
+  .ac-note:not(.open) .ac-note-body {
+    display: none;
+  }
+  .ac-note.open .ac-note-body {
+    height: var(--flow-source, 132px);
+    min-height: 0;
+    overflow: auto;
+  }
+  .ac .ac-side-box {
+    align-self: stretch;
+    width: 44px;
+    margin-right: -10px;
+    color: var(--faint);
+    text-decoration: none;
+  }
+  .ac-stage {
+    flex: 1 1 0;
+    min-height: 0;
   }
   .ac-scene {
-    height: 300px;
+    flex: 1 1 0;
+    height: auto;
+    min-height: 0;
   }
   .ac-piece {
     height: 20px;
@@ -2164,21 +2309,171 @@ button.ac-proof-name {
   .ac-asm.listing .ac-ins > span {
     padding-right: 5px;
   }
-  /* Stacked, a heavier rule tells the stage from the editor below. */
+  /* Stacked: the stage and the source each in a box of its own, a gap
+     between them as between the source and the dock. */
+  .ac-work {
+    gap: 6px;
+    border: 0;
+    background: none;
+  }
   .ac-stage {
     order: -1;
-    border-bottom: 3px solid var(--line);
+    border: 1px solid var(--line);
+  }
+  .ac-editor {
+    /* (sized by its panes here, and its grip sits in the gap above it) */
+    overflow: visible;
+    border: 1px solid var(--line);
+  }
+  /* Docked: the note, then one row of controls, at the bottom of the
+     screen. */
+  .ac-dock {
+    position: relative;
+    z-index: 40;
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    margin-top: 6px;
+    padding-bottom: env(safe-area-inset-bottom);
+    border-top: 1px solid var(--line);
+    background: var(--bg);
+  }
+  .ac-window.docked {
+    position: static;
+    /* (a flex item here, where a z-index still counts: under the menu) */
+    z-index: 1;
+    width: 100% !important;
+    max-width: none;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    clip-path: none;
+  }
+  .ac-window.docked .ac-window-bar {
+    height: 28px;
+    padding: 0 0 0 2px;
+    cursor: default;
+    touch-action: auto;
+  }
+  .ac .ac-window.docked .ac-window-box {
+    align-self: stretch;
+    width: 44px;
+  }
+  .ac-window.docked .ac-window-open {
+    border-top: 0;
+  }
+  /* One height, whatever the step says (animated.tsx, NOTE_H): a longer
+     note scrolls here rather than pushing the panes above it about. */
+  .ac-window.docked .ac-window-body {
+    height: var(--note-h, 84px);
+    max-height: none;
+    padding: 0 2px 10px;
+    font-size: 12px;
   }
   .ac-keys {
-    flex-wrap: wrap;
-    height: auto;
-    gap: 10px 12px;
-    padding: 8px 0;
+    /* (its menu opens over the note above it) */
+    position: relative;
+    z-index: 2;
+    gap: 0;
+    height: 48px;
+    padding: 0;
+    background: var(--bg);
   }
-  /* The scrubber takes its own row, with `?` at its right end so the
-     menu opens on screen. */
+  .ac-keys .ac-roomy {
+    display: none;
+  }
+  .ac-keys .ac-cramped {
+    display: flex;
+  }
+  /* Thumb-sized: each control a 44px square at least. */
+  .ac-keys > button,
+  .ac-step button,
+  .ac-more > button {
+    justify-content: center;
+    min-width: 44px;
+    height: 44px;
+  }
+  /* Left to right: `?`, the count, the scrubber, then play and the steps
+     at the right edge, under a right thumb (Stanley, 2026-09-28). */
+  .ac-more {
+    order: 1;
+  }
+  .ac-counter {
+    order: 2;
+  }
   .ac-keys input {
-    flex: 1 1 200px;
+    order: 3;
+  }
+  .ac-keys > button:first-child {
+    order: 4;
+    min-width: 52px;
+  }
+  .ac-step {
+    order: 5;
+  }
+  /* At the left end now, the menu opens rightward. */
+  .ac .ac-more-menu {
+    right: auto;
+    left: 0;
+    width: max-content;
+  }
+  .ac-step {
+    gap: 0;
+  }
+  .ac-step svg {
+    width: 20px;
+    height: 20px;
+  }
+  .ac-keys input {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 44px;
+    margin: 0 8px 0 12px;
+  }
+  .ac-counter {
+    margin-left: 0;
+  }
+  .ac-keys .ac-more-menu button {
+    padding: 10px 14px;
+  }
+  /* (no keyboard to list) */
+  .ac .ac-more-keys {
+    display: none;
+  }
+  /* The site's scroll buttons (ScrollToTop.tsx) would sit on the dock's
+     `?`; the tool is the page here. */
+  body:has(.ac-dock) .scroll-buttons {
+    display: none;
+  }
+}
+/* A finger can't find a 2px thumb: the same line, in a wider grip. */
+@media (pointer: coarse) {
+  .ac-keys input::-webkit-slider-thumb {
+    width: 22px;
+    height: 24px;
+    background: linear-gradient(
+      to right,
+      transparent 10px,
+      var(--ink) 10px 12px,
+      transparent 12px
+    );
+    box-shadow: none;
+  }
+  .ac-keys input::-moz-range-thumb {
+    width: 22px;
+    height: 24px;
+    background: linear-gradient(
+      to right,
+      transparent 10px,
+      var(--ink) 10px 12px,
+      transparent 12px
+    );
+    box-shadow: none;
+  }
+  .ac-keys input:is(:hover, :active)::-webkit-slider-thumb {
+    height: 24px;
+  }
+  .ac-keys input:is(:hover, :active)::-moz-range-thumb {
+    height: 24px;
   }
 }
 /* Small phones: tighter tabs, so all six fit beside about. */
@@ -2198,6 +2493,14 @@ button.ac-proof-name {
   .ac-phases button,
   .ac-about summary {
     font-size: 11px;
+  }
+}
+/* The narrowest phones can't fit all six: the row scrolls, and its right
+   edge fades to say so. */
+@media (max-width: 359px) {
+  .ac-phases {
+    padding-right: 20px;
+    mask-image: linear-gradient(to left, transparent, black 24px);
   }
 }
 /* A phone on its side: the tabs, stage and keys fit one screen once

@@ -62,6 +62,8 @@
   text-decoration: none;
   border-bottom: 1px solid rgba(125, 125, 125, 0.5);
   transition: border 0.3s ease-in-out;
+  /* a bare URL wraps instead of widening the page on a phone */
+  overflow-wrap: anywhere;
 }
 .prose a:hover {
   border-bottom: 1px solid var(--fg);
@@ -293,7 +295,10 @@ html.dark .prose {
 
 /* KaTeX Math Styling */
 .prose .katex-display {
-  overflow: visible;
+  /* a wide equation scrolls on its own instead of widening the page */
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.25em 0;
 }
 
 .prose .katex {

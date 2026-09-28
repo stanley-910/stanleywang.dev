@@ -15,6 +15,8 @@ import remarkRehype from 'remark-rehype'
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // No dev badge: it sat on the compiler's phone controls.
+  devIndicators: false,
   // Temporary redirects keep these slugs available for future project pages.
   async redirects() {
     return [

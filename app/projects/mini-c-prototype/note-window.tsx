@@ -10,7 +10,9 @@ import type { ReactNode, RefObject } from 'react'
 // a + that grows it back out (Stanley, 2026-09-26). A grip at its bottom
 // right sizes it: the width within bounds, the height only as a cap, so it
 // never grows past what the note needs (2026-09-27). Where it sits, its
-// size and whether it's rolled up are remembered in this browser.
+// size and whether it's rolled up are remembered in this browser. On a
+// phone it docks over the controls instead (animated.css .ac-dock): no bar
+// to drag or grip to size, only the − that rolls it up.
 const KEY = 'mini-c-note-window'
 const MARGIN = 8
 const OPEN_W = 264
@@ -67,6 +69,7 @@ export function NoteWindow({
   start,
   children,
   foot,
+  docked = false,
 }: {
   title: string
   error?: boolean
@@ -81,6 +84,8 @@ export function NoteWindow({
   start: () => { x: number; y: number }
   children: ReactNode
   foot?: ReactNode
+  /** Docked over the controls (a phone): not dragged or sized. */
+  docked?: boolean
 }) {
   const ref = useRef<HTMLElement>(null)
   const still = useReducedMotion()
@@ -187,7 +192,7 @@ export function NoteWindow({
   const gripRef = useRef<HTMLDivElement>(null)
   const [ear, setEar] = useState(false)
   useEffect(() => {
-    if (shut) {
+    if (shut || docked) {
       setEar(false)
       return
     }
@@ -223,32 +228,39 @@ export function NoteWindow({
       window.removeEventListener('blur', away)
     }
     // (current() reads the latest place and room through refs)
-  }, [shut])
+  }, [shut, docked])
   const openW = Math.min(place?.w ?? OPEN_W, room)
   // Rolled up it is just the name and a +, exactly as wide as those
   // (monospace, 6.6px a character at 11px, plus the bar's padding).
-  const width = shut ? Math.ceil(title.length * TITLE_CH + 39) : openW
+  const width = docked
+    ? '100%'
+    : shut
+      ? Math.ceil(title.length * TITLE_CH + 39)
+      : openW
   const timing = { duration: still || resizing ? 0 : 0.22, ease: EASE }
 
   return (
     <motion.section
       ref={ref}
-      className={`ac-window ${shut ? 'shut' : ''} ${error ? 'err' : ''} ${ear || resizing ? 'ear' : ''}`}
+      className={`ac-window ${docked ? 'docked' : ''} ${shut ? 'shut' : ''} ${error ? 'err' : ''} ${ear || resizing ? 'ear' : ''}`}
       aria-label="Current step"
       initial={false}
       animate={{ width }}
       transition={timing}
       style={
-        place
-          ? { left: place.x, top: place.y }
-          : // Measured before it's placed: hidden for that first frame.
-            { visibility: 'hidden' }
+        docked
+          ? undefined
+          : place
+            ? { left: place.x, top: place.y }
+            : // Measured before it's placed: hidden for that first frame.
+              { visibility: 'hidden' }
       }
     >
       <div
         className="ac-window-bar"
         onPointerDown={(e) => {
-          if (!place || (e.target as Element).closest('button')) return
+          if (docked || !place || (e.target as Element).closest('button'))
+            return
           e.preventDefault()
           e.currentTarget.setPointerCapture(e.pointerId)
           drag.current = { dx: e.clientX - place.x, dy: e.clientY - place.y }
@@ -294,75 +306,76 @@ export function NoteWindow({
             <div
               ref={bodyRef}
               className="ac-window-body"
-              style={{
-                width: openW - 2,
-                maxHeight: place?.h,
-              }}
+              style={
+                docked ? undefined : { width: openW - 2, maxHeight: place?.h }
+              }
               aria-live={live ? 'polite' : 'off'}
             >
               {children}
             </div>
             {foot}
-            <div
-              ref={gripRef}
-              className="ac-window-grip"
-              role="separator"
-              aria-orientation="vertical"
-              aria-label="Resize notes"
-              aria-valuenow={openW}
-              aria-valuemin={MIN_W}
-              aria-valuemax={MAX_W}
-              aria-valuetext={`${openW} px wide${place?.h ? `, at most ${place.h} px tall` : ''}; arrow keys resize`}
-              tabIndex={0}
-              onPointerDown={(e) => {
-                if (!place) return
-                e.preventDefault()
-                e.stopPropagation()
-                e.currentTarget.setPointerCapture(e.pointerId)
-                sizing.current = { x: e.clientX, y: e.clientY, ...current() }
-                setResizing(true)
-              }}
-              onPointerMove={(e) => {
-                const d = sizing.current
-                if (!d) return
-                resize(d.w + e.clientX - d.x, d.h + e.clientY - d.y, false)
-              }}
-              onPointerUp={() => {
-                if (!sizing.current) return
-                sizing.current = null
-                setResizing(false)
-                setPlace((p) => {
-                  if (p) save(p)
-                  return p
-                })
-              }}
-              onPointerCancel={() => {
-                sizing.current = null
-                setResizing(false)
-              }}
-              // Back to the size it opens at.
-              onDoubleClick={() =>
-                setPlace((p) => {
-                  if (!p) return p
-                  const next = { ...p, w: undefined, h: undefined }
-                  save(next)
-                  return next
-                })
-              }
-              onKeyDown={(e) => {
-                const step = {
-                  ArrowLeft: [-NUDGE, 0],
-                  ArrowRight: [NUDGE, 0],
-                  ArrowUp: [0, -NUDGE],
-                  ArrowDown: [0, NUDGE],
-                }[e.key]
-                if (!step) return
-                e.preventDefault()
-                e.stopPropagation()
-                const { w, h } = current()
-                resize(w + step[0], h + step[1], true)
-              }}
-            />
+            {!docked && (
+              <div
+                ref={gripRef}
+                className="ac-window-grip"
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="Resize notes"
+                aria-valuenow={openW}
+                aria-valuemin={MIN_W}
+                aria-valuemax={MAX_W}
+                aria-valuetext={`${openW} px wide${place?.h ? `, at most ${place.h} px tall` : ''}; arrow keys resize`}
+                tabIndex={0}
+                onPointerDown={(e) => {
+                  if (!place) return
+                  e.preventDefault()
+                  e.stopPropagation()
+                  e.currentTarget.setPointerCapture(e.pointerId)
+                  sizing.current = { x: e.clientX, y: e.clientY, ...current() }
+                  setResizing(true)
+                }}
+                onPointerMove={(e) => {
+                  const d = sizing.current
+                  if (!d) return
+                  resize(d.w + e.clientX - d.x, d.h + e.clientY - d.y, false)
+                }}
+                onPointerUp={() => {
+                  if (!sizing.current) return
+                  sizing.current = null
+                  setResizing(false)
+                  setPlace((p) => {
+                    if (p) save(p)
+                    return p
+                  })
+                }}
+                onPointerCancel={() => {
+                  sizing.current = null
+                  setResizing(false)
+                }}
+                // Back to the size it opens at.
+                onDoubleClick={() =>
+                  setPlace((p) => {
+                    if (!p) return p
+                    const next = { ...p, w: undefined, h: undefined }
+                    save(next)
+                    return next
+                  })
+                }
+                onKeyDown={(e) => {
+                  const step = {
+                    ArrowLeft: [-NUDGE, 0],
+                    ArrowRight: [NUDGE, 0],
+                    ArrowUp: [0, -NUDGE],
+                    ArrowDown: [0, NUDGE],
+                  }[e.key]
+                  if (!step) return
+                  e.preventDefault()
+                  e.stopPropagation()
+                  const { w, h } = current()
+                  resize(w + step[0], h + step[1], true)
+                }}
+              />
+            )}
           </motion.div>
         )}
       </AnimatePresence>

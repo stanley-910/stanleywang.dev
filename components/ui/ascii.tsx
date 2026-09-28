@@ -181,8 +181,8 @@ export const AsciiArt = () => {
     <div className="flex-1">
       {/* Placeholder for small screens (hidden by default, shown on small screens) */}
       <div className="sm:hidden">
-        {/* ASCII art for small screens */}
-        <pre className="transparent-pre mt-2 font-mono text-sm leading-[1.2] whitespace-pre text-zinc-600 dark:text-zinc-400">
+        {/* ASCII art for small screens, scaled down to fit a narrow phone */}
+        <pre className="transparent-pre mt-2 font-mono text-[min(0.875rem,3.5vw)] leading-[1.2] whitespace-pre text-zinc-600 dark:text-zinc-400">
           {currentAsciiSmall}
         </pre>
       </div>

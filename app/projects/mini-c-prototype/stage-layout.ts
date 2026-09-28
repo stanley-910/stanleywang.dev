@@ -29,15 +29,21 @@ export function treeRows(
   narrow: boolean,
 ) {
   const last = Math.max(
-    30,
+    // (no tray at all: the tree starts at the top)
+    Object.keys(tray).length ? 30 : 0,
     ...Object.values(tray)
       .filter((p) => p.y <= 150)
       .map((p) => p.y),
   )
   const top = (last * height) / 480 + (narrow ? 10 : 11) + 16 + half
+  // A phone's short stage keeps 30px a level while there's room, rather
+  // than squeezing the rows onto one another.
   const band = Math.min(
-    (Math.min((tree.depth / Math.max(1, tree.levels)) * 235, 295) * height) /
-      480,
+    Math.max(
+      (Math.min((tree.depth / Math.max(1, tree.levels)) * 235, 295) * height) /
+        480,
+      narrow ? tree.depth * 30 : 0,
+    ),
     Math.max(0, height - top - half - 16),
   )
   return { top, band }

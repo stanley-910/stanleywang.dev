@@ -7,6 +7,8 @@ import {
   ZoomIn,
   ZoomOut,
 } from 'lucide-react'
+import Link from 'next/link'
+import { useTheme } from 'next-themes'
 import {
   AnimatePresence,
   animate,
@@ -602,6 +604,19 @@ export default function AnimatedCompiler() {
       document.removeEventListener('keydown', escape)
     }
   }, [moreOpen])
+  // About: its own tab on a wide screen; on a phone, where the tabs need
+  // the row, it opens from the "?" menu and a tap anywhere else closes it.
+  const [aboutOpen, setAboutOpen] = useState(false)
+  const aboutRef = useRef<HTMLDetailsElement>(null)
+  const { resolvedTheme, setTheme } = useTheme()
+  useEffect(() => {
+    if (!aboutOpen || !window.matchMedia('(max-width: 640px)').matches) return
+    const away = (event: PointerEvent) => {
+      if (!aboutRef.current?.contains(event.target as Node)) setAboutOpen(false)
+    }
+    document.addEventListener('pointerdown', away)
+    return () => document.removeEventListener('pointerdown', away)
+  }, [aboutOpen])
   const view = useMemo(
     () => layered(baseTrace, source, detailed),
     [baseTrace, source, detailed],
@@ -1006,6 +1021,50 @@ export default function AnimatedCompiler() {
     axis: 'w' | 'h'
   } | null>(null)
   const [listingDragging, setListingDragging] = useState(false)
+  // A phone is one screen: the stage takes what the listing, the source
+  // and the dock leave. The listing's top edge trades height with the
+  // stage; the source's top edge with the listing, or with the stage
+  // before there is one; the dock's with the stage. The note keeps one
+  // height from step to step, scrolling a longer one, so nothing jumps
+  // (Stanley, 2026-09-28). Null: the default size.
+  const NOTE_H = 84
+  type FlowSizes = {
+    listing: number | null
+    source: number | null
+    note: number | null
+  }
+  const [flowSizes, setFlowSizes] = useState<FlowSizes>({
+    listing: null,
+    source: null,
+    note: null,
+  })
+  type FlowEdge = 'listing' | 'editor' | 'note'
+  type FlowFrom = {
+    listing: number
+    source: number
+    note: number
+    scene: number
+  }
+  const flowDrag = useRef<{
+    edge: FlowEdge
+    at: number
+    from: FlowFrom
+  } | null>(null)
+  // The stage and its listing together: what a phone's listing is cut from.
+  const stageRef = useRef<HTMLElement>(null)
+  const [stageHeight, setStageHeight] = useState(0)
+  useEffect(() => {
+    const stage = stageRef.current
+    if (!stage) return
+    const observer = new ResizeObserver(([entry]) =>
+      setStageHeight(entry.contentRect.height),
+    )
+    observer.observe(stage)
+    return () => observer.disconnect()
+  }, [])
+  // A phone's side pane (the class, the scopes, the stack) shows only its
+  // name until tapped open.
+  const [sideOpen, setSideOpen] = useState(false)
   useEffect(() => {
     try {
       const w = Number(localStorage.getItem(LISTING_W_KEY))
@@ -1641,10 +1700,18 @@ export default function AnimatedCompiler() {
     const observer = new ResizeObserver(([entry]) => {
       setSceneWidth(entry.contentRect.width || VIEW_W)
       setSceneHeight(entry.contentRect.height || VIEW_H)
-      setNarrow(window.matchMedia('(max-width: 640px)').matches)
     })
     observer.observe(scene)
     return () => observer.disconnect()
+  }, [])
+  // A phone's width: from the query itself, so it holds even before the
+  // stage is first measured (a page loaded out of sight).
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 640px)')
+    const update = () => setNarrow(query.matches)
+    update()
+    query.addEventListener('change', update)
+    return () => query.removeEventListener('change', update)
   }, [])
   useEffect(() => {
     const scene = sceneRef.current,
@@ -1743,12 +1810,107 @@ export default function AnimatedCompiler() {
     listingSize.w === null ? listingFits : clampListingW(listingSize.w)
   // A short stage (a phone's) keeps all of itself: the pane goes under it
   // and the page grows, rather than covering half of it.
-  const listingFlow = !listingSide && sceneHeight < 480
+  // (a phone's always: a taller stage, dragged so, keeps the pane under it)
+  const listingFlow = !listingSide && (narrow || sceneHeight < 480)
+  // (a phone's: under half its stage, as dragged, always leaving the
+  // stage its floor)
+  const STAGE_MIN = 120
+  const flowListing = Math.round(
+    Math.max(
+      96,
+      Math.min(
+        flowSizes.listing ?? Math.min(220, stageHeight * 0.45),
+        stageHeight - STAGE_MIN,
+      ),
+    ),
+  )
   const listingH = listingFlow
-    ? 240
+    ? narrow
+      ? flowListing
+      : 200
     : listingSize.h === null
       ? Math.round(sceneHeight * 0.5)
       : clampListingH(listingSize.h)
+  // Drag an edge on a phone: what one side gains, the other gives up,
+  // within each one's floor.
+  const flowFrom = (): FlowFrom => ({
+    listing: listingH,
+    source: flowSizes.source ?? 132,
+    note: flowSizes.note ?? NOTE_H,
+    scene: sceneHeight,
+  })
+  const flowBy = (edge: FlowEdge, dy: number, from: FlowFrom): FlowSizes => {
+    const room = Math.max(0, from.scene - STAGE_MIN)
+    if (edge === 'note') {
+      // (down to one line: 18px and the body's 10px under it)
+      const by = Math.max(-room, Math.min(dy, from.note - 28))
+      return { ...flowSizes, note: from.note - by }
+    }
+    if (edge === 'listing') {
+      const by = Math.max(-room, Math.min(dy, from.listing - 96))
+      return { ...flowSizes, listing: from.listing - by }
+    }
+    if (late && listingFlow) {
+      const by = Math.max(96 - from.listing, Math.min(dy, from.source - 60))
+      return {
+        ...flowSizes,
+        listing: from.listing + by,
+        source: from.source - by,
+      }
+    }
+    const by = Math.max(-room, Math.min(dy, from.source - 60))
+    return { ...flowSizes, source: from.source - by }
+  }
+  const flowSplit = (edge: FlowEdge) => (
+    <div
+      className={`ac-flowsplit ${edge}`}
+      role="separator"
+      aria-orientation="horizontal"
+      aria-label={
+        edge === 'note'
+          ? 'Resize note'
+          : edge === 'listing'
+            ? 'Resize stage and assembly'
+            : late
+              ? 'Resize assembly and code'
+              : 'Resize stage and code'
+      }
+      tabIndex={0}
+      onPointerDown={(e) => {
+        e.preventDefault()
+        e.currentTarget.setPointerCapture(e.pointerId)
+        flowDrag.current = { edge, at: e.clientY, from: flowFrom() }
+        setListingDragging(true)
+      }}
+      onPointerMove={(e) => {
+        const d = flowDrag.current
+        if (d) setFlowSizes(flowBy(d.edge, e.clientY - d.at, d.from))
+      }}
+      onPointerUp={() => {
+        flowDrag.current = null
+        setListingDragging(false)
+      }}
+      onLostPointerCapture={() => {
+        flowDrag.current = null
+        setListingDragging(false)
+      }}
+      onPointerCancel={() => {
+        flowDrag.current = null
+        setListingDragging(false)
+      }}
+      // Back to the sizes it opens at.
+      onDoubleClick={() =>
+        setFlowSizes({ listing: null, source: null, note: null })
+      }
+      onKeyDown={(e) => {
+        const dy = e.key === 'ArrowUp' ? -20 : e.key === 'ArrowDown' ? 20 : 0
+        if (!dy) return
+        e.preventDefault()
+        e.stopPropagation()
+        setFlowSizes(flowBy(edge, dy, flowFrom()))
+      }}
+    />
+  )
   const cover = {
     right: late && listingSide ? listingW : 0,
     bottom: late && !listingSide && !listingFlow ? listingH : 0,
@@ -2153,8 +2315,10 @@ export default function AnimatedCompiler() {
   // Parse: unattached nodes wait in their holder's open slot (parse-view.ts).
   const working = parseView(trace, index, parents, groups, baseTree.at)
   const pieceHalf = ((narrow ? 20 : 22) * fit) / 2
+  // A phone drops the token tray's room once the parse has emptied it.
+  const trayGone = narrow && frame.phase !== 'Tokens' && frame.phase !== 'Parse'
   const { top: treeTop, band: treeBand } = treeRows(
-    packTray(trace.tokens, sceneWidth),
+    trayGone ? {} : packTray(trace.tokens, sceneWidth),
     sceneHeight,
     tree,
     pieceHalf,
@@ -2497,7 +2661,10 @@ export default function AnimatedCompiler() {
     : intro
       ? intro.title
       : index === 0
-        ? 'Press space to compile your code!'
+        ? narrow
+          ? // DRAFT copy: the phone's wording of the line above
+            'Press play to compile your code!'
+          : 'Press space to compile your code!'
         : frame.why.kind === 'token'
           ? `Token: \`${trace.tokens[frame.why.token].text}\``
           : frame.title
@@ -2926,7 +3093,16 @@ export default function AnimatedCompiler() {
       return (shaded ? 1e9 : 0) + hits * 10000 + covered
     }
     const best = spots.reduce((a, b) => (cost(b) < cost(a) ? b : a))
-    return cost(best) === Infinity ? under : best
+    if (cost(best) < Infinity) return best
+    // Nowhere it fits whole (a phone's short stage): under or above,
+    // whichever has more room, held inside the stage even if that covers
+    // the node.
+    return c.y > sceneHeight - c.y
+      ? {
+          ...spots[3],
+          top: Math.max(Math.min(h + 4, sceneHeight - 4), spots[3].top),
+        }
+      : { ...under, top: Math.max(4, Math.min(under.top, sceneHeight - h - 4)) }
   })()
   const cardBox = (() => {
     if (!cardAt || !cardPlace) return undefined
@@ -2979,6 +3155,10 @@ export default function AnimatedCompiler() {
       data-phase={frame.phase.toLowerCase()}
     >
       <header className="ac-top">
+        {/* A phone's tool is the whole screen: this is its way out. */}
+        <Link href="/projects" className="ac-home" aria-label="Projects">
+          <ChevronLeft aria-hidden="true" />
+        </Link>
         {max && (
           <button
             type="button"
@@ -3008,7 +3188,12 @@ export default function AnimatedCompiler() {
             )
           })}
         </nav>
-        <details className="ac-about">
+        <details
+          ref={aboutRef}
+          className="ac-about"
+          open={aboutOpen}
+          onToggle={(e) => setAboutOpen(e.currentTarget.open)}
+        >
           <summary>about</summary>
           <div>
             <p>
@@ -3102,7 +3287,16 @@ export default function AnimatedCompiler() {
             saveWidth(clampWidth(range.width + step, range.max))
           }}
         />
-        <section className="ac-editor" aria-label="Source editor">
+        <section
+          className="ac-editor"
+          aria-label="Source editor"
+          style={
+            narrow && flowSizes.source !== null
+              ? ({ '--flow-source': `${flowSizes.source}px` } as CSSProperties)
+              : undefined
+          }
+        >
+          {narrow && flowSplit('editor')}
           <div className="ac-bar">
             <span className="ac-file">main.c</span>
             <Picker
@@ -3119,9 +3313,11 @@ export default function AnimatedCompiler() {
             data-editing={editing}
             data-sized={sourceHeight !== null}
             style={
-              sourceHeight === null
+              narrow
                 ? undefined
-                : ({ '--source-h': `${sourceHeight}px` } as CSSProperties)
+                : sourceHeight === null
+                  ? undefined
+                  : ({ '--source-h': `${sourceHeight}px` } as CSSProperties)
             }
             ref={scrollRef}
             onClick={(e) => {
@@ -3245,7 +3441,7 @@ export default function AnimatedCompiler() {
             ref={noteRef}
             // Folded away, nothing in it can be reached (its separator).
             inert={!paneOpen}
-            className={`ac-note ${error ? 'err' : ''}`}
+            className={`ac-note ${error ? 'err' : ''} ${sideOpen ? 'open' : ''}`}
             aria-label="Current step"
             aria-live={playing ? 'off' : 'polite'}
           >
@@ -3286,6 +3482,18 @@ export default function AnimatedCompiler() {
             {paneLabel && (
               <div className="ac-bar">
                 <span className="ac-note-title">{paneLabel}</span>
+                {/* (a phone's: the box opens and closes the pane) */}
+                {narrow && (
+                  <button
+                    type="button"
+                    className="ac-side-box"
+                    aria-label={sideOpen ? 'Close pane' : 'Open pane'}
+                    aria-expanded={sideOpen}
+                    onClick={() => setSideOpen((o) => !o)}
+                  >
+                    {sideOpen ? '−' : '+'}
+                  </button>
+                )}
               </div>
             )}
             <div className="ac-note-body">
@@ -3346,7 +3554,11 @@ export default function AnimatedCompiler() {
           </section>
         </section>
 
-        <section className="ac-stage" aria-label="Animated compiler stage">
+        <section
+          ref={stageRef}
+          className="ac-stage"
+          aria-label="Animated compiler stage"
+        >
           <div className="ac-view">
             <div className="ac-scene" ref={sceneRef}>
               <div className="ac-canvas" ref={canvasRef}>
@@ -4129,6 +4341,12 @@ export default function AnimatedCompiler() {
                 </button>
               </div>
             </div>
+            {/* A phone's grip on the line between the stage and the
+                listing: here, outside the listing's clip, where it can sit
+                on that line and follow it as the listing slides in. */}
+            {late && listingFlow && narrow && (
+              <div className="ac-flowsplit-at">{flowSplit('listing')}</div>
+            )}
             {/* Emit and registers: one listing in its own pane, the same
             through both, so the step from one to the other changes its
             registers and lines, not where or how it's drawn. */}
@@ -4161,8 +4379,10 @@ export default function AnimatedCompiler() {
                   }}
                 >
                   {/* Drag the listing's edge to size it, as the editor's is;
-                    double-click resets. (Not on a phone, where it sits under
-                    the stage.) Inside the pane, it rides its edge as it slides. */}
+                    double-click resets. On a phone, where it sits under the
+                    stage, its top edge drags, and the source's below it
+                    (flowSplit). Inside the pane, it rides its edge as it
+                    slides. */}
                   {!listingFlow && (
                     <div
                       className={`ac-listsplit ${listingSide ? 'side' : 'foot'}`}
@@ -4500,195 +4720,261 @@ export default function AnimatedCompiler() {
         </section>
       </div>
       {emitStage && stackAt && stackColumn(stackAt)}
-      <NoteWindow
-        title={noteFile}
-        error={!!error}
-        live={!playing}
-        bounds={rootRef}
-        area={workRef}
-        start={windowStart}
-        foot={
-          intro &&
-          deck &&
-          deck.slides.length > 1 && (
-            <div className="ac-note-foot">
-              <button
-                type="button"
-                className="ac-slides"
-                aria-label="Skip intro"
-                onClick={() => seek(index + 1)}
-              >
-                <span className="count">
-                  {slide}/{deck.slides.length}
-                </span>
-                <span className="skip">skip</span>
-              </button>
-            </div>
-          )
+      {/* On a phone the note and the controls dock to the bottom of the
+          screen, so a step and what it means stay in view with the stage
+          (animated.css); elsewhere the dock is no box at all. */}
+      <div
+        className="ac-dock"
+        style={
+          narrow && flowSizes.note !== null
+            ? ({ '--note-h': `${flowSizes.note}px` } as CSSProperties)
+            : undefined
         }
       >
-        {frame.phase === 'Tokens' ? (
-          // Hidden layers hold the tallest step of each token class in the
-          // same grid cell, so the window keeps one height while stepping
-          // through tokens and only grows if even that won't fit.
-          <div className="ac-note-stack">
-            <div className="ac-note-layer">
+        {narrow && flowSplit('note')}
+        <NoteWindow
+          docked={narrow}
+          title={noteFile}
+          error={!!error}
+          live={!playing}
+          bounds={rootRef}
+          area={workRef}
+          start={windowStart}
+          foot={
+            intro &&
+            deck &&
+            deck.slides.length > 1 && (
+              <div className="ac-note-foot">
+                <button
+                  type="button"
+                  className="ac-slides"
+                  aria-label="Skip intro"
+                  onClick={() => seek(index + 1)}
+                >
+                  <span className="count">
+                    {slide}/{deck.slides.length}
+                  </span>
+                  <span className="skip">skip</span>
+                </button>
+              </div>
+            )
+          }
+        >
+          {frame.phase === 'Tokens' ? (
+            // Hidden layers hold the tallest step of each token class in the
+            // same grid cell, so the window keeps one height while stepping
+            // through tokens and only grows if even that won't fit.
+            <div className="ac-note-stack">
+              <div className="ac-note-layer">
+                {heading}
+                <Prose text={noteText} />
+                {slideTable}
+              </div>
+              {(sizing ? tallestTokenSteps : []).map((v) => (
+                <div
+                  key={tokenKind(v.token)}
+                  className="ac-note-layer ghost"
+                  aria-hidden="true"
+                >
+                  <Prose text={v.text} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <>
               {heading}
               <Prose text={noteText} />
               {slideTable}
-            </div>
-            {(sizing ? tallestTokenSteps : []).map((v) => (
-              <div
-                key={tokenKind(v.token)}
-                className="ac-note-layer ghost"
-                aria-hidden="true"
-              >
-                <Prose text={v.text} />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <>
-            {heading}
-            <Prose text={noteText} />
-            {slideTable}
-          </>
-        )}
-      </NoteWindow>
-
-      <footer className="ac-keys" aria-label="Controls">
-        <button
-          onClick={play}
-          className={playing ? 'on' : ''}
-          disabled={realPending}
-        >
-          {realPending
-            ? compilerLoaded
-              ? 'compiling…'
-              : 'loading compiler…'
-            : playing
-              ? 'pause'
-              : 'play'}
-        </button>
-        <span className="ac-step">
-          {/* A press steps and a hold keeps stepping (startHold); Enter or
-              Space on the focused button steps once (detail 0). */}
-          <button
-            aria-label="Step back"
-            title="Step back (←)"
-            onPointerDown={(e) => {
-              if (e.button !== 0) return
-              e.preventDefault()
-              startHold(-1)
-            }}
-            onClick={(e) => e.detail === 0 && move(-1)}
-            disabled={realPending || (index === 0 && slide === 0)}
-          >
-            <ChevronLeft aria-hidden="true" />
-          </button>
-          <button
-            aria-label="Step forward"
-            title="Step forward (→)"
-            onPointerDown={(e) => {
-              if (e.button !== 0) return
-              e.preventDefault()
-              startHold(1)
-            }}
-            onClick={(e) => e.detail === 0 && move(1)}
-            disabled={realPending || index === last}
-          >
-            <ChevronRight aria-hidden="true" />
-          </button>
-        </span>
-        <button onClick={() => seek(0)}>reset</button>
-        {/* A click goes round the speeds; - and + step through them. */}
-        <button
-          aria-label={`Speed ${speed}×`}
-          onClick={() =>
-            setSpeed((s) => speeds[(speeds.indexOf(s) + 1) % speeds.length])
-          }
-        >
-          {speed}×
-        </button>
-        <input
-          aria-label="Animation step"
-          type="range"
-          min={0}
-          max={last}
-          value={index}
-          disabled={realPending}
-          style={
-            { '--p': `${last ? (index / last) * 100 : 0}%` } as CSSProperties
-          }
-          onChange={(e) => seek(Number(e.target.value))}
-        />
-        <span className="ac-counter">
-          {String(index).padStart(2, '0')}/{String(last).padStart(2, '0')}
-        </span>
-        <div className="ac-more" ref={moreRef}>
-          <button
-            type="button"
-            aria-label="Options"
-            aria-expanded={moreOpen}
-            onClick={() => setMoreOpen((o) => !o)}
-          >
-            ?
-          </button>
-          {moreOpen && (
-            <div className="ac-more-menu" role="menu">
-              <button
-                type="button"
-                role="menuitemcheckbox"
-                aria-checked={detailed}
-                onClick={() => switchLexer(!detailed)}
-              >
-                <span aria-hidden="true">{detailed ? '[x]' : '[ ]'}</span>
-                detailed lexer
-              </button>
-              <button
-                type="button"
-                role="menuitemcheckbox"
-                aria-checked={titles}
-                onClick={() => setTitles((t) => !t)}
-              >
-                <span aria-hidden="true">{titles ? '[x]' : '[ ]'}</span>
-                step titles
-              </button>
-              <button
-                type="button"
-                role="menuitemcheckbox"
-                aria-checked={emitBlocks}
-                onClick={() => switchEmit(!emitBlocks)}
-              >
-                <span aria-hidden="true">{emitBlocks ? '[x]' : '[ ]'}</span>
-                emit in blocks
-              </button>
-              <button
-                type="button"
-                role="menuitemcheckbox"
-                aria-checked={!bare}
-                onClick={() => saveBare(!bare)}
-              >
-                <span aria-hidden="true">{bare ? '[ ]' : '[x]'}</span>
-                scrollbars
-              </button>
-              {/* The keys, kept here rather than on every button. */}
-              <dl className="ac-more-keys">
-                {KEYS.map(([keys, what]) => (
-                  <Fragment key={what}>
-                    <dt>
-                      {keys.map((k) => (
-                        <kbd key={k}>{k}</kbd>
-                      ))}
-                    </dt>
-                    <dd>{what}</dd>
-                  </Fragment>
-                ))}
-              </dl>
-            </div>
+            </>
           )}
-        </div>
-      </footer>
+        </NoteWindow>
+
+        <footer className="ac-keys" aria-label="Controls">
+          <button
+            onClick={play}
+            className={playing ? 'on' : ''}
+            disabled={realPending}
+          >
+            {realPending
+              ? compilerLoaded
+                ? 'compiling…'
+                : 'loading compiler…'
+              : playing
+                ? 'pause'
+                : 'play'}
+          </button>
+          <span className="ac-step">
+            {/* A press steps and a hold keeps stepping (startHold); Enter or
+              Space on the focused button steps once (detail 0). */}
+            <button
+              aria-label="Step back"
+              title="Step back (←)"
+              onPointerDown={(e) => {
+                if (e.button !== 0) return
+                e.preventDefault()
+                startHold(-1)
+              }}
+              onClick={(e) => e.detail === 0 && move(-1)}
+              disabled={realPending || (index === 0 && slide === 0)}
+            >
+              <ChevronLeft aria-hidden="true" />
+            </button>
+            <button
+              aria-label="Step forward"
+              title="Step forward (→)"
+              onPointerDown={(e) => {
+                if (e.button !== 0) return
+                e.preventDefault()
+                startHold(1)
+              }}
+              onClick={(e) => e.detail === 0 && move(1)}
+              disabled={realPending || index === last}
+            >
+              <ChevronRight aria-hidden="true" />
+            </button>
+          </span>
+          <button className="ac-roomy" onClick={() => seek(0)}>
+            reset
+          </button>
+          {/* A click goes round the speeds; - and + step through them. */}
+          <button
+            className="ac-roomy"
+            aria-label={`Speed ${speed}×`}
+            onClick={() =>
+              setSpeed((s) => speeds[(speeds.indexOf(s) + 1) % speeds.length])
+            }
+          >
+            {speed}×
+          </button>
+          <input
+            aria-label="Animation step"
+            type="range"
+            min={0}
+            max={last}
+            value={index}
+            disabled={realPending}
+            style={
+              { '--p': `${last ? (index / last) * 100 : 0}%` } as CSSProperties
+            }
+            onChange={(e) => seek(Number(e.target.value))}
+          />
+          <span className="ac-counter">
+            {String(index).padStart(2, '0')}/{String(last).padStart(2, '0')}
+          </span>
+          <div className="ac-more" ref={moreRef}>
+            <button
+              type="button"
+              aria-label="Options"
+              aria-expanded={moreOpen}
+              onClick={() => setMoreOpen((o) => !o)}
+            >
+              ?
+            </button>
+            {moreOpen && (
+              <div className="ac-more-menu" role="menu">
+                {/* A phone's bar has room only to step; reset and the speed
+                  move in here. */}
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="ac-cramped"
+                  onClick={() => {
+                    seek(0)
+                    setMoreOpen(false)
+                  }}
+                >
+                  reset
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="ac-cramped"
+                  onClick={() =>
+                    setSpeed(
+                      (s) => speeds[(speeds.indexOf(s) + 1) % speeds.length],
+                    )
+                  }
+                >
+                  speed {speed}×
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="ac-cramped"
+                  onClick={() => {
+                    setAboutOpen(true)
+                    setMoreOpen(false)
+                  }}
+                >
+                  about
+                </button>
+                <button
+                  type="button"
+                  role="menuitemcheckbox"
+                  aria-checked={detailed}
+                  onClick={() => switchLexer(!detailed)}
+                >
+                  <span aria-hidden="true">{detailed ? '[x]' : '[ ]'}</span>
+                  detailed lexer
+                </button>
+                <button
+                  type="button"
+                  role="menuitemcheckbox"
+                  aria-checked={titles}
+                  onClick={() => setTitles((t) => !t)}
+                >
+                  <span aria-hidden="true">{titles ? '[x]' : '[ ]'}</span>
+                  step titles
+                </button>
+                <button
+                  type="button"
+                  role="menuitemcheckbox"
+                  aria-checked={emitBlocks}
+                  onClick={() => switchEmit(!emitBlocks)}
+                >
+                  <span aria-hidden="true">{emitBlocks ? '[x]' : '[ ]'}</span>
+                  emit in blocks
+                </button>
+                <button
+                  type="button"
+                  role="menuitemcheckbox"
+                  aria-checked={!bare}
+                  onClick={() => saveBare(!bare)}
+                >
+                  <span aria-hidden="true">{bare ? '[ ]' : '[x]'}</span>
+                  scrollbars
+                </button>
+                <button
+                  type="button"
+                  role="menuitemcheckbox"
+                  aria-checked={resolvedTheme === 'dark'}
+                  onClick={() =>
+                    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')
+                  }
+                >
+                  <span aria-hidden="true">
+                    {resolvedTheme === 'dark' ? '[x]' : '[ ]'}
+                  </span>
+                  dark mode
+                </button>
+                {/* The keys, kept here rather than on every button. */}
+                <dl className="ac-more-keys">
+                  {KEYS.map(([keys, what]) => (
+                    <Fragment key={keys.join()}>
+                      <dt>
+                        {keys.map((k) => (
+                          <kbd key={k}>{k}</kbd>
+                        ))}
+                      </dt>
+                      <dd>{what}</dd>
+                    </Fragment>
+                  ))}
+                </dl>
+              </div>
+            )}
+          </div>
+        </footer>
+      </div>
     </section>
   )
 }

@@ -114,7 +114,7 @@ export function ScrollToTop() {
   }, [lastKey, lastKeyTime, scrollToTop, scrollToBottom])
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="scroll-buttons flex flex-col gap-2">
       <button
         onClick={scrollToTop}
         onMouseEnter={() => setIsHovered(true)}
