@@ -160,6 +160,30 @@ const NODE_HEADS: Record<string, string> = {
   statement: 'statements',
   expression: 'expressions',
 }
+// DRAFT copy: what a class is, one line under its headline.
+const TOKEN_BLURBS: Record<string, string> = {
+  type: 'Keywords that name a kind of value, to declare variables and functions with.',
+  keyword:
+    "Words the language keeps for its own structure, so they can't be names.",
+  operator: 'Symbols that work out a value from the values beside them.',
+  comparison: 'Compare two values: 1 if true, 0 if false.',
+  logical: 'Join two conditions: both true, or either.',
+  delimiter: 'Punctuation that groups code or separates its parts.',
+  assign: 'Stores the value on its right in the place on its left.',
+  identifier:
+    'Names the program chooses: a letter or `_`, then letters, digits or `_`.',
+  number: 'A whole number, in decimal digits.',
+  string: 'Text between double quotes.',
+  character: 'One character between single quotes.',
+}
+const NODE_BLURBS: Record<string, string> = {
+  declaration:
+    'Introduce a name: a variable, a function, or a struct or class type.',
+  statement:
+    'The steps a function takes. Each starts with a keyword, is a block in braces, or is an expression ended by `;`.',
+  expression:
+    'Anything that works out to a value: a number, a name, a call, or operators on other expressions.',
+}
 // Advance of one character in the 11px token card.
 const CARD_CHAR_PX = 6.6
 // Line height of the source editor; matches --row on .ac-source.
@@ -2858,6 +2882,12 @@ export default function AnimatedCompiler() {
               : paneKind === 'stack'
                 ? 'stack frame'
                 : ''
+  const paneBlurb =
+    paneKind === 'token'
+      ? paneToken && TOKEN_BLURBS[paneToken.cls]
+      : paneKind === 'kinds'
+        ? paneNode && NODE_BLURBS[paneNode.cls]
+        : undefined
   const oversized = useMemo(() => tooBig(trace), [trace])
   const stackNow = stacks.find(
     (f) =>
@@ -3541,6 +3571,11 @@ export default function AnimatedCompiler() {
               </div>
             )}
             <div className="ac-note-body">
+              {paneBlurb && (
+                <p className="ac-pane-blurb">
+                  <Prose text={paneBlurb} />
+                </p>
+              )}
               {paneChars && (
                 <CharTable
                   read={paneChars.read}

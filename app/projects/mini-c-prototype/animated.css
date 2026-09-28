@@ -782,9 +782,30 @@
   font-size: 11px;
 }
 .ac-editor .ac-note-body > .ac-lexemes,
-.ac-editor .ac-note-body > .ac-char-table,
-.ac-editor .ac-note-body > .ac-scopes {
+.ac-editor .ac-note-body > .ac-char-table {
   margin-top: 4px;
+}
+/* The kinds sit as far below their line as the line sits below the
+   headline's border; the scope tree's first row starts where a line of
+   text would. */
+.ac-editor .ac-note-body > .ac-pane-blurb + .ac-lexemes {
+  margin-top: 8px;
+}
+.ac-editor .ac-note-body > .ac-scopes {
+  margin-top: -2px;
+}
+/* The headline's rule is a hairline, lighter than the editor's border
+   above it, so the pane reads as its own region. (Chrome won't draw a
+   0.5px border; a half-pixel shadow draws as a device pixel.) */
+.ac-note > .ac-bar {
+  border-bottom: 0;
+  box-shadow: inset 0 -0.5px 0 var(--line);
+}
+/* What the class is, over its kinds. */
+.ac-pane-blurb {
+  margin: 0;
+  color: var(--muted);
+  white-space: normal;
 }
 .ac-editor .ac-scopes {
   line-height: 18px;
