@@ -1966,7 +1966,12 @@
 .ac-step {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
+}
+.ac-step svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.75;
 }
 .ac-keys button:hover,
 .ac-keys button.on {

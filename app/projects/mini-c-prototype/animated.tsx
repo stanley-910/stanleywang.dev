@@ -1,5 +1,12 @@
 'use client'
-import { Maximize, Maximize2, ZoomIn, ZoomOut } from 'lucide-react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  Maximize,
+  Maximize2,
+  ZoomIn,
+  ZoomOut,
+} from 'lucide-react'
 import {
   AnimatePresence,
   animate,
@@ -97,7 +104,8 @@ const HOVER_DELAY = 250
 // The keyboard, as the ? menu lists it.
 const KEYS: [string[], string][] = [
   [['spc'], 'play / pause'],
-  [['h', 'l'], 'prev / next'],
+  [['←', '→'], 'step'],
+  [['h', 'l'], 'step'],
   [['r'], 'reset'],
   [['-', '+'], 'speed'],
   [['1–6'], 'phase'],
@@ -105,6 +113,10 @@ const KEYS: [string[], string][] = [
   [['f'], 'maximize'],
   [['e'], 'edit'],
 ]
+// A held step arrow steps again after this long, then this often (about a
+// held key's repeat).
+const HOLD_DELAY_MS = 350
+const HOLD_REPEAT_MS = 50
 // How far one press of the stage's zoom buttons goes.
 const ZOOM_STEP = 1.25
 // The most the editor takes: four times what the compiler will run
@@ -1337,6 +1349,35 @@ export default function AnimatedCompiler() {
     },
     [seek, index, slide, clearHover, decks, realPending],
   )
+  // Holding a step arrow steps on as a held key does: once, then again
+  // after a pause, then quickly, until it's let go anywhere.
+  const moveNow = useRef(move)
+  useEffect(() => {
+    moveNow.current = move
+  }, [move])
+  const holdTimer = useRef(0)
+  const stopHold = useCallback(() => {
+    clearTimeout(holdTimer.current)
+    holdTimer.current = 0
+    window.removeEventListener('pointerup', stopHold)
+    window.removeEventListener('pointercancel', stopHold)
+    window.removeEventListener('blur', stopHold)
+  }, [])
+  const startHold = (delta: number) => {
+    stopHold()
+    moveNow.current(delta)
+    const again = (wait: number) => {
+      holdTimer.current = window.setTimeout(() => {
+        moveNow.current(delta)
+        again(HOLD_REPEAT_MS)
+      }, wait)
+    }
+    again(HOLD_DELAY_MS)
+    window.addEventListener('pointerup', stopHold)
+    window.addEventListener('pointercancel', stopHold)
+    window.addEventListener('blur', stopHold)
+  }
+  useEffect(() => stopHold, [stopHold])
   const play = useCallback(() => {
     // The real trace would replace this one mid-play and restart it.
     if (realPending) return
@@ -1547,6 +1588,8 @@ export default function AnimatedCompiler() {
         if (event.key === 'Escape') textRef.current?.blur()
         return
       }
+      // (a separator's arrows size it; they aren't steps)
+      if (event.defaultPrevented) return
       if (event.metaKey || event.ctrlKey || event.altKey) return
       const key = event.key
       if (pinned && key === 'Escape') {
@@ -1560,8 +1603,8 @@ export default function AnimatedCompiler() {
       if (event.code === 'Space' && !target?.closest('button,summary')) {
         event.preventDefault()
         play()
-      } else if (key === 'h' || key === 'k') move(-1)
-      else if (key === 'l' || key === 'j') move(1)
+      } else if (key === 'h' || key === 'k' || key === 'ArrowLeft') move(-1)
+      else if (key === 'l' || key === 'j' || key === 'ArrowRight') move(1)
       else if (key === 'r') seek(0)
       else if (key === '0') {
         canvas.current?.home(!reduced)
@@ -4498,17 +4541,33 @@ export default function AnimatedCompiler() {
               : 'play'}
         </button>
         <span className="ac-step">
+          {/* A press steps and a hold keeps stepping (startHold); Enter or
+              Space on the focused button steps once (detail 0). */}
           <button
-            onClick={() => move(-1)}
+            aria-label="Step back"
+            title="Step back (←)"
+            onPointerDown={(e) => {
+              if (e.button !== 0) return
+              e.preventDefault()
+              startHold(-1)
+            }}
+            onClick={(e) => e.detail === 0 && move(-1)}
             disabled={realPending || (index === 0 && slide === 0)}
           >
-            prev
+            <ChevronLeft aria-hidden="true" />
           </button>
           <button
-            onClick={() => move(1)}
+            aria-label="Step forward"
+            title="Step forward (→)"
+            onPointerDown={(e) => {
+              if (e.button !== 0) return
+              e.preventDefault()
+              startHold(1)
+            }}
+            onClick={(e) => e.detail === 0 && move(1)}
             disabled={realPending || index === last}
           >
-            next
+            <ChevronRight aria-hidden="true" />
           </button>
         </span>
         <button onClick={() => seek(0)}>reset</button>
