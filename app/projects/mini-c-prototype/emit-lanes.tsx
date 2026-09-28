@@ -34,7 +34,6 @@ export function EmitLanes({
   still,
   tint,
   layout,
-  backward,
 }: {
   /** Where the lanes start, px from the assembly's left. */
   left: number
@@ -58,9 +57,6 @@ export function EmitLanes({
   tint?: (key: string) => string | undefined
   /** Changes when rows move without new ones (the allocator's added lines). */
   layout?: number
-  /** Drawn in from each lane's last read back up to its write, as liveness
-   * finds it (the first sweep). Only as it mounts. */
-  backward?: boolean
 }) {
   const ref = useRef<SVGSVGElement>(null)
   // Row centres, measured: labels and comments sit between the rows.
@@ -98,10 +94,6 @@ export function EmitLanes({
     delay: at(i),
   })
   const tagX = LANE_LEFT + columns * LANE_GAP
-  // Backward: every lane grows up at once; its write's dot and name come
-  // when it gets there.
-  const walk = still ? 0 : duration * 2.2
-  const arrive = { duration: still ? 0 : duration * 0.5, delay: walk }
   const bottom = known > 0 ? centres[known - 1] + half : 0
 
   return (
@@ -153,11 +145,9 @@ export function EmitLanes({
                 className={open ? 'open' : ''}
                 x1={x}
                 x2={x}
-                initial={backward ? { y1: y2, y2 } : { y1, y2: y1 }}
+                initial={{ y1, y2: y1 }}
                 animate={{ y1, y2 }}
-                transition={
-                  backward ? { duration: walk, ease: 'easeInOut' } : grow
-                }
+                transition={grow}
               />
               <motion.circle
                 cx={x}
@@ -165,7 +155,7 @@ export function EmitLanes({
                 r={2.5}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={backward ? arrive : fade(l.def)}
+                transition={fade(l.def)}
               />
               {l.reads
                 .filter((r) => r < known)
@@ -191,7 +181,7 @@ export function EmitLanes({
                 onClick={() => onFocus(key, true)}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={backward ? arrive : fade(l.def)}
+                transition={fade(l.def)}
               >
                 {l.vr}
               </motion.text>

@@ -47,7 +47,7 @@ import { startRailCurve } from './rail-curve'
 import { compileReal, compilerLoaded, REAL_MAX_CHARS } from './real'
 import { FIRST_ERROR, findReference, REFERENCES } from './reference'
 import { badgesAt, regBadges } from './reg-badges'
-import { withRegisterStops } from './regs-view'
+import { withoutLiveness, withRegisterStops } from './regs-view'
 import { ScopeTree } from './scope-tree'
 import { scopesOf } from './scopes'
 import { StackColumn } from './stack-column'
@@ -554,9 +554,11 @@ export default function AnimatedCompiler() {
       !namedTrace.recorded
         ? namedTrace.trace
         : withRegisterStops(
-            blocks
-              ? withEmitBlocks(namedTrace.trace)
-              : withEmitLines(namedTrace.trace),
+            withoutLiveness(
+              blocks
+                ? withEmitBlocks(namedTrace.trace)
+                : withEmitLines(namedTrace.trace),
+            ),
           ),
     [namedTrace],
   )
@@ -880,7 +882,13 @@ export default function AnimatedCompiler() {
       const first = trace.frames.findIndex(
         (f, i) => i > 0 && f.phase === phase && starts(f, trace.frames[i - 1]),
       )
-      if (first > 0 && !at.has(first - 1)) at.set(first - 1, { phase, slides })
+      if (first <= 0) continue
+      // (a pass that now opens its phase, as colouring does in Registers,
+      // follows the phase's own slides)
+      const deck = at.get(first - 1)
+      if (!deck) at.set(first - 1, { phase, slides })
+      else if (deck.phase === phase)
+        at.set(first - 1, { phase, slides: [...deck.slides, ...slides] })
     }
     return at
   }, [trace.frames])
@@ -1675,15 +1683,6 @@ export default function AnimatedCompiler() {
           'abandoned' in w ? w.abandoned : undefined,
         )
       : undefined
-  // The lines a later sweep changes are lit (`$fp` going round a loop's
-  // back edge); the first sweep draws the bars themselves instead.
-  const changed = new Set<number>()
-  if (backend && w.kind === 'reg.live' && w.sweep > 1) {
-    const f = backend.functions[w.fn]
-    const sw = f.liveness.find((x) => x.sweep === w.sweep)
-    if (sw && 'changes' in sw)
-      for (const c of sw.changes) changed.add(f.first + c.block)
-  }
   const currentRange: [number, number] | null =
     w.kind === 'emit.instr' ||
     w.kind === 'emit.prologue' ||
@@ -1701,15 +1700,11 @@ export default function AnimatedCompiler() {
     : 0
   const graphFn = regView ? backend.functions[fnIndex] : undefined
   const graphSteps = graphFn ? attemptOf(graphFn, w).steps : []
-  const graphShown = regView && w.kind !== 'reg.cfg' && w.kind !== 'reg.live'
+  const graphShown = regView
   // The live ranges beside the listing, from emit on; the liveness sweeps
   // write their sets in that column instead.
-  // The live ranges beside the listing, from emit to the end. The liveness
-  // sweeps work them out again: the first draws them in from each read back
-  // up to its write, which is the direction liveness flows (Stanley,
-  // 2026-09-28: the sets written out beside them only repeated them).
+  // The live ranges beside the listing, from emit to the end of registers.
   const lanesShown = emitStage || regView
-  const firstSweep = w.kind === 'reg.live' && w.sweep === 1
   // The allocator's stack: simplify pushes a register, select pops it. Its
   // rows are sized for the deepest it gets, so they don't shift as it grows.
   const stack: { vr: string; candidate: boolean }[] = []
@@ -4232,7 +4227,7 @@ export default function AnimatedCompiler() {
                             <motion.div
                               key="row"
                               data-row={i}
-                              className={`ac-ins ${current ? 'current' : ''} ${ins.dead ? 'dead' : ''} ${line?.added ? 'added' : ''} ${changed.has(i) ? 'changed' : ''} ${i === hoverIns && !playing ? 'hover' : ''} ${focusLane && i >= focusLane.def && i <= focusLane.last ? 'live' : ''}`}
+                              className={`ac-ins ${current ? 'current' : ''} ${ins.dead ? 'dead' : ''} ${line?.added ? 'added' : ''} ${i === hoverIns && !playing ? 'hover' : ''} ${focusLane && i >= focusLane.def && i <= focusLane.last ? 'live' : ''}`}
                               initial={{ opacity: 0, y: 4 }}
                               animate={{ opacity: 1, y: 0 }}
                               transition={enter}
@@ -4319,17 +4314,9 @@ export default function AnimatedCompiler() {
                         )
                       })}
                       {/* The lanes carry on into registers: each takes its
-                      register's colour once the allocator picks one. From
-                      the first liveness sweep they're drawn again, from each
-                      read back up to its write. */}
+                      register's colour once the allocator picks one. */}
                       {lanesShown && (
                         <EmitLanes
-                          key={
-                            regView && w.kind !== 'reg.cfg'
-                              ? 'swept'
-                              : 'emitted'
-                          }
-                          backward={firstSweep}
                           left={lanesAt}
                           lanes={lanes.lanes}
                           columns={lanes.columns}

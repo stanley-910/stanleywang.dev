@@ -1373,13 +1373,6 @@
   color: var(--muted);
   opacity: 1;
 }
-/* A later liveness sweep's lines: what it added (`$fp` round a loop). */
-.ac-asm.listing .ac-ins.changed {
-  background: color-mix(in srgb, var(--wash) 70%, transparent);
-}
-.ac-asm.listing .ac-ins.changed > span {
-  color: var(--ink);
-}
 /* Lines the allocator adds once registers are known: pushRegisters'
    saves, popRegisters' restores and spill code. */
 .ac-asm.listing .ac-ins.added :is(b, code) {

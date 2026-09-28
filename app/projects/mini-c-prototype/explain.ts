@@ -1128,8 +1128,8 @@ export const LEXEMES = {
   identifier: ['[A-Za-z_][A-Za-z0-9_]*'],
   number: ['[0-9]+'],
   // (the compiler files these under the number kind; tokenKind splits them)
-  string: ['"(\\.|[^"\\])*"'],
-  character: ["'(\\.|[^'\\])'"],
+  string: [String.raw`"(\\.|[^"\\])*"`],
+  character: [String.raw`'(\\.|[^'\\])'`],
 } satisfies Record<string, string[]>
 
 export type TokenClass = keyof typeof LEXEMES
@@ -1254,8 +1254,8 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
       ],
     },
   ],
-  // Draft copy, for Stanley to rewrite. The fixed point, graph colouring
-  // and Chaitin slides open their steps (STEP_SLIDES); the liveness slides
+  // Draft copy, for Stanley to rewrite. The graph colouring and Chaitin
+  // slides open their steps (STEP_SLIDES); the liveness slides
   // follow the Opus liveness answer (docs/handoffs, 2026-09-24).
   Registers: [
     {
@@ -1270,14 +1270,13 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
         'load or store every time they are used.',
     },
     {
-      title: 'Liveness Flows Backwards',
+      title: 'Liveness',
+      // DRAFT copy (2026-09-28): the sweeps that work liveness out are
+      // skipped, so this points at the bars emit already drew.
       body:
         "A value is **live** from where it's written to the last place it's " +
-        'read, and two values can share a register only if their lives never ' +
-        'overlap. To find those lives, the allocator links each instruction ' +
-        'to the ones that can run next, jumps included, then starts at each ' +
-        'read and walks **backwards** until it meets the write. A loop’s ' +
-        'jump back to its test is an edge like any other.',
+        'read: the bars beside the code are those lives. Two values can ' +
+        'share a register only if their bars never overlap.',
     },
   ],
 }
@@ -1315,33 +1314,11 @@ export const STEP_SLIDES: {
       },
     ],
   },
-  // Draft copy, for Stanley to rewrite.
   {
     phase: 'Registers',
-    // Only when one sweep wasn't enough: a loop.
-    starts: (frame) =>
-      frame.why.kind === 'reg.live' &&
-      frame.why.sweep === 2 &&
-      frame.why.changed > 0,
-    slides: [
-      {
-        title: 'Sweeping to a Fixed Point',
-        body:
-          "One backward sweep isn't always enough. When it reaches a loop's " +
-          "jump back to the top, it hasn't looked at the loop's first lines " +
-          "yet, so it doesn't know what they need. So the allocator sweeps " +
-          'again, carrying what it learned round the **back edge**, and keeps ' +
-          'going until a sweep changes nothing: a **fixed point**. This ' +
-          'compiler keeps variables on the stack, so what goes round is ' +
-          'usually just the frame pointer, `$fp`, which the loop needs to ' +
-          'find them.',
-      },
-    ],
-  },
-  {
-    phase: 'Registers',
-    starts: (frame, previous) =>
-      frame.why.kind === 'reg.interfere' && previous.why.kind === 'reg.live',
+    // The first interference graph: Registers opens on it (the liveness
+    // sweeps are left out, regs-view.ts withoutLiveness).
+    starts: (frame) => frame.why.kind === 'reg.interfere',
     slides: [
       {
         title: 'Graph Colouring',
