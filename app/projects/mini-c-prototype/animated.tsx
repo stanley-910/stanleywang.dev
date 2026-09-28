@@ -53,6 +53,7 @@ import { linkRouter, type Box, type Route } from './link-route'
 import { NameLinks } from './name-links'
 import { NoteWindow } from './note-window'
 import { groupsOf, parentsOf, parseView } from './parse-view'
+import { ProofStage } from './proof-stage'
 import { startRailCurve } from './rail-curve'
 import { compileReal, compilerLoaded, REAL_MAX_CHARS } from './real'
 import { FIRST_ERROR, findReference, REFERENCES } from './reference'
@@ -2127,6 +2128,8 @@ export default function AnimatedCompiler() {
     namesDoneAt >= 0 &&
     (index > namesDoneAt ||
       (index === namesDoneAt && slide > 0 && decks.has(index)))
+  // How far the type pass's proofs reach on the canvas (proof-stage.tsx).
+  const [proofExtent, setProofExtent] = useState({ right: 0, bottom: 0 })
   // Each node's widest badge so far.
   const badgeRoom = useMemo(() => {
     const room = new Map<number, number>()
@@ -2223,12 +2226,20 @@ export default function AnimatedCompiler() {
     const c = canvas.current
     if (!c) return
     c.inset(cover.right, cover.bottom)
-    if (treeShown) c.size(sceneWidth + over, sceneHeight)
+    // The type pass's proofs run on under the tree (proof-stage.tsx).
+    const proofs = typing ? proofExtent : { right: 0, bottom: 0 }
+    if (treeShown)
+      c.size(
+        Math.max(sceneWidth + over, proofs.right),
+        Math.max(sceneHeight, proofs.bottom),
+      )
     else c.size(viewW, viewH)
   }, [
     sceneWidth,
     sceneHeight,
     over,
+    typing,
+    proofExtent,
     cover.right,
     cover.bottom,
     treeShown,
@@ -2263,6 +2274,7 @@ export default function AnimatedCompiler() {
   // and pans the canvas to the node it came from with its register badge,
   // each just far enough to bring it in.
   const follow = () => {
+    if (typing) return followProof()
     if (!late) return
     const M = 24
     // How far to move one axis to bring [lo, hi] into [lo0 + m, hi0 - m];
@@ -2317,6 +2329,40 @@ export default function AnimatedCompiler() {
     const dy = into(node.top - at.top, node.bottom - at.top, 0, viewH)
     if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) c.panBy(dx, dy, !reduced)
   }
+  // The type pass: the node being typed and the proof it goes into, both
+  // if they fit in the view, else the proof (Stanley, 2026-09-28).
+  const followProof = () => {
+    const scene = sceneRef.current
+    const c = canvas.current
+    if (!scene || !c || c.busy()) return
+    const proof = scene
+      .querySelector<HTMLElement>('.ac-proof-slot.now')
+      ?.getBoundingClientRect()
+    if (!proof) return
+    const node = scene
+      .querySelector<HTMLElement>('.ac-piece.focused')
+      ?.getBoundingClientRect()
+    const at = scene.getBoundingClientRect()
+    const M = 16
+    const both = node && {
+      left: Math.min(node.left, proof.left),
+      right: Math.max(node.right, proof.right),
+      top: Math.min(node.top, proof.top),
+      bottom: Math.max(node.bottom, proof.bottom),
+    }
+    const fits = (b: { top: number; bottom: number }) =>
+      b.bottom - b.top <= viewH - 2 * M
+    const box = both && fits(both) ? both : proof
+    const into = (lo: number, hi: number, size: number) =>
+      hi - lo > size - 2 * M || lo < M
+        ? M - lo
+        : hi > size - M
+          ? size - M - hi
+          : 0
+    const dx = into(box.left - at.left, box.right - at.left, viewW)
+    const dy = into(box.top - at.top, box.bottom - at.top, viewH)
+    if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) c.panBy(dx, dy, !reduced)
+  }
   // (the latest follow, for a timer set by an earlier step)
   const followRef = useRef(follow)
   useEffect(() => {
@@ -2354,6 +2400,7 @@ export default function AnimatedCompiler() {
     frame.instructionCount,
     frame.allocationCount,
     frame.focus,
+    typing,
     lateRoom,
     fit,
     reduced,
@@ -2431,6 +2478,15 @@ export default function AnimatedCompiler() {
       y: ((treeTop + row * treeBand) * VIEW_H) / sceneHeight + (n?.y ?? 0),
     }
   }
+  // The type pass's proofs start under the tree's lowest node.
+  const proofTop = typing
+    ? Math.max(
+        0,
+        ...trace.nodes
+          .filter((n) => tree.at[n.id] !== undefined)
+          .map((n) => toPx(point(n.id)).y + pieceHalf + 28),
+      )
+    : 0
   // Edges meet a node's box at its top and bottom centre. Ports are worked
   // out in pixels, where the box's height is (22px, 20px when small or on
   // a phone, times the node's scale); in stage units they drifted as the
@@ -4377,6 +4433,17 @@ export default function AnimatedCompiler() {
                       )
                     })}
                 </AnimatePresence>
+                {typing && treeShown && proofTop > 0 && (
+                  <ProofStage
+                    trace={trace}
+                    source={trace.text ?? source}
+                    index={index}
+                    anchor={(id) => toPx(point(id)).x}
+                    top={proofTop}
+                    width={viewW}
+                    onExtent={setProofExtent}
+                  />
+                )}
               </div>
               {/* Zoom, in the corner of the view the listing's pane
               leaves. */}

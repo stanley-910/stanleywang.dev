@@ -1725,6 +1725,33 @@ button.ac-proof-name {
     animation: none;
   }
 }
+/* The same proofs on the stage, under the tree (proof-stage.tsx): one
+   per statement, each in the place kept for it finished. */
+.ac-proof-stage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  color: var(--ink);
+  font-family: 'Notes Prose', var(--font-mono);
+  font-size: 11px;
+  pointer-events: none;
+}
+.ac .ac-proof-stage code {
+  padding: 0;
+  background: none;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+.ac-proof-slot {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.ac-proof-measure {
+  visibility: hidden;
+}
 .ac-type-caption {
   display: block;
   margin-bottom: 4px;
