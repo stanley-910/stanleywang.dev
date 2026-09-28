@@ -228,10 +228,14 @@ export function StackColumn({
         press.current = null
       }}
     >
-      <div className="ac-label">
-        <span>stack</span>
-        <small>$fp offset</small>
-      </div>
+      {/* Docked, the panel's "stack frame" title says what it is; afloat
+          on the stage, it says it itself. */}
+      {at && (
+        <div className="ac-label">
+          <span>stack</span>
+          <small>$fp offset</small>
+        </div>
+      )}
       <div
         className="ac-stack-body"
         style={{

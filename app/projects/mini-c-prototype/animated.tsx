@@ -101,6 +101,16 @@ const isTypeStep = (f: Frame) =>
 const speeds = [0.5, 1, 1.5, 2]
 const KEEP_HIDDEN = ['int', '(', ')', '{', '}', ';', '=', ',']
 const HOVER_DELAY = 250
+// The keyboard, as the ? menu lists it.
+const KEYS: [string[], string][] = [
+  [['spc'], 'play / pause'],
+  [['h', 'l'], 'prev / next'],
+  [['r'], 'reset'],
+  [['-', '+'], 'speed'],
+  [['1–6'], 'phase'],
+  [['0'], 'fit'],
+  [['e'], 'edit'],
+]
 // How far one press of the stage's zoom buttons goes.
 const ZOOM_STEP = 1.25
 // The most the editor takes: four times what the compiler will run
@@ -4444,7 +4454,6 @@ export default function AnimatedCompiler() {
           className={playing ? 'on' : ''}
           disabled={realPending}
         >
-          <kbd>spc</kbd>
           {realPending
             ? compilerLoaded
               ? 'compiling…'
@@ -4458,21 +4467,23 @@ export default function AnimatedCompiler() {
             onClick={() => move(-1)}
             disabled={realPending || (index === 0 && slide === 0)}
           >
-            <kbd>h</kbd>
+            prev
           </button>
           <button
             onClick={() => move(1)}
             disabled={realPending || index === last}
           >
-            <kbd>l</kbd>step
+            next
           </button>
         </span>
-        <button onClick={() => seek(0)}>
-          <kbd>r</kbd>reset
-        </button>
-        <button onClick={() => bumpSpeed(1)}>
-          <kbd>-</kbd>
-          <kbd>+</kbd>
+        <button onClick={() => seek(0)}>reset</button>
+        {/* A click goes round the speeds; - and + step through them. */}
+        <button
+          aria-label={`Speed ${speed}×`}
+          onClick={() =>
+            setSpeed((s) => speeds[(speeds.indexOf(s) + 1) % speeds.length])
+          }
+        >
           {speed}×
         </button>
         <input
@@ -4537,6 +4548,19 @@ export default function AnimatedCompiler() {
                 <span aria-hidden="true">{bare ? '[ ]' : '[x]'}</span>
                 scrollbars
               </button>
+              {/* The keys, kept here rather than on every button. */}
+              <dl className="ac-more-keys">
+                {KEYS.map(([keys, what]) => (
+                  <Fragment key={what}>
+                    <dt>
+                      {keys.map((k) => (
+                        <kbd key={k}>{k}</kbd>
+                      ))}
+                    </dt>
+                    <dd>{what}</dd>
+                  </Fragment>
+                ))}
+              </dl>
             </div>
           )}
         </div>

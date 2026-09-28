@@ -1936,12 +1936,6 @@
   align-items: center;
   gap: 2px;
 }
-.ac-keys button kbd + kbd {
-  margin-left: -2px;
-}
-.ac-keys button kbd:last-of-type {
-  margin-right: 4px;
-}
 .ac-keys button:hover,
 .ac-keys button.on {
   color: var(--ink);
@@ -2316,6 +2310,22 @@
 }
 .ac-keys .ac-more-menu button[aria-checked='true'] {
   color: var(--ink);
+}
+.ac-more-keys {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 10px;
+  margin: 4px 0 0;
+  padding: 8px 12px 4px;
+  border-top: 1px solid var(--line);
+  white-space: nowrap;
+}
+.ac-more-keys dt {
+  display: flex;
+  gap: 2px;
+}
+.ac-more-keys dd {
+  margin: 0;
 }
 
 /* The notes window's size grip (note-window.tsx): nothing at rest. Near
