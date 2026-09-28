@@ -73,13 +73,6 @@ const examples = REFERENCES.map((r) => ({ name: r.name, source: r.source }))
 type Phase = Frame['phase']
 
 // The notes window's name on a step, by phase (Check's two passes apart).
-const PHASE_FILE: Record<Phase, string> = {
-  Tokens: 'lexer.txt',
-  Parse: 'parser.txt',
-  Check: 'scopes.txt',
-  Emit: 'codegen.txt',
-  Registers: 'regalloc.txt',
-}
 // The tabs: the check phase shows as its two passes, names then types.
 const tabs = [
   { label: 'lexer', phase: 'Tokens' },
@@ -2052,6 +2045,11 @@ export default function AnimatedCompiler() {
   const intro = slide > 0 ? deck?.slides[slide - 1] : undefined
   // On a slide the tabs show the phase it opens.
   const shownPhase = intro && deck ? deck.phase : frame.phase
+  const shownTab = tabs.find(
+    (t) =>
+      t.phase === shownPhase &&
+      (t.phase !== 'Check' || 'types' in t === typing),
+  )
   // Parse: unattached nodes wait in their holder's open slot (parse-view.ts).
   const working = parseView(trace, index, parents, groups, baseTree.at)
   const pieceHalf = ((narrow ? 20 : 22) * fit) / 2
@@ -2395,19 +2393,13 @@ export default function AnimatedCompiler() {
         : frame.why.kind === 'token'
           ? `Token: \`${trace.tokens[frame.why.token].text}\``
           : frame.title
-  // The notes window's name: the heading inside it, short (Stanley,
-  // 2026-09-27). A slide names its own; a step, its phase's pass.
+  // The notes window's name: the tab it's under, slides and steps alike;
+  // a slide's own title is the heading inside (Stanley, 2026-09-28).
   const noteFile = error
     ? 'error.log'
-    : intro
-      ? intro.file
-      : index === 0
-        ? 'readme.txt'
-        : shownPhase === 'Check'
-          ? typing
-            ? 'types.txt'
-            : 'scopes.txt'
-          : PHASE_FILE[shownPhase]
+    : !intro && index === 0
+      ? 'readme.txt'
+      : `${shownTab?.label ?? 'notes'}.txt`
   const noteText =
     intro?.body ??
     (error &&
@@ -2817,9 +2809,7 @@ export default function AnimatedCompiler() {
         <nav className="ac-phases" aria-label="Compiler phases">
           {tabs.map((tab) => {
             const types = 'types' in tab
-            const active =
-              shownPhase === tab.phase &&
-              (tab.phase !== 'Check' || types === typing)
+            const active = tab === shownTab
             return (
               <button
                 key={tab.label}
