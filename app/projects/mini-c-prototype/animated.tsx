@@ -74,6 +74,7 @@ import {
   treePositions,
 } from './trace'
 import { hasTypeRule, TypePanel } from './type-panel'
+import { withTypeSteps } from './type-view'
 import '@/app/styles/markdown.css'
 import './animated.css'
 
@@ -569,10 +570,12 @@ export default function AnimatedCompiler() {
     (blocks: boolean) =>
       !namedTrace.recorded
         ? namedTrace.trace
-        : withoutLiveness(
-            blocks
-              ? withEmitBlocks(namedTrace.trace)
-              : withEmitLines(namedTrace.trace),
+        : withTypeSteps(
+            withoutLiveness(
+              blocks
+                ? withEmitBlocks(namedTrace.trace)
+                : withEmitLines(namedTrace.trace),
+            ),
           ),
     [namedTrace],
   )
@@ -694,6 +697,16 @@ export default function AnimatedCompiler() {
   const typedStep = useMemo(() => {
     const at = new Map<number, { type: string; step: number }>()
     trace.frames.forEach((f, i) => {
+      // A name or literal typed on its own step (type-view.ts); a
+      // declaration's type is already in its label, and a function's
+      // shows as its signature (functionType).
+      if (
+        f.why.kind === 'check.type' &&
+        trace.nodes[f.why.node].kind !== 'declare' &&
+        trace.nodes[f.why.node].kind !== 'function' &&
+        !at.has(f.why.node)
+      )
+        at.set(f.why.node, { type: f.why.type, step: i })
       if (
         f.why.kind !== 'check.expr' &&
         f.why.kind !== 'check.fits' &&
@@ -2258,8 +2271,9 @@ export default function AnimatedCompiler() {
       if (fresh && w.node === id) delay = transition.duration
       if (trace.nodes[w.node].children.includes(id)) {
         states.push('input')
-        // A call's arguments go green with its signature.
-        if (w.ok && trace.nodes[w.node].kind === 'call') states.push('ok')
+        // Its operands go green as they check out: a call's arguments
+        // against its signature, an assignment's sides against each other.
+        if (w.ok) states.push('ok')
       }
       if (!w.ok && w.bad === id) {
         states.push('bad')
@@ -2362,6 +2376,13 @@ export default function AnimatedCompiler() {
   const bindings = new Map(frame.links ?? [])
   if (w.kind === 'check.resolve' || w.kind === 'check.link')
     bindings.set(w.use, w.decl)
+  // Type pass: a name's step links it to the declaration its type comes
+  // from (type-view.ts).
+  const typeLink: [number, number] | undefined =
+    w.kind === 'check.type' && w.decl !== undefined
+      ? [w.node, w.decl]
+      : undefined
+  if (typeLink) bindings.set(...typeLink)
   const links = [...bindings]
   // Past the name pass, hovering a name or a declaration still draws its
   // links, wherever the tree is on the stage.
@@ -2370,7 +2391,7 @@ export default function AnimatedCompiler() {
     treeShown &&
     links.some(([u, d]) => u === hoverNode.id || d === hoverNode.id)
   const linkRoutes = (() => {
-    if (!(naming || hoverLinked) || (!links.length && !missing))
+    if (!(naming || hoverLinked || typeLink) || (!links.length && !missing))
       return undefined
     const key = `${index}|${sceneWidth}|${sceneHeight}|${narrow}|${JSON.stringify(links)}|${JSON.stringify([...nudged])}`
     const cached = routeCache.current
@@ -3490,6 +3511,7 @@ export default function AnimatedCompiler() {
                     <NameLinks
                       delay={walkTime / speed}
                       hoverOnly={!naming}
+                      current={typeLink?.[0]}
                       key={`${source}|${detailed}|${emitBlocks}|${index}|${slide}`}
                       links={links}
                       routes={linkRoutes}

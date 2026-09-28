@@ -25,6 +25,7 @@ export function NameLinks({
   missing,
   delay: after = 0,
   hoverOnly = false,
+  current,
 }: {
   links: [number, number][]
   routes: Map<string, Route>
@@ -37,6 +38,8 @@ export function NameLinks({
   delay?: number
   /** Past the name pass: only the hovered node's links. */
   hoverOnly?: boolean
+  /** A use whose link this step draws, outside the name pass. */
+  current?: number
 }) {
   const all = !hoverOnly && frame.why.kind === 'check.namesDone'
   const ease = [0.22, 1, 0.36, 1] as [number, number, number, number]
@@ -54,10 +57,11 @@ export function NameLinks({
       {links.map(([use, decl], i) => {
         const r = routes.get(`${use}-${decl}`)
         const active =
-          !hoverOnly &&
-          (frame.why.kind === 'check.resolve' ||
-            frame.why.kind === 'check.link') &&
-          frame.why.use === use
+          current === use ||
+          (!hoverOnly &&
+            (frame.why.kind === 'check.resolve' ||
+              frame.why.kind === 'check.link') &&
+            frame.why.use === use)
         if (!r || !(all || active || hover === use || hover === decl))
           return null
         const delay = all ? i * duration * 0.25 : active ? after : 0

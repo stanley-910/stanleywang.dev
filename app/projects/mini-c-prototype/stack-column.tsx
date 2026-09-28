@@ -256,7 +256,9 @@ export function StackColumn({
           >
             <span title={w.label}>
               <i>{call.callee} </i>
-              {w.label.slice(call.callee.length + 2)}
+              {w.label.slice(call.callee.length + 2) === 'return'
+                ? 'return value'
+                : w.label.slice(call.callee.length + 2)}
             </span>
           </motion.div>
         ))}
@@ -337,7 +339,9 @@ export function StackColumn({
             >
               <span title={label || undefined}>
                 {whose && <i>{whose} </i>}
-                {what}
+                {/* The value handed back, not the address to return to
+                    ($ra, saved below $fp). */}
+                {what === 'return' ? 'return value' : what}
               </span>
               {value !== undefined && (
                 <motion.b

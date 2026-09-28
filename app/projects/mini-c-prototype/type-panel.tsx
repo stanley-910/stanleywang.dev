@@ -75,23 +75,46 @@ export function TypePanel({
     // has its type outright (nothing above the line).
     const declared = n.kind === 'declare'
     const name = declared ? n.label.slice(n.label.lastIndexOf(' ') + 1) : ''
-    rule = {
-      premises: declared
-        ? [{ key: 'decl', code: text(why.node).replace(/;$/, '') }]
-        : [],
-      conclusion: `${declared ? name : text(why.node)} : ${why.type}`,
-      name: declared ? 'decl' : n.kind === 'number' ? 'literal' : 'name',
-      ok: true,
-    }
+    // A function's return type, read off its header; a name's, off the
+    // declaration it was linked to (type-view.ts).
+    const header =
+      n.kind === 'function'
+        ? source.slice(n.start, source.indexOf(')', n.start) + 1)
+        : undefined
+    rule = header
+      ? {
+          premises: [{ key: 'decl', code: header }],
+          conclusion: `${n.label} returns ${why.type}`,
+          name: 'fun',
+          ok: true,
+        }
+      : {
+          premises: declared
+            ? [{ key: 'decl', code: text(why.node).replace(/;$/, '') }]
+            : why.decl !== undefined
+              ? [{ key: 'decl', code: text(why.decl).replace(/;$/, '') }]
+              : [],
+          conclusion: `${declared ? name : text(why.node)} : ${why.type}`,
+          name: declared
+            ? 'decl'
+            : n.kind === 'number'
+              ? 'literal'
+              : why.decl !== undefined
+                ? 'var'
+                : 'name',
+          ok: true,
+        }
   } else if (why.kind === 'check.expr') {
     focus = why.node
     rule = {
-      premises: why.typed
-        .filter(([id]) => id !== why.node)
-        .map(([id, type]) => ({
+      // Its operands, each with the type it has by now (some were typed
+      // on steps of their own).
+      premises: trace.nodes[why.node].children
+        .filter((id) => known.has(id))
+        .map((id) => ({
           key: String(id),
           code: text(id),
-          type,
+          type: known.get(id),
           bad: id === why.bad ? (why.expected ?? undefined) : undefined,
         })),
       conclusion: why.ok

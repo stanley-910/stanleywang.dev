@@ -571,6 +571,13 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
       const n = node(w.node)
       if (n.kind === 'declare')
         return `${code(trace.tokens[n.token].text)} is declared with type ${code(w.type)}. Later uses must agree with it.`
+      // DRAFT copy: the steps type-view.ts adds.
+      if (n.kind === 'function')
+        return `${code(n.label)} is declared to return ${code(w.type)}, so every ${code('return')} in its body has to hand back ${/^[aeiou]/.test(w.type) ? 'an' : 'a'} ${code(w.type)}.`
+      if (w.decl !== undefined)
+        return `${src(w.node)} was declared as ${code(text(trace, node(w.decl)).replace(/;$/, ''))}, so it has type ${code(w.type)}.`
+      if (n.kind === 'number')
+        return `${src(w.node)} is a ${n.label.startsWith("'") ? 'character' : n.label.startsWith('"') ? 'string' : 'number'} literal, so it has type ${code(w.type)}.`
       return w.expected
         ? `The return expression has type ${code(w.type)}, matching the function's ${code(w.expected)}.`
         : `${src(w.node)} has type ${code(w.type)}.`
@@ -594,6 +601,17 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
         return n.children.length
           ? `The ${n.children.length === 1 ? 'argument matches' : 'arguments match'} the parameters, so ${src(w.node)} has the function's return type, ${code(w.type)}.`
           : `${src(w.node)} has the function's return type, ${code(w.type)}.`
+      // DRAFT copy
+      if (n.label === '=') {
+        const [target, value] = n.children
+        return `The target ${src(target)} and the value ${src(value)} are both ${code(w.type)}, so the assignment fits, and ${src(w.node)} has type ${code(w.type)}.`
+      }
+      if (n.label.startsWith('.') && n.children.length === 1) {
+        const of =
+          w.typed.find(([id]) => id === n.children[0])?.[1] ??
+          typeOf(trace, n.children[0])
+        return `${code(n.label.slice(1))} is a field of ${code(of ?? 'the struct')}, declared ${code(w.type)}, so ${src(w.node)} has type ${code(w.type)}.`
+      }
       if (n.kind === 'binary' || n.kind === 'unary') {
         const sides = n.kind === 'unary' ? 'Its operand is' : 'Both sides are'
         return ['<', '>', '<=', '>=', '==', '!=', '&&', '||'].includes(n.label)
@@ -1376,6 +1394,19 @@ export const STEP_SLIDES: {
     ],
   },
 ]
+
+/** The type a node was given, as the frames record it. */
+const typeOf = (trace: Trace, id: number): string | undefined => {
+  for (const f of trace.frames) {
+    const w = f.why
+    if (w.kind === 'check.type' && w.node === id) return w.type
+    if ('typed' in w) {
+      const t = w.typed.find(([n]) => n === id)
+      if (t) return t[1]
+    }
+  }
+  return undefined
+}
 
 /** A register's place on the allocator's stack: pushes up to its step. */
 const pushNumber = (steps: readonly { op: string }[], step: number): number =>

@@ -288,7 +288,14 @@ export type Why =
       /** The type the error is about, which has no node or place of its own. */
       about?: string
     }
-  | { kind: 'check.type'; node: number; type: string; expected?: string }
+  // (`decl`: a name's declaration, where its type comes from; type-view.ts)
+  | {
+      kind: 'check.type'
+      node: number
+      type: string
+      expected?: string
+      decl?: number
+    }
   // Type pass, compiler traces: an operator or call gets its type from its
   // operands. `typed` lists the nodes whose types this step shows (leaf
   // operands, then the node); on a failure, `bad` is the operand that
