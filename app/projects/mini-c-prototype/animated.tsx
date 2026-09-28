@@ -2056,7 +2056,13 @@ export default function AnimatedCompiler() {
   const stepVr = graphFn && 'step' in w ? graphSteps[w.step]?.vr : undefined
   const paletteIndex = (r: string) => backend?.palette.indexOf(r) ?? -1
   // (to a tenth, so a resize by a few pixels doesn't lay it out again)
-  const viewAspect = Math.round((viewW / Math.max(1, viewH)) * 10) / 10
+  // (a phone's graph gets the stage less the zoom buttons' room below it:
+  // graphPoint)
+  const GRAPH_FOOT = 60
+  const viewAspect =
+    Math.round(
+      (viewW / Math.max(1, narrow ? viewH - GRAPH_FOOT : viewH)) * 10,
+    ) / 10
   const graphLayout = useMemo(
     () =>
       graphFn
@@ -2073,15 +2079,23 @@ export default function AnimatedCompiler() {
   // too small for it.
   const graphPoint = (vr: string) => {
     const p = graphLayout?.at.get(vr) ?? { x: 0, y: 0 }
-    const margin = 28
-    const top = Math.min(NOTE_BAND, viewH * 0.25)
+    // A phone's note is docked, not over the stage: no band for it at the
+    // top, but room at the bottom for the zoom buttons, and a whole node's
+    // circle clear of the edges.
+    const margin = narrow ? 26 : 28
+    const top = narrow ? 0 : Math.min(NOTE_BAND, viewH * 0.25)
+    // (the zoom buttons: 44px on a phone, and their 8px inset)
+    const bottom = narrow ? GRAPH_FOOT : 0
+    const room = viewH - top - bottom
     const fit = Math.min(
       1,
       (viewW / 2 - margin) / Math.max(1, graphLayout?.halfW ?? 0),
-      ((viewH - top) / 2 - margin) / Math.max(1, graphLayout?.halfH ?? 0),
+      (room / 2 - margin) / Math.max(1, graphLayout?.halfH ?? 0),
     )
-    const x = viewW / 2 + p.x * Math.max(0.7, fit)
-    const y = top + (viewH - top) / 2 + p.y * Math.max(0.7, fit)
+    // (a phone's short stage packs the nodes closer, still a gap apart)
+    const k = Math.max(narrow ? 0.5 : 0.7, fit)
+    const x = viewW / 2 + p.x * k
+    const y = top + room / 2 + p.y * k
     return { x: (x * VIEW_W) / sceneWidth, y: (y * VIEW_H) / sceneHeight }
   }
   const parsed = frame.phase !== 'Tokens'
