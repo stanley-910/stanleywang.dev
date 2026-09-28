@@ -1643,6 +1643,28 @@ export default function AnimatedCompiler() {
       canvas.current = null
     }
   }, [])
+  // Where the note window sits over the canvas, in the canvas's own pixels
+  // (it doesn't pan or zoom with it): a hover card keeps out from under it.
+  const [noteShade, setNoteShade] = useState<{
+    left: number
+    top: number
+    right: number
+    bottom: number
+  } | null>(null)
+  useLayoutEffect(() => {
+    const layer = canvasRef.current
+    const note = layer?.closest('.ac')?.querySelector<HTMLElement>('.ac-window')
+    if (hover === null || !layer || !note) return setNoteShade(null)
+    const l = layer.getBoundingClientRect()
+    const n = note.getBoundingClientRect()
+    const k = l.width / Math.max(1, layer.offsetWidth)
+    setNoteShade({
+      left: (n.left - l.left) / k,
+      top: (n.top - l.top) / k,
+      right: (n.right - l.left) / k,
+      bottom: (n.bottom - l.top) / k,
+    })
+  }, [hover, index, slide])
   // A new program starts with its nodes where the layout puts them.
   useEffect(() => setNudged(new Map()), [trace])
   // A new program starts fitted.
@@ -2764,22 +2786,47 @@ export default function AnimatedCompiler() {
     sceneWidth - 16,
     Math.max(listWidth + 24, cardText * CARD_CHAR_PX + 22),
   )
-  // A node's card keeps clear of the links on the stage: under the node,
-  // else above, right or left of it, whichever crosses no link and covers
-  // the fewest other pieces. A token's always sits under it.
+  // Open, the list wraps at the card's width: its rows of items (6px apart)
+  // under the title, for the height the placing below allows for.
+  const openHeight = (() => {
+    const inner = openWidth - 22
+    let rows = card?.list.length ? 1 : 0,
+      x = 0
+    for (const l of card?.list ?? []) {
+      const w = l.length * CARD_CHAR_PX + 14
+      if (x > 0 && x + 6 + w > inner) {
+        rows++
+        x = w
+      } else x += (x ? 6 : 0) + w
+    }
+    return 30 + (rows ? 10 + rows * 19.6 + (rows - 1) * 6 : 0)
+  })()
+  // A node's card keeps clear of it and of the links on the stage: right of
+  // the node, else under, left or above it, whichever crosses no link and
+  // covers the fewest other pieces at its open size. Each grows away from
+  // the node as it opens, and shrinks back the same way: right and under
+  // from their top left, left from its right edge, above from its bottom.
+  // A token's card always sits under it.
+  type Spot = {
+    left: number
+    top: number
+    side: 'right' | 'under' | 'left' | 'above'
+  }
   const cardPlace = (() => {
     if (!card || !cardAt) return undefined
     const c = toPx({ x: card.x, y: card.y })
-    const w = cardAt.closed.width
-    const h = 30
-    const under = { left: cardAt.closed.left, top: c.y + 16, side: false }
+    const under: Spot = {
+      left: cardAt.closed.left,
+      top: c.y + 16,
+      side: 'under',
+    }
     if (!hoverNode) return under
     const half = pieceBox(hoverNode.id).w / 2
-    const spots = [
+    const spots: Spot[] = [
+      { left: c.x + half + 8, top: c.y - 15, side: 'right' },
       under,
-      { left: cardAt.closed.left, top: c.y - 16 - h, side: false },
-      { left: c.x + half + 8, top: c.y - h / 2, side: true },
-      { left: c.x - half - 8 - w, top: c.y - h / 2, side: true },
+      { left: c.x - half - 8, top: c.y - 15, side: 'left' },
+      { left: cardAt.closed.left, top: c.y - 16, side: 'above' },
     ]
     const drawn = [...(linkRoutes?.entries() ?? [])]
       .filter(([key]) => {
@@ -2813,7 +2860,21 @@ export default function AnimatedCompiler() {
       })
     })
     const others = frame.nodes.filter((id) => id !== hoverNode.id).map(pieceBox)
-    const cost = (s: { left: number; top: number }) => {
+    // Judged open (or closed, for a card with no list), so opening it
+    // never needs another spot.
+    const open = card.list.length > 0
+    const w = open ? openWidth : cardAt.closed.width
+    const h = open ? openHeight : 30
+    const cost = (spot: Spot) => {
+      const s = {
+        left:
+          spot.side === 'left'
+            ? spot.left - w
+            : spot.side === 'right'
+              ? spot.left
+              : spot.left - (open ? 12 : 0),
+        top: spot.side === 'above' ? spot.top - h : spot.top,
+      }
       if (
         s.left < 4 ||
         s.top < 4 ||
@@ -2835,29 +2896,36 @@ export default function AnimatedCompiler() {
             Math.max(0, Math.min(s.top + h, b.y + b.h) - Math.max(s.top, b.y)),
         0,
       )
-      return hits * 10000 + covered
+      const shaded =
+        noteShade &&
+        s.left < noteShade.right &&
+        s.left + w > noteShade.left &&
+        s.top < noteShade.bottom &&
+        s.top + h > noteShade.top
+      return (shaded ? 1e9 : 0) + hits * 10000 + covered
     }
     const best = spots.reduce((a, b) => (cost(b) < cost(a) ? b : a))
     return cost(best) === Infinity ? under : best
   })()
-  const cardBox =
-    cardAt &&
-    cardPlace &&
+  const cardBox = (() => {
+    if (!cardAt || !cardPlace) return undefined
     // A card with no list (the root's) stays as it is when clicked.
-    (cardOpen && card.list.length > 0
-      ? {
-          left: clampLeft(
-            cardPlace.left - (cardPlace.side ? 0 : 12),
-            openWidth,
-          ),
-          top: cardPlace.top,
-          width: openWidth,
-        }
-      : {
-          left: clampLeft(cardPlace.left, cardAt.closed.width),
-          top: cardPlace.top,
-          width: cardAt.closed.width,
-        })
+    const open = !!card && cardOpen && card.list.length > 0
+    const width = open ? openWidth : cardAt.closed.width
+    const side = cardPlace.side
+    return {
+      left:
+        side === 'left'
+          ? Math.max(8, cardPlace.left - width)
+          : side === 'right'
+            ? Math.min(cardPlace.left, sceneWidth - width - 8)
+            : clampLeft(cardPlace.left - (open ? 12 : 0), width),
+      top: cardPlace.top,
+      width,
+      // (above, it hangs from its bottom edge, so it grows upward)
+      y: side === 'above' ? '-100%' : '0%',
+    }
+  })()
 
   const stackColumn = (at?: { x: number; y: number }) => (
     <StackColumn
