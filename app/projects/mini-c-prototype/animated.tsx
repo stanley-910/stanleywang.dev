@@ -876,8 +876,11 @@ export default function AnimatedCompiler() {
       const first = trace.frames.findIndex(
         (f) => f.phase === phase && f.why.kind !== 'ready',
       )
-      if (first > 0 && slides)
-        at.set(first - 1, { phase: phase as Phase, slides })
+      // (a slide about the bars needs them: the teaching compiler, when the
+      // real one can't run, draws none)
+      const shown = slides?.filter((s) => namedTrace.recorded || !s.lanes)
+      if (first > 0 && shown?.length)
+        at.set(first - 1, { phase: phase as Phase, slides: shown })
     }
     for (const { phase, starts, slides } of STEP_SLIDES) {
       const first = trace.frames.findIndex(
@@ -892,7 +895,7 @@ export default function AnimatedCompiler() {
         at.set(first - 1, { phase, slides: [...deck.slides, ...slides] })
     }
     return at
-  }, [trace.frames])
+  }, [trace.frames, namedTrace.recorded])
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState(1)
   const [hover, setHover] = useState<number | null>(null)
@@ -1719,8 +1722,6 @@ export default function AnimatedCompiler() {
   const graphFn = regView ? backend.functions[fnIndex] : undefined
   const graphSteps = graphFn ? attemptOf(graphFn, w).steps : []
   const graphShown = regView
-  // The live ranges beside the listing, from emit on; the liveness sweeps
-  // write their sets in that column instead.
   // The live ranges beside the listing, from emit to the end of registers.
   const lanesShown = emitStage || regView
   // The allocator's stack: simplify pushes a register, select pops it. Its

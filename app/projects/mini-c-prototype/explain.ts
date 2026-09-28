@@ -3,7 +3,7 @@
 // Backticks mark code spans; the page renders them as <code>.
 import { readerOf } from './detail'
 import { stackFrames } from './stack-view'
-import { attemptOf, liveAdded } from './trace'
+import { attemptOf } from './trace'
 
 import type {
   AstNode,
@@ -699,48 +699,11 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
       return `${code(w.v)} gets ${code(w.r)}, which nothing else holds at this point.`
     case 'reg.reuse':
       return `${code(w.r)} is free again: ${code(w.prevV)} was read for the last time by instruction ${w.diedAt + 1}, so ${code(w.v)} can take it.`
-    case 'reg.cfg': {
-      const f = trace.backend?.functions[w.fn]
-      const graph =
-        'The allocator links each instruction to the ones that can run next: a graph of the control flow.'
-      if (!f) return graph
-      if (w.back.length === 0)
-        return `${graph} ${code(f.name)} is a straight line: control only flows downwards, so every value's life is one span of lines.`
-      const [from, to] = w.back[0]
-      const jump = trace.instructions[f.first + from]
-      return `${graph} ${code(jump?.text ?? 'j')} on line ${f.first + from + 1} goes back to line ${f.first + to + 1}: that back edge is what makes the loop a loop, and liveness must follow it.`
-    }
-    case 'reg.live': {
-      if (w.sweep === 1)
-        // (the last sentence is DRAFT copy: it used to point at the sets
-        // written beside each line, now the bars)
-        return `Liveness walks the instructions backwards, from the last line up. A read makes its register live back up to the line that writes it. Each bar grows from a read up to its write.`
-      if (w.changed === 0)
-        return `Sweep ${w.sweep} changes nothing, so the sets are stable: a fixed point. Liveness is done.`
-      const backend = trace.backend
-      if (!backend) return `Sweep ${w.sweep} changes ${w.changed} lines.`
-      const f = backend.functions[w.fn]
-      const added = liveAdded(backend, w.fn, w.sweep)
-      const regs = [...new Set([...added.values()].flat())].sort()
-      const lines = [...added.keys()].map((i) => i + 1)
-      const low = Math.min(...lines)
-      const high = Math.max(...lines)
-      const where =
-        high - low + 1 === lines.length
-          ? `lines ${low} to ${high}`
-          : `${lines.length} more lines`
-      const back = f.blocks.find((b) => b.succ.some((s) => s < b.id))
-      const target = back?.succ.find((s) => s < back.id)
-      const jump =
-        back && target !== undefined
-          ? `Line ${f.first + back.id + 1} jumps back to line ${f.first + target + 1}, which needs ${list(regs.map(code))}, so this sweep finds ${regs.length === 1 ? 'it' : 'them'} live on ${where} too.`
-          : `This sweep finds ${list(regs.map(code))} live on ${where} too.`
-      // Variables live on the stack and are reloaded each trip, so often
-      // only the frame pointer goes round.
-      if (regs.every((r) => !r.startsWith('v')))
-        return `${jump} The loop's variables stay on the stack and are loaded again each trip, so no virtual register crosses the jump.`
-      return jump
-    }
+    // Left out of the page (regs-view.ts withoutLiveness): the bars from
+    // emit already show what the sweeps work out.
+    case 'reg.cfg':
+    case 'reg.live':
+      return ''
     case 'reg.interfere':
       return `Two registers interfere when they are live at the same time: they cannot share a real register. ${w.nodes} virtual registers, ${w.edges} ${w.edges === 1 ? 'overlap' : 'overlaps'}${w.busiest ? `; ${code(w.busiest)} overlaps the most, with ${w.degree}` : ''}.`
     case 'reg.simplify': {
@@ -1141,6 +1104,8 @@ export type Slide = {
   table?: [string, string][]
   /** The table's column headings; lexeme and category by default. */
   head?: [string, string]
+  /** About the live-range bars, which only the real compiler's traces draw. */
+  lanes?: true
 }
 
 /**
@@ -1271,6 +1236,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
     },
     {
       title: 'Liveness',
+      lanes: true,
       // DRAFT copy (2026-09-28): the sweeps that work liveness out are
       // skipped, so this points at the bars emit already drew.
       body:

@@ -2272,14 +2272,6 @@
   color: var(--faint);
   text-decoration: line-through;
 }
-.ac-ins.changed small {
-  color: var(--ink);
-}
-/* A register the sets leave out (`$fp`), added by a later sweep. */
-.ac-ins small i {
-  font-style: normal;
-  font-weight: 600;
-}
 .ac-ins.current small {
   color: var(--bg);
   opacity: 0.7;
