@@ -134,7 +134,7 @@
 .ac.bare * {
   scrollbar-width: none;
 }
-.ac.bare :is(.ac-source, .ac-note-body, .ac-listing-scroll) {
+.ac.bare :is(.ac-source, .ac-note-body, .ac-listing-scroll, .ac-window-body) {
   border-right: 9px solid transparent;
   /* Longhands, so a pane's own background colour stays. */
   background-image: repeating-linear-gradient(
@@ -280,14 +280,14 @@
 .ac-about p:last-child {
   margin: 0;
 }
-.ac-max {
+.ac .ac-max {
   align-self: center;
   display: grid;
   place-items: center;
   color: var(--muted);
 }
-.ac-max:hover,
-.ac-back:hover {
+.ac .ac-max:hover,
+.ac .ac-back:hover {
   color: var(--ink);
 }
 .ac-max svg {
@@ -295,7 +295,7 @@
   height: 14px;
   stroke-width: 1.75;
 }
-.ac-back {
+.ac .ac-back {
   padding: 1px 4px;
   color: var(--muted);
   white-space: nowrap;
@@ -627,6 +627,7 @@
 }
 .ac-editor[data-fold='shut'] .ac-note {
   height: 0;
+  border-top: 0;
 }
 .ac-editor[data-fold] .ac-split {
   pointer-events: none;
@@ -839,7 +840,7 @@
      176px together), within a floor and a ceiling. */
   height: clamp(420px, calc(100dvh - 176px), 1400px);
   overflow: hidden;
-  background-image: linear-gradient(var(--line) 1px, transparent 1px);
+  background-image: linear-gradient(var(--wash) 1px, transparent 1px);
   /* The rows pan and zoom with the canvas (canvas-zoom.ts). */
   background-size: 100% calc(22px * var(--zoom, 1));
   background-position: 0 calc(var(--pan-y, 0px) - 1px);
@@ -1026,9 +1027,6 @@
 .ac-listing-scroll:focus-visible {
   outline: 1px solid var(--ink);
   outline-offset: -1px;
-}
-.dark .ac-scene {
-  background-image: linear-gradient(#18181b 1px, transparent 1px);
 }
 .dark .ac-piece {
   border-color: #3f3f46;
@@ -1567,7 +1565,7 @@
 /* A physical register in the listing, in its lane's colour; it flashes
    as it replaces a virtual one. */
 .ac-phys {
-  color: var(--c);
+  color: color-mix(in srgb, var(--c) 70%, var(--ink));
   animation: ac-phys-in 0.9s ease-out;
 }
 @keyframes ac-phys-in {
@@ -1605,8 +1603,6 @@
 .ac-stack.docked {
   position: relative;
   width: min(100%, 300px);
-  margin-top: 14px;
-  font-size: 12px;
 }
 /* The type pass's panel (type-panel.tsx): the statement's derivation,
    each rule its premises over a line, its name at the line's end, and the
@@ -1616,7 +1612,6 @@
 .ac-types {
   display: grid;
   gap: 16px;
-  padding-top: 4px;
   font-family: 'Notes Prose', var(--font-mono);
   font-size: 11px;
 }
@@ -1662,7 +1657,7 @@
   align-self: center;
   border-top: 1px solid var(--ink);
 }
-.ac-proof-name {
+.ac .ac-proof-name {
   grid-column: 2;
   grid-row: 2;
   align-self: center;
@@ -1674,7 +1669,7 @@
   font-size: 10px;
   line-height: 12px;
 }
-button.ac-proof-name {
+.ac button.ac-proof-name {
   cursor: pointer;
 }
 .ac-proof-conclusion {
@@ -1832,10 +1827,11 @@ button.ac-proof-name {
 .ac-window-bar:active {
   cursor: grabbing;
 }
-/* The line under the bar goes with the body as it rolls up. */
+/* The line under the bar goes with the body as it rolls up: a hairline,
+   as under the side pane's headline, lighter than the window's edge. */
 .ac-window-open {
   overflow: hidden;
-  border-top: 1px solid var(--line);
+  box-shadow: inset 0 0.5px 0 var(--line);
 }
 .ac-window-title {
   flex: none;
@@ -2098,14 +2094,9 @@ button.ac-proof-name {
   min-height: 0;
 }
 .ac-hover .ac-lexemes {
-  gap: 6px;
   margin: 0;
   padding: 8px 0 2px;
   font-size: 11px;
-  line-height: 1.6;
-}
-.ac-hover .ac-lexemes li {
-  padding: 0 6px;
 }
 /* The step, by the scrubber it reads. */
 .ac-counter {
@@ -2328,6 +2319,18 @@ button.ac-proof-name {
   .ac-note:not(.open) .ac-note-body {
     display: none;
   }
+  .ac-note:not(.open) > .ac-bar {
+    box-shadow: none;
+  }
+  /* Thumb-sized, as the steps below. */
+  .ac-zoom button {
+    width: 44px;
+    height: 44px;
+  }
+  .ac-zoom svg {
+    width: 20px;
+    height: 20px;
+  }
   .ac-note.open .ac-note-body {
     height: var(--flow-source, 132px);
     min-height: 0;
@@ -2414,7 +2417,7 @@ button.ac-proof-name {
   }
   .ac-window.docked .ac-window-bar {
     height: 28px;
-    padding: 0 0 0 2px;
+    padding: 0 0 0 11px;
     cursor: default;
     touch-action: auto;
   }
@@ -2423,14 +2426,14 @@ button.ac-proof-name {
     width: 44px;
   }
   .ac-window.docked .ac-window-open {
-    border-top: 0;
+    box-shadow: none;
   }
   /* One height, whatever the step says (animated.tsx, NOTE_H): a longer
      note scrolls here rather than pushing the panes above it about. */
   .ac-window.docked .ac-window-body {
     height: var(--note-h, 84px);
     max-height: none;
-    padding: 0 2px 10px;
+    padding: 0 11px 10px;
     font-size: 12px;
   }
   .ac-keys {
@@ -2495,6 +2498,7 @@ button.ac-proof-name {
   }
   .ac-counter {
     margin-left: 0;
+    text-align: right;
   }
   /* (over the base rule further down) */
   .ac .ac-keys .ac-more-menu button {
@@ -2613,7 +2617,7 @@ button.ac-proof-name {
   line-height: 12px;
   white-space: nowrap;
   cursor: default;
-  --tint: color-mix(in srgb, var(--c) 72%, var(--ink));
+  --tint: color-mix(in srgb, var(--c) 70%, var(--ink));
   transition:
     background-color 0.25s,
     border-color 0.25s,

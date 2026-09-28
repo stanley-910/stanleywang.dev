@@ -5087,7 +5087,12 @@ export default function AnimatedCompiler() {
             }
             onChange={(e) => seek(Number(e.target.value))}
           />
-          <span className="ac-counter">
+          <span
+            className="ac-counter"
+            // Room for the widest count, so the scrubber doesn't move when
+            // the step gains a digit.
+            style={{ minWidth: `${String(last).length * 2 + 1}ch` }}
+          >
             {String(index).padStart(2, '0')}/{String(last).padStart(2, '0')}
           </span>
           <div className="ac-more" ref={moreRef}>
