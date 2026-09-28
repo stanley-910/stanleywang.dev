@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react'
 
-import { nodeKind } from './explain'
+import { isClassDecl, nodeKind } from './explain'
 
 import type { Scopes } from './scopes'
 import type { Frame, Trace } from './trace'
@@ -180,7 +180,7 @@ export function ScopeTree({
                   {nodes[item.decl].kind === 'function' ||
                   nodes[item.decl].label.startsWith('FunDecl ')
                     ? `${nameOf(item.decl)}()`
-                    : nodes[item.decl].label.startsWith('ClassDecl ')
+                    : isClassDecl(nodes[item.decl].label)
                       ? nameOf(item.decl)
                       : nodes[item.decl].label}
                 </code>

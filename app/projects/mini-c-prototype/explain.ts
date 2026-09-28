@@ -418,8 +418,20 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
           return `${code(n.label)} started as an operator, but with no value before it, it applies to what follows: an operator expression.`
         case 'program':
           return `${code('global')} holds the top-level declarations, read one after another.`
-        default:
-          return `${code(n.label)} becomes a ${describe(n)} node.`
+        case 'statement':
+          // DRAFT copy. The node keeps its label, `expr`: the note quotes
+          // the statement instead, since its expression arrives under it.
+          if (n.label === 'expr')
+            return `${code(text(trace, n))} doesn't start with a keyword, so it's an expression statement: an expression, then ${code(';')}. Its expression comes next.`
+        // falls through
+        default: {
+          // DRAFT copy: named by its kind in the list under the note
+          // (`.` becomes a method call expression).
+          const { cls, kind } = nodeKind(n)
+          return kind && (cls === 'expression' || cls === 'statement')
+            ? `${code(n.label)} becomes ${article(`${kind} ${cls}`)}.`
+            : `${code(n.label)} becomes ${article(describe(n))} node.`
+        }
       }
     }
     case 'parse.take':
@@ -515,7 +527,7 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
       if (fn)
         return `The function ${code(name)} goes in ${w.scope}, so calls anywhere below it can find it.${hides}`
       // DRAFT copy
-      if (decl.label.startsWith('ClassDecl '))
+      if (isClassDecl(decl.label))
         return `The class ${code(name)} goes in ${w.scope}.${hides}`
       if (w.where === 'param')
         return `The parameter ${code(decl.label)} goes in ${w.scope}.${hides}`
@@ -1471,7 +1483,7 @@ export const NODE_KINDS = {
 export type NodeClass = keyof typeof NODE_KINDS
 
 // ParseTrace.java names what it collapses by class (older traces also a
-// struct, `StructTypeDecl s`; now `struct s { }`):
+// struct or class, `StructTypeDecl s`; now `struct s { }`, `class C { }`):
 // `FunDecl f`, `ArrayAccess`, `FieldAccess .x`, and so on.
 const DECL_KINDS: Record<string, string> = {
   StructTypeDecl: 'struct',
@@ -1486,8 +1498,14 @@ const EXPR_KINDS: Record<string, string> = {
   SizeOf: 'sizeof',
   Typecast: 'cast',
   NewInstance: 'new',
+  new: 'new',
   InstanceFunCall: 'method call',
 }
+
+/** A class's declaration: `class C { }`, or `ClassDecl C` in older traces. */
+export const isClassDecl = (label: string) =>
+  label.startsWith('ClassDecl ') ||
+  (label.startsWith('class ') && label.endsWith(' { }'))
 
 /** A node's class and its kind within it. */
 export function nodeKind(node: AstNode): { cls: NodeClass; kind?: string } {
@@ -1500,9 +1518,11 @@ export function nodeKind(node: AstNode): { cls: NodeClass; kind?: string } {
       return {
         cls: 'declaration',
         // (`struct Point { }` is the type; `struct Point p`, a variable)
-        kind: node.label.endsWith(' { }')
-          ? 'struct'
-          : (DECL_KINDS[node.label.split(' ')[0]] ?? 'variable'),
+        kind: isClassDecl(node.label)
+          ? 'class'
+          : node.label.endsWith(' { }')
+            ? 'struct'
+            : (DECL_KINDS[node.label.split(' ')[0]] ?? 'variable'),
       }
     case 'block':
     case 'while':
@@ -1540,7 +1560,8 @@ export function nodeKind(node: AstNode): { cls: NodeClass; kind?: string } {
       return {
         cls: 'expression',
         // (ParseTrace labels these as C writes them: `*p`, `&x`, `(char*)`,
-        // `.x`, `[]`; older traces by class, `ValueAt`)
+        // `.x`, `[]`, `new`, `.` over a method call; older traces by class,
+        // `ValueAt`)
         kind:
           node.label === '*'
             ? 'value at'
@@ -1550,9 +1571,11 @@ export function nodeKind(node: AstNode): { cls: NodeClass; kind?: string } {
                 ? 'index'
                 : node.label.startsWith('(')
                   ? 'cast'
-                  : node.label.startsWith('.')
-                    ? 'field'
-                    : EXPR_KINDS[node.label.split(' ')[0]],
+                  : node.label === '.'
+                    ? 'method call'
+                    : node.label.startsWith('.')
+                      ? 'field'
+                      : EXPR_KINDS[node.label.split(' ')[0]],
       }
   }
 }

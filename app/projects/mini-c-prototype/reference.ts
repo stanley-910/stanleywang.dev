@@ -1,6 +1,7 @@
 // Generated from the real Mini-C compiler (Java, McGill COMP 520 coursework) on 2026-09-21.
 // See reference/README.md for the exact commands. Only artifacts are stored here, never compiler source.
 import breakContinueTrace from './reference/break-continue.trace.json'
+import classesTrace from './reference/classes.trace.json'
 import fibonacciTrace from './reference/fibonacci.trace.json'
 import functionCallTrace from './reference/function-call.trace.json'
 import loopTrace from './reference/loop.trace.json'
@@ -41,8 +42,8 @@ const entry = (name: string, file: string, json: unknown): Reference => {
   }
 }
 
-// Programs first, simplest to showiest; then the three errors, one per
-// phase they stop in. The new ones are trimmed from the compiler's own
+// Programs first, simplest to showiest; then the errors, one per phase
+// they stop in, and classes, which the code generator can't compile. The new ones are trimmed from the compiler's own
 // tests (docs/handoffs/2026-09-28-example-candidates.md; lineup with GPT-6
 // Astra, 2026-09-28-example-lineup-astra-answer.md). Traces recorded with
 // the page's compiler bundle, as trace.sh would with the JVM.
@@ -58,6 +59,7 @@ export const REFERENCES: Reference[] = [
   entry('Missing semicolon', 'missing-semicolon', missingSemicolonTrace),
   entry('Unresolved name', 'unresolved-name', unresolvedNameTrace),
   entry('Wrong type', 'wrong-type', wrongTypeTrace),
+  entry('Classes', 'classes', classesTrace),
 ]
 // Where the errors start in the picker (a rule above them).
 export const FIRST_ERROR = REFERENCES.findIndex((r) => r.trace.error)

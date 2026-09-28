@@ -5,13 +5,14 @@ Artifacts only. Generated on 2026-09-20 (regenerated 2026-09-21 with two program
 No compiler source is copied here; `DotDump.java` is a 15-line scratch driver
 that only calls the compiler's public `Tokeniser`, `Parser`, and `DotPrinter`.
 
-Programs (the six examples shown on the site's prototype variants):
+Programs with the older artifacts (`.ast`, `.sem.txt`, `.dot`, `.svg`). The page's
+examples are now listed in `../reference.ts`; each has a `.c` and a `.trace.json`.
+The `parentheses` and `local-variable` examples, every `.asm`, and every
+`.regalloc.json` were deleted on 2026-09-28: nothing read them.
 
 | File | Source | Notes |
 | --- | --- | --- |
 | `precedence.c` | animated preset | `4 + 2 * 3` |
-| `parentheses.c` | animated preset | `(4 + 2) * 3` |
-| `local-variable.c` | animated preset / fixtures "Arithmetic" | declare, assign, return |
 | `unresolved-name.c` | animated preset / fixtures "Semantic error" | sem fails on purpose (4 errors) |
 | `loop.c` | fixtures "Loop" | `while` with two locals; readable CFG |
 | `function-call.c` | fixtures "Function call" | two functions, one call |
@@ -22,10 +23,9 @@ at `src/test/util/StagedRun.java` (outside the ant build, so compile it once):
 ```sh
 cd ~/Developer/mcgill/mini-c-compiler
 ant build && javac -cp bin -d bin/test src/test/util/StagedRun.java
-for n in precedence parentheses local-variable unresolved-name loop function-call; do
+for n in precedence unresolved-name loop function-call; do
   java -cp bin:bin/test util.StagedRun "$R/$n.c" "$R" --no-pause --sem
   java -cp bin Main4 -sem "$R/$n.c" > "$R/$n.sem.txt"
-  java -cp bin Main4 -gen colour "$R/$n.c" "$R/$n.asm"   # skip when sem fails
 done
 ```
 
@@ -37,9 +37,6 @@ Per-file equivalents, for each `<name>.c`:
 | `<name>.sem.txt` | `java -cp bin Main4 -sem <name>.c` (stdout) |
 | `<name>.dot` | `java -cp bin:<dir with DotDump.class> DotDump <name>.c <name>.dot` |
 | `<name>.svg` | `dot -Tsvg <name>.dot -o <name>.svg` |
-| `<name>.asm` | `java -cp bin Main4 -gen colour <name>.c <name>.asm` (graph-colouring allocator) |
-
-`unresolved-name` has no `.asm` because semantic analysis fails, which is the point of that preset.
 
 `../reference.ts` embeds the `.ast` and `.sem.txt` contents so the UI can diff
 the sketch's tree against the real one. Regenerate it with the node one-liner in
@@ -51,7 +48,7 @@ was changed to reject them too.
 
 ## Register allocation traces
 
-`<name>.regalloc.json` records the graph-colouring allocator step by step for each
+`RegAllocTrace` can write `<name>.regalloc.json` (no longer stored here), recording the graph-colouring allocator step by step for each
 program that passes semantic analysis: per function, the CFG (one block per
 instruction), every liveness sweep, the interference graph, and the simplify/select
 colouring order. `loop.k2.regalloc.json` is the same program with the palette capped
@@ -104,6 +101,5 @@ uses. The JSON gains:
   range, `emit.epilogue`) and Registers frames (`reg.cfg`, `reg.live`,
   `reg.interfere`, `reg.simplify`, `reg.select`, `reg.spill`, `reg.done`).
 
-`tests/showcase/trace.sh <name>` regenerates everything; the separate
-`.regalloc.json` files stay as standalone artifacts but the page reads only the
+`tests/showcase/trace.sh <name>` regenerates everything; the page reads only the
 trace.
