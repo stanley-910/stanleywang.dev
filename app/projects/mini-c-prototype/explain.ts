@@ -711,13 +711,10 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
       const st = f && attemptOf(f, w).steps[w.step]
       const k = f ? attemptOf(f, w).palette.length : 0
       if (!st) return 'A register with few neighbours is set aside.'
-      const steps = attemptOf(f, w).steps
-      // DRAFT: a batch of pushes (regs-view.ts).
-      if (w.from !== undefined)
-        return `The other ${w.step - w.from + 1} are set aside the same way, ${pushNumber(steps, w.from)} to ${pushNumber(steps, w.step)}: each overlaps fewer than ${k} others still in the graph.`
+      const n = pushNumber(attemptOf(f, w).steps, w.step)
       if (!st.degree)
-        return `${code(st.vr)} overlaps nothing that is still in the graph, so any register will do. It is set aside first, as 1.`
-      return `${code(st.vr)} overlaps ${st.degree} ${st.degree === 1 ? 'other' : 'others'}, fewer than the ${k} registers available, so it is sure to get one. It is set aside as ${pushNumber(steps, w.step)}, and its edges come off the graph.`
+        return `${code(st.vr)} overlaps nothing still in the graph, so any register will do. It is set aside as ${n}.`
+      return `${code(st.vr)} overlaps ${st.degree} ${st.degree === 1 ? 'other' : 'others'} still in the graph, fewer than the ${k} registers available, so it is sure to get one. It is set aside as ${n}, and its edges come off the graph.`
     }
     case 'reg.spillCandidate': {
       const f = trace.backend?.functions[w.fn]
@@ -729,23 +726,18 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
       const st = f && attemptOf(f, w).steps[w.step]
       if (!st) return 'A register comes off the stack and takes a colour.'
       const forbidden = st.forbidden ?? []
-      // DRAFT: pops that reused a register, then the one that stops play.
-      const reused = w.from === undefined ? 0 : w.step - w.from
-      const before = reused
-        ? `${reused} ${reused === 1 ? 'register reuses' : 'registers reuse'} one already given out. `
-        : ''
-      // A register no earlier pop took is a new one; else it is reused.
-      const steps = f ? attemptOf(f, w).steps : []
-      const fresh = !steps
-        .slice(0, w.step)
-        .some((p) => p.op === 'select' && p.colour === st.colour)
-      if (reused)
-        return !fresh || forbidden.length === 0
-          ? `${before}${code(st.vr)} takes ${code(st.colour ?? '')}.`
-          : `${before}${code(st.vr)} overlaps values in ${forbidden.map(code).join(', ')}, so it needs ${code(st.colour ?? '')}.`
+      const steps = attemptOf(f, w).steps
+      const pushed = steps.findIndex(
+        (p) =>
+          p.vr === st.vr && (p.op === 'simplify' || p.op === 'spillCandidate'),
+      )
+      const first = !steps.slice(0, w.step).some((p) => p.op === 'select')
+      const back = first
+        ? `${code(st.vr)}, set aside last, comes back first.`
+        : `${code(st.vr)}${pushed >= 0 ? ` (${pushNumber(steps, pushed)})` : ''} comes back.`
       if (forbidden.length === 0)
-        return `${code(st.vr)}, the last set aside, comes back first. None of its neighbours holds a register yet, so it takes the first one, ${code(st.colour ?? '')}.`
-      return `${code(st.vr)} comes back. Its neighbours hold ${forbidden.map(code).join(', ')}, so it takes the next free one, ${code(st.colour ?? '')}.`
+        return `${back} None of its neighbours holds a register yet, so it takes the first one, ${code(st.colour ?? '')}.`
+      return `${back} Its neighbours hold ${forbidden.map(code).join(', ')}, so it takes the next free one, ${code(st.colour ?? '')}.`
     }
     case 'reg.spill': {
       const f = trace.backend?.functions[w.fn]

@@ -55,7 +55,7 @@ import { startRailCurve } from './rail-curve'
 import { compileReal, compilerLoaded, REAL_MAX_CHARS } from './real'
 import { FIRST_ERROR, findReference, REFERENCES } from './reference'
 import { badgesAt, regBadges } from './reg-badges'
-import { withoutLiveness, withRegisterStops } from './regs-view'
+import { withoutLiveness } from './regs-view'
 import { ScopeTree } from './scope-tree'
 import { scopesOf } from './scopes'
 import { StackColumn } from './stack-column'
@@ -569,12 +569,10 @@ export default function AnimatedCompiler() {
     (blocks: boolean) =>
       !namedTrace.recorded
         ? namedTrace.trace
-        : withRegisterStops(
-            withoutLiveness(
-              blocks
-                ? withEmitBlocks(namedTrace.trace)
-                : withEmitLines(namedTrace.trace),
-            ),
+        : withoutLiveness(
+            blocks
+              ? withEmitBlocks(namedTrace.trace)
+              : withEmitLines(namedTrace.trace),
           ),
     [namedTrace],
   )

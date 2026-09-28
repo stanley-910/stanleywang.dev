@@ -358,14 +358,12 @@ export type Why =
       busiest: string
       degree: number
     }
-  // `from`: the first step of a run merged into this one (regs-view.ts).
   // `abandoned`: a step of the 18-colour attempt the allocator threw away.
   | {
       kind: 'reg.simplify'
       fn: number
       step: number
       at: number | null
-      from?: number
       abandoned?: true
     }
   | {
@@ -380,7 +378,6 @@ export type Why =
       fn: number
       step: number
       at: number | null
-      from?: number
       abandoned?: true
     }
   | {
