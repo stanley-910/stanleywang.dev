@@ -2604,15 +2604,15 @@ export default function AnimatedCompiler() {
       f.first < frame.instructionCount && frame.instructionCount - 1 <= f.last,
   )
   // Whether the pass's pane has anything in it yet: a slide before the
-  // pass, or a pass before its first rule, declaration or stack word,
-  // leaves it empty.
+  // pass, or a pass before its first token, node, rule, declaration or
+  // stack word, leaves it empty (a lookahead to the first isn't enough).
   const paneFilled =
     paneKind === 'token'
-      ? !!paneToken
+      ? paneToken?.current !== undefined
       : paneKind === 'chars'
-        ? !!paneChars
+        ? !!paneChars?.read
         : paneKind === 'kinds'
-          ? !!paneNode
+          ? paneNode?.current !== undefined
           : paneKind === 'scopes'
             ? scopes.scopes.some((sc) =>
                 sc.decls.some((d) => scopes.declaredStep(d) <= index),
