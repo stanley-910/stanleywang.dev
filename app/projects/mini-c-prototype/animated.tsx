@@ -1288,6 +1288,9 @@ export default function AnimatedCompiler() {
   // The stage pans and zooms (canvas-zoom.ts).
   const canvasRef = useRef<HTMLDivElement>(null)
   const canvas = useRef<Canvas | null>(null)
+  // The pass a hand last moved the view in, and the one showing (follow).
+  const handHeld = useRef<string | null>(null)
+  const passRef = useRef('')
   const [rest, setRest] = useState<CanvasRest>({
     home: true,
     least: false,
@@ -1714,6 +1717,7 @@ export default function AnimatedCompiler() {
       else if (key === 'l' || key === 'j' || key === 'ArrowRight') move(1)
       else if (key === 'r') seek(0)
       else if (key === '0') {
+        handHeld.current = null
         canvas.current?.home(!reduced)
         setNudged(new Map())
       } else if (key === 'e') textRef.current?.focus()
@@ -1751,7 +1755,9 @@ export default function AnimatedCompiler() {
     const scene = sceneRef.current,
       layer = canvasRef.current
     if (!scene || !layer) return
-    canvas.current = startCanvas(scene, layer, setRest)
+    canvas.current = startCanvas(scene, layer, setRest, () => {
+      handHeld.current = passRef.current
+    })
     return () => {
       canvas.current?.stop()
       canvas.current = null
@@ -2316,7 +2322,7 @@ export default function AnimatedCompiler() {
     }
     const scene = sceneRef.current
     const c = canvas.current
-    if (!emitStage || !scene || !c || c.busy()) return
+    if (!emitStage || !scene || !c || c.busy() || handOff()) return
     const node = scene
       .querySelector<HTMLElement>('.ac-piece.focused')
       ?.getBoundingClientRect()
@@ -2330,6 +2336,15 @@ export default function AnimatedCompiler() {
     const dy = into(node.top - at.top, node.bottom - at.top, 0, viewH)
     if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) c.panBy(dx, dy, !reduced)
   }
+  // A hand on the view (a drag, the wheel, a pinch, the zoom buttons)
+  // stops the steps panning it for the rest of that pass, so the reader
+  // can look elsewhere, back up the tree say; the next pass, or Fit,
+  // follows again (Stanley, 2026-09-28).
+  const pass = `${frame.phase}${typing ? ':types' : ''}`
+  useEffect(() => {
+    passRef.current = pass
+  })
+  const handOff = () => handHeld.current === pass
   // The type pass: the node being typed and the part of its statement's
   // proof it goes into (not the whole statement's, which can start far
   // to the left), both if they fit, else the part; a little room either
@@ -2338,7 +2353,7 @@ export default function AnimatedCompiler() {
   const followProof = () => {
     const scene = sceneRef.current
     const c = canvas.current
-    if (!scene || !c || c.busy()) return
+    if (!scene || !c || c.busy() || handOff()) return
     const current = scene.querySelector<HTMLElement>(
       '.ac-proof-slot.now .ac-proof.current',
     )
@@ -4494,9 +4509,10 @@ export default function AnimatedCompiler() {
                   aria-label="Zoom out"
                   title="Zoom out"
                   disabled={rest.least}
-                  onClick={() =>
+                  onClick={() => {
+                    handHeld.current = pass
                     canvas.current?.zoomBy(1 / ZOOM_STEP, !reduced)
-                  }
+                  }}
                 >
                   <ZoomOut aria-hidden="true" />
                 </button>
@@ -4505,7 +4521,10 @@ export default function AnimatedCompiler() {
                   aria-label="Zoom in"
                   title="Zoom in"
                   disabled={rest.most}
-                  onClick={() => canvas.current?.zoomBy(ZOOM_STEP, !reduced)}
+                  onClick={() => {
+                    handHeld.current = pass
+                    canvas.current?.zoomBy(ZOOM_STEP, !reduced)
+                  }}
                 >
                   <ZoomIn aria-hidden="true" />
                 </button>
@@ -4515,6 +4534,7 @@ export default function AnimatedCompiler() {
                   title="Fit (0)"
                   disabled={rest.home && nudged.size === 0}
                   onClick={() => {
+                    handHeld.current = null
                     canvas.current?.home(!reduced)
                     setNudged(new Map())
                   }}

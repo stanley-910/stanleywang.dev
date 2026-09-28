@@ -95,6 +95,8 @@ export function startCanvas(
   scene: HTMLElement,
   layer: HTMLElement,
   onRest: (rest: CanvasRest) => void,
+  // A hand moved the view: a drag, the wheel, a pinch.
+  onHand?: () => void,
 ): Canvas {
   const still = window.matchMedia('(prefers-reduced-motion: reduce)')
   let x = 0,
@@ -239,6 +241,7 @@ export function startCanvas(
       y: (fresh ? 0 : speed.y * 0.5) + ((y - was.y) / dt) * (fresh ? 1 : 0.5),
     }
     lastInput = now
+    onHand?.()
   }
   // Zoom stretches the same way, in steps of its logarithm.
   const zoomAt = (px: number, py: number, factor: number) => {
@@ -254,6 +257,7 @@ export function startCanvas(
     y = py - ((py - y) * next) / k
     k = next
     lastInput = performance.now()
+    onHand?.()
   }
 
   const local = (cx: number, cy: number) => {
