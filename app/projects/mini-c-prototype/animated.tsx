@@ -4557,9 +4557,9 @@ export default function AnimatedCompiler() {
                 </button>
               </div>
             </div>
-            {/* A phone's grip on the line between the stage and the
+            {/* A phone's grip in the gap between the stage and the
                 listing: here, outside the listing's clip, where it can sit
-                on that line and follow it as the listing slides in. */}
+                in that gap and follow it as the listing slides in. */}
             {late && listingFlow && narrow && (
               <div className="ac-flowsplit-at">{flowSplit('listing')}</div>
             )}

@@ -985,9 +985,8 @@
 }
 /* A phone's grips (animated.tsx, flowSplit): a finger-sized strip with a
    short bar at its middle, since a finger can't hover to find an edge.
-   Each is centred on the division it moves: the line between the stage
-   and the listing, and the 6px gaps above the source's box and the dock
-   (the phone block below). */
+   Each is centred in the 6px gap it moves: above the listing's box, the
+   source's box and the dock (the phone block below). */
 .ac-flowsplit {
   position: absolute;
   right: 0;
@@ -1006,16 +1005,17 @@
   height: 3px;
   background: var(--faint);
 }
-/* (on the listing's top line: a no-height mark between the stage's
-   canvas and the listing, the strip centred on it) */
+/* (a no-height mark between the stage's canvas and the listing, the
+   strip placed from it) */
 .ac-flowsplit-at {
   position: relative;
   z-index: 6;
   flex: none;
   height: 0;
 }
+/* (in the gap over a phone's listing: the mark is at the gap's top) */
 .ac-flowsplit.listing {
-  top: -11px;
+  top: -8px;
 }
 /* (in the gap over the source's box or the dock: its middle, 3px up) */
 .ac-flowsplit:is(.editor, .note) {
@@ -2379,8 +2379,9 @@
   .ac-asm.listing .ac-ins > span {
     padding-right: 5px;
   }
-  /* Stacked: the stage and the source each in a box of its own, a gap
-     between them as between the source and the dock. */
+  /* Stacked: the stage, the listing and the source each in a box of its
+     own, a 6px gap between each as between the source and the dock, each
+     gap holding its grip. */
   .ac-work {
     gap: 6px;
     border: 0;
@@ -2388,6 +2389,12 @@
   }
   .ac-stage {
     order: -1;
+  }
+  .ac-scene {
+    border: 1px solid var(--line);
+  }
+  .ac-listing.foot.flow {
+    margin-top: 6px;
     border: 1px solid var(--line);
   }
   .ac-editor {
