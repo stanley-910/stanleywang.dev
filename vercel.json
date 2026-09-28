@@ -1,8 +1,3 @@
 {
-    "rewrites": [
-      {
-        "source": "/shell/:match*",
-        "destination": "https://portfolio-roan-phi-14.vercel.app//:match*"
-      }
-    ]
-  }
+  "installCommand": "npm ci"
+}
