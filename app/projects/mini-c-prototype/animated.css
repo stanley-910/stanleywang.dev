@@ -1820,18 +1820,6 @@
   font-size: 11px;
 }
 
-/* Status line under the stage. */
-.ac-status {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  height: 28px;
-  padding: 0 10px;
-  border-top: 1px solid var(--line);
-  color: var(--ink);
-  white-space: nowrap;
-  overflow: hidden;
-}
 .ac-note code,
 .ac-hover code {
   font-family: inherit;
@@ -1873,9 +1861,12 @@
 .ac-hover .ac-lexemes li {
   padding: 0 6px;
 }
+/* The step, by the scrubber it reads. */
 .ac-counter {
-  margin-left: auto;
+  margin-left: -8px;
   color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 /* Footer key bar, Commit-Mono style. */

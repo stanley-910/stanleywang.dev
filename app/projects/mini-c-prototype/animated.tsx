@@ -4287,11 +4287,6 @@ export default function AnimatedCompiler() {
               )}
             </AnimatePresence>
           </div>
-          <div className="ac-status">
-            <span className="ac-counter">
-              {String(index).padStart(2, '0')}/{String(last).padStart(2, '0')}
-            </span>
-          </div>
         </section>
       </div>
       {emitStage && stackAt && stackColumn(stackAt)}
@@ -4400,6 +4395,9 @@ export default function AnimatedCompiler() {
           }
           onChange={(e) => seek(Number(e.target.value))}
         />
+        <span className="ac-counter">
+          {String(index).padStart(2, '0')}/{String(last).padStart(2, '0')}
+        </span>
         <div className="ac-more" ref={moreRef}>
           <button
             type="button"
