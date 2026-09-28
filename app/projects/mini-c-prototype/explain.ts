@@ -319,12 +319,16 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
   const src = (id: number) => code(text(trace, node(id)))
   switch (w.kind) {
     case 'ready':
+      // Stanley's copy (2026-09-27); "MIPs" read MIPS, and the "…" after it
+      // a full stop. DRAFT copy: the bracket he left, naming the bundle.
       return (
-        'Welcome to an interactive port of a compiler I wrote for a subset of ' +
-        'the C programming language. It will have reduced functionality at ' +
-        'points, but aims to deliver a guided visualization of all the awesome ' +
-        'things that need to happen to take your code into something that can ' +
-        'run on any machine!\u00a0Enjoy.\n\n– Stanley'
+        'Welcome to an interactive demonstration of the compiler I wrote for ' +
+        'a subset of the C programming language! It follows the traces of ' +
+        'the real compiler, running right here in your browser, so every ' +
+        'step you see is true to the actual process of how your code would ' +
+        'be compiled into a target assembly language. In this case, we are ' +
+        'targeting MIPS. Feel free to try out your own C code or edit the ' +
+        'examples!\n\n– Stanley'
       )
     case 'token': {
       // With step titles the token is in the header and the body names its
@@ -1159,6 +1163,8 @@ export type TokenClass = keyof typeof LEXEMES
 
 export type Slide = {
   title: string
+  /** The notes window's name while it shows: the title, short. */
+  file: string
   body: string
   /** Pairs shown as a small table under the body. */
   table?: [string, string][]
@@ -1175,6 +1181,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
   Tokens: [
     {
       title: 'Where do we start?',
+      file: 'lexer.txt',
       body:
         'Before anything else, the compiler scans through the source code, ' +
         'character by character, and outputs a stream of **tokens**. Each ' +
@@ -1189,6 +1196,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
   Parse: [
     {
       title: 'Toking (Abstract Syntax) Trees',
+      file: 'ast.txt',
       body:
         "Great. Now what? As you can imagine, this isn't enough to output " +
         'machine code. To get us one step closer, the **Parser** takes the ' +
@@ -1198,6 +1206,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
     },
     {
       title: 'The Problem with Precedence',
+      file: 'precedence.txt',
       body:
         'This solves interesting problems like precedence. How do you make ' +
         "sure the code that is generated correctly PEMDAS's something like " +
@@ -1206,6 +1215,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
     },
     {
       title: 'The Problem with Precedence',
+      file: 'precedence.txt',
       // Stanley's aside; the parenthetical, "infix" and the last clause are
       // filled in at his request.
       body:
@@ -1224,6 +1234,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
   Check: [
     {
       title: 'Correct Grammar, Wrong Program',
+      file: 'semantics.txt',
       // Stanley's copy; "out" read "our", and the list follows the real
       // pass order at his request.
       body:
@@ -1236,12 +1247,14 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
     },
     {
       title: 'Semantic Analysis',
+      file: 'semantics.txt',
       body:
         "Semantic analysis finds everything the grammar can't express, and " +
         'it enriches the AST with the information later phases need.',
     },
     {
       title: 'Name Resolution and Scoping',
+      file: 'scopes.txt',
       body:
         'First pass: the compiler walks the tree with a **symbol table**, ' +
         'opening a new scope for each function and block. Each declaration ' +
@@ -1254,6 +1267,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
   Emit: [
     {
       title: 'Code Generation',
+      file: 'codegen.txt',
       body:
         'The tree is checked, so the compiler can finally write code. It ' +
         'walks the tree one last time and emits **MIPS assembly** for each ' +
@@ -1262,6 +1276,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
     },
     {
       title: 'Skipping the Fine Print',
+      file: 'fine-print.txt',
       body:
         'Real assembly carries a lot of bookkeeping, so we sweep over it for ' +
         'now. Every value gets a fresh **virtual register**, as if the ' +
@@ -1283,6 +1298,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
   Registers: [
     {
       title: 'Register Allocation',
+      file: 'regalloc.txt',
       body:
         'The code so far uses a fresh virtual register for every value, and ' +
         'even a short loop runs into the dozens. The machine has 18 we can ' +
@@ -1294,6 +1310,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
     },
     {
       title: 'Liveness Flows Backwards',
+      file: 'liveness.txt',
       body:
         "A value is **live** from where it's written to the last place it's " +
         'read, and two values can share a register only if their lives never ' +
@@ -1328,6 +1345,7 @@ export const STEP_SLIDES: {
     slides: [
       {
         title: 'Type Analysis',
+        file: 'types.txt',
         body:
           'Second pass: with every name linked to its declaration, the ' +
           "compiler works out each expression's type from the bottom up and " +
@@ -1349,6 +1367,7 @@ export const STEP_SLIDES: {
     slides: [
       {
         title: 'Sweeping to a Fixed Point',
+        file: 'fixed-point.txt',
         body:
           "One backward sweep isn't always enough. When it reaches a loop's " +
           "jump back to the top, it hasn't looked at the loop's first lines " +
@@ -1368,6 +1387,7 @@ export const STEP_SLIDES: {
     slides: [
       {
         title: 'Graph Colouring',
+        file: 'colouring.txt',
         body:
           'Two values that are live at the same time **interfere**: they ' +
           "can't share a register. Draw each virtual register as a node and " +
@@ -1386,6 +1406,7 @@ export const STEP_SLIDES: {
     slides: [
       {
         title: "Chaitin's Algorithm",
+        file: 'chaitin.txt',
         body:
           'The heuristic is **Chaitin’s**. A node with fewer than 18 ' +
           'neighbours can always be coloured later, whatever they get, so ' +
@@ -1399,6 +1420,7 @@ export const STEP_SLIDES: {
       },
       {
         title: 'Why It Pays Off',
+        file: 'payoff.txt',
         body:
           'Registers are the fastest storage the processor has; memory is ' +
           'many times slower. By letting values that are never live together ' +
@@ -1416,6 +1438,7 @@ export const STEP_SLIDES: {
     slides: [
       {
         title: 'Spilling',
+        file: 'spilling.txt',
         body:
           'A spilled value lives in a word of memory in `.data`. Before a ' +
           'line reads it, the allocator loads it into a register; after a ' +
@@ -1661,7 +1684,8 @@ function readStep(trace: Trace, w: Extract<Why, { kind: 'lex.char' }>) {
     case 'close':
       return `The closing ${code(char)} ends the ${literal}.`
     case 'unterminated':
-      return `The line ends before the closing ${code(token.text[0])}, so the ${literal} is never closed.`
+      // DRAFT copy (the file's end)
+      return `The ${trace.text !== undefined && token.end >= trace.text.length ? 'file' : 'line'} ends before the closing ${code(token.text[0])}, so the ${literal} is never closed.`
     case 'invalid': {
       if (!look) return `${code(char)} can't begin any Mini-C token.`
       const longer = Object.values(LEXEMES)

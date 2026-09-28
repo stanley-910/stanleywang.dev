@@ -15,7 +15,8 @@
 // while it can still scroll that way.
 // The transform goes straight onto the layer, not through React; the
 // stage's ruled rows follow it through CSS variables on the scene. At rest
-// it sits on whole pixels, so text on the stage stays sharp.
+// it sits on whole pixels, so text on the stage stays sharp. With reduced
+// motion nothing springs: it goes straight to where it would settle.
 
 const MIN_ZOOM = 0.5
 const MAX_ZOOM = 3
@@ -36,7 +37,13 @@ export type CanvasView = { x: number; y: number; k: number }
 export type Canvas = {
   // The content's size in canvas px (it can be wider than the stage).
   size(width: number, height: number): void
+  // What covers the stage's right or bottom edge (the listing's pane): the
+  // view is what's left, and the content pans out from under it.
+  inset(right: number, bottom: number): void
   view(): CanvasView
+  // A hand on it: a gesture going on, or one just now (what the page's own
+  // moves wait out).
+  busy(): boolean
   panBy(dx: number, dy: number, animated: boolean): void
   home(animated: boolean): void
   stop(): void
@@ -83,6 +90,7 @@ export function startCanvas(
   layer: HTMLElement,
   onHome: (home: boolean) => void,
 ): Canvas {
+  const still = window.matchMedia('(prefers-reduced-motion: reduce)')
   let x = 0,
     y = 0,
     k = 1
@@ -90,13 +98,18 @@ export function startCanvas(
     height = scene.clientHeight
   let settleTimer = 0
   let spring = 0
+  // Where the running spring is headed, and how fast; and whether it is
+  // the hand's (a spring back after a gesture) or the page's (panBy, home).
+  let aim: { to: CanvasView; rate: number } | null = null
+  let handSpring = false
   let wasHome = true
   // The hand's speed (px per ms, as shown), for the bounce a flick makes.
   let speed = { x: 0, y: 0 }
   let lastInput = 0
 
-  const vw = () => scene.clientWidth
-  const vh = () => scene.clientHeight
+  let cover = { right: 0, bottom: 0 }
+  const vw = () => Math.max(1, scene.clientWidth - cover.right)
+  const vh = () => Math.max(1, scene.clientHeight - cover.bottom)
 
   // Where the content's corner may go along one axis at zoom z.
   const range = (content: number, view: number): Range =>
@@ -111,10 +124,8 @@ export function startCanvas(
       x || y || k !== 1 ? `translate(${x}px, ${y}px) scale(${k})` : ''
     scene.style.setProperty('--zoom', String(k))
     scene.style.setProperty('--pan-y', `${y}px`)
-    // Emit's assembly keeps its place sideways while the tree pans under
-    // it, as it did when the stage scrolled (animated.css, .ac-pin).
-    const pin = Math.min(Math.max(-x / k, 0), Math.max(0, width - vw()))
-    scene.style.setProperty('--pin', `${pin}px`)
+    // For what draws over the canvas's panes (rail-curve.ts).
+    scene.dispatchEvent(new Event('canvasmove', { bubbles: true }))
     const home =
       Math.abs(x) < 0.5 && Math.abs(y) < 0.5 && Math.abs(k - 1) < 0.001
     if (home !== wasHome) onHome((wasHome = home))
@@ -123,10 +134,17 @@ export function startCanvas(
   const stopSpring = () => {
     cancelAnimationFrame(spring)
     spring = 0
+    aim = null
   }
   // A critically damped spring to `to`, starting at the hand's speed.
   const springTo = (to: CanvasView, rate = SPRING, v = { x: 0, y: 0 }) => {
     stopSpring()
+    if (still.matches) {
+      ;({ x, y, k } = to)
+      return apply()
+    }
+    aim = { to, rate }
+    handSpring = rate === SPRING
     const from = { x: x - to.x, y: y - to.y, k: Math.log(k / to.k) }
     const start = performance.now()
     const at = (x0: number, v0: number, t: number) =>
@@ -146,6 +164,7 @@ export function startCanvas(
       k = done ? to.k : to.k * Math.exp(dk)
       apply()
       spring = done ? 0 : requestAnimationFrame(frame)
+      if (done) aim = null
     }
     spring = requestAnimationFrame(frame)
   }
@@ -160,6 +179,23 @@ export function startCanvas(
     nx -= past(nx, l.x)
     ny -= past(ny, l.y)
     return { x: Math.round(nx), y: Math.round(ny), k: nk }
+  }
+  // A view moved inside the current bounds at its own zoom.
+  const inside = (v: CanvasView): CanvasView => {
+    const l = limits(v.k)
+    return {
+      x: Math.round(v.x - past(v.x, l.x)),
+      y: Math.round(v.y - past(v.y, l.y)),
+      k: v.k,
+    }
+  }
+  // The bounds moved (new content, a resized stage): a spring on its way
+  // heads for where it can still end, from where it is.
+  const retarget = () => {
+    if (!aim) return false
+    const to = inside(aim.to)
+    if (to.x !== aim.to.x || to.y !== aim.to.y) springTo(to, aim.rate)
+    return true
   }
   let anchor = { x: 0, y: 0 }
   const settle = (v = { x: 0, y: 0 }) => {
@@ -267,6 +303,8 @@ export function startCanvas(
     settleSoon()
   }
 
+  // Two fingers on a touch screen (below).
+  let pair: { x: number; y: number; d: number } | null = null
   // Safari's trackpad pinch (it sends gesture events, not ctrl + wheel).
   let gestureScale = 1
   const gestureStarted = (e: Event) => {
@@ -277,6 +315,8 @@ export function startCanvas(
   const gestureChanged = (e: Event) => {
     const g = e as Event & { scale: number; clientX: number; clientY: number }
     e.preventDefault()
+    // Two fingers on the screen are already zooming it (touchMoved).
+    if (pair) return
     anchor = local(g.clientX, g.clientY)
     zoomAt(anchor.x, anchor.y, g.scale / gestureScale)
     gestureScale = g.scale
@@ -286,7 +326,6 @@ export function startCanvas(
 
   // Two fingers on a touch screen: pan with their midpoint, zoom with
   // their spread. One finger is left to the page.
-  let pair: { x: number; y: number; d: number } | null = null
   const measure = (t: TouchList) => {
     const a = local(t[0].clientX, t[0].clientY),
       b = local(t[1].clientX, t[1].clientY)
@@ -322,13 +361,27 @@ export function startCanvas(
 
   // The page holds still under the stage (the gutter stays, so nothing
   // shifts).
+  // Let go when the page loses the pointer without a pointerleave (another
+  // tab or app), and take it again on the next move over the stage.
   const root = document.documentElement
+  let locked: string | null = null
   const entered = (e: PointerEvent) => {
-    if (e.pointerType === 'mouse') root.style.overflowY = 'hidden'
+    if (e.pointerType !== 'mouse' || locked !== null) return
+    locked = root.style.overflowY
+    root.style.overflowY = 'hidden'
   }
-  const left = () => root.style.removeProperty('overflow-y')
+  const left = () => {
+    if (locked === null) return
+    root.style.overflowY = locked
+    locked = null
+  }
+  const hidden = () => document.hidden && left()
   scene.addEventListener('pointerenter', entered)
+  scene.addEventListener('pointermove', entered)
   scene.addEventListener('pointerleave', left)
+  window.addEventListener('blur', left)
+  window.addEventListener('pagehide', left)
+  document.addEventListener('visibilitychange', hidden)
   scene.addEventListener('wheel', wheeled, { passive: false })
   scene.addEventListener('gesturestart', gestureStarted)
   scene.addEventListener('gesturechange', gestureChanged)
@@ -338,6 +391,7 @@ export function startCanvas(
   scene.addEventListener('touchcancel', touchEnded)
   // The stage resizing moves the bounds with it.
   const observer = new ResizeObserver(() => {
+    if (retarget()) return
     ;({ x, y, k } = clamped())
     apply()
   })
@@ -348,9 +402,19 @@ export function startCanvas(
     size(w, h) {
       width = w
       height = h
-      if (!spring && !settleTimer && !pair) settle()
+      if (!retarget() && !settleTimer && !pair) settle()
+    },
+    inset(right, bottom) {
+      if (right === cover.right && bottom === cover.bottom) return
+      cover = { right, bottom }
+      if (!retarget() && !settleTimer && !pair) settle()
     },
     view: () => ({ x, y, k }),
+    busy: () =>
+      !!settleTimer ||
+      !!pair ||
+      (!!spring && handSpring) ||
+      performance.now() - lastInput < 300,
     panBy(dx, dy, animated) {
       const saved = { x, y }
       x += dx
@@ -375,7 +439,11 @@ export function startCanvas(
       clearTimeout(settleTimer)
       observer.disconnect()
       scene.removeEventListener('pointerenter', entered)
+      scene.removeEventListener('pointermove', entered)
       scene.removeEventListener('pointerleave', left)
+      window.removeEventListener('blur', left)
+      window.removeEventListener('pagehide', left)
+      document.removeEventListener('visibilitychange', hidden)
       left()
       scene.removeEventListener('wheel', wheeled)
       scene.removeEventListener('gesturestart', gestureStarted)

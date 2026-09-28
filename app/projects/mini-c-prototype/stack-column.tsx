@@ -212,6 +212,8 @@ export function StackColumn({
         if (now) onMove(now)
       }}
       onPointerDown={(e) => {
+        // (no text selection starting under a drag of the stack)
+        if (e.pointerType === 'mouse') e.preventDefault()
         if (!at) press.current = { x: e.clientX, y: e.clientY }
       }}
       onPointerMove={(e) => {

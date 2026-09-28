@@ -52,6 +52,8 @@ type Light = {
   last: number
   lastScroll: number
   speed: number
+  // Where its rail was last drawn, to keep drawing while it moves.
+  geometry: string
 }
 type Rail = ReturnType<typeof railOf>
 
@@ -59,6 +61,27 @@ const hex = (s: string) => {
   const m = /^#?([0-9a-f]{6})$/i.exec(s.trim())
   const n = m ? parseInt(m[1], 16) : 0x808080
   return [n >> 16, (n >> 8) & 255, n & 255]
+}
+
+// What of a pane shows: its box cut by every ancestor that clips (the
+// stage, when the canvas is zoomed or panned past it).
+function shownOf(p: HTMLElement) {
+  const box = p.getBoundingClientRect()
+  let { left, top, right, bottom } = box
+  for (
+    let el = p.parentElement;
+    el && el !== document.body;
+    el = el.parentElement
+  ) {
+    const style = getComputedStyle(el)
+    if (style.overflowX === 'visible' && style.overflowY === 'visible') continue
+    const r = el.getBoundingClientRect()
+    left = Math.max(left, r.left)
+    top = Math.max(top, r.top)
+    right = Math.min(right, r.right)
+    bottom = Math.min(bottom, r.bottom)
+  }
+  return { left, top, right, bottom }
 }
 
 // The rail of a pane on an axis, in viewport px: where it runs, the bar
@@ -149,6 +172,8 @@ export function startRailCurve(root: HTMLElement): (() => void) | null {
   // The native thumb is never shown (animated.css).
   root.setAttribute('data-curving', '')
   const lights = new Map<string, Light>()
+  // A lit pane resizing (the side pane folding) moves its rail.
+  const resized = new ResizeObserver(() => run())
   // Each pane's last scroll position on each axis.
   const seen = new WeakMap<HTMLElement, { x: number; y: number }>()
   const ids = new WeakMap<HTMLElement, number>()
@@ -195,7 +220,9 @@ export function startRailCurve(root: HTMLElement): (() => void) | null {
         last: axis === 'y' ? pane.scrollTop : pane.scrollLeft,
         lastScroll: -1e9,
         speed: 0,
+        geometry: '',
       }
+      resized.observe(pane)
       lights.set(key, l)
       pane.setAttribute(
         'data-curve',
@@ -244,7 +271,12 @@ export function startRailCurve(root: HTMLElement): (() => void) | null {
         const r = railOf(el, axis, bare())
         const across = axis === 'y' ? e.clientX : e.clientY
         const along = axis === 'y' ? e.clientY : e.clientX
+        const shown = shownOf(el)
         if (
+          e.clientX >= shown.left &&
+          e.clientX <= shown.right &&
+          e.clientY >= shown.top &&
+          e.clientY <= shown.bottom &&
           across >= r.bar &&
           across <= r.end &&
           along >= r.start &&
@@ -256,25 +288,22 @@ export function startRailCurve(root: HTMLElement): (() => void) | null {
     return null
   }
 
+  // Over the bar, but only the part of it that shows.
   const place = () => {
     if (!gripped) return
     const r = railOf(gripped.pane, gripped.axis, bare())
-    Object.assign(
-      grip.style,
-      gripped.axis === 'y'
-        ? {
-            left: `${r.bar}px`,
-            top: `${r.start}px`,
-            width: `${r.end - r.bar}px`,
-            height: `${r.length}px`,
-          }
-        : {
-            left: `${r.start}px`,
-            top: `${r.bar}px`,
-            width: `${r.length}px`,
-            height: `${r.end - r.bar}px`,
-          },
-    )
+    const s = shownOf(gripped.pane)
+    const y = gripped.axis === 'y'
+    const left = Math.max(y ? r.bar : r.start, s.left)
+    const top = Math.max(y ? r.start : r.bar, s.top)
+    const right = Math.min(y ? r.end : r.start + r.length, s.right)
+    const bottom = Math.min(y ? r.start + r.length : r.end, s.bottom)
+    Object.assign(grip.style, {
+      left: `${left}px`,
+      top: `${top}px`,
+      width: `${Math.max(0, right - left)}px`,
+      height: `${Math.max(0, bottom - top)}px`,
+    })
   }
   const letGo = () => {
     if (held) return
@@ -282,6 +311,7 @@ export function startRailCurve(root: HTMLElement): (() => void) | null {
     gripped = null
     resting = null
     grip.style.display = 'none'
+    if (lights.size) run()
   }
 
   // Over a bar: the grip takes it, and after a moment it lights.
@@ -345,14 +375,92 @@ export function startRailCurve(root: HTMLElement): (() => void) | null {
   const released = (e: PointerEvent) => {
     if (!held || e.pointerId !== held.pointer) return
     held = null
+    run()
     // Still over the bar, it stays gripped (and lit, resting).
     const r = gripped && railOf(gripped.pane, gripped.axis, bare())
     const across = gripped?.axis === 'y' ? e.clientX : e.clientY
     if (!r || across < r.bar || across > r.end) letGo()
   }
+  // A pinch over the grip (ctrl + wheel, or Safari's gesture events) is the
+  // stage's zoom, not a scroll: handed to what's under the grip.
+  const under = (x: number, y: number) => {
+    grip.style.display = 'none'
+    const el = document.elementFromPoint(x, y)
+    letGo()
+    return el
+  }
+  const pinched = (e: Event) => {
+    const g = e as Event & { scale: number; clientX: number; clientY: number }
+    const el = under(g.clientX, g.clientY)
+    // Off the stage's canvas, a pinch is the browser's own zoom.
+    if (!el?.closest('.ac-scene')) return
+    e.preventDefault()
+    el.dispatchEvent(
+      Object.assign(new Event(e.type, { bubbles: true, cancelable: true }), {
+        scale: g.scale,
+        clientX: g.clientX,
+        clientY: g.clientY,
+      }),
+    )
+  }
+  // The nearest pane from el up that can scroll this wheel's way.
+  const scrollerOf = (el: Element, dx: number, dy: number) => {
+    for (
+      let p: Element | null = el;
+      p && root.contains(p);
+      p = p.parentElement
+    ) {
+      if (!(p instanceof HTMLElement)) continue
+      const style = getComputedStyle(p)
+      const y = Math.abs(dy) >= Math.abs(dx)
+      const can = y
+        ? /auto|scroll/.test(style.overflowY) &&
+          (dy < 0
+            ? p.scrollTop > 0
+            : p.scrollTop < p.scrollHeight - p.clientHeight - 1)
+        : /auto|scroll/.test(style.overflowX) &&
+          (dx < 0
+            ? p.scrollLeft > 0
+            : p.scrollLeft < p.scrollWidth - p.clientWidth - 1)
+      if (can) return p
+    }
+    return null
+  }
   // The wheel over the grip still scrolls the pane under it.
   const wheeled = (e: WheelEvent) => {
-    if (!gripped) return
+    // A pinch, and the rest of a wheel gesture still aimed at the grip after
+    // it let go (a gesture keeps its first target), go to what's under it.
+    if (e.ctrlKey || !gripped) {
+      const el = under(e.clientX, e.clientY)
+      // Off the stage's canvas, a pinch is the browser's own zoom.
+      if (e.ctrlKey && !el?.closest('.ac-scene')) return
+      e.preventDefault()
+      // A plain wheel over a pane that scrolls scrolls it (a made-up event
+      // wouldn't); anything else goes to the stage's canvas as it came.
+      const pane = !e.ctrlKey && el && scrollerOf(el, e.deltaX, e.deltaY)
+      if (pane) {
+        const unit =
+          e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? pane.clientHeight : 1
+        pane.scrollBy(e.deltaX * unit, e.deltaY * unit)
+        return
+      }
+      el?.dispatchEvent(
+        new WheelEvent('wheel', {
+          deltaX: e.deltaX,
+          deltaY: e.deltaY,
+          deltaMode: e.deltaMode,
+          ctrlKey: e.ctrlKey,
+          shiftKey: e.shiftKey,
+          altKey: e.altKey,
+          metaKey: e.metaKey,
+          clientX: e.clientX,
+          clientY: e.clientY,
+          bubbles: true,
+          cancelable: true,
+        }),
+      )
+      return
+    }
     e.preventDefault()
     const unit =
       e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? gripped.pane.clientHeight : 1
@@ -439,10 +547,14 @@ export function startRailCurve(root: HTMLElement): (() => void) | null {
     const line = hex(style.getPropertyValue('--line'))
     const ink = hex(style.getPropertyValue('--ink'))
     const note = root.querySelector<HTMLElement>('.ac-window')
+    // Whether anything is still moving; once nothing is, the loop stops
+    // with the last frame drawn, until a scroll or the pointer wakes it.
+    let moving = false
 
     for (const [key, l] of lights) {
       if (!l.pane.isConnected) {
         lights.delete(key)
+        resized.unobserve(l.pane)
         continue
       }
       const r = railOf(l.pane, l.axis, bare())
@@ -460,15 +572,30 @@ export function startRailCurve(root: HTMLElement): (() => void) | null {
             : floor
       const tau = target > l.glow ? RISE_MS : FALL_MS
       l.glow += (target - l.glow) * (1 - Math.exp(-dt / tau))
+      if (Math.abs(target - l.glow) < 0.002) l.glow = target
 
       // Follows the scroll, a little behind; exactly, while dragged.
       l.from =
         l.from === null || held?.key === key
           ? r.from
           : l.from + (r.from - l.from) * (1 - Math.exp(-dt / 50))
+      if (Math.abs(r.from - l.from) < 0.05) l.from = r.from
+      const shown = shownOf(l.pane)
+      const geometry = `${r.start} ${r.length} ${r.across} ${shown.top} ${shown.bottom} ${shown.left} ${shown.right}`
+      if (
+        quiet < HOLD_MS ||
+        l.glow !== target ||
+        l.from !== r.from ||
+        geometry !== l.geometry
+      )
+        moving = true
+      l.geometry = geometry
 
       if (l.glow < 0.02 && quiet > HOLD_MS && !floor) {
         lights.delete(key)
+        // (the pane's other axis may still be lit)
+        if (![...lights.values()].some((o) => o.pane === l.pane))
+          resized.unobserve(l.pane)
         const rest = (l.pane.getAttribute('data-curve') ?? '')
           .split(' ')
           .filter((a) => a && a !== l.axis)
@@ -480,7 +607,12 @@ export function startRailCurve(root: HTMLElement): (() => void) | null {
 
       ctx.save()
       ctx.beginPath()
-      ctx.rect(r.box.left, r.box.top, r.box.width, r.box.height)
+      ctx.rect(
+        shown.left,
+        shown.top,
+        shown.right - shown.left,
+        shown.bottom - shown.top,
+      )
       // Under the notes window, unless it's the window's own pane.
       if (note && !note.contains(l.pane)) {
         const n = note.getBoundingClientRect()
@@ -490,8 +622,8 @@ export function startRailCurve(root: HTMLElement): (() => void) | null {
       draw(l, r, line, ink)
       ctx.restore()
     }
-    frame = lights.size ? requestAnimationFrame(tick) : 0
-    if (!frame) ctx.clearRect(0, 0, innerWidth, innerHeight)
+    frame = moving ? requestAnimationFrame(tick) : 0
+    if (!lights.size) ctx.clearRect(0, 0, innerWidth, innerHeight)
   }
 
   type On = [EventTarget, string, EventListener, AddEventListenerOptions]
@@ -511,6 +643,15 @@ export function startRailCurve(root: HTMLElement): (() => void) | null {
     [grip, 'pointercancel', released as EventListener, {}],
     [grip, 'pointerleave', letGo, {}],
     [grip, 'wheel', wheeled as EventListener, { passive: false }],
+    [grip, 'gesturestart', pinched, { passive: false }],
+    [grip, 'gesturechange', pinched, { passive: false }],
+    // The rail moves with the window, and with the stage's canvas.
+    [window, 'resize', run, passive],
+    [window, 'keydown', run, passive],
+    // The stage's canvas moving (canvas-zoom.ts) moves the rails on it.
+    [root, 'canvasmove', run, passive],
+    [root, 'wheel', run, passive],
+    [root, 'touchmove', run, passive],
     // The page scrolling moves the bar out from under the grip (a pane's
     // own scroll comes through here too, and doesn't).
     [window, 'scroll', (e) => e.target === document && letGo(), passive],
@@ -521,6 +662,7 @@ export function startRailCurve(root: HTMLElement): (() => void) | null {
   return () => {
     cancelAnimationFrame(frame)
     clearTimeout(dwell)
+    resized.disconnect()
     for (const [target, type, fn, options] of on)
       target.removeEventListener(type, fn, options)
     for (const l of lights.values()) l.pane.removeAttribute('data-curve')

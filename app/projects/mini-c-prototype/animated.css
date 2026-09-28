@@ -133,7 +133,7 @@
 .ac.bare * {
   scrollbar-width: none;
 }
-.ac.bare :is(.ac-source, .ac-note-body, .ac-asm) {
+.ac.bare :is(.ac-source, .ac-note-body, .ac-listing-scroll) {
   border-right: 9px solid transparent;
   /* Longhands, so a pane's own background colour stays. */
   background-image: repeating-linear-gradient(
@@ -154,9 +154,9 @@
     --rail: var(--line);
   }
 }
-/* The source also scrolls sideways (long lines): a second rail along its
-   bottom edge, on its own timeline. */
-.ac.bare .ac-source {
+/* The source and the listing also scroll sideways (long lines): a second
+   rail along the bottom edge, on its own timeline. */
+.ac.bare :is(.ac-source, .ac-listing-scroll) {
   border-bottom: 9px solid transparent;
   background-image: repeating-linear-gradient(
       to bottom,
@@ -560,6 +560,22 @@
 .ac-source[data-sized='true'] {
   flex: 0 0 var(--source-h);
 }
+/* The pane folded away, or folding (animated.tsx, data-fold): the source
+   takes the room it leaves. */
+.ac-editor[data-fold] .ac-source,
+.ac-editor[data-fold] .ac-source[data-sized='true'] {
+  flex-grow: 1;
+}
+.ac-editor[data-fold] .ac-note {
+  flex: none;
+  overflow: hidden;
+}
+.ac-editor[data-fold='shut'] .ac-note {
+  height: 0;
+}
+.ac-editor[data-fold] .ac-split {
+  pointer-events: none;
+}
 .ac-note {
   position: relative;
   display: flex;
@@ -629,7 +645,8 @@
   justify-content: flex-end;
   align-items: center;
   gap: 12px;
-  padding: 0 10px 8px;
+  /* The right side clears the notes window's size grip. */
+  padding: 0 16px 8px 10px;
   color: var(--muted);
   font-size: 11px;
 }
@@ -703,6 +720,20 @@
 .ac-note.err .ac-note-title {
   color: var(--err);
 }
+/* Every record in the pane under the source at one size and one inset:
+   the typing rule's 11px, 4px under the bar's padding (Stanley,
+   2026-09-27: the scopes read bigger, the kinds sat lower). */
+.ac-editor .ac-note-body {
+  font-size: 11px;
+}
+.ac-editor .ac-note-body > .ac-lexemes,
+.ac-editor .ac-note-body > .ac-char-table,
+.ac-editor .ac-note-body > .ac-scopes {
+  margin-top: 4px;
+}
+.ac-editor .ac-scopes {
+  line-height: 18px;
+}
 .ac-note-body {
   white-space: pre-line;
   flex: 1;
@@ -749,24 +780,62 @@
   transform-origin: 0 0;
 }
 /* A pane on it that has scrolled to its end doesn't pass the wheel on to
-   the page. */
-.ac-canvas * {
-  overscroll-behavior: contain;
+   the page. Only with a mouse or trackpad: a finger at a pane's end goes
+   on to scroll the page. */
+@media (hover: hover) and (pointer: fine) {
+  .ac-canvas * {
+    overscroll-behavior: contain;
+  }
 }
-/* Emit's assembly, pinned while the tree pans under it. */
-.ac-pin-track {
+/* The stage's view, and over its right side (along its bottom on a narrow
+   stage) the listing's pane in emit and registers. The canvas pans out
+   from under it (canvas-zoom.ts, inset). */
+.ac-view {
   position: relative;
-  height: 100%;
-  pointer-events: none;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
 }
-.ac-pin {
+.ac-listing {
+  position: absolute;
+  z-index: 4;
+  overflow: hidden;
+  background: var(--bg);
+}
+.ac-listing.side {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  border-left: 1px solid var(--line);
+}
+.ac-listing.foot {
+  right: 0;
+  bottom: 0;
+  left: 0;
+  border-top: 1px solid var(--line);
+}
+.ac-listing.foot.flow {
   position: relative;
-  z-index: 3;
-  height: 100%;
-  transform: translateX(var(--pin, 0px));
+  flex: none;
 }
-.ac-pin > * {
-  pointer-events: auto;
+/* Its content keeps its width (height) as the pane slides out, so it
+   comes in with the pane's edge rather than reflowing. */
+.ac-listing-scroll {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+.ac-listing.side .ac-listing-scroll {
+  bottom: 0;
+}
+.ac-listing.foot .ac-listing-scroll {
+  right: 0;
+}
+.ac-listing-scroll:focus-visible {
+  outline: 1px solid var(--ink);
+  outline-offset: -1px;
 }
 .dark .ac-scene {
   background-image: linear-gradient(#18181b 1px, transparent 1px);
@@ -1144,14 +1213,10 @@
   padding: 0 5px;
   font-size: 11px;
 }
+/* In the listing's pane at its full height: the pane scrolls to its
+   current block (animated.tsx, follow). */
 .ac-asm {
-  position: absolute;
-  left: 50%;
-  right: 12px;
-  top: 12px;
-  max-height: calc(100% - 24px);
-  overflow: auto;
-  scrollbar-gutter: stable;
+  position: relative;
   line-height: var(--row);
 }
 .ac-asm .ac-label {
@@ -1161,27 +1226,30 @@
    (number, op, operands) at the editor's size and row, on its own ground so
    the stage's 22px rules don't run through its 19px rows. */
 .ac-asm:is(.blocks, .listing) {
-  padding-bottom: 12px;
-  background: var(--bg);
+  /* Never narrower than its lines: the pane scrolls sideways to what runs
+     past, rather than squeezing operands under the lanes. */
+  min-width: max-content;
+  padding: 0 12px 12px 0;
   font-size: 12px;
   line-height: 19px;
 }
-.ac-asm.blocks {
-  right: 12px;
-}
+/* Its header stays at the top as it scrolls. */
 .ac-asm:is(.blocks, .listing) .ac-label {
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: 2;
   margin: 0;
-  padding: 0 0 4px 34px;
+  padding: 8px 0 4px 34px;
   background: var(--bg);
 }
 /* The lanes' column: where each register is live. */
 .ac-lanes-head {
   position: absolute;
-  top: 0;
+  top: 8px;
   padding-left: 2px;
+}
+.ac-lanes-head.out {
+  right: 18px;
 }
 .ac-asm:is(.blocks, .listing) .ac-ins {
   display: grid;
@@ -1196,6 +1264,7 @@
 .ac-asm.listing .ac-ins small {
   grid-column: 4;
   padding: 0 6px;
+  text-align: right;
 }
 .ac-asm:is(.blocks, .listing) .ac-ins > span {
   padding-right: 8px;
@@ -1336,13 +1405,6 @@
 .ac-piece.life {
   outline: 1px dashed var(--muted);
   outline-offset: 2px;
-}
-
-/* Too narrow for the tree beside the assembly and the stack: the editor's
-   highlight carries the source instead. */
-.ac-scene.treeless .ac-edges,
-.ac-scene.treeless .ac-piece {
-  visibility: hidden;
 }
 
 /* The stack column: one word per row, high addresses at the top. */
@@ -1513,7 +1575,11 @@
 .ac-window-body {
   max-height: min(220px, 40vh);
   overflow: auto;
-  padding: 8px 10px;
+  /* The rail's room is kept whether or not the note overflows, so its
+     text doesn't rewrap (and shift) when a long one scrolls; the rail
+     stands in for the right padding, as in the source's note. */
+  scrollbar-gutter: stable;
+  padding: 8px 3px 8px 10px;
   /* The title's size, in full ink: a caption under the file's name. */
   color: var(--ink);
   font-family: 'Notes Prose', var(--font-mono);
@@ -1521,8 +1587,11 @@
   line-height: 1.5;
   white-space: pre-line;
 }
-/* Code inside a note stays in the page's own face, as on the stage. */
+/* Code inside a note stays in the page's own face, as on the stage, on a
+   chip so a name or `$ra` reads apart from the prose (Stanley, 2026-09-27). */
 .ac .ac-window-body code {
+  padding: 0 3px;
+  background: var(--line);
   font-family: var(--font-mono);
 }
 /* What the note is about (the welcome, a slide, an error, a step title). */
@@ -1925,19 +1994,8 @@
     font-size: 10px;
     padding: 0 4px;
   }
-  .ac-asm {
-    left: 48%;
-    right: 6px;
-    top: 8px;
-    font-size: 10.5px;
-  }
-  /* Treeless or not, the assembly takes the stage's width. */
-  .ac-asm.blocks,
-  .ac-scene.treeless .ac-asm.blocks {
-    right: 6px;
-  }
-  /* Registers: a smaller, tighter listing leaves the lanes room right of
-     the operands. */
+  /* A smaller, tighter listing leaves the lanes room right of the
+     operands. */
   .ac-asm.listing {
     font-size: 11px;
   }
@@ -2194,4 +2252,81 @@
 }
 .ac-keys .ac-more-menu button[aria-checked='true'] {
   color: var(--ink);
+}
+
+/* The notes window's size grip (note-window.tsx): nothing at rest. Near
+   the bottom-right corner the corner folds over, a sticky note's dog-ear,
+   and dragging it resizes the window (Stanley, 2026-09-27). The window's
+   clip cuts the corner away (the stage shows through); the grip's
+   ::before is the flap folded over, its crease on the cut's diagonal.
+   --ear is the flap's size; -2px at rest puts the cut outside the box. */
+@property --ear {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: -2px;
+}
+.ac-window {
+  --ear: -2px;
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% calc(100% - var(--ear) - 2px),
+    calc(100% - var(--ear) - 2px) 100%,
+    0 100%
+  );
+  transition: --ear 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.ac-window.ear,
+.ac-window:has(.ac-window-grip:focus-visible) {
+  --ear: 13px;
+}
+.ac-window-grip {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 20px;
+  height: 20px;
+  cursor: nwse-resize;
+  touch-action: none;
+}
+.ac-window-grip:focus-visible {
+  outline: none;
+}
+.ac-window-grip::before {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: max(0px, var(--ear));
+  height: max(0px, var(--ear));
+  box-sizing: border-box;
+  /* (none at all at rest: a 1px border would still show a dot) */
+  border-top: min(1px, max(0px, var(--ear))) solid var(--faint);
+  border-left: min(1px, max(0px, var(--ear))) solid var(--faint);
+  background: var(--line);
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ac-window {
+    transition: none;
+  }
+}
+
+/* PROTOTYPE: tree nodes drag (animated.tsx, nudged). */
+.ac-piece.node {
+  cursor: grab;
+}
+.ac-piece.node.dragged {
+  z-index: 5;
+  cursor: grabbing;
+}
+
+/* Emit's pane while the stack floats: where it docks again. */
+.ac-dock-slot {
+  display: grid;
+  place-items: center;
+  height: 96px;
+  margin-top: 4px;
+  border: 1px dashed var(--line);
+  color: var(--faint);
 }
