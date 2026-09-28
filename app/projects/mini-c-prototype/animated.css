@@ -301,22 +301,25 @@
   white-space: nowrap;
 }
 /* Maximized: over the whole window, the site's header and art under it,
-   so nothing up there answers the pointer. */
-.ac.max {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  width: auto;
-  left: 0;
-  transform: none;
-  margin: 0;
-  padding: 10px 24px 8px;
-  overflow: auto;
-  background: var(--bg);
-}
-.ac.max .ac-scene {
-  /* The window, less the tabs above and the keys below. */
-  height: max(360px, calc(100dvh - 92px));
+   so nothing up there answers the pointer. (A phone's tool is always the
+   whole screen, with its own layout below.) */
+@media (min-width: 641px) {
+  .ac.max {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    width: auto;
+    left: 0;
+    transform: none;
+    margin: 0;
+    padding: 10px 24px 8px;
+    overflow: auto;
+    background: var(--bg);
+  }
+  .ac.max .ac-scene {
+    /* The window, less the tabs above and the keys below. */
+    height: max(360px, calc(100dvh - 92px));
+  }
 }
 
 /* Workspace: editor column and stage. */
