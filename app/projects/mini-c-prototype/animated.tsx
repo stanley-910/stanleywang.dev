@@ -1118,8 +1118,8 @@ export default function AnimatedCompiler() {
   // the dashed rail as a hint (animated.css, `.ac.bare`).
   const [bare, setBare] = useState(false)
   // Maximized: the tool covers the window, the site's header and all, until
-  // back (or Esc).
-  const [max, setMax] = useState(false)
+  // back (or Esc). It opens that way (Stanley, 2026-09-29).
+  const [max, setMax] = useState(true)
   useEffect(() => {
     if (!max) return
     const page = document.documentElement
