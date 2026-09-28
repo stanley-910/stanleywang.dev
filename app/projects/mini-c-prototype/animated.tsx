@@ -1,4 +1,5 @@
 'use client'
+import { Maximize, ZoomIn, ZoomOut } from 'lucide-react'
 import {
   AnimatePresence,
   animate,
@@ -20,7 +21,7 @@ import {
   useState,
 } from 'react'
 
-import { startCanvas, type Canvas } from './canvas-zoom'
+import { startCanvas, type Canvas, type CanvasRest } from './canvas-zoom'
 import { detailTrace } from './detail'
 import { EmitLanes, lanesWidth } from './emit-lanes'
 import { withEmitBlocks, withEmitLines } from './emit-view'
@@ -104,6 +105,8 @@ const isTypeStep = (f: Frame) =>
 const speeds = [0.5, 1, 1.5, 2]
 const KEEP_HIDDEN = ['int', '(', ')', '{', '}', ';', '=', ',']
 const HOVER_DELAY = 250
+// How far one press of the stage's zoom buttons goes.
+const ZOOM_STEP = 1.25
 // The most the editor takes: four times what the compiler will run
 // (REAL_MAX_CHARS), so a longer program is told it's too long, and a huge
 // paste stops here.
@@ -1107,7 +1110,11 @@ export default function AnimatedCompiler() {
   // The stage pans and zooms (canvas-zoom.ts).
   const canvasRef = useRef<HTMLDivElement>(null)
   const canvas = useRef<Canvas | null>(null)
-  const [zoomed, setZoomed] = useState(false)
+  const [rest, setRest] = useState<CanvasRest>({
+    home: true,
+    least: false,
+    most: false,
+  })
   const [sceneWidth, setSceneWidth] = useState(VIEW_W)
   const [sceneHeight, setSceneHeight] = useState(VIEW_H)
   // The phone layout's smaller pieces (animated.css, max-width 640px).
@@ -1523,7 +1530,7 @@ export default function AnimatedCompiler() {
     const scene = sceneRef.current,
       layer = canvasRef.current
     if (!scene || !layer) return
-    canvas.current = startCanvas(scene, layer, (home) => setZoomed(!home))
+    canvas.current = startCanvas(scene, layer, setRest)
     return () => {
       canvas.current?.stop()
       canvas.current = null
@@ -3909,6 +3916,47 @@ export default function AnimatedCompiler() {
                     })}
                 </AnimatePresence>
               </div>
+              {/* Zoom, in the corner of the view the listing's pane
+              leaves. */}
+              <div
+                className="ac-zoom"
+                role="group"
+                aria-label="Zoom"
+                style={{ right: cover.right + 8, bottom: cover.bottom + 8 }}
+              >
+                <button
+                  type="button"
+                  aria-label="Zoom out"
+                  title="Zoom out"
+                  disabled={rest.least}
+                  onClick={() =>
+                    canvas.current?.zoomBy(1 / ZOOM_STEP, !reduced)
+                  }
+                >
+                  <ZoomOut aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Zoom in"
+                  title="Zoom in"
+                  disabled={rest.most}
+                  onClick={() => canvas.current?.zoomBy(ZOOM_STEP, !reduced)}
+                >
+                  <ZoomIn aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Fit"
+                  title="Fit (0)"
+                  disabled={rest.home && nudged.size === 0}
+                  onClick={() => {
+                    canvas.current?.home(!reduced)
+                    setNudged(new Map())
+                  }}
+                >
+                  <Maximize aria-hidden="true" />
+                </button>
+              </div>
             </div>
             {/* Emit and registers: one listing in its own pane, the same
             through both, so the step from one to the other changes its
@@ -4240,18 +4288,6 @@ export default function AnimatedCompiler() {
             </AnimatePresence>
           </div>
           <div className="ac-status">
-            {(zoomed || nudged.size > 0) && (
-              <button
-                type="button"
-                className="ac-fit"
-                onClick={() => {
-                  canvas.current?.home(!reduced)
-                  setNudged(new Map())
-                }}
-              >
-                fit
-              </button>
-            )}
             <span className="ac-counter">
               {String(index).padStart(2, '0')}/{String(last).padStart(2, '0')}
             </span>

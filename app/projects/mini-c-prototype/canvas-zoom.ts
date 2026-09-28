@@ -1,6 +1,7 @@
 // The stage as a canvas: two fingers
 // on a trackpad (or a wheel) pan it, a pinch (or ctrl + wheel) zooms it
-// about the pointer, and two fingers on a touch screen do both. It starts
+// about the pointer, and two fingers on a touch screen do both; the
+// stage's buttons zoom about the middle of the view. It starts
 // fitted (the layout the stage computes) and never lets the content leave:
 // zoomed out, it stays inside the stage; zoomed in, its edges stay at the
 // stage's edges. Past a bound it stretches like a rubber band (the harder
@@ -33,6 +34,9 @@ const SPRING = 0.02
 const GLIDE = 0.012
 
 export type CanvasView = { x: number; y: number; k: number }
+// Where the view rests, for the stage's zoom buttons: at the fitted view,
+// or zoomed as far out or in as it goes.
+export type CanvasRest = { home: boolean; least: boolean; most: boolean }
 
 export type Canvas = {
   // The content's size in canvas px (it can be wider than the stage).
@@ -45,6 +49,8 @@ export type Canvas = {
   // moves wait out).
   busy(): boolean
   panBy(dx: number, dy: number, animated: boolean): void
+  // Zoom by a factor about the middle of the view, within the limits.
+  zoomBy(factor: number, animated: boolean): void
   home(animated: boolean): void
   stop(): void
 }
@@ -88,7 +94,7 @@ const past = (v: number, [lo, hi]: Range) =>
 export function startCanvas(
   scene: HTMLElement,
   layer: HTMLElement,
-  onHome: (home: boolean) => void,
+  onRest: (rest: CanvasRest) => void,
 ): Canvas {
   const still = window.matchMedia('(prefers-reduced-motion: reduce)')
   let x = 0,
@@ -102,7 +108,7 @@ export function startCanvas(
   // the hand's (a spring back after a gesture) or the page's (panBy, home).
   let aim: { to: CanvasView; rate: number } | null = null
   let handSpring = false
-  let wasHome = true
+  let rest: CanvasRest = { home: true, least: false, most: false }
   // The hand's speed (px per ms, as shown), for the bounce a flick makes.
   let speed = { x: 0, y: 0 }
   let lastInput = 0
@@ -126,9 +132,17 @@ export function startCanvas(
     scene.style.setProperty('--pan-y', `${y}px`)
     // For what draws over the canvas's panes (rail-curve.ts).
     scene.dispatchEvent(new Event('canvasmove', { bubbles: true }))
-    const home =
-      Math.abs(x) < 0.5 && Math.abs(y) < 0.5 && Math.abs(k - 1) < 0.001
-    if (home !== wasHome) onHome((wasHome = home))
+    const now = {
+      home: Math.abs(x) < 0.5 && Math.abs(y) < 0.5 && Math.abs(k - 1) < 0.001,
+      least: k <= MIN_ZOOM + 0.001,
+      most: k >= MAX_ZOOM - 0.001,
+    }
+    if (
+      now.home !== rest.home ||
+      now.least !== rest.least ||
+      now.most !== rest.most
+    )
+      onRest((rest = now))
   }
 
   const stopSpring = () => {
@@ -422,6 +436,24 @@ export function startCanvas(
       const to = clamped()
       ;({ x, y } = saved)
       if (animated) return springTo(to, GLIDE)
+      ;({ x, y, k } = to)
+      apply()
+    },
+    zoomBy(factor, animated) {
+      clearTimeout(settleTimer)
+      settleTimer = 0
+      // From where a zoom still on its way will end, so quick presses add up.
+      const from = aim?.to ?? { x, y, k }
+      const nk = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, from.k * factor))
+      const cx = vw() / 2,
+        cy = vh() / 2
+      const to = inside({
+        x: cx - ((cx - from.x) * nk) / from.k,
+        y: cy - ((cy - from.y) * nk) / from.k,
+        k: nk,
+      })
+      if (animated) return springTo(to, GLIDE)
+      stopSpring()
       ;({ x, y, k } = to)
       apply()
     },
