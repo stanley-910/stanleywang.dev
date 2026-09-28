@@ -507,6 +507,11 @@ export function startRailCurve(root: HTMLElement): (() => void) | null {
       canvas.style.height = `${innerHeight}px`
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    // Maximized, the tool is itself fixed over the page (animated.css
+    // .ac.max), so the rails go over it.
+    const max = root.classList.contains('max')
+    canvas.style.zIndex = max ? '61' : '40'
+    grip.style.zIndex = max ? '62' : '41'
   }
 
   const draw = (l: Light, r: Rail, line: number[], ink: number[]) => {

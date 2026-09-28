@@ -2002,15 +2002,15 @@ export default function AnimatedCompiler() {
   const follow = () => {
     if (!late) return
     const M = 24
-    // How far to move one axis to bring [lo, hi] into [lo0 + M, hi0 - M];
+    // How far to move one axis to bring [lo, hi] into [lo0 + m, hi0 - m];
     // what doesn't fit shows from its start.
-    const into = (lo: number, hi: number, lo0: number, hi0: number) =>
-      hi - lo > hi0 - lo0 - 2 * M
-        ? lo0 + M - lo
-        : lo < lo0 + M
-          ? lo0 + M - lo
-          : hi > hi0 - M
-            ? hi0 - M - hi
+    const into = (lo: number, hi: number, lo0: number, hi0: number, m = M) =>
+      hi - lo > hi0 - lo0 - 2 * m
+        ? lo0 + m - lo
+        : lo < lo0 + m
+          ? lo0 + m - lo
+          : hi > hi0 - m
+            ? hi0 - m - hi
             : 0
     const pane = listingRef.current
     const rows =
@@ -2021,11 +2021,14 @@ export default function AnimatedCompiler() {
       performance.now() - listingHand.current > 1500
     ) {
       const box = pane.getBoundingClientRect()
+      // Four lines of context either side of the current ones, as the
+      // cursor walks up or down (less in a short pane).
       const dy = into(
         rows[0].getBoundingClientRect().top,
         rows[rows.length - 1].getBoundingClientRect().bottom,
-        box.top - M / 2,
+        box.top,
         box.bottom,
+        Math.min(4 * 19, box.height / 4),
       )
       if (Math.abs(dy) > 1) {
         listingAuto.current = performance.now()
