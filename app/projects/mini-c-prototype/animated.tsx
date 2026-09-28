@@ -29,7 +29,6 @@ import {
   explain,
   NODE_KINDS,
   nodeKind,
-  registerHover,
   tokenKind,
   PHASE_SLIDES,
   STEP_SLIDES,
@@ -913,7 +912,6 @@ export default function AnimatedCompiler() {
   const stackStart = useRef<ReactPointerEvent | null>(null)
   const noteRef = useRef<HTMLElement>(null)
   const [hoverIns, setHoverIns] = useState<number | null>(null)
-  const [hoverVr, setHoverVr] = useState<string | null>(null)
   // A virtual register under focus in emit (`fn:vr`): where it is written
   // and read, all at once (Stanley, 2026-09-25: no replay of its life). A
   // hover shows it; a click pins it. It holds for the step it was picked on.
@@ -1223,7 +1221,6 @@ export default function AnimatedCompiler() {
     setHover(null)
     setHoverToken(null)
     setHoverIns(null)
-    setHoverVr(null)
   }, [])
   const focusReg = (key: string, pin: boolean) => {
     if (playing) return
@@ -2378,24 +2375,16 @@ export default function AnimatedCompiler() {
     ...lines.map((l) => l.replace(/\t/g, '  ').length),
   )
   const line = source.slice(0, activeSpan.start).split('\n').length
-  const hoverText =
-    hoverVr !== null && !playing
-      ? registerHover(trace, fnIndex, hoverVr, coloured?.[hoverVr])
-      : undefined
-  // Hovers replace the step text in the panel rather than float on the stage,
-  // so nothing on screen says the same thing twice.
   // The name pass: the note card holds the scopes instead of a sentence.
   const statusText = error
     ? error.message
-    : hoverText
-      ? 'hover'
-      : intro
-        ? intro.title
-        : index === 0
-          ? 'Press space to compile your code!'
-          : frame.why.kind === 'token'
-            ? `Token: \`${trace.tokens[frame.why.token].text}\``
-            : frame.title
+    : intro
+      ? intro.title
+      : index === 0
+        ? 'Press space to compile your code!'
+        : frame.why.kind === 'token'
+          ? `Token: \`${trace.tokens[frame.why.token].text}\``
+          : frame.title
   // The notes window's name: the heading inside it, short (Stanley,
   // 2026-09-27). A slide names its own; a step, its phase's pass.
   const noteFile = error
@@ -2410,7 +2399,6 @@ export default function AnimatedCompiler() {
             : 'scopes.txt'
           : PHASE_FILE[shownPhase]
   const noteText =
-    hoverText ??
     intro?.body ??
     (error &&
     // A type error's step says what didn't fit, and that it stops there.
@@ -2423,19 +2411,14 @@ export default function AnimatedCompiler() {
       : explain(trace, frame, titles))
   // The note's first line, over its text: what it is about, when there's
   // a header to show (the welcome, a slide, an error, or step titles on).
-  const showTitle =
-    titles ||
-    (!!intro && !hoverText) ||
-    (index === 0 && !hoverText && !error) ||
-    !!error ||
-    !!hoverText
+  const showTitle = titles || !!intro || index === 0 || !!error
   const heading = showTitle && statusText && (
     <span className="ac-window-head">
       <Prose text={statusText} />
     </span>
   )
   // A slide's small two-column table, under its body.
-  const slideTable = !hoverText && intro?.table && (
+  const slideTable = intro?.table && (
     <table className="ac-slide-table">
       <thead>
         <tr>
@@ -3865,7 +3848,7 @@ export default function AnimatedCompiler() {
                       const colour = coloured?.[vr]
                       const idx = colour ? paletteIndex(colour) : -1
                       return (
-                        <motion.button
+                        <motion.span
                           key={`vr-${vr}`}
                           className={`ac-vr ${vr === stepVr && !onStack.has(vr) ? 'focused' : ''} ${onStack.has(vr) ? 'aside' : ''} ${spilled.has(vr) ? 'spilled' : ''} ${colour ? 'coloured' : ''}`}
                           style={
@@ -3888,15 +3871,12 @@ export default function AnimatedCompiler() {
                           }}
                           exit={{ opacity: 0 }}
                           transition={transition}
-                          onMouseEnter={() => !playing && setHoverVr(vr)}
-                          onMouseLeave={clearHover}
-                          onFocus={() => setHoverVr(vr)}
-                          onBlur={clearHover}
+                          role="img"
                           aria-label={`Virtual register ${vr}${colour ? `, now ${colour}` : ''}`}
                         >
                           {vr}
                           {colour && <small>{colour}</small>}
-                        </motion.button>
+                        </motion.span>
                       )
                     })}
                 </AnimatePresence>

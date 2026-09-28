@@ -1090,28 +1090,6 @@ function explainMips(trace: Trace, n: AstNode, run: Instruction[]): string {
   }
 }
 
-/** Hover card for a node of the interference graph. */
-export function registerHover(
-  trace: Trace,
-  fn: number,
-  vr: string,
-  colour?: string,
-): string {
-  const f = trace.backend?.functions[fn]
-  const def = trace.instructions.find((i) => i.dest === vr)
-  const holds =
-    def && def.node !== null
-      ? ` · holds ${code(text(trace, trace.nodes[def.node]).replace(/\s+/g, ' '))}`
-      : ''
-  const neighbours = (f?.interference.edges ?? [])
-    .filter((e) => e.includes(vr))
-    .map((e) => (e[0] === vr ? e[1] : e[0]))
-  const overlaps = neighbours.length
-    ? ` · overlaps ${neighbours.map(code).join(', ')}`
-    : ' · overlaps nothing'
-  return `${code(vr)}${holds}${overlaps}${colour ? ` · now ${code(colour)}` : ''}`
-}
-
 export function instructionLine(ins: Trace['instructions'][number]): string {
   return ins.dest
     ? `${ins.op} ${ins.dest}, ${ins.args.join(', ')}`
