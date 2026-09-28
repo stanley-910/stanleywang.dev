@@ -614,8 +614,17 @@ export default function AnimatedCompiler() {
     const away = (event: PointerEvent) => {
       if (!aboutRef.current?.contains(event.target as Node)) setAboutOpen(false)
     }
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      setAboutOpen(false)
+      moreRef.current?.querySelector('button')?.focus()
+    }
     document.addEventListener('pointerdown', away)
-    return () => document.removeEventListener('pointerdown', away)
+    document.addEventListener('keydown', escape)
+    return () => {
+      document.removeEventListener('pointerdown', away)
+      document.removeEventListener('keydown', escape)
+    }
   }, [aboutOpen])
   const view = useMemo(
     () => layered(baseTrace, source, detailed),
@@ -1814,13 +1823,13 @@ export default function AnimatedCompiler() {
   const listingFlow = !listingSide && (narrow || sceneHeight < 480)
   // (a phone's: under half its stage, as dragged, always leaving the
   // stage its floor)
-  const STAGE_MIN = 120
+  const FLOW_STAGE_MIN = 120
   const flowListing = Math.round(
     Math.max(
       96,
       Math.min(
         flowSizes.listing ?? Math.min(220, stageHeight * 0.45),
-        stageHeight - STAGE_MIN,
+        stageHeight - FLOW_STAGE_MIN,
       ),
     ),
   )
@@ -1840,7 +1849,7 @@ export default function AnimatedCompiler() {
     scene: sceneHeight,
   })
   const flowBy = (edge: FlowEdge, dy: number, from: FlowFrom): FlowSizes => {
-    const room = Math.max(0, from.scene - STAGE_MIN)
+    const room = Math.max(0, from.scene - FLOW_STAGE_MIN)
     if (edge === 'note') {
       // (down to one line: 18px and the body's 10px under it)
       const by = Math.max(-room, Math.min(dy, from.note - 28))
@@ -1875,6 +1884,21 @@ export default function AnimatedCompiler() {
               ? 'Resize assembly and code'
               : 'Resize stage and code'
       }
+      aria-valuenow={
+        edge === 'note'
+          ? (flowSizes.note ?? NOTE_H)
+          : edge === 'listing'
+            ? listingH
+            : (flowSizes.source ?? 132)
+      }
+      aria-valuemin={edge === 'note' ? 28 : edge === 'listing' ? 96 : 60}
+      aria-valuetext={`${
+        edge === 'note'
+          ? (flowSizes.note ?? NOTE_H)
+          : edge === 'listing'
+            ? listingH
+            : (flowSizes.source ?? 132)
+      } px tall; arrow keys resize`}
       tabIndex={0}
       onPointerDown={(e) => {
         e.preventDefault()
@@ -1911,6 +1935,24 @@ export default function AnimatedCompiler() {
       }}
     />
   )
+  // Less room than the sizes were dragged in (the listing arriving, a
+  // shorter screen): the note, then the source, give back what the stage
+  // needs to keep its floor.
+  useEffect(() => {
+    if (!narrow || flowDrag.current) return
+    const short = Math.ceil(FLOW_STAGE_MIN - sceneHeight)
+    if (short < 1) return
+    setFlowSizes((s) => {
+      let need = short
+      const note = s.note === null ? null : Math.max(28, s.note - need)
+      if (s.note !== null && note !== null) need -= s.note - note
+      const source =
+        s.source === null || need <= 0
+          ? s.source
+          : Math.max(60, s.source - need)
+      return note === s.note && source === s.source ? s : { ...s, note, source }
+    })
+  }, [narrow, sceneHeight])
   const cover = {
     right: late && listingSide ? listingW : 0,
     bottom: late && !listingSide && !listingFlow ? listingH : 0,
@@ -2845,6 +2887,8 @@ export default function AnimatedCompiler() {
   // back up when a pass has something. `data-fold` on the editor: 'shut'
   // folded, 'moving' while the pane's height is animated, absent open.
   const paneOpen = paneKind !== null && paneFilled
+  // (a phone's side pane, open only while there is one to show)
+  const sideShown = sideOpen && paneOpen
   const folded = useRef<boolean | null>(null)
   // Only the latest fold settles the pane: a stopped animation still
   // resolves, and its settle would undo the one that replaced it.
@@ -3441,7 +3485,7 @@ export default function AnimatedCompiler() {
             ref={noteRef}
             // Folded away, nothing in it can be reached (its separator).
             inert={!paneOpen}
-            className={`ac-note ${error ? 'err' : ''} ${sideOpen ? 'open' : ''}`}
+            className={`ac-note ${error ? 'err' : ''} ${sideShown ? 'open' : ''}`}
             aria-label="Current step"
             aria-live={playing ? 'off' : 'polite'}
           >
@@ -3487,11 +3531,11 @@ export default function AnimatedCompiler() {
                   <button
                     type="button"
                     className="ac-side-box"
-                    aria-label={sideOpen ? 'Close pane' : 'Open pane'}
-                    aria-expanded={sideOpen}
-                    onClick={() => setSideOpen((o) => !o)}
+                    aria-label={sideShown ? 'Close pane' : 'Open pane'}
+                    aria-expanded={sideShown}
+                    onClick={() => setSideOpen(!sideShown)}
                   >
-                    {sideOpen ? '−' : '+'}
+                    {sideShown ? '−' : '+'}
                   </button>
                 )}
               </div>

@@ -2432,7 +2432,8 @@ button.ac-proof-name {
   .ac-counter {
     margin-left: 0;
   }
-  .ac-keys .ac-more-menu button {
+  /* (over the base rule further down) */
+  .ac .ac-keys .ac-more-menu button {
     padding: 10px 14px;
   }
   /* (no keyboard to list) */

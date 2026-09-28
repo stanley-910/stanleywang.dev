@@ -15,8 +15,9 @@ import remarkRehype from 'remark-rehype'
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // No dev badge: it sat on the compiler's phone controls.
-  devIndicators: false,
+  // No dev badge: it sat on the compiler's phone controls. (Next 15.1's
+  // form; from 15.2 it's `devIndicators: false`.)
+  devIndicators: { appIsrStatus: false, buildActivity: false },
   // Temporary redirects keep these slugs available for future project pages.
   async redirects() {
     return [
