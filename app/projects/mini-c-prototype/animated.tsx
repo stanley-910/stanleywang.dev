@@ -1,5 +1,5 @@
 'use client'
-import { Maximize, ZoomIn, ZoomOut } from 'lucide-react'
+import { Maximize, Maximize2, ZoomIn, ZoomOut } from 'lucide-react'
 import {
   AnimatePresence,
   animate,
@@ -102,6 +102,7 @@ const KEYS: [string[], string][] = [
   [['-', '+'], 'speed'],
   [['1–6'], 'phase'],
   [['0'], 'fit'],
+  [['f'], 'maximize'],
   [['e'], 'edit'],
 ]
 // How far one press of the stage's zoom buttons goes.
@@ -994,6 +995,18 @@ export default function AnimatedCompiler() {
   // Scrollbars off: panes scroll by wheel, touch or keys, and keep only
   // the dashed rail as a hint (animated.css, `.ac.bare`).
   const [bare, setBare] = useState(false)
+  // Maximized: the tool covers the window, the site's header and all, until
+  // back (or Esc).
+  const [max, setMax] = useState(false)
+  useEffect(() => {
+    if (!max) return
+    const page = document.documentElement
+    const was = page.style.overflow
+    page.style.overflow = 'hidden'
+    return () => {
+      page.style.overflow = was
+    }
+  }, [max])
   useEffect(() => {
     try {
       setBare(localStorage.getItem(BARE_KEY) === '1')
@@ -1537,6 +1550,10 @@ export default function AnimatedCompiler() {
         event.preventDefault()
         return setRegFocus(null)
       }
+      if (key === 'Escape' && max) {
+        event.preventDefault()
+        return setMax(false)
+      }
       if (event.code === 'Space' && !target?.closest('button,summary')) {
         event.preventDefault()
         play()
@@ -1550,12 +1567,13 @@ export default function AnimatedCompiler() {
       else if (key === '-') bumpSpeed(-1)
       else if (key === '=' || key === '+') bumpSpeed(1)
       else if (/^[1-6]$/.test(key)) jumpTab(tabs[Number(key) - 1])
+      else if (key === 'f') setMax((m) => !m)
       else return
       event.preventDefault()
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [move, play, seek, bumpSpeed, jumpTab, pinned, reduced])
+  }, [move, play, seek, bumpSpeed, jumpTab, pinned, reduced, max])
 
   useEffect(() => {
     const scene = sceneRef.current
@@ -2816,10 +2834,19 @@ export default function AnimatedCompiler() {
   return (
     <section
       ref={rootRef}
-      className={`ac ${bare ? 'bare' : ''}`}
+      className={`ac ${bare ? 'bare' : ''} ${max ? 'max' : ''}`}
       data-phase={frame.phase.toLowerCase()}
     >
       <header className="ac-top">
+        {max && (
+          <button
+            type="button"
+            className="ac-back"
+            onClick={() => setMax(false)}
+          >
+            ← back
+          </button>
+        )}
         <nav className="ac-phases" aria-label="Compiler phases">
           {tabs.map((tab) => {
             const types = 'types' in tab
@@ -2879,6 +2906,17 @@ export default function AnimatedCompiler() {
             </p>
           </div>
         </details>
+        {!max && (
+          <button
+            type="button"
+            className="ac-max"
+            aria-label="Maximize"
+            title="Maximize (f)"
+            onClick={() => setMax(true)}
+          >
+            <Maximize2 aria-hidden="true" />
+          </button>
+        )}
       </header>
 
       <div

@@ -10,7 +10,8 @@
   --ok: #2f7a4b;
   --row: 22px;
   position: relative;
-  width: min(1120px, calc(100vw - 48px));
+  /* Out to the site header's margins (48px each side, lg:px-12). */
+  width: min(1680px, calc(100vw - 96px));
   left: 50%;
   transform: translateX(-50%);
   margin-top: 4px;
@@ -274,6 +275,44 @@
 }
 .ac-about p:last-child {
   margin: 0;
+}
+.ac-max {
+  align-self: center;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+.ac-max:hover,
+.ac-back:hover {
+  color: var(--ink);
+}
+.ac-max svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 1.75;
+}
+.ac-back {
+  padding: 1px 4px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+/* Maximized: over the whole window, the site's header and art under it,
+   so nothing up there answers the pointer. */
+.ac.max {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  width: auto;
+  left: 0;
+  transform: none;
+  margin: 0;
+  padding: 10px 24px 8px;
+  overflow: auto;
+  background: var(--bg);
+}
+.ac.max .ac-scene {
+  /* The window, less the tabs above and the keys below. */
+  height: max(360px, calc(100dvh - 92px));
 }
 
 /* Workspace: editor column and stage. */
@@ -772,8 +811,8 @@
   position: relative;
   flex: 1 1 auto;
   /* Fills the window under the site header, tabs and footer keys (about
-     210px together), within a floor and a ceiling. */
-  height: clamp(420px, calc(100dvh - 210px), 860px);
+     176px together), within a floor and a ceiling. */
+  height: clamp(420px, calc(100dvh - 176px), 1400px);
   overflow: hidden;
   background-image: linear-gradient(var(--line) 1px, transparent 1px);
   /* The rows pan and zoom with the canvas (canvas-zoom.ts). */
@@ -1927,7 +1966,7 @@
 .ac-step {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 10px;
 }
 .ac-keys button:hover,
 .ac-keys button.on {
@@ -1996,6 +2035,10 @@
 @media (max-width: 640px) {
   /* One row: the phases from the left, scrolling if they must; about
      keeps the right end. */
+  /* A phone's page is already all tool. */
+  .ac-max {
+    display: none;
+  }
   .ac-top {
     gap: 14px;
   }
