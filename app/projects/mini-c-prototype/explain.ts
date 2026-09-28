@@ -711,17 +711,18 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
       const st = f && attemptOf(f, w).steps[w.step]
       const k = f ? attemptOf(f, w).palette.length : 0
       if (!st) return 'A register with few neighbours is set aside.'
+      const steps = attemptOf(f, w).steps
       // DRAFT: a batch of pushes (regs-view.ts).
       if (w.from !== undefined)
-        return `The other ${w.step - w.from + 1} go on the stack the same way: each overlaps fewer than ${k} others.`
+        return `The other ${w.step - w.from + 1} are set aside the same way, ${pushNumber(steps, w.from)} to ${pushNumber(steps, w.step)}: each overlaps fewer than ${k} others still in the graph.`
       if (!st.degree)
-        return `${code(st.vr)} overlaps nothing that is still in the graph, so any register will do. It is set aside on a stack.`
-      return `${code(st.vr)} overlaps ${st.degree} ${st.degree === 1 ? 'other' : 'others'}, fewer than the ${k} registers available, so it is sure to get one. It is set aside on a stack and its edges come off the graph.`
+        return `${code(st.vr)} overlaps nothing that is still in the graph, so any register will do. It is set aside first, as 1.`
+      return `${code(st.vr)} overlaps ${st.degree} ${st.degree === 1 ? 'other' : 'others'}, fewer than the ${k} registers available, so it is sure to get one. It is set aside as ${pushNumber(steps, w.step)}, and its edges come off the graph.`
     }
     case 'reg.spillCandidate': {
       const f = trace.backend?.functions[w.fn]
       const st = f && attemptOf(f, w).steps[w.step]
-      return `Every remaining register overlaps ${f ? attemptOf(f, w).palette.length : 'k'} or more others. ${code(st?.vr ?? '')} has the most edges, so it is set aside as the one that may have to spill.`
+      return `Every remaining register overlaps ${f ? attemptOf(f, w).palette.length : 'k'} or more others. ${code(st?.vr ?? '')} has the most edges, so it is set aside${f ? ` as ${pushNumber(attemptOf(f, w).steps, w.step)}` : ''}, the one that may have to spill.`
     }
     case 'reg.select': {
       const f = trace.backend?.functions[w.fn]
@@ -743,18 +744,18 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
           ? `${before}${code(st.vr)} takes ${code(st.colour ?? '')}.`
           : `${before}${code(st.vr)} overlaps values in ${forbidden.map(code).join(', ')}, so it needs ${code(st.colour ?? '')}.`
       if (forbidden.length === 0)
-        return `${code(st.vr)} comes off the stack. None of its neighbours holds a register yet, so it takes the first one, ${code(st.colour ?? '')}.`
-      return `${code(st.vr)} comes off the stack. Its neighbours hold ${forbidden.map(code).join(', ')}, so it takes the next free one, ${code(st.colour ?? '')}.`
+        return `${code(st.vr)}, the last set aside, comes back first. None of its neighbours holds a register yet, so it takes the first one, ${code(st.colour ?? '')}.`
+      return `${code(st.vr)} comes back. Its neighbours hold ${forbidden.map(code).join(', ')}, so it takes the next free one, ${code(st.colour ?? '')}.`
     }
     case 'reg.spill': {
       const f = trace.backend?.functions[w.fn]
       const st = f && attemptOf(f, w).steps[w.step]
       // DRAFT copy: a spill in the 18-colour attempt only ends that attempt.
       if (w.abandoned)
-        return `${code(st?.vr ?? '')} comes off the stack and finds all ${f ? attemptOf(f, w).palette.length : 18} registers taken by its neighbours. Spill code needs registers of its own to load and store through, so once this pass ends the allocator starts over with ${f?.colouring.palette.length ?? 16}.`
+        return `${code(st?.vr ?? '')} comes back and finds all ${f ? attemptOf(f, w).palette.length : 18} registers taken by its neighbours. Spill code needs registers of its own to load and store through, so once this pass ends the allocator starts over with ${f?.colouring.palette.length ?? 16}.`
       // DRAFT copy: the label sentence.
       const label = st && f?.colouring.labels[st.vr]
-      return `${code(st?.vr ?? '')} comes off the stack and finds every register taken by a neighbour. It lives in memory instead: loads and stores are added around each use.${label ? ` Its word in ${code('.data')} is ${code(label)}.` : ''}`
+      return `${code(st?.vr ?? '')} comes back and finds every register taken by a neighbour. It lives in memory instead: loads and stores are added around each use.${label ? ` Its word in ${code('.data')} is ${code(label)}.` : ''}`
     }
     // DRAFT copy
     case 'reg.retry':
@@ -1305,18 +1306,54 @@ export const STEP_SLIDES: {
       previous.why.kind === 'reg.interfere',
     slides: [
       {
-        title: "Chaitin's Algorithm",
+        title: 'Set Aside the Easy Ones',
         body:
-          'The heuristic is **Chaitin’s**. A node with fewer than 18 ' +
-          'neighbours can always be coloured later, whatever they get, so ' +
-          'the allocator sets it aside on a stack and removes it, which ' +
-          "lowers its neighbours' counts and frees up more nodes. If every " +
-          'node left has 18 or more, it sets aside the busiest one as a ' +
-          '**spill candidate**. Then it pops the stack, rebuilding the graph, ' +
-          "and gives each node the first colour its neighbours aren't using. " +
-          'A candidate that still finds one keeps its register (Briggs’s ' +
-          "optimistic twist on Chaitin); one that doesn't is spilled.",
+          'This is **Chaitin’s** heuristic. A node with fewer than 18 ' +
+          'neighbours can always be coloured later: even if every neighbour ' +
+          'gets a different register, one of the 18 is left for it. So the ' +
+          'allocator sets it aside and takes its edges out of the graph, ' +
+          'which lowers its neighbours’ counts and makes more of them easy. ' +
+          'Each node set aside is numbered by when it went: the numbers are ' +
+          'its place on a stack.',
       },
+    ],
+  },
+  {
+    phase: 'Registers',
+    starts: (frame) => frame.why.kind === 'reg.spillCandidate',
+    slides: [
+      {
+        title: 'When None Is Easy',
+        body:
+          'Sometimes every node left has 18 or more neighbours. The ' +
+          'allocator sets one aside anyway, the one with the most edges, ' +
+          'as a **spill candidate**. It may still get a register: if its ' +
+          'neighbours end up sharing a few, one is left over (Briggs’s ' +
+          'optimistic twist on Chaitin).',
+      },
+    ],
+  },
+  {
+    phase: 'Registers',
+    starts: (frame) => frame.why.kind === 'reg.select',
+    slides: [
+      {
+        title: 'Colour in Reverse',
+        body:
+          'Now the stack comes back off, highest number first, and each ' +
+          "node takes the first register its neighbours aren't using. " +
+          'Reversing is what keeps the promise: a node comes back to the ' +
+          'same neighbours it had when it was set aside, fewer than 18, so ' +
+          'a register is always free. A spill candidate is the one ' +
+          'exception, and a candidate that finds none is **spilled** to ' +
+          'memory.',
+      },
+    ],
+  },
+  {
+    phase: 'Registers',
+    starts: (frame) => frame.why.kind === 'reg.done',
+    slides: [
       {
         title: 'Why It Pays Off',
         body:
@@ -1347,6 +1384,12 @@ export const STEP_SLIDES: {
     ],
   },
 ]
+
+/** A register's place on the allocator's stack: pushes up to its step. */
+const pushNumber = (steps: readonly { op: string }[], step: number): number =>
+  steps
+    .slice(0, step + 1)
+    .filter((s) => s.op === 'simplify' || s.op === 'spillCandidate').length
 
 /** A token's class as shown on the page; "name" reads as "identifier". */
 export const tokenKind = (token: Token): TokenClass => {

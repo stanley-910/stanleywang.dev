@@ -2152,100 +2152,97 @@
   color: var(--ink);
   pointer-events: none;
 }
-/* A virtual register: a piece like the tree's. Once it has a physical
-   register it takes that register's colour, softened toward the ink, and
-   the register's name as a badge like a type's. */
+/* A virtual register: a round node, as graphs draw them. Once it has a
+   physical register it fills with that register's colour and names it
+   under its own name. */
 .ac-vr {
   position: absolute;
-  height: 22px;
-  padding: 0 5px;
-  border: 1px solid var(--line);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid color-mix(in srgb, var(--ink) 45%, var(--bg));
+  border-radius: 50%;
   background: var(--bg);
   color: var(--ink);
   font: inherit;
-  line-height: 20px;
+  font-size: 11px;
+  line-height: 12px;
   white-space: nowrap;
-  z-index: 2;
   cursor: default;
-  --tint: color-mix(in srgb, var(--c) 70%, var(--ink));
+  --tint: color-mix(in srgb, var(--c) 72%, var(--ink));
   transition:
     background-color 0.25s,
+    border-color 0.25s,
     color 0.25s,
-    border-color 0.25s;
+    box-shadow 0.25s;
+}
+.ac-vr small {
+  font-size: 9px;
+  line-height: 11px;
+  opacity: 0.85;
 }
 .ac-vr.coloured {
   border-color: var(--tint);
-  background: color-mix(in srgb, var(--c) 18%, var(--bg));
+  background: color-mix(in srgb, var(--c) 16%, var(--bg));
   color: var(--tint);
 }
-/* On the stack: the outline it leaves in the graph. */
+/* Set aside: a ghost in place, with its place on the stack. */
 .ac-vr.aside {
   border-style: dashed;
-  border-color: var(--muted);
+  border-color: var(--faint);
+  color: var(--muted);
 }
+.ac-vr i {
+  position: absolute;
+  top: -7px;
+  right: -9px;
+  min-width: 17px;
+  height: 15px;
+  padding: 0 3px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 9px;
+  font-style: normal;
+  line-height: 13px;
+  text-align: center;
+}
+/* The one this stop is about. */
 .ac-vr.focused {
+  border-style: solid;
+  border-color: var(--ink);
+  box-shadow:
+    0 0 0 2px var(--bg),
+    0 0 0 3px var(--ink);
+  color: var(--ink);
+}
+.ac-vr.focused i {
   border-color: var(--ink);
   background: var(--ink);
   color: var(--bg);
 }
-/* Just coloured: its colour, filled. */
 .ac-vr.coloured.focused {
   border-color: var(--tint);
   background: var(--tint);
+  box-shadow:
+    0 0 0 2px var(--bg),
+    0 0 0 3px var(--tint);
   color: var(--bg);
+}
+/* Set aside with every register still busy: it may have to spill. */
+.ac-vr.candidate i {
+  border-style: dashed;
 }
 .ac-vr.spilled {
   border-style: dashed;
   border-color: var(--err);
+  background: var(--bg);
   color: var(--err);
-}
-.ac-vr small {
-  position: absolute;
-  top: 25px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 0 3px;
-  border: 1px solid var(--tint);
-  background: var(--bg);
-  color: var(--tint);
-  font-size: 10px;
-  line-height: 13px;
-}
-/* The allocator's stack: pushed bottom up, popped from the top. */
-.ac-pile-box {
-  position: absolute;
-  left: 10px;
-  border: 1px solid var(--line);
-  border-top: 0;
-  pointer-events: none;
-}
-.ac-pile-box .ac-label {
-  position: absolute;
-  bottom: 100%;
-  left: 0;
-  padding-bottom: 4px;
-  white-space: nowrap;
-}
-.ac-pile {
-  position: absolute;
-  z-index: 3;
-  border: 1px solid var(--line);
-  background: var(--bg);
-  color: var(--ink);
-  font-size: 11px;
-  text-align: center;
-  white-space: nowrap;
-  pointer-events: none;
-}
-/* Pushed with every register still busy: the one that may spill. */
-.ac-pile.candidate {
-  border-style: dashed;
-  border-color: var(--muted);
-}
-.ac-pile.focused {
-  border-color: var(--ink);
-  background: var(--ink);
-  color: var(--bg);
 }
 .ac-ins em {
   font-style: normal;

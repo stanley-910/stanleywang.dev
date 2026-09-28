@@ -45,6 +45,7 @@ import {
   matchTable,
   type TokenClass,
 } from './explain'
+import { springLayout } from './graph-layout'
 import { lanesOf, registersOf } from './lanes'
 import { linkRouter, type Box, type Route } from './link-route'
 import { NameLinks } from './name-links'
@@ -181,8 +182,10 @@ const STAGE_MIN = 360
 // Scrollbars turned off in the options menu, per browser.
 const BARE_KEY = 'mini-c-no-scrollbars'
 const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number]
-// The allocator's stack, down the stage's left edge in the Registers phase.
-const PILE_W = 46
+// The interference graph keeps below a step's note (about four lines).
+const NOTE_BAND = 104
+// An interference node's radius, and the gap its edges stop short by.
+const VR_RIM = 19 + 4
 // Colours for the interference graph, one per physical register in use.
 const INK = [
   '#2563eb',
@@ -1767,43 +1770,50 @@ export default function AnimatedCompiler() {
   const graphShown = regView
   // The live ranges beside the listing, from emit to the end of registers.
   const lanesShown = emitStage || regView
-  // The allocator's stack: simplify pushes a register, select pops it. Its
-  // rows are sized for the deepest it gets, so they don't shift as it grows.
-  const stack: { vr: string; candidate: boolean }[] = []
+  // The allocator's stack: simplify pushes a register, select pops it. A
+  // register set aside stays in place in the graph, numbered by when it
+  // went on; select brings them back from the highest number down.
+  const pushedAs = new Map<string, number>()
+  const candidates = new Set<string>()
   const spilled = new Set<string>()
-  let deepest = 0
-  for (let i = 0, depth = 0; i < graphSteps.length; i++) {
+  for (let i = 0, pushes = 0; i <= stepIndex && i < graphSteps.length; i++) {
     const st = graphSteps[i]
-    const push = st.op === 'simplify' || st.op === 'spillCandidate'
-    depth += push ? 1 : -1
-    deepest = Math.max(deepest, depth)
-    if (i > stepIndex) continue
-    if (push) stack.push({ vr: st.vr, candidate: st.op === 'spillCandidate' })
-    else {
-      const at = stack.findIndex((e) => e.vr === st.vr)
-      if (at >= 0) stack.splice(at, 1)
-    }
+    if (st.op === 'simplify' || st.op === 'spillCandidate') {
+      pushedAs.set(st.vr, ++pushes)
+      if (st.op === 'spillCandidate') candidates.add(st.vr)
+    } else pushedAs.delete(st.vr)
     if (st.op === 'spill') spilled.add(st.vr)
   }
-  const onStack = new Set(stack.map((e) => e.vr))
-  const pileBottom = viewH - 16
-  const pileRow = Math.min(20, (viewH - 60) / Math.max(1, deepest))
+  const onStack = new Set(pushedAs.keys())
   const stepVr = graphFn && 'step' in w ? graphSteps[w.step]?.vr : undefined
   const paletteIndex = (r: string) => backend?.palette.indexOf(r) ?? -1
-  // In stage units, within the view the listing's pane leaves.
+  // (to a tenth, so a resize by a few pixels doesn't lay it out again)
+  const viewAspect = Math.round((viewW / Math.max(1, viewH)) * 10) / 10
+  const graphLayout = useMemo(
+    () =>
+      graphFn
+        ? springLayout(
+            graphFn.interference.nodes,
+            graphFn.interference.edges,
+            viewAspect,
+          )
+        : undefined,
+    [graphFn, viewAspect],
+  )
+  // In stage units, within the view the listing's pane leaves and below a
+  // step's note: the layout at its own size, shrunk only when the view is
+  // too small for it.
   const graphPoint = (vr: string) => {
-    const names = graphFn?.interference.nodes ?? []
-    const i = names.indexOf(vr)
-    const n = names.length
-    const radius = n <= 6 ? 95 : n <= 12 ? 125 : 155
-    const a = (i / Math.max(1, n)) * Math.PI * 2 - Math.PI / 2
-    // The stack takes the left edge, so the ring sits right of it.
-    const left = 12 + PILE_W + 24
-    const rx = Math.max(40, Math.min(radius, (viewW - left) / 2 - 30))
-    // (a node's register caption hangs below it)
-    const ry = Math.max(40, Math.min(radius, viewH / 2 - 38))
-    const x = left + (viewW - left) / 2 + Math.cos(a) * rx
-    const y = viewH / 2 - 6 + Math.sin(a) * ry
+    const p = graphLayout?.at.get(vr) ?? { x: 0, y: 0 }
+    const margin = 28
+    const top = Math.min(NOTE_BAND, viewH * 0.25)
+    const fit = Math.min(
+      1,
+      (viewW / 2 - margin) / Math.max(1, graphLayout?.halfW ?? 0),
+      ((viewH - top) / 2 - margin) / Math.max(1, graphLayout?.halfH ?? 0),
+    )
+    const x = viewW / 2 + p.x * Math.max(0.7, fit)
+    const y = top + (viewH - top) / 2 + p.y * Math.max(0.7, fit)
     return { x: (x * VIEW_W) / sceneWidth, y: (y * VIEW_H) / sceneHeight }
   }
   const parsed = frame.phase !== 'Tokens'
@@ -3901,8 +3911,16 @@ export default function AnimatedCompiler() {
                     <AnimatePresence>
                       {graphShown &&
                         graphFn.interference.edges.map(([a, b]) => {
-                          const p = graphPoint(a),
-                            q = graphPoint(b)
+                          const p = toPx(graphPoint(a)),
+                            q = toPx(graphPoint(b))
+                          // From rim to rim, clear of the names inside.
+                          const d = Math.max(
+                            1,
+                            Math.hypot(q.x - p.x, q.y - p.y),
+                          )
+                          const trim = Math.min(VR_RIM, d / 2 - 1) / d
+                          const tx = (q.x - p.x) * trim,
+                            ty = (q.y - p.y) * trim
                           const gone = onStack.has(a) || onStack.has(b)
                           // At a stop, only the current register's edges stay:
                           // they are what its choice depends on.
@@ -3910,20 +3928,23 @@ export default function AnimatedCompiler() {
                           return (
                             <motion.line
                               key={`ig-${a}-${b}`}
-                              x1={(p.x * sceneWidth) / VIEW_W}
-                              y1={(p.y * sceneHeight) / VIEW_H}
-                              x2={(q.x * sceneWidth) / VIEW_W}
-                              y2={(q.y * sceneHeight) / VIEW_H}
+                              x1={p.x + tx}
+                              y1={p.y + ty}
+                              x2={q.x - tx}
+                              y2={q.y - ty}
                               stroke="currentColor"
                               strokeWidth={1}
+                              strokeLinecap="round"
                               initial={{ pathLength: 0, opacity: 0 }}
                               animate={{
                                 pathLength: 1,
-                                opacity: mine
-                                  ? 0.9
-                                  : stepVr !== undefined || gone
-                                    ? 0.1
-                                    : 0.6,
+                                opacity: gone
+                                  ? 0.1
+                                  : mine
+                                    ? 0.85
+                                    : stepVr !== undefined
+                                      ? 0.18
+                                      : 0.45,
                               }}
                               exit={{ opacity: 0 }}
                               transition={transition}
@@ -3940,10 +3961,11 @@ export default function AnimatedCompiler() {
                       const p = graphPoint(vr)
                       const colour = coloured?.[vr]
                       const idx = colour ? paletteIndex(colour) : -1
+                      const order = pushedAs.get(vr)
                       return (
                         <motion.span
                           key={`vr-${vr}`}
-                          className={`ac-vr ${vr === stepVr && !onStack.has(vr) ? 'focused' : ''} ${onStack.has(vr) ? 'aside' : ''} ${spilled.has(vr) ? 'spilled' : ''} ${colour ? 'coloured' : ''}`}
+                          className={`ac-vr ${vr === stepVr ? 'focused' : ''} ${order ? 'aside' : ''} ${candidates.has(vr) ? 'candidate' : ''} ${spilled.has(vr) ? 'spilled' : ''} ${colour ? 'coloured' : ''}`}
                           style={
                             {
                               x: '-50%',
@@ -3957,75 +3979,18 @@ export default function AnimatedCompiler() {
                             top: `${(p.y / 480) * 100}%`,
                           }}
                           animate={{
-                            // On the stack, it leaves an outline behind.
-                            opacity: onStack.has(vr) ? 0.3 : 1,
+                            opacity: 1,
                             left: `${(p.x / 680) * 100}%`,
                             top: `${(p.y / 480) * 100}%`,
                           }}
                           exit={{ opacity: 0 }}
                           transition={transition}
                           role="img"
-                          aria-label={`Virtual register ${vr}${colour ? `, now ${colour}` : ''}`}
+                          aria-label={`Virtual register ${vr}${colour ? `, now ${colour}` : order ? `, set aside ${order}` : ''}`}
                         >
                           {vr}
                           {colour && <small>{colour}</small>}
-                        </motion.span>
-                      )
-                    })}
-                </AnimatePresence>
-                {graphFn && graphShown && deepest > 0 && (
-                  // Open at the top, as deep as the stack gets.
-                  <div
-                    className="ac-pile-box"
-                    style={{
-                      top: pileBottom - deepest * pileRow - 2,
-                      width: PILE_W + 4,
-                      height: deepest * pileRow + 4,
-                    }}
-                  >
-                    <span className="ac-label">; stack</span>
-                  </div>
-                )}
-                <AnimatePresence>
-                  {graphFn &&
-                    graphShown &&
-                    stack.map((e, i) => {
-                      // Pushed from its place in the graph, popped back to it.
-                      const home = toPx(graphPoint(e.vr))
-                      const slot = {
-                        left: 12 + PILE_W / 2,
-                        top: pileBottom - (i + 0.5) * pileRow,
-                      }
-                      return (
-                        <motion.span
-                          key={`pile-${fnIndex}-${e.vr}`}
-                          className={`ac-pile ${e.vr === stepVr ? 'focused' : ''} ${e.candidate ? 'candidate' : ''}`}
-                          style={{
-                            x: '-50%',
-                            y: '-50%',
-                            width: PILE_W,
-                            height: pileRow - 3,
-                            lineHeight: `${pileRow - 5}px`,
-                          }}
-                          initial={{ left: home.x, top: home.y, opacity: 1 }}
-                          animate={{ ...slot, opacity: 1 }}
-                          exit={{
-                            left: home.x,
-                            top: home.y,
-                            opacity: 0,
-                            // It fades as it lands back in the graph.
-                            transition: {
-                              ...transition,
-                              opacity: {
-                                duration: transition.duration * 0.3,
-                                delay: transition.duration * 0.7,
-                              },
-                            },
-                          }}
-                          transition={transition}
-                          aria-hidden
-                        >
-                          {e.vr}
+                          {order && <i>{order}</i>}
                         </motion.span>
                       )
                     })}
