@@ -1,11 +1,16 @@
 // Generated from the real Mini-C compiler (Java, McGill COMP 520 coursework) on 2026-09-21.
 // See reference/README.md for the exact commands. Only artifacts are stored here, never compiler source.
+import breakContinueTrace from './reference/break-continue.trace.json'
+import fibonacciTrace from './reference/fibonacci.trace.json'
 import functionCallTrace from './reference/function-call.trace.json'
-import localVariableTrace from './reference/local-variable.trace.json'
 import loopTrace from './reference/loop.trace.json'
-import parenthesesTrace from './reference/parentheses.trace.json'
+import missingSemicolonTrace from './reference/missing-semicolon.trace.json'
+import pointerTrace from './reference/pointer.trace.json'
 import precedenceTrace from './reference/precedence.trace.json'
+import shadowingTrace from './reference/shadowing.trace.json'
+import structFieldsTrace from './reference/struct-fields.trace.json'
 import unresolvedNameTrace from './reference/unresolved-name.trace.json'
+import wrongTypeTrace from './reference/wrong-type.trace.json'
 
 import type { Trace } from './trace'
 
@@ -36,18 +41,33 @@ const entry = (name: string, file: string, json: unknown): Reference => {
   }
 }
 
+// Programs first, simplest to showiest; then the three errors, one per
+// phase they stop in. The new ones are trimmed from the compiler's own
+// tests (docs/handoffs/2026-09-28-example-candidates.md; lineup with GPT-6
+// Astra, 2026-09-28-example-lineup-astra-answer.md). Traces recorded with
+// the page's compiler bundle, as trace.sh would with the JVM.
 export const REFERENCES: Reference[] = [
   entry('Precedence', 'precedence', precedenceTrace),
-  entry('Parentheses', 'parentheses', parenthesesTrace),
-  entry('Local variable', 'local-variable', localVariableTrace),
-  entry('Loop', 'loop', loopTrace),
   entry('Function call', 'function-call', functionCallTrace),
+  entry('Loop', 'loop', loopTrace),
+  entry('Shadowing', 'shadowing', shadowingTrace),
+  entry('Fibonacci', 'fibonacci', fibonacciTrace),
+  entry('Break and continue', 'break-continue', breakContinueTrace),
+  entry('Pointer', 'pointer', pointerTrace),
+  entry('Struct fields', 'struct-fields', structFieldsTrace),
+  entry('Missing semicolon', 'missing-semicolon', missingSemicolonTrace),
   entry('Unresolved name', 'unresolved-name', unresolvedNameTrace),
+  entry('Wrong type', 'wrong-type', wrongTypeTrace),
 ]
+// Where the errors start in the picker (a rule above them).
+export const FIRST_ERROR = REFERENCES.findIndex((r) => r.trace.error)
 
 // Mini-C lexemes, coarse but enough to tell a whitespace-only edit from a real
-// one: "i+1" and "i + 1" split the same, "int x" and "intx" do not.
-const LEXEME = /[A-Za-z_#][A-Za-z0-9_]*|\d+|&&|\|\||[<>=!]=|\S/g
+// one: "i+1" and "i + 1" split the same, "int x" and "intx" do not. A string
+// or character literal is one lexeme, spaces and all: `" "` and `"  "` are
+// different programs.
+const LEXEME =
+  /"(?:\\.|[^"\\\n])*"?|'(?:\\.|[^'\\\n])*'?|[A-Za-z_#][A-Za-z0-9_]*|\d+|&&|\|\||[<>=!]=|\S/g
 const lexemes = (text: string) => text.match(LEXEME) ?? []
 
 // Offsets of the non-whitespace characters, in order.
@@ -105,9 +125,22 @@ function reflow(trace: Trace, from: string, source: string): Trace {
           : frame.why,
       sealed: frame.sealed?.map(move),
     })) as Trace['frames'],
-    error: trace.error && move(trace.error),
+    error: trace.error && online(move(trace.error), source),
   }
 }
+
+// A recorded error names its line ("… on line 4"); moved, it names the
+// line it moved to.
+const online = <T extends { start: number; message: string }>(
+  error: T,
+  source: string,
+): T => ({
+  ...error,
+  message: error.message.replace(
+    /on line \d+/,
+    `on line ${source.slice(0, error.start).split('\n').length}`,
+  ),
+})
 
 /** The preset `source` is, ignoring whitespace, with spans moved to match. */
 export function findReference(source: string): Reference | undefined {

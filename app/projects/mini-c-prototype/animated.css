@@ -368,6 +368,18 @@
   cursor: pointer;
   position: relative;
 }
+/* The errors, after the programs. */
+.ac-picker li.ruled {
+  margin-top: 9px;
+}
+.ac-picker li.ruled::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  right: 12px;
+  left: 12px;
+  border-top: 1px solid var(--line);
+}
 .ac-picker li.active {
   color: var(--ink);
   background: var(--line);
@@ -871,6 +883,38 @@
 .ac-listing.foot .ac-listing-scroll {
   right: 0;
 }
+/* The listing's edge, draggable like the editor's (animated.tsx). */
+.ac-listsplit {
+  position: absolute;
+  z-index: 5;
+  touch-action: none;
+}
+.ac-listsplit.side {
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 7px;
+  cursor: col-resize;
+}
+.ac-listsplit.foot {
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 7px;
+  cursor: row-resize;
+}
+.ac-listsplit:hover,
+.ac-listsplit:focus-visible,
+.ac-listsplit:active {
+  outline: none;
+}
+/* (inside the pane: the line lies along its border) */
+.ac-listsplit.side:is(:hover, :focus-visible, :active) {
+  background: linear-gradient(90deg, var(--muted) 1px, transparent 1px);
+}
+.ac-listsplit.foot:is(:hover, :focus-visible, :active) {
+  background: linear-gradient(var(--muted) 1px, transparent 1px);
+}
 .ac-listing-scroll:focus-visible {
   outline: 1px solid var(--ink);
   outline-offset: -1px;
@@ -1286,9 +1330,6 @@
   top: 8px;
   padding-left: 2px;
 }
-.ac-lanes-head.out {
-  right: 18px;
-}
 .ac-asm:is(.blocks, .listing) .ac-ins {
   display: grid;
   grid-template-columns: 34px 7ch minmax(0, 1fr);
@@ -1332,7 +1373,11 @@
   color: var(--muted);
   opacity: 1;
 }
-.ac-asm.listing .ac-ins.changed small {
+/* A later liveness sweep's lines: what it added (`$fp` round a loop). */
+.ac-asm.listing .ac-ins.changed {
+  background: color-mix(in srgb, var(--wash) 70%, transparent);
+}
+.ac-asm.listing .ac-ins.changed > span {
   color: var(--ink);
 }
 /* Lines the allocator adds once registers are known: pushRegisters'

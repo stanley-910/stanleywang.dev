@@ -46,7 +46,7 @@ import { NoteWindow } from './note-window'
 import { groupsOf, parentsOf, parseView } from './parse-view'
 import { startRailCurve } from './rail-curve'
 import { compileReal, compilerLoaded, REAL_MAX_CHARS } from './real'
-import { findReference, REFERENCES } from './reference'
+import { FIRST_ERROR, findReference, REFERENCES } from './reference'
 import { badgesAt, regBadges } from './reg-badges'
 import { withRegisterStops } from './regs-view'
 import { ScopeTree } from './scope-tree'
@@ -59,8 +59,6 @@ import {
   buildTrace,
   colouredUpTo,
   instructionText,
-  liveAdded,
-  liveAfterSweep,
   rewritten,
   type Frame,
   type LexDecision,
@@ -134,6 +132,9 @@ const TOKEN_HEADS: Record<string, string> = {
   assign: 'assignment',
   identifier: 'identifiers',
   number: 'numbers',
+  // DRAFT copy
+  string: 'string literals',
+  character: 'character literals',
 }
 const NODE_HEADS: Record<string, string> = {
   declaration: 'declarations',
@@ -154,6 +155,10 @@ const ASM_CH = 7.2
 const SPLIT_KEY = 'mini-c-split'
 const SPLIT_MIN = SOURCE_ROW * 3 + 8
 const WIDTH_KEY = 'mini-c-editor-width'
+// The listing pane's width beside the stage, and its height along the
+// bottom, once dragged.
+const LISTING_W_KEY = 'mini-c-listing-width'
+const LISTING_H_KEY = 'mini-c-listing-height'
 // The editor column's range when its border with the stage is dragged; the
 // stage keeps at least STAGE_MIN.
 const EDITOR_MIN = 240
@@ -395,12 +400,15 @@ function Picker({
   value,
   placeholder,
   onChange,
+  rule,
 }: {
   label: string
   options: string[]
   value: number
   placeholder: string
   onChange: (index: number) => void
+  /** A rule above this row: where a new group starts. */
+  rule?: number
 }) {
   const reduced = useReducedMotion()
   const [open, setOpen] = useState(false)
@@ -499,7 +507,7 @@ function Picker({
               id={`ac-pick-${i}`}
               role="option"
               aria-selected={i === value}
-              className={i === active ? 'active' : ''}
+              className={`${i === active ? 'active' : ''} ${i === rule ? 'ruled' : ''}`}
               onPointerEnter={() => setActive(i)}
               onClick={() => pick(i)}
             >
@@ -947,6 +955,33 @@ export default function AnimatedCompiler() {
       if (saved > 0) setEditorWidth(saved)
     } catch {}
   }, [])
+  // The listing pane's size once its edge has been dragged; null keeps the
+  // size its lines need (width) or half the stage (height).
+  const [listingSize, setListingSize] = useState<{
+    w: number | null
+    h: number | null
+  }>({ w: null, h: null })
+  const listingDrag = useRef<{
+    at: number
+    size: number
+    axis: 'w' | 'h'
+  } | null>(null)
+  const [listingDragging, setListingDragging] = useState(false)
+  useEffect(() => {
+    try {
+      const w = Number(localStorage.getItem(LISTING_W_KEY))
+      const h = Number(localStorage.getItem(LISTING_H_KEY))
+      setListingSize({ w: w > 0 ? w : null, h: h > 0 ? h : null })
+    } catch {}
+  }, [])
+  const saveListing = (axis: 'w' | 'h', size: number | null) => {
+    setListingSize((s) => ({ ...s, [axis]: size }))
+    try {
+      const key = axis === 'w' ? LISTING_W_KEY : LISTING_H_KEY
+      if (size === null) localStorage.removeItem(key)
+      else localStorage.setItem(key, String(Math.round(size)))
+    } catch {}
+  }
   // Scrollbars off: panes scroll by wheel, touch or keys, and keep only
   // the dashed rail as a hint (animated.css, `.ac.bare`).
   const [bare, setBare] = useState(false)
@@ -1586,14 +1621,26 @@ export default function AnimatedCompiler() {
   // The listing's width, lanes included; the pane adds its scrollbar's
   // gutter and its border, so a listing that fits never scrolls sideways.
   const listingMin = Math.ceil(lanesAt + lanesW + 12)
-  const listingW = Math.round(
+  const listingFits = Math.round(
     Math.min(Math.max(listingMin + 9 + 1, 240), sceneWidth * 0.55),
   )
-  const listingSide = sceneWidth - listingW >= 280
+  const listingSide = sceneWidth - listingFits >= 280
+  // Dragged, it can be narrower than its lines (it scrolls sideways) or
+  // wider, as long as some of the stage stays in view.
+  const clampListingW = (w: number) =>
+    Math.round(Math.min(Math.max(w, 160), sceneWidth - 200))
+  const clampListingH = (h: number) =>
+    Math.round(Math.min(Math.max(h, 96), sceneHeight - 96))
+  const listingW =
+    listingSize.w === null ? listingFits : clampListingW(listingSize.w)
   // A short stage (a phone's) keeps all of itself: the pane goes under it
   // and the page grows, rather than covering half of it.
   const listingFlow = !listingSide && sceneHeight < 480
-  const listingH = listingFlow ? 240 : Math.round(sceneHeight * 0.5)
+  const listingH = listingFlow
+    ? 240
+    : listingSize.h === null
+      ? Math.round(sceneHeight * 0.5)
+      : clampListingH(listingSize.h)
   const cover = {
     right: late && listingSide ? listingW : 0,
     bottom: late && !listingSide && !listingFlow ? listingH : 0,
@@ -1601,6 +1648,12 @@ export default function AnimatedCompiler() {
   // The stage the pane leaves in view.
   const viewW = sceneWidth - cover.right
   const viewH = sceneHeight - cover.bottom
+  // A drag the pane can't finish (it closes, goes under the stage, or
+  // moves to its other edge) ends there.
+  useEffect(() => {
+    listingDrag.current = null
+    setListingDragging(false)
+  }, [late, listingFlow, listingSide])
   // Presets carry the real allocator's working; the Registers phase then
   // shows its interference graph instead of the tree.
   const backend = trace.backend
@@ -1622,23 +1675,15 @@ export default function AnimatedCompiler() {
           'abandoned' in w ? w.abandoned : undefined,
         )
       : undefined
-  const live =
-    backend && w.kind === 'reg.live'
-      ? liveAfterSweep(backend, w.fn, w.sweep)
-      : undefined
+  // The lines a later sweep changes are lit (`$fp` going round a loop's
+  // back edge); the first sweep draws the bars themselves instead.
   const changed = new Set<number>()
-  if (backend && w.kind === 'reg.live') {
+  if (backend && w.kind === 'reg.live' && w.sweep > 1) {
     const f = backend.functions[w.fn]
     const sw = f.liveness.find((x) => x.sweep === w.sweep)
     if (sw && 'changes' in sw)
       for (const c of sw.changes) changed.add(f.first + c.block)
   }
-  // Registers the recorded sets leave out (`$fp` going round a loop's back
-  // edge), marked on the lines a later sweep adds them to.
-  const fixedAdded =
-    backend && w.kind === 'reg.live' && w.sweep > 1
-      ? liveAdded(backend, w.fn, w.sweep)
-      : undefined
   const currentRange: [number, number] | null =
     w.kind === 'emit.instr' ||
     w.kind === 'emit.prologue' ||
@@ -1659,7 +1704,12 @@ export default function AnimatedCompiler() {
   const graphShown = regView && w.kind !== 'reg.cfg' && w.kind !== 'reg.live'
   // The live ranges beside the listing, from emit on; the liveness sweeps
   // write their sets in that column instead.
-  const lanesShown = emitStage || (regView && w.kind !== 'reg.live')
+  // The live ranges beside the listing, from emit to the end. The liveness
+  // sweeps work them out again: the first draws them in from each read back
+  // up to its write, which is the direction liveness flows (Stanley,
+  // 2026-09-28: the sets written out beside them only repeated them).
+  const lanesShown = emitStage || regView
+  const firstSweep = w.kind === 'reg.live' && w.sweep === 1
   // The allocator's stack: simplify pushes a register, select pops it. Its
   // rows are sized for the deepest it gets, so they don't shift as it grows.
   const stack: { vr: string; candidate: boolean }[] = []
@@ -1735,7 +1785,7 @@ export default function AnimatedCompiler() {
   const transition = {
     duration: reduced ? 0 : 0.42 / speed,
     ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
-    ...((resizing || dragging !== null) && {
+    ...((resizing || dragging !== null || listingDragging) && {
       d: { duration: 0 },
       left: { duration: 0 },
       top: { duration: 0 },
@@ -2885,6 +2935,7 @@ export default function AnimatedCompiler() {
               value={examples.findIndex((e) => e.name === reference?.name)}
               placeholder="custom"
               onChange={(i) => update(examples[i].source)}
+              rule={FIRST_ERROR}
             />
           </div>
           <div
@@ -3976,10 +4027,82 @@ export default function AnimatedCompiler() {
                       : { width: '100%', height: 0 }
                   }
                   transition={{
-                    duration: reduced || resizing ? 0 : 0.35,
+                    duration: reduced || resizing || listingDragging ? 0 : 0.35,
                     ease: EASE,
                   }}
                 >
+                  {/* Drag the listing's edge to size it, as the editor's is;
+                    double-click resets. (Not on a phone, where it sits under
+                    the stage.) Inside the pane, it rides its edge as it slides. */}
+                  {!listingFlow && (
+                    <div
+                      className={`ac-listsplit ${listingSide ? 'side' : 'foot'}`}
+                      role="separator"
+                      aria-orientation={listingSide ? 'vertical' : 'horizontal'}
+                      aria-label="Resize assembly"
+                      aria-valuenow={listingSide ? listingW : listingH}
+                      aria-valuemin={listingSide ? 160 : 96}
+                      aria-valuemax={
+                        listingSide ? sceneWidth - 200 : sceneHeight - 96
+                      }
+                      tabIndex={0}
+                      onPointerDown={(e) => {
+                        e.preventDefault()
+                        e.currentTarget.setPointerCapture(e.pointerId)
+                        listingDrag.current = listingSide
+                          ? { at: e.clientX, size: listingW, axis: 'w' }
+                          : { at: e.clientY, size: listingH, axis: 'h' }
+                        setListingDragging(true)
+                      }}
+                      onPointerMove={(e) => {
+                        const d = listingDrag.current
+                        if (!d) return
+                        // (the pane grows away from the edge it's on)
+                        const size =
+                          d.axis === 'w'
+                            ? clampListingW(d.size - (e.clientX - d.at))
+                            : clampListingH(d.size - (e.clientY - d.at))
+                        setListingSize((s) => ({ ...s, [d.axis]: size }))
+                      }}
+                      onPointerUp={() => {
+                        const d = listingDrag.current
+                        if (d)
+                          saveListing(d.axis, listingSize[d.axis] ?? d.size)
+                        listingDrag.current = null
+                        setListingDragging(false)
+                      }}
+                      onLostPointerCapture={() => {
+                        listingDrag.current = null
+                        setListingDragging(false)
+                      }}
+                      onPointerCancel={() => {
+                        listingDrag.current = null
+                        setListingDragging(false)
+                      }}
+                      onDoubleClick={() =>
+                        saveListing(listingSide ? 'w' : 'h', null)
+                      }
+                      onKeyDown={(e) => {
+                        const grow = listingSide
+                          ? e.key === 'ArrowLeft'
+                            ? 20
+                            : e.key === 'ArrowRight'
+                              ? -20
+                              : 0
+                          : e.key === 'ArrowUp'
+                            ? 20
+                            : e.key === 'ArrowDown'
+                              ? -20
+                              : 0
+                        if (!grow) return
+                        e.preventDefault()
+                        e.stopPropagation()
+                        if (listingSide)
+                          saveListing('w', clampListingW(listingW + grow))
+                        else saveListing('h', clampListingH(listingH + grow))
+                      }}
+                    />
+                  )}
                   <div
                     className="ac-listing-scroll"
                     ref={listingRef}
@@ -4030,10 +4153,6 @@ export default function AnimatedCompiler() {
                               ; live
                             </motion.span>
                           )}
-                        {/* The liveness sweeps' sets, in the lanes' place. */}
-                        {w.kind === 'reg.live' && (
-                          <span className="ac-lanes-head out">; live out</span>
-                        )}
                       </div>
                       {shownInstructions.map((ins, i) => {
                         const current = currentRange
@@ -4132,15 +4251,6 @@ export default function AnimatedCompiler() {
                                   <code>{operands(lineArgs)}</code>
                                 </>
                               )}
-                              {live?.[i] && (
-                                <small>
-                                  {live[i].out.join(' ') || '·'}
-                                  {fixedAdded
-                                    ?.get(i)
-                                    ?.filter((r) => !r.startsWith('v'))
-                                    .map((r) => <i key={r}> +{r}</i>)}
-                                </small>
-                              )}
                               {ins.dead && <small>never runs</small>}
                               {/* DRAFT copy */}
                               {lines?.length === 0 && (
@@ -4210,10 +4320,17 @@ export default function AnimatedCompiler() {
                         )
                       })}
                       {/* The lanes carry on into registers: each takes its
-                      register's colour once the allocator picks one. The
-                      liveness sweeps use their column for their sets. */}
+                      register's colour once the allocator picks one. From
+                      the first liveness sweep they're drawn again, from each
+                      read back up to its write. */}
                       {lanesShown && (
                         <EmitLanes
+                          key={
+                            regView && w.kind !== 'reg.cfg'
+                              ? 'swept'
+                              : 'emitted'
+                          }
+                          backward={firstSweep}
                           left={lanesAt}
                           lanes={lanes.lanes}
                           columns={lanes.columns}

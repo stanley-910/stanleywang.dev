@@ -55,6 +55,8 @@ const SYMBOL_ROLES: Record<string, string> = {
   '}': 'closes a body',
   '=': 'stores the value on the right into the name on the left',
   '&': 'takes the address of what follows',
+  // DRAFT copy: the lexer can't tell which yet; the parser decides.
+  '*': 'multiplies the values either side of it or, in front of a pointer, reads what it points at',
 }
 
 // A backtick inside (a string literal's) would end the code span early, so
@@ -283,6 +285,11 @@ export function tokenRole(token: Token): string {
   if (token.kind === 'keyword')
     return KEYWORD_ROLES[token.text] ?? 'is a keyword with a fixed meaning'
   if (token.kind === 'name') return 'is an identifier'
+  // DRAFT copy. (The compiler files every literal under one kind.)
+  if (token.kind === 'number' && token.text.startsWith('"'))
+    return 'is one string literal: everything between the quotes, spaces too, is part of it'
+  if (token.kind === 'number' && token.text.startsWith("'"))
+    return 'is one character literal'
   if (token.kind === 'number')
     return token.text.length > 1
       ? `is one integer token: all ${token.text.length} digits belong to the same number`
@@ -364,7 +371,12 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
       const parent = trace.nodes.find((p) => p.children.includes(n.id))
       switch (n.kind) {
         case 'number':
-          return `${code(n.label)} started as a number, and a number is already a whole value, so it becomes a number expression.`
+          // DRAFT copy for the string and character literals.
+          return n.label.startsWith('"')
+            ? `${code(n.label)} started as a string literal, and a string is already a whole value, so it becomes a string expression.`
+            : n.label.startsWith("'")
+              ? `${code(n.label)} started as a character literal, and a character is already a whole value, so it becomes a character expression.`
+              : `${code(n.label)} started as a number, and a number is already a whole value, so it becomes a number expression.`
         case 'name':
           return `${code(n.label)} started as an identifier, and with no ${code('(')} after it, it names a value, so it becomes a name expression.`
         case 'declare': {
@@ -700,7 +712,9 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
     }
     case 'reg.live': {
       if (w.sweep === 1)
-        return `Liveness walks the instructions backwards, from the last line up. A read makes its register live back up to the line that writes it. Each line shows what is live after it.`
+        // (the last sentence is DRAFT copy: it used to point at the sets
+        // written beside each line, now the bars)
+        return `Liveness walks the instructions backwards, from the last line up. A read makes its register live back up to the line that writes it. Each bar grows from a read up to its write.`
       if (w.changed === 0)
         return `Sweep ${w.sweep} changes nothing, so the sets are stable: a fixed point. Liveness is done.`
       const backend = trace.backend
@@ -1135,6 +1149,9 @@ export const LEXEMES = {
   // No fixed list: the token's pattern, as a regex of Token.java's rule.
   identifier: ['[A-Za-z_][A-Za-z0-9_]*'],
   number: ['[0-9]+'],
+  // (the compiler files these under the number kind; tokenKind splits them)
+  string: ['"(\\.|[^"\\])*"'],
+  character: ["'(\\.|[^'\\])'"],
 } satisfies Record<string, string[]>
 
 export type TokenClass = keyof typeof LEXEMES
@@ -1432,6 +1449,12 @@ export const STEP_SLIDES: {
 /** A token's class as shown on the page; "name" reads as "identifier". */
 export const tokenKind = (token: Token): TokenClass => {
   if (token.kind === 'name') return 'identifier'
+  if (token.kind === 'number')
+    return token.text.startsWith('"')
+      ? 'string'
+      : token.text.startsWith("'")
+        ? 'character'
+        : 'number'
   if (token.kind === 'keyword')
     return LEXEMES.type.includes(token.text) ? 'type' : 'keyword'
   if (token.kind !== 'symbol') return token.kind
@@ -1479,7 +1502,8 @@ export const NODE_KINDS = {
 }
 export type NodeClass = keyof typeof NODE_KINDS
 
-// ParseTrace.java names what it collapses by class: `StructTypeDecl s`,
+// ParseTrace.java names what it collapses by class (older traces also a
+// struct, `StructTypeDecl s`; now `struct s { }`):
 // `FunDecl f`, `ArrayAccess`, `FieldAccess .x`, and so on.
 const DECL_KINDS: Record<string, string> = {
   StructTypeDecl: 'struct',
@@ -1507,7 +1531,10 @@ export function nodeKind(node: AstNode): { cls: NodeClass; kind?: string } {
     case 'declare':
       return {
         cls: 'declaration',
-        kind: DECL_KINDS[node.label.split(' ')[0]] ?? 'variable',
+        // (`struct Point { }` is the type; `struct Point p`, a variable)
+        kind: node.label.endsWith(' { }')
+          ? 'struct'
+          : (DECL_KINDS[node.label.split(' ')[0]] ?? 'variable'),
       }
     case 'block':
     case 'while':
@@ -1542,7 +1569,23 @@ export function nodeKind(node: AstNode): { cls: NodeClass; kind?: string } {
     case 'unary':
       return { cls: 'expression', kind: 'operator' }
     default:
-      return { cls: 'expression', kind: EXPR_KINDS[node.label.split(' ')[0]] }
+      return {
+        cls: 'expression',
+        // (ParseTrace labels these as C writes them: `*p`, `&x`, `(char*)`,
+        // `.x`, `[]`; older traces by class, `ValueAt`)
+        kind:
+          node.label === '*'
+            ? 'value at'
+            : node.label === '&'
+              ? 'address of'
+              : node.label === '[]'
+                ? 'index'
+                : node.label.startsWith('(')
+                  ? 'cast'
+                  : node.label.startsWith('.')
+                    ? 'field'
+                    : EXPR_KINDS[node.label.split(' ')[0]],
+      }
   }
 }
 
@@ -1556,17 +1599,25 @@ export type Match = 'exact' | 'prefix' | 'none'
  * recorded decision on the token's first character). With `final`, on the
  * step that settles the token, only the class it became is `exact`.
  */
+const PATTERN_READERS = {
+  identifier: 'word',
+  number: 'number',
+  string: 'string',
+  character: 'char',
+} satisfies Partial<Record<TokenClass, LexDecision>>
+
 export function matchTable(
   read: string,
   reader?: LexDecision,
   final?: TokenClass,
 ) {
   return (Object.keys(LEXEMES) as TokenClass[]).map((cls) => {
-    // identifier and number list a pattern, not lexemes
-    const rule = cls === 'identifier' || cls === 'number'
+    // identifiers, numbers and literals list a pattern, not lexemes: they
+    // match while the tokeniser reads with that reader
+    const rule = cls in PATTERN_READERS
     const lexemes = LEXEMES[cls].map((text) => {
       const whole = rule
-        ? reader === (cls === 'identifier' ? 'word' : 'number')
+        ? reader === PATTERN_READERS[cls as keyof typeof PATTERN_READERS]
         : text === read
       const match: Match =
         final !== undefined

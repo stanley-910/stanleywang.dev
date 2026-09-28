@@ -119,8 +119,10 @@ for (const r of refBox.exports.REFERENCES) {
     const b = r.trace.backend
     assert.ok(b && b.functions.length > 0, r.name + ': no backend')
     const blocks = b.functions.flatMap((f) => f.blocks.map((x) => x.text))
+    // (less what can never run, which the allocator leaves out: a jump
+    // after `continue` or `break`)
     assert.deepEqual(
-      r.trace.instructions.map((i) => i.text),
+      r.trace.instructions.filter((i) => !i.dead).map((i) => i.text),
       blocks,
       r.name + ': instructions differ from CFG blocks',
     )
