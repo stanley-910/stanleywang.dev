@@ -1564,6 +1564,22 @@
 .ac-arg.focus.def {
   color: var(--ok);
 }
+/* A physical register in the listing, in its lane's colour; it flashes
+   as it replaces a virtual one. */
+.ac-phys {
+  color: var(--c);
+  animation: ac-phys-in 0.9s ease-out;
+}
+@keyframes ac-phys-in {
+  from {
+    background: color-mix(in oklab, var(--c) 40%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ac-phys {
+    animation: none;
+  }
+}
 .ac-reg[data-vr] {
   pointer-events: auto;
   cursor: pointer;

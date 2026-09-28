@@ -4624,7 +4624,32 @@ export default function AnimatedCompiler() {
                                   </span>
                                 )
                               })
-                            : text
+                            : regView
+                              ? // A physical register takes its lane's colour
+                                // as it replaces a virtual one. (Every
+                                // register is its own part, so a part keeps
+                                // its place as `v7` becomes `$t1`.)
+                                text
+                                  .split(/(\$[a-z]+\d+|\bv\d+\b)/)
+                                  .map((part, j) => {
+                                    const idx = j % 2 ? paletteIndex(part) : -1
+                                    return idx < 0 ? (
+                                      part
+                                    ) : (
+                                      <span
+                                        key={`${j}-${part}`}
+                                        className="ac-phys"
+                                        style={
+                                          {
+                                            '--c': INK[idx % INK.length],
+                                          } as CSSProperties
+                                        }
+                                      >
+                                        {part}
+                                      </span>
+                                    )
+                                  })
+                              : text
                         // The instruction's own row: the same element from
                         // emit to registers, so it isn't drawn again.
                         const row = (line?: {
@@ -4714,7 +4739,9 @@ export default function AnimatedCompiler() {
                                         <span />
                                         <b>{line.text.split(/\s+(.*)/)[0]}</b>
                                         <code>
-                                          {line.text.split(/\s+(.*)/)[1] ?? ''}
+                                          {operands(
+                                            line.text.split(/\s+(.*)/)[1] ?? '',
+                                          )}
                                         </code>
                                       </motion.div>
                                     ),
