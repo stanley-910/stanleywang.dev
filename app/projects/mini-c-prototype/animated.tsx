@@ -27,7 +27,6 @@ import { EmitLanes, lanesWidth } from './emit-lanes'
 import { withEmitBlocks, withEmitLines } from './emit-view'
 import {
   explain,
-  instructionHover,
   NODE_KINDS,
   nodeKind,
   registerHover,
@@ -2330,17 +2329,9 @@ export default function AnimatedCompiler() {
   )
   const line = source.slice(0, activeSpan.start).split('\n').length
   const hoverText =
-    hoverIns !== null && !playing && !emitStage
-      ? instructionHover(
-          trace,
-          trace.instructions[hoverIns],
-          live?.[hoverIns],
-          coloured ??
-            (frame.phase === 'Registers' ? trace.registers : undefined),
-        )
-      : hoverVr !== null && !playing
-        ? registerHover(trace, fnIndex, hoverVr, coloured?.[hoverVr])
-        : undefined
+    hoverVr !== null && !playing
+      ? registerHover(trace, fnIndex, hoverVr, coloured?.[hoverVr])
+      : undefined
   // Hovers replace the step text in the panel rather than float on the stage,
   // so nothing on screen says the same thing twice.
   // The name pass: the note card holds the scopes instead of a sentence.
@@ -4127,7 +4118,9 @@ export default function AnimatedCompiler() {
                               initial={{ opacity: 0, y: 4 }}
                               animate={{ opacity: 1, y: 0 }}
                               transition={enter}
-                              onMouseEnter={() => !playing && setHoverIns(i)}
+                              onMouseEnter={() =>
+                                emitStage && !playing && setHoverIns(i)
+                              }
                               onMouseLeave={clearHover}
                             >
                               <span>{i + 1}</span>
@@ -4197,7 +4190,9 @@ export default function AnimatedCompiler() {
                                         animate={{ opacity: 1 }}
                                         transition={transition}
                                         onMouseEnter={() =>
-                                          !playing && setHoverIns(i)
+                                          emitStage &&
+                                          !playing &&
+                                          setHoverIns(i)
                                         }
                                         onMouseLeave={clearHover}
                                       >

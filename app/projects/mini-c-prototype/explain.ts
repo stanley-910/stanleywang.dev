@@ -3,7 +3,7 @@
 // Backticks mark code spans; the page renders them as <code>.
 import { readerOf } from './detail'
 import { stackFrames } from './stack-view'
-import { attemptOf, instructionText, liveAdded } from './trace'
+import { attemptOf, liveAdded } from './trace'
 
 import type {
   AstNode,
@@ -1074,28 +1074,6 @@ function explainMips(trace: Trace, n: AstNode, run: Instruction[]): string {
         ? operandNote(first)
         : `${run.map(line).join(', ')} are emitted for ${src}.`
   }
-}
-
-/** Hover card for one emitted instruction. */
-export function instructionHover(
-  trace: Trace,
-  ins: Instruction,
-  live?: { in: string[]; out: string[] },
-  registers?: Record<string, string>,
-): string {
-  const shown = code(instructionText(ins, registers).replace(/\s+/g, ' '))
-  const from =
-    ins.node === null
-      ? ''
-      : ` · from ${code(text(trace, trace.nodes[ins.node]).replace(/\s+/g, ' '))}`
-  const def =
-    ins.dest && /^v\d+$/.test(ins.dest) ? ` · defines ${code(ins.dest)}` : ''
-  const uses = ins.args.filter((a) => /^v\d+$/.test(a))
-  const reads = uses.length ? ` · reads ${uses.map(code).join(', ')}` : ''
-  const liveText = live
-    ? ` · live after: ${live.out.length ? live.out.map(code).join(' ') : 'nothing'}`
-    : ''
-  return `${shown}${from}${def}${reads}${liveText}`
 }
 
 /** Hover card for a node of the interference graph. */
