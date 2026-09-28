@@ -2268,47 +2268,54 @@ button.ac-proof-name {
   border-color: var(--faint);
   color: var(--muted);
 }
+/* Its place on the stack: a small disc sitting on the rim at the top
+   right, cut out of the circle by a ring of the background. */
 .ac-vr i {
   position: absolute;
-  top: -7px;
-  right: -9px;
-  min-width: 17px;
-  height: 15px;
-  padding: 0 3px;
-  border: 1px solid var(--line);
+  top: -3px;
+  left: 24px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
   border-radius: 8px;
-  background: var(--bg);
-  color: var(--muted);
+  background: color-mix(in srgb, var(--ink) 16%, var(--bg));
+  box-shadow: 0 0 0 2px var(--bg);
+  color: var(--ink);
   font-size: 9px;
   font-style: normal;
-  line-height: 13px;
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
   text-align: center;
+  transition:
+    background-color 0.25s,
+    color 0.25s;
 }
-/* The one this stop is about. */
+/* The one this stop is about: brighter, not ringed. */
 .ac-vr.focused {
   border-style: solid;
   border-color: var(--ink);
-  box-shadow:
-    0 0 0 2px var(--bg),
-    0 0 0 3px var(--ink);
+  background: color-mix(in srgb, var(--ink) 14%, var(--bg));
+  box-shadow: 0 0 14px color-mix(in srgb, var(--ink) 22%, transparent);
   color: var(--ink);
 }
 .ac-vr.focused i {
-  border-color: var(--ink);
   background: var(--ink);
   color: var(--bg);
 }
 .ac-vr.coloured.focused {
   border-color: var(--tint);
+  background: color-mix(in srgb, var(--c) 34%, var(--bg));
+  box-shadow: 0 0 14px color-mix(in srgb, var(--c) 40%, transparent);
+  color: var(--ink);
+}
+.ac-vr.coloured.focused i {
   background: var(--tint);
-  box-shadow:
-    0 0 0 2px var(--bg),
-    0 0 0 3px var(--tint);
-  color: var(--bg);
 }
 /* Set aside with every register still busy: it may have to spill. */
 .ac-vr.candidate i {
-  border-style: dashed;
+  background: var(--bg);
+  outline: 1px dashed var(--muted);
+  outline-offset: -1px;
 }
 .ac-vr.spilled {
   border-style: dashed;
