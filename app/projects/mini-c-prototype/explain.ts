@@ -714,14 +714,23 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
           ? Number(room.text?.split(',').pop()) * -1
           : 0
       const saveRa = run.some((i) => i.text?.startsWith('sw $ra'))
-      return `Before its body, ${code(n.label)} builds a stack frame: it saves the caller's frame pointer, points ${code('$fp')} at this frame${saveRa ? ', keeps the return address' : ''}${bytes ? `, and reserves ${bytes} bytes for locals` : ''}. Nothing here comes from your code.`
+      // DRAFT copy, after Stanley's pushRegisters note.
+      const push = run.some((i) => i.op === 'pushRegisters')
+        ? ` Last, ${code('pushRegisters')}, a placeholder that register allocation expands, makes room on the stack for the physical registers it will use.`
+        : ''
+      return `Before its body, ${code(n.label)} builds a stack frame: it saves the caller's frame pointer, points ${code('$fp')} at this frame${saveRa ? ', keeps the return address' : ''}${bytes ? `, and reserves ${bytes} bytes for the variables it declares` : ''}.${push} None of these lines is written in your code.`
     }
     case 'emit.epilogue': {
       const n = node(w.node)
       if (w.of) return explainFrameLine(trace, n, w.of, w.from)
       const run = trace.instructions.slice(w.from, w.to + 1)
       const exits = run.some((i) => i.op === 'syscall')
-      return `${code(n.label)} is done. It puts ${code('$sp')} and ${code('$fp')} back the way the caller left them, then ${exits ? 'exits with a system call' : `jumps back to the caller with ${code('jr $ra')}`}.`
+      // DRAFT copy: the popRegisters sentence.
+      const pop = run.some((i) => i.op === 'popRegisters')
+        ? ` First, ${code('popRegisters')} brings back the physical registers saved at the start. Then it`
+        : ' It'
+      const back = `puts ${code('$sp')} and ${code('$fp')} back the way the caller left them`
+      return `${code(n.label)} is done.${pop} ${back}, and ${exits ? 'exits with a system call' : `jumps back to the caller with ${code('jr $ra')}`}.`
     }
     case 'emit.value':
       return `${code(node(w.node).label)} already lives in ${code(w.v)} from its assignment, so no instruction is needed.`
@@ -963,12 +972,14 @@ function explainFrameLine(
     // GraphColouringRegAlloc saves every register the function is given.
     const saved = stackFrames(trace).find((f) => f.name === n.label)?.saved
     const which = saved?.length
-      ? ` Here that is ${list(saved.map(code))}, ${saved.length === 1 ? 'one word' : `${saved.length} words`}.`
+      ? ` For ${fn} that is ${list(saved.map(code))}, ${saved.length === 1 ? 'one word' : `${saved.length} words`}.`
       : ''
-    return `${code('pushRegisters')} is the compiler's own placeholder, not MIPS. Once registers are allocated it becomes one ${code('sw')} per register ${fn} uses, so the caller's values survive; ${code('popRegisters')} loads them back at the end.${which}`
+    // Stanley's copy (2026-09-28), with "helper function" as a placeholder
+    // instruction: it isn't a call.
+    return `Here we use a placeholder, ${code('pushRegisters')}, which expands during register allocation: it makes room on the stack for every physical register ${fn} will use, and saves each one there.${which}`
   }
   if (is('pop-registers'))
-    return `${fn} is done. ${code('popRegisters')} becomes the loads that bring back the registers saved at the start.`
+    return `${code('popRegisters')} is the same placeholder in reverse: during register allocation it expands into loads that bring back each saved physical register and give its room on the stack back.`
   if (is('save', 'fp'))
     return `The caller's frame pointer goes in that word. Whoever called ${fn} expects its own frame back, so the epilogue restores ${code('$fp')} from here.`
   if (is('set-fp'))
