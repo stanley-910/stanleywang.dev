@@ -2231,7 +2231,8 @@ export default function AnimatedCompiler() {
     if (treeShown)
       c.size(
         Math.max(sceneWidth + over, proofs.right),
-        Math.max(sceneHeight, proofs.bottom),
+        // (and room under the last to pan it clear of the zoom buttons)
+        Math.max(sceneHeight, proofs.bottom && proofs.bottom + 40),
       )
     else c.size(viewW, viewH)
   }, [
@@ -2329,38 +2330,73 @@ export default function AnimatedCompiler() {
     const dy = into(node.top - at.top, node.bottom - at.top, 0, viewH)
     if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) c.panBy(dx, dy, !reduced)
   }
-  // The type pass: the node being typed and the proof it goes into, both
-  // if they fit in the view, else the proof (Stanley, 2026-09-28).
+  // The type pass: the node being typed and the part of its statement's
+  // proof it goes into (not the whole statement's, which can start far
+  // to the left), both if they fit, else the part; a little room either
+  // side, and clear of the zoom buttons in the corner (Stanley,
+  // 2026-09-28).
   const followProof = () => {
     const scene = sceneRef.current
     const c = canvas.current
     if (!scene || !c || c.busy()) return
-    const proof = scene
-      .querySelector<HTMLElement>('.ac-proof-slot.now')
-      ?.getBoundingClientRect()
+    const current = scene.querySelector<HTMLElement>(
+      '.ac-proof-slot.now .ac-proof.current',
+    )
+    const part =
+      [
+        ...(current
+          ?.closest('.ac-proof-forest')
+          ?.querySelectorAll<HTMLElement>(':scope > .ac-proof') ?? []),
+      ].find((p) => p.contains(current)) ?? current
+    const proof = part?.getBoundingClientRect()
     if (!proof) return
     const node = scene
       .querySelector<HTMLElement>('.ac-piece.focused')
       ?.getBoundingClientRect()
     const at = scene.getBoundingClientRect()
-    const M = 16
+    const side = 40,
+      above = 16,
+      below = 48
     const both = node && {
       left: Math.min(node.left, proof.left),
       right: Math.max(node.right, proof.right),
       top: Math.min(node.top, proof.top),
       bottom: Math.max(node.bottom, proof.bottom),
     }
-    const fits = (b: { top: number; bottom: number }) =>
-      b.bottom - b.top <= viewH - 2 * M
+    const fits = (b: DOMRect | NonNullable<typeof both>) =>
+      b.bottom - b.top <= viewH - above - below &&
+      b.right - b.left <= viewW - 2 * side
     const box = both && fits(both) ? both : proof
-    const into = (lo: number, hi: number, size: number) =>
-      hi - lo > size - 2 * M || lo < M
-        ? M - lo
-        : hi > size - M
-          ? size - M - hi
-          : 0
-    const dx = into(box.left - at.left, box.right - at.left, viewW)
-    const dy = into(box.top - at.top, box.bottom - at.top, viewH)
+    // How far to move one axis to bring [lo, hi] into [m0, size - m1].
+    // What doesn't fit shows its end (`end`) or its start: across, a
+    // part's newest bar and its name are at its right; down, the tree's
+    // node is at the top.
+    const into = (
+      lo: number,
+      hi: number,
+      size: number,
+      m0: number,
+      m1: number,
+      end = false,
+    ) =>
+      hi - lo > size - m0 - m1
+        ? end
+          ? size - m1 - hi
+          : m0 - lo
+        : lo < m0
+          ? m0 - lo
+          : hi > size - m1
+            ? size - m1 - hi
+            : 0
+    const dx = into(
+      box.left - at.left,
+      box.right - at.left,
+      viewW,
+      side,
+      side,
+      true,
+    )
+    const dy = into(box.top - at.top, box.bottom - at.top, viewH, above, below)
     if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) c.panBy(dx, dy, !reduced)
   }
   // (the latest follow, for a timer set by an earlier step)
