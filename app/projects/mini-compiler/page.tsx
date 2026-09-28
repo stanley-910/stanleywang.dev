@@ -5,7 +5,7 @@ import type { Metadata } from 'next'
 export const metadata: Metadata = {
   title: 'Mini Compiler — Stanley Wang',
   description:
-    'A compiler for a C-like language, from parsing and type checking to MIPS and register allocation. Walkthrough in progress.',
+    'A compiler for a C-like language, from parsing and type checking to MIPS and register allocation. Try out a compiler I coded from scratch.',
 }
 
 // The walkthrough itself: the real compiler, run in the browser and

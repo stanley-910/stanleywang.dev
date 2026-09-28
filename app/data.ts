@@ -84,7 +84,7 @@ export const PROJECTS: Project[] = [
     name: 'Mini Compiler',
     slug: 'mini-compiler',
     description:
-      'From a C-like language to MIPS: parsing, type checking, code generation, and graph-colouring register allocation. Walkthrough in progress.',
+      'From a C-like language to MIPS: parsing, type checking, code generation, and graph-colouring register allocation. Try out a compiler I coded from scratch.',
     link: '/projects/mini-compiler',
     id: 'mini-compiler',
     category: 'Systems',
