@@ -39,16 +39,28 @@ export function Header() {
       }
     }
 
-    // Initial fetch
-    fetchNowPlaying()
+    // Poll only while the tab is visible; fetch once on becoming visible.
+    let interval: ReturnType<typeof setInterval> | undefined
+    const start = () => {
+      fetchNowPlaying()
+      interval = setInterval(fetchNowPlaying, 30000)
+    }
+    const stop = () => {
+      clearInterval(interval)
+      interval = undefined
+    }
+    const handleVisibilityChange = () => {
+      if (document.hidden) stop()
+      else if (interval === undefined) start()
+    }
 
-    // Set up interval for subsequent fetches
-    const interval = setInterval(fetchNowPlaying, 30000)
+    if (!document.hidden) start()
+    document.addEventListener('visibilitychange', handleVisibilityChange)
 
-    // Cleanup function
     return () => {
       isMounted = false
-      clearInterval(interval)
+      stop()
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [])
 
