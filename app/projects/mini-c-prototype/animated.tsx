@@ -2013,13 +2013,10 @@ export default function AnimatedCompiler() {
       performance.now() - listingHand.current > 1500
     ) {
       const box = pane.getBoundingClientRect()
-      // (under the listing's header, which stays at the top)
-      const head =
-        pane.querySelector<HTMLElement>('.ac-label')?.offsetHeight ?? 0
       const dy = into(
         rows[0].getBoundingClientRect().top,
         rows[rows.length - 1].getBoundingClientRect().bottom,
-        box.top + head - M / 2,
+        box.top - M / 2,
         box.bottom,
       )
       if (Math.abs(dy) > 1) {
@@ -4207,29 +4204,6 @@ export default function AnimatedCompiler() {
                       // (the lanes are drawn over it, so it keeps their room)
                       style={lanesShown ? { minWidth: listingMin } : undefined}
                     >
-                      <div className="ac-label">
-                        {frame.phase === 'Registers' &&
-                        (coloured
-                          ? Object.keys(coloured).length > 0
-                          : frame.allocationCount > 0)
-                          ? '; physical registers'
-                          : '; virtual registers'}
-                        {/* Over the lanes, once the first register is written. */}
-                        {lanesShown &&
-                          lanes.lanes.some(
-                            (l) => l.def < frame.instructionCount,
-                          ) && (
-                            <motion.span
-                              className="ac-lanes-head"
-                              style={{ left: lanesAt }}
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              transition={transition}
-                            >
-                              ; live
-                            </motion.span>
-                          )}
-                      </div>
                       {shownInstructions.map((ins, i) => {
                         const current = currentRange
                           ? i >= currentRange[0] && i <= currentRange[1]

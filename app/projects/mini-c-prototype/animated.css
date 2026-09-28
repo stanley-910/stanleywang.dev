@@ -1350,24 +1350,9 @@
   /* Never narrower than its lines: the pane scrolls sideways to what runs
      past, rather than squeezing operands under the lanes. */
   min-width: max-content;
-  padding: 0 12px 12px 0;
+  padding: 8px 12px 12px 0;
   font-size: 12px;
   line-height: 19px;
-}
-/* Its header stays at the top as it scrolls. */
-.ac-asm:is(.blocks, .listing) .ac-label {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  margin: 0;
-  padding: 8px 0 4px 34px;
-  background: var(--bg);
-}
-/* The lanes' column: where each register is live. */
-.ac-lanes-head {
-  position: absolute;
-  top: 8px;
-  padding-left: 2px;
 }
 .ac-asm:is(.blocks, .listing) .ac-ins {
   display: grid;
@@ -2101,7 +2086,7 @@
   .ac-asm.listing .ac-ins {
     grid-template-columns: 24px 6ch minmax(0, 1fr) auto;
   }
-  .ac-asm.listing :is(.ac-label, .ac-asm-label, .ac-asm-head) {
+  .ac-asm.listing :is(.ac-asm-label, .ac-asm-head) {
     padding-left: 24px;
   }
   .ac-asm.listing .ac-ins > span {
