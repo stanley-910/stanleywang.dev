@@ -2290,12 +2290,10 @@ button.ac-proof-name {
     background-color 0.25s,
     color 0.25s;
 }
-/* The one this stop is about: brighter, not ringed. */
+/* The one this stop is about: a bright rim, nothing around it. */
 .ac-vr.focused {
   border-style: solid;
   border-color: var(--ink);
-  background: color-mix(in srgb, var(--ink) 14%, var(--bg));
-  box-shadow: 0 0 14px color-mix(in srgb, var(--ink) 22%, transparent);
   color: var(--ink);
 }
 .ac-vr.focused i {
@@ -2305,7 +2303,6 @@ button.ac-proof-name {
 .ac-vr.coloured.focused {
   border-color: var(--tint);
   background: color-mix(in srgb, var(--c) 34%, var(--bg));
-  box-shadow: 0 0 14px color-mix(in srgb, var(--c) 40%, transparent);
   color: var(--ink);
 }
 .ac-vr.coloured.focused i {
