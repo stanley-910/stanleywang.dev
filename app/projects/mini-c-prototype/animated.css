@@ -1523,9 +1523,11 @@
   margin-top: 14px;
   font-size: 12px;
 }
-/* The type pass's panel (type-panel.tsx): the step's rule, premises over
-   a line and the conclusion under it, then what is still waiting. Words in
-   the notes' Prose face, code in the page's own, no chips, all in ink. */
+/* The type pass's panel (type-panel.tsx): the statement's derivation,
+   each rule its premises over a line, its name at the line's end, and the
+   conclusion under it; a rule's parts stand on its line, so the proof
+   stacks up the way the slides draw it. Words in the notes' Prose face,
+   code in the page's own, no chips, all in ink. */
 .ac-types {
   display: grid;
   gap: 16px;
@@ -1537,36 +1539,106 @@
   padding: 0;
   background: none;
   font-family: var(--font-mono);
+  white-space: nowrap;
 }
-.ac-rule {
-  display: grid;
-  justify-items: center;
-  gap: 3px;
+/* Wider than the panel only once the deepest parts are folded, then it
+   scrolls sideways. */
+.ac-proofs {
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
-.ac-rule-premises {
+.ac-proof-forest {
   display: flex;
-  flex-wrap: wrap;
   justify-content: center;
-  gap: 4px 16px;
-  min-height: 16px;
+  align-items: flex-end;
+  gap: 18px;
+  width: max-content;
+  min-width: 100%;
 }
-.ac-rule-premises .bad,
-.ac-rule.bad .ac-rule-conclusion {
-  color: var(--err);
+.ac-proof-forest.wrap {
+  flex-wrap: wrap;
+  row-gap: 10px;
 }
-.ac-rule-line {
-  position: relative;
-  width: 100%;
+.ac-proof {
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  align-items: end;
+}
+.ac-proof-premises {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 14px;
+  padding: 0 4px 2px;
+  min-height: 14px;
+}
+.ac-proof-line {
+  grid-column: 1;
+  align-self: center;
   border-top: 1px solid var(--ink);
 }
-.ac-rule-line span {
-  position: absolute;
-  top: -8px;
-  right: 0;
-  padding-left: 6px;
-  background: var(--bg);
+.ac-proof-name {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: center;
+  padding: 0 0 0 4px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
   font-size: 10px;
-  line-height: 14px;
+  line-height: 12px;
+}
+button.ac-proof-name {
+  cursor: pointer;
+}
+.ac-proof-conclusion {
+  grid-column: 1;
+  padding-top: 2px;
+  text-align: center;
+}
+/* The step's own rule: its line drawn in, the rest of the proof faded. */
+.ac-proof .ac-proof-conclusion,
+.ac-proof .ac-proof-fact {
+  opacity: 0.62;
+  transition: opacity 0.2s;
+}
+.ac-proof.current > .ac-proof-conclusion,
+.ac-proof.current > .ac-proof-premises > .ac-proof-fact {
+  opacity: 1;
+}
+.ac-proof.current > .ac-proof-line {
+  border-top-width: 2px;
+}
+.ac-proof.current {
+  animation: ac-proof-in 0.25s both;
+}
+@keyframes ac-proof-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+/* A part folded to its conclusion: open it to see how. */
+.ac-proof.folded {
+  display: inline-block;
+  padding: 0 4px 2px;
+  border: 0;
+  border-bottom: 1px dashed var(--line);
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.ac-proof .bad,
+.ac-proof.bad > .ac-proof-conclusion {
+  color: var(--err);
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ac-proof.current {
+    animation: none;
+  }
 }
 .ac-type-caption {
   display: block;
