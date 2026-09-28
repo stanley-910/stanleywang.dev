@@ -65,7 +65,7 @@ import {
   type Trace,
   treePositions,
 } from './trace'
-import { TypePanel } from './type-panel'
+import { hasTypeRule, TypePanel } from './type-panel'
 import '@/app/styles/markdown.css'
 import './animated.css'
 
@@ -2541,11 +2541,35 @@ export default function AnimatedCompiler() {
               : paneKind === 'stack'
                 ? 'stack frame'
                 : ''
+  const oversized = useMemo(() => tooBig(trace), [trace])
+  const stackNow = stacks.find(
+    (f) =>
+      f.first < frame.instructionCount && frame.instructionCount - 1 <= f.last,
+  )
+  // Whether the pass's pane has anything in it yet: a slide before the
+  // pass, or a pass before its first rule, declaration or stack word,
+  // leaves it empty.
+  const paneFilled =
+    paneKind === 'token'
+      ? !!paneToken
+      : paneKind === 'chars'
+        ? !!paneChars
+        : paneKind === 'kinds'
+          ? !!paneNode
+          : paneKind === 'scopes'
+            ? scopes.scopes.some((sc) =>
+                sc.decls.some((d) => scopes.declaredStep(d) <= index),
+              )
+            : paneKind === 'types'
+              ? !intro && hasTypeRule(frame.why)
+              : paneKind === 'stack'
+                ? !!stackNow || !!stackAt || (emitStage && !!oversized)
+                : false
   // With nothing to keep, the pane folds away: its top border, the divider,
   // runs down to the bottom and the source grows into the room; it comes
   // back up when a pass has something. `data-fold` on the editor: 'shut'
   // folded, 'moving' while the pane's height is animated, absent open.
-  const paneOpen = paneKind !== null
+  const paneOpen = paneKind !== null && paneFilled
   const folded = useRef<boolean | null>(null)
   // Only the latest fold settles the pane: a stopped animation still
   // resolves, and its settle would undo the one that replaced it.
@@ -2770,11 +2794,6 @@ export default function AnimatedCompiler() {
           width: cardAt.closed.width,
         })
 
-  const oversized = useMemo(() => tooBig(trace), [trace])
-  const stackNow = stacks.find(
-    (f) =>
-      f.first < frame.instructionCount && frame.instructionCount - 1 <= f.last,
-  )
   const stackColumn = (at?: { x: number; y: number }) => (
     <StackColumn
       key={at ? `${at.x},${at.y}` : 'docked'}

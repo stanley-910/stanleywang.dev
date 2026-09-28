@@ -1,4 +1,4 @@
-import type { Trace } from './trace'
+import type { Frame, Trace } from './trace'
 
 // The type pass's side panel, under the source: the step's typing rule, in
 // the notation of the slides (what is known above the line, what follows
@@ -15,6 +15,13 @@ const EXPRESSIONS = new Set([
   'number',
 ])
 const CHECKS = new Set(['return', 'if', 'while', 'assign'])
+
+// Whether a step has a rule to show (or the pass's closing line).
+export const hasTypeRule = (why: Frame['why'] | undefined) =>
+  why?.kind === 'check.type' ||
+  why?.kind === 'check.expr' ||
+  why?.kind === 'check.fits' ||
+  why?.kind === 'check.typesDone'
 
 export function TypePanel({
   trace,
