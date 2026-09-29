@@ -1571,7 +1571,16 @@ export default function AnimatedCompiler() {
     if (emitBlocks) url.searchParams.set('emit', 'blocks')
     else url.searchParams.delete('emit')
     url.searchParams.set('frame', String(index))
-    window.history.replaceState(null, '', url)
+    // Only once the stage settles: WebKit throws after 100 replaceState
+    // calls in 10s, which a scrub or a held step key passes in seconds,
+    // and a throw here takes the whole page down. Losing the address bar
+    // is fine; losing the page isn't.
+    const t = window.setTimeout(() => {
+      try {
+        window.history.replaceState(window.history.state, '', url)
+      } catch {}
+    }, 250)
+    return () => window.clearTimeout(t)
   }, [linked, playing, reference, index, detailed, titles, emitBlocks])
 
   // The name pass walks the tree between the names it looks at: from the
