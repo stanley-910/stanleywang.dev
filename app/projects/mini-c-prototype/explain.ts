@@ -245,7 +245,7 @@ const line = (trace: Trace, span: Span) =>
   (trace.text ?? '').slice(0, span.start).split('\n').length
 
 /** What a node is, in words: "multiplication", "integer literal", ... */
-export function describe(node: AstNode): string {
+function describe(node: AstNode): string {
   switch (node.kind) {
     case 'binary':
       return OP_NAMES[node.label] ?? 'operator'
@@ -281,7 +281,7 @@ export function describe(node: AstNode): string {
 }
 
 /** What a token does, as a predicate: "`;` ends this statement". */
-export function tokenRole(token: Token): string {
+function tokenRole(token: Token): string {
   if (token.kind === 'keyword')
     return KEYWORD_ROLES[token.text] ?? 'is a keyword with a fixed meaning'
   if (token.kind === 'name') return 'is an identifier'
@@ -323,7 +323,28 @@ export function explain(trace: Trace, frame: Frame, titled = true): string {
 function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
   const w: Why = frame.why
   const node = (id: number) => trace.nodes[id]
-  const src = (id: number) => code(text(trace, node(id)))
+  // (an expression standing as a statement is read to its `;`; quoted as
+  // an expression, it goes without)
+  const src = (id: number) => {
+    const n = node(id)
+    const said = text(trace, n)
+    return code(
+      nodeKind(n).cls === 'expression' ? said.replace(/;$/, '') : said,
+    )
+  }
+  // An expression where a statement goes is the statement itself (the
+  // tracer reads it to its `;`), as `print_i(x);` or `p.x = 1;` are.
+  const standsAlone = (n: AstNode) => {
+    const p = trace.nodes.find((q) => q.children.includes(n.id))
+    return (
+      nodeKind(n).cls === 'expression' &&
+      (p?.kind === 'block' ||
+        ((p?.kind === 'while' || p?.kind === 'if') &&
+          p.children.indexOf(n.id) > 0))
+    )
+  }
+  // DRAFT copy.
+  const statementToo = `Where a statement goes, an expression and its ${code(';')} make an expression statement, so this node is the statement too.`
   switch (w.kind) {
     case 'ready':
       // Stanley's copy (2026-09-27); "MIPs" read MIPS, and the "…" after it
@@ -380,6 +401,9 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
         case 'name':
           return `${code(n.label)} started as an identifier, and with no ${code('(')} after it, it names a value, so it becomes a name expression.`
         case 'declare': {
+          // DRAFT copy
+          if (parent && structOf(trace, n))
+            return `${code(n.label)} (a type, then an identifier) inside ${code(parent.label)} becomes a field declaration.`
           const where =
             parent?.kind === 'function'
               ? `in ${code(parent.label)}'s parameter list`
@@ -413,16 +437,17 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
         case 'if':
           return `${code('if')} started as a keyword, and at the start of a statement it opens an if statement.`
         case 'call':
-          return `${code(tok.text)} started as an identifier, but the ${code('(')} after it makes it a call expression.`
+          return `${code(tok.text)} started as an identifier, but the ${code('(')} after it makes it a call expression.${standsAlone(n) ? ` ${statementToo}` : ''}`
         case 'unary':
           return `${code(n.label)} started as an operator, but with no value before it, it applies to what follows: an operator expression.`
         case 'program':
           return `${code('global')} holds the top-level declarations, read one after another.`
         case 'statement':
-          // DRAFT copy. The node keeps its label, `expr`: the note quotes
-          // the statement instead, since its expression arrives under it.
+          // DRAFT copy. Only a statement the parser gave up on before its
+          // expression keeps a node of its own, labelled `expr`; the note
+          // quotes what there is of it.
           if (n.label === 'expr')
-            return `${code(text(trace, n))} doesn't start with a keyword, so it's an expression statement: an expression, then ${code(';')}. Its expression comes next.`
+            return `${code(text(trace, n))} doesn't start with a keyword, so it's an expression statement: an expression, then ${code(';')}.`
         // falls through
         default: {
           // DRAFT copy: named by its kind in the list under the note
@@ -439,7 +464,7 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
     case 'parse.wait': {
       const op = node(w.node)
       // DRAFT, on the parse.node template.
-      return `${code(op.label)} started as an operator, and with ${src(w.child)} before it, it becomes an operator expression that waits, dashed, for its right side.`
+      return `${code(op.label)} started as an operator, and with ${src(w.child)} before it, it becomes an operator expression that waits, dashed, for its right side.${standsAlone(op) ? ` ${statementToo}` : ''}`
     }
     case 'parse.precedence': {
       const child = src(w.child)
@@ -462,7 +487,10 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
       const kids = n.children.map(src)
       switch (n.kind) {
         case 'binary':
-          return `${code(n.label)} now holds both inputs, ${kids[0]} and ${kids[1]}. Its result is ${src(w.node)}.`
+          // DRAFT copy for the statement's `;`.
+          return standsAlone(n)
+            ? `${code(n.label)} now holds both inputs, ${kids[0]} and ${kids[1]}, and the ${code(';')} after them ends the statement.`
+            : `${code(n.label)} now holds both inputs, ${kids[0]} and ${kids[1]}. Its result is ${src(w.node)}.`
         case 'unary':
           return `${code(n.label)} now holds its operand ${kids[0]}.`
         case 'return':
@@ -481,10 +509,15 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
           return 'The loop closes over its condition and body.'
         case 'if':
           return 'The if closes over its condition and branches.'
-        case 'call':
-          return kids.length
+        case 'call': {
+          const said = kids.length
             ? `The call to ${code(trace.tokens[n.token].text)} has its ${kids.length === 1 ? 'argument' : 'arguments'} ${kids.join(', ')}.`
             : `The call to ${code(trace.tokens[n.token].text)} takes no arguments.`
+          // DRAFT copy.
+          return standsAlone(n)
+            ? `${said} The ${code(';')} after it ends the statement.`
+            : said
+        }
         case 'program':
           return 'Every declaration has been read.'
         default:
@@ -581,6 +614,13 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
           : `${code(text(trace, frame.span))}: ${w.message}. The compiler stops here.`
     case 'check.type': {
       const n = node(w.node)
+      const owner = structOf(trace, n)
+      // DRAFT copy
+      if (owner) {
+        const name = trace.tokens[n.token].text
+        const struct = owner.label.replace(/ \{ \}$/, '')
+        return `${code(struct)}'s field ${code(name)} is declared ${code(w.type)}, so any ${code(`.${name}`)} on a ${code(struct)} has that type.`
+      }
       if (n.kind === 'declare')
         return `${code(trace.tokens[n.token].text)} is declared with type ${code(w.type)}. Later uses must agree with it.`
       // DRAFT copy: the steps type-view.ts adds.
@@ -1087,7 +1127,7 @@ function explainMips(trace: Trace, n: AstNode, run: Instruction[]): string {
   }
 }
 
-export function instructionLine(ins: Trace['instructions'][number]): string {
+function instructionLine(ins: Trace['instructions'][number]): string {
   return ins.dest
     ? `${ins.op} ${ins.dest}, ${ins.args.join(', ')}`
     : `${ins.op} ${ins.args.join(', ')}`
@@ -1463,7 +1503,14 @@ export const lexemesOf = (token: Token) => LEXEMES[tokenKind(token)]
 // its src/java/ast).
 export const NODE_KINDS = {
   global: ['global'],
-  declaration: ['variable', 'function', 'prototype', 'struct', 'class'],
+  declaration: [
+    'variable',
+    'field',
+    'function',
+    'prototype',
+    'struct',
+    'class',
+  ],
   statement: [
     'block',
     'while',
@@ -1491,7 +1538,7 @@ export const NODE_KINDS = {
     'method call',
   ],
 }
-export type NodeClass = keyof typeof NODE_KINDS
+type NodeClass = keyof typeof NODE_KINDS
 
 // ParseTrace.java names what it collapses by class (older traces also a
 // struct or class, `StructTypeDecl s`; now `struct s { }`, `class C { }`):
@@ -1519,7 +1566,25 @@ export const isClassDecl = (label: string) =>
   (label.startsWith('class ') && label.endsWith(' { }'))
 
 /** A node's class and its kind within it. */
-export function nodeKind(node: AstNode): { cls: NodeClass; kind?: string } {
+// A struct's fields are its children (ParseTrace), declared in its scope.
+export const structOf = (trace: Trace, node: AstNode) =>
+  node.kind === 'declare'
+    ? trace.nodes.find(
+        (p) =>
+          p.kind === 'declare' &&
+          p.label.startsWith('struct ') &&
+          p.label.endsWith(' { }') &&
+          p.children.includes(node.id),
+      )
+    : undefined
+
+/** What a node is; with the trace, a struct's field is told from a variable. */
+export function nodeKind(
+  node: AstNode,
+  trace?: Trace,
+): { cls: NodeClass; kind?: string } {
+  if (trace && structOf(trace, node))
+    return { cls: 'declaration', kind: 'field' }
   switch (node.kind) {
     case 'program':
       return { cls: 'global', kind: 'global' }
@@ -1591,7 +1656,7 @@ export function nodeKind(node: AstNode): { cls: NodeClass; kind?: string } {
   }
 }
 
-export type Match = 'exact' | 'prefix' | 'none'
+type Match = 'exact' | 'prefix' | 'none'
 
 /**
  * How the characters read so far sit against each class's lexemes. While a

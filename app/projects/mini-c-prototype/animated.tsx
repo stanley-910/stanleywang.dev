@@ -179,7 +179,7 @@ const TOKEN_BLURBS: Record<string, string> = {
 }
 const NODE_BLURBS: Record<string, string> = {
   declaration:
-    'Introduce a name: a variable, a function, or a struct or class type.',
+    "Introduce a name: a variable, a struct's field, a function, or a struct or class type.",
   statement:
     'The steps a function takes. Each starts with a keyword, is a block in braces, or is an expression ended by `;`.',
   expression:
@@ -197,6 +197,8 @@ const ASM_ROW = SOURCE_ROW
 const ASM_CH = 7.2
 // A dragged source height, kept per browser.
 const SPLIT_KEY = 'mini-c-split'
+// Whether the step's note sits in the pane under the source or floats.
+const DOCK_KEY = 'mini-c-note-docked'
 const SPLIT_MIN = SOURCE_ROW * 3 + 8
 const WIDTH_KEY = 'mini-c-editor-width'
 // The listing pane's width beside the stage, and its height along the
@@ -1099,6 +1101,22 @@ export default function AnimatedCompiler() {
   // A phone's side pane (the class, the scopes, the stack) shows only its
   // name until tapped open.
   const [sideOpen, setSideOpen] = useState(false)
+  // The step's note, docked in the pane under the source over what that
+  // pane keeps, or floating in its own window with that pane's record
+  // (Stanley, 2026-09-29: one place for both, not two). Trial: the lexer's
+  // steps only, on a wide screen; elsewhere it floats as before.
+  const [noteDocked, setNoteDocked] = useState(true)
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(DOCK_KEY) === '0') setNoteDocked(false)
+    } catch {}
+  }, [])
+  const dockNote = (docked: boolean) => {
+    setNoteDocked(docked)
+    try {
+      localStorage.setItem(DOCK_KEY, docked ? '1' : '0')
+    } catch {}
+  }
   useEffect(() => {
     try {
       const w = Number(localStorage.getItem(LISTING_W_KEY))
@@ -1389,9 +1407,9 @@ export default function AnimatedCompiler() {
   useEffect(() => {
     if (!pinned) return
     const away = (event: PointerEvent) => {
-      if (
-        !(event.target instanceof Element && event.target.closest('[data-vr]'))
-      )
+      if (!(
+        event.target instanceof Element && event.target.closest('[data-vr]')
+      ))
         setRegFocus(null)
     }
     window.addEventListener('pointerdown', away)
@@ -2670,7 +2688,7 @@ export default function AnimatedCompiler() {
     !intro &&
     (w.kind === 'parse.node' || w.kind === 'parse.wait') &&
     trace.nodes[w.node].kind !== 'program'
-      ? nodeKind(trace.nodes[w.node])
+      ? nodeKind(trace.nodes[w.node], trace)
       : undefined
   // Where a landing node's class sits (parse): under it, else right, left
   // or above, whichever crosses no edge on the stage and covers no other
@@ -2924,6 +2942,34 @@ export default function AnimatedCompiler() {
   // Hidden layers size the panel for the tallest lexer step, but only on the
   // steps themselves: the welcome and slides keep their own height.
   const sizing = !intro && index > 0
+  const noteBody =
+    frame.phase === 'Tokens' ? (
+      // Hidden layers hold the tallest step of each token class in the
+      // same grid cell, so the note keeps one height while stepping
+      // through tokens and only grows if even that won't fit.
+      <div className="ac-note-stack">
+        <div className="ac-note-layer">
+          {heading}
+          <Prose text={noteText} />
+          {slideTable}
+        </div>
+        {(sizing ? tallestTokenSteps : []).map((v) => (
+          <div
+            key={tokenKind(v.token)}
+            className="ac-note-layer ghost"
+            aria-hidden="true"
+          >
+            <Prose text={v.text} />
+          </div>
+        ))}
+      </div>
+    ) : (
+      <>
+        {heading}
+        <Prose text={noteText} />
+        {slideTable}
+      </>
+    )
   // What the pane under the source keeps: each pass's own record (Stanley,
   // 2026-09-27). The lexer shows the token's class, the parser the node's,
   // the name pass its scopes, the type pass its rule, emit the stack frame.
@@ -3001,7 +3047,7 @@ export default function AnimatedCompiler() {
     const why = near && trace.frames[near.at].why
     if (!near || (why?.kind !== 'parse.node' && why?.kind !== 'parse.wait'))
       return undefined
-    const { cls, kind } = nodeKind(trace.nodes[why.node])
+    const { cls, kind } = nodeKind(trace.nodes[why.node], trace)
     return cls === 'global'
       ? undefined
       : { cls, list: NODE_KINDS[cls], current: near.ahead ? undefined : kind }
@@ -3028,6 +3074,42 @@ export default function AnimatedCompiler() {
       : paneKind === 'kinds'
         ? paneNode && NODE_BLURBS[paneNode.cls]
         : undefined
+  // The class the pane keeps (its blurb, its lexemes or kinds, or the
+  // characters read so far), under its name when the note sits over it.
+  const paneRecord = (named: boolean) => (
+    <>
+      {named && paneLabel && <h3 className="ac-pane-head">{paneLabel}</h3>}
+      {paneBlurb && (
+        <p className="ac-pane-blurb">
+          <Prose text={paneBlurb} />
+        </p>
+      )}
+      {paneChars && (
+        <CharTable
+          read={paneChars.read}
+          reader={paneChars.reader}
+          final={paneChars.final}
+        />
+      )}
+      {paneList && (
+        <ul
+          className="ac-lexemes"
+          aria-label={
+            paneToken ? 'Lexemes in this class' : 'Kinds in this class'
+          }
+        >
+          {paneList.list.map((entry) => (
+            <li
+              key={entry}
+              className={entry === paneList.current ? 'current' : ''}
+            >
+              {entry}
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  )
   const oversized = useMemo(() => tooBig(trace), [trace])
   const stackNow = stacks.find(
     (f) =>
@@ -3056,7 +3138,12 @@ export default function AnimatedCompiler() {
   // runs down to the bottom and the source grows into the room; it comes
   // back up when a pass has something. `data-fold` on the editor: 'shut'
   // folded, 'moving' while the pane's height is animated, absent open.
-  const paneOpen = paneKind !== null && paneFilled
+  // (the trial's reach: the lexer's steps, not the welcome, on a wide screen)
+  const lexNote = !narrow && index > 0 && panePhase === 'Tokens'
+  const noteInPane = lexNote && noteDocked
+  const paneInWindow = lexNote && !noteDocked
+  const paneOpen =
+    paneKind !== null && (noteInPane || (paneFilled && !paneInWindow))
   // (a phone's side pane, open only while there is one to show)
   const sideShown = sideOpen && paneOpen
   const folded = useRef<boolean | null>(null)
@@ -3152,7 +3239,7 @@ export default function AnimatedCompiler() {
       }
     }
     if (hoverNode) {
-      const { cls, kind } = nodeKind(hoverNode)
+      const { cls, kind } = nodeKind(hoverNode, trace)
       return {
         key: `node-${hoverNode.id}`,
         title: cls,
@@ -3693,52 +3780,46 @@ export default function AnimatedCompiler() {
                 saveSplit(clampSplit(range.height + step, range.max))
               }}
             />
-            {paneLabel && (
+            {noteInPane ? (
               <div className="ac-bar">
-                <span className="ac-note-title">{paneLabel}</span>
-                {/* (a phone's: the box opens and closes the pane) */}
-                {narrow && (
-                  <button
-                    type="button"
-                    className="ac-side-box"
-                    aria-label={sideShown ? 'Close pane' : 'Open pane'}
-                    aria-expanded={sideShown}
-                    onClick={() => setSideOpen(!sideShown)}
-                  >
-                    {sideShown ? '−' : '+'}
-                  </button>
-                )}
-              </div>
-            )}
-            <div className="ac-note-body">
-              {paneBlurb && (
-                <p className="ac-pane-blurb">
-                  <Prose text={paneBlurb} />
-                </p>
-              )}
-              {paneChars && (
-                <CharTable
-                  read={paneChars.read}
-                  reader={paneChars.reader}
-                  final={paneChars.final}
-                />
-              )}
-              {paneList && (
-                <ul
-                  className="ac-lexemes"
-                  aria-label={
-                    paneToken ? 'Lexemes in this class' : 'Kinds in this class'
-                  }
+                <span className="ac-note-file">{noteFile}</span>
+                <button
+                  type="button"
+                  className="ac-note-undock"
+                  aria-label="Undock notes"
+                  title="Undock"
+                  onClick={() => dockNote(false)}
                 >
-                  {paneList.list.map((entry) => (
-                    <li
-                      key={entry}
-                      className={entry === paneList.current ? 'current' : ''}
+                  ↗
+                </button>
+              </div>
+            ) : (
+              paneLabel && (
+                <div className="ac-bar">
+                  <span className="ac-note-title">{paneLabel}</span>
+                  {/* (a phone's: the box opens and closes the pane) */}
+                  {narrow && (
+                    <button
+                      type="button"
+                      className="ac-side-box"
+                      aria-label={sideShown ? 'Close pane' : 'Open pane'}
+                      aria-expanded={sideShown}
+                      onClick={() => setSideOpen(!sideShown)}
                     >
-                      {entry}
-                    </li>
-                  ))}
-                </ul>
+                      {sideShown ? '−' : '+'}
+                    </button>
+                  )}
+                </div>
+              )
+            )}
+            <div className={`ac-note-body ${noteInPane ? 'with-note' : ''}`}>
+              {noteInPane ? (
+                <>
+                  <div className="ac-note-step">{noteBody}</div>
+                  {paneFilled && paneRecord(true)}
+                </>
+              ) : (
+                paneRecord(false)
               )}
               {paneKind === 'scopes' && (
                 <ScopeTree
@@ -4994,62 +5075,40 @@ export default function AnimatedCompiler() {
         }
       >
         {narrow && flowSplit('note')}
-        <NoteWindow
-          docked={narrow}
-          title={noteFile}
-          error={!!error}
-          live={!playing}
-          bounds={rootRef}
-          area={workRef}
-          start={windowStart}
-          foot={
-            intro &&
-            deck &&
-            deck.slides.length > 1 && (
-              <div className="ac-note-foot">
-                <button
-                  type="button"
-                  className="ac-slides"
-                  aria-label="Skip intro"
-                  onClick={() => seek(index + 1)}
-                >
-                  <span className="count">
-                    {slide}/{deck.slides.length}
-                  </span>
-                  <span className="skip">skip</span>
-                </button>
-              </div>
-            )
-          }
-        >
-          {frame.phase === 'Tokens' ? (
-            // Hidden layers hold the tallest step of each token class in the
-            // same grid cell, so the window keeps one height while stepping
-            // through tokens and only grows if even that won't fit.
-            <div className="ac-note-stack">
-              <div className="ac-note-layer">
-                {heading}
-                <Prose text={noteText} />
-                {slideTable}
-              </div>
-              {(sizing ? tallestTokenSteps : []).map((v) => (
-                <div
-                  key={tokenKind(v.token)}
-                  className="ac-note-layer ghost"
-                  aria-hidden="true"
-                >
-                  <Prose text={v.text} />
+        {!noteInPane && (
+          <NoteWindow
+            docked={narrow}
+            onDock={paneInWindow ? () => dockNote(true) : undefined}
+            title={noteFile}
+            error={!!error}
+            live={!playing}
+            bounds={rootRef}
+            area={workRef}
+            start={windowStart}
+            foot={
+              intro &&
+              deck &&
+              deck.slides.length > 1 && (
+                <div className="ac-note-foot">
+                  <button
+                    type="button"
+                    className="ac-slides"
+                    aria-label="Skip intro"
+                    onClick={() => seek(index + 1)}
+                  >
+                    <span className="count">
+                      {slide}/{deck.slides.length}
+                    </span>
+                    <span className="skip">skip</span>
+                  </button>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <>
-              {heading}
-              <Prose text={noteText} />
-              {slideTable}
-            </>
-          )}
-        </NoteWindow>
+              )
+            }
+          >
+            {noteBody}
+            {paneInWindow && paneFilled && paneRecord(true)}
+          </NoteWindow>
+        )}
 
         <footer className="ac-keys" aria-label="Controls">
           <button
