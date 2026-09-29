@@ -2251,8 +2251,12 @@ export default function AnimatedCompiler() {
     if (treeShown)
       c.size(
         Math.max(sceneWidth + over, proofs.right),
-        // (and room under the last to pan it clear of the zoom buttons)
-        Math.max(sceneHeight, proofs.bottom && proofs.bottom + 40),
+        // (and room under the last to pan it clear of the zoom buttons;
+        // a phone's are 44px, over the tree's lowest row)
+        Math.max(
+          sceneHeight + (narrow ? GRAPH_FOOT : 0),
+          proofs.bottom && proofs.bottom + (narrow ? GRAPH_FOOT : 40),
+        ),
       )
     else c.size(viewW, viewH)
   }, [
@@ -2266,6 +2270,7 @@ export default function AnimatedCompiler() {
     treeShown,
     viewW,
     viewH,
+    narrow,
   ])
   // A new graph starts in view.
   useEffect(() => {
@@ -2347,7 +2352,13 @@ export default function AnimatedCompiler() {
         ? 0
         : (lateRoom.get(frame.focus) ?? 0) * fit * c.view().k
     const dx = into(node.left - at.left, node.right - at.left + badge, 0, viewW)
-    const dy = into(node.top - at.top, node.bottom - at.top, 0, viewH)
+    // (on a phone, clear of the 44px zoom buttons along the bottom)
+    const dy = into(
+      node.top - at.top,
+      node.bottom - at.top,
+      0,
+      narrow ? viewH - GRAPH_FOOT : viewH,
+    )
     if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) c.panBy(dx, dy, !reduced)
   }
   // A hand on the view (a drag, the wheel, a pinch, the zoom buttons)
@@ -2385,7 +2396,7 @@ export default function AnimatedCompiler() {
     const at = scene.getBoundingClientRect()
     const side = 40,
       above = 16,
-      below = 48
+      below = narrow ? GRAPH_FOOT : 48
     const both = node && {
       left: Math.min(node.left, proof.left),
       right: Math.max(node.right, proof.right),
@@ -4557,9 +4568,9 @@ export default function AnimatedCompiler() {
                 </button>
               </div>
             </div>
-            {/* A phone's grip on the line between the stage and the
+            {/* A phone's grip in the gap between the stage and the
                 listing: here, outside the listing's clip, where it can sit
-                on that line and follow it as the listing slides in. */}
+                in that gap and follow it as the listing slides in. */}
             {late && listingFlow && narrow && (
               <div className="ac-flowsplit-at">{flowSplit('listing')}</div>
             )}
