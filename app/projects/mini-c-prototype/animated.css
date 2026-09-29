@@ -1773,34 +1773,40 @@
   margin: 0;
 }
 
-/* Trial (Stanley, 2026-09-26): the notes in the Berkeley Mono Prose build,
-   tighter and with serifed letters for running text, while code and the rest
-   of the page stay in the Def build the site serves. local() only, so it
-   shows only where Prose is installed; everyone else sees Def. */
+/* The notes are set in the Berkeley Mono Prose build, tighter and with
+   serifed letters for running text; code and the rest of the page stay in the
+   Def build (app/styles/fonts.css). Both are served from public/fonts. */
 @font-face {
   font-family: 'Notes Prose';
-  src: local('Berkeley Mono Prose Regular'), local('BerkeleyMonoProse-Regular');
+  src: url('/fonts/berkeley-mono/BerkeleyMonoProse-Regular.woff2')
+    format('woff2');
   font-style: normal;
   font-weight: 400;
+  font-display: swap;
 }
 @font-face {
   font-family: 'Notes Prose';
-  src: local('Berkeley Mono Prose Oblique'), local('BerkeleyMonoProse-Oblique');
+  src: url('/fonts/berkeley-mono/BerkeleyMonoProse-Oblique.woff2')
+    format('woff2');
   font-style: italic;
   font-weight: 400;
+  font-display: swap;
 }
 @font-face {
   font-family: 'Notes Prose';
-  src: local('Berkeley Mono Prose Bold'), local('BerkeleyMonoProse-Bold');
+  src: url('/fonts/berkeley-mono/BerkeleyMonoProse-Bold.woff2')
+    format('woff2');
   font-style: normal;
   font-weight: 700;
+  font-display: swap;
 }
 @font-face {
   font-family: 'Notes Prose';
-  src: local('Berkeley Mono Prose Bold Oblique'),
-    local('BerkeleyMonoProse-BoldOblique');
+  src: url('/fonts/berkeley-mono/BerkeleyMonoProse-Bold-Oblique.woff2')
+    format('woff2');
   font-style: italic;
   font-weight: 700;
+  font-display: swap;
 }
 
 /* The step's note, in a small window over the simulation (note-window.tsx):
