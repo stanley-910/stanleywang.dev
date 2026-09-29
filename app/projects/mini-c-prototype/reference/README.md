@@ -1,46 +1,14 @@
 # Reference outputs from the real compiler
 
-Artifacts only. Generated on 2026-09-20 (regenerated 2026-09-21 with two programs added) from the Java Mini-C compiler in
-`~/Developer/mcgill/mini-c-compiler` (built with `ant build`, Java 25 runtime).
-No compiler source is copied here; `DotDump.java` is a 15-line scratch driver
-that only calls the compiler's public `Tokeniser`, `Parser`, and `DotPrinter`.
+Artifacts only. Each example on the page is a `.c` program and the
+`.trace.json` the compiler in `~/Developer/mcgill/mini-c-compiler` writes for it;
+`../reference.ts` lists them. No compiler source is copied here.
 
-Programs with the older artifacts (`.ast`, `.sem.txt`, `.dot`, `.svg`). The page's
-examples are now listed in `../reference.ts`; each has a `.c` and a `.trace.json`.
-The `parentheses` and `local-variable` examples, every `.asm`, and every
-`.regalloc.json` were deleted on 2026-09-28: nothing read them.
-
-| File | Source | Notes |
-| --- | --- | --- |
-| `precedence.c` | animated preset | `4 + 2 * 3` |
-| `unresolved-name.c` | animated preset / fixtures "Semantic error" | sem fails on purpose (4 errors) |
-| `loop.c` | fixtures "Loop" | `while` with two locals; readable CFG |
-| `function-call.c` | fixtures "Function call" | two functions, one call |
-
-Regenerate everything at once with the staged driver kept in the compiler repo
-at `src/test/util/StagedRun.java` (outside the ant build, so compile it once):
-
-```sh
-cd ~/Developer/mcgill/mini-c-compiler
-ant build && javac -cp bin -d bin/test src/test/util/StagedRun.java
-for n in precedence unresolved-name loop function-call; do
-  java -cp bin:bin/test util.StagedRun "$R/$n.c" "$R" --no-pause --sem
-  java -cp bin Main4 -sem "$R/$n.c" > "$R/$n.sem.txt"
-done
-```
-
-Per-file equivalents, for each `<name>.c`:
-
-| File | Command (run from the compiler repo, `bin/` on classpath) |
-| --- | --- |
-| `<name>.ast` | `java -cp bin Main4 -ast <name>.c <name>.ast` (ASTPrinter s-expression) |
-| `<name>.sem.txt` | `java -cp bin Main4 -sem <name>.c` (stdout) |
-| `<name>.dot` | `java -cp bin:<dir with DotDump.class> DotDump <name>.c <name>.dot` |
-| `<name>.svg` | `dot -Tsvg <name>.dot -o <name>.svg` |
-
-`../reference.ts` embeds the `.ast` and `.sem.txt` contents so the UI can diff
-the sketch's tree against the real one. Regenerate it with the node one-liner in
-the session that produced it, or by hand, whenever a preset changes.
+The `parentheses` and `local-variable` examples, every `.asm` and every
+`.regalloc.json` were deleted on 2026-09-28, and the older `.ast`, `.sem.txt`,
+`.dot` and `.svg` outputs with their `DotDump.java` driver on 2026-09-29:
+nothing read them. A trace's `ast` field still holds the `ASTPrinter`
+s-expression, which `../check-trace.cjs` compares with the toy's tree.
 
 Grammar note found while generating these: real Mini-C rejects initializers in
 declarations (`int x = 4;` fails with `expected (SC) found (ASSIGN)`). The sketch
@@ -63,14 +31,13 @@ before writing anything.
 ## Animation traces
 
 `<name>.trace.json` holds the frames variant D plays for each preset: Tokens, Parse
-and Check phases, plus the token list, tree nodes, `ASTPrinter` output and the
-semantic analyser's lines. They are emitted by `src/test/util/ParseTrace.java` in
+and Check phases, plus the token list, tree nodes and `ASTPrinter` output. They are emitted by `src/test/util/ParseTrace.java` in
 the compiler repo, which does not instrument the parser: it derives the frames from
 the token stream and the AST's token anchors, so the tree shape is the parser's own.
 
     tests/showcase/trace.sh <name>      # writes tests/showcase/out/<name>.trace.json
 
-`reference.ts` imports these directly; `source`, `ast` and `sem` for each preset come
+`reference.ts` imports these directly; `source` and `ast` for each preset come
 from the JSON, so regenerating the trace regenerates the preset.
 
 Each frame also carries `why`: the decision behind the frame as ids and facts

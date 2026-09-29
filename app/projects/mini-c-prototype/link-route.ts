@@ -29,7 +29,7 @@
 export type Pt = { x: number; y: number }
 export type Box = { x: number; y: number; w: number; h: number }
 /** A tree edge as animated.tsx draws it: parent bottom to child top. */
-export type Edge = { from: Pt; to: Pt }
+type Edge = { from: Pt; to: Pt }
 
 export type Route = {
   /** Cubics in pixels, padded to at least SEGMENTS commands. */
@@ -45,7 +45,7 @@ export type Route = {
   bends: number
 }
 
-export type RouteOptions = {
+type RouteOptions = {
   /** Gap kept beside (x) and above/below (y) boxes; each shrinks to fit
    * the narrowest gap or channel. */
   clearance?: { x: number; y: number }
@@ -59,7 +59,7 @@ export type RouteOptions = {
   bounds?: Box
 }
 
-export const SEGMENTS = 14
+const SEGMENTS = 14
 
 const BEND = 30
 const CROSS = 6
@@ -621,14 +621,6 @@ export function linkRouter(obstacles: Box[], opts: RouteOptions = {}) {
   }
   return { route }
 }
-
-/** One-off: builds the router and routes a single link. */
-export const routeLink = (
-  from: Box,
-  to: Box,
-  obstacles: Box[],
-  opts?: RouteOptions,
-) => linkRouter(obstacles, opts).route(from, to)
 
 // Drops repeated and collinear points.
 const simplify = (points: Pt[]) => {

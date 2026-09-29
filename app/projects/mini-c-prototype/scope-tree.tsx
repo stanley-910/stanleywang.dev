@@ -46,7 +46,7 @@ export function ScopeTree({
   const nameOf = (id: number) => trace.tokens[nodes[id].token]?.text ?? ''
   // What a declaration makes, beside it: var, function or struct.
   const declKind = (id: number) => {
-    const kind = nodeKind(nodes[id]).kind
+    const kind = nodeKind(nodes[id], trace).kind
     return kind === 'variable'
       ? 'var'
       : kind === 'prototype'

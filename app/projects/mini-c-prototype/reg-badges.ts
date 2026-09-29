@@ -6,7 +6,7 @@
 // address, loaded from on the next line) never gets a badge.
 import type { Instruction } from './trace'
 
-export type RegBadge = {
+type RegBadge = {
   reg: string
   // The node that made it, where it waits.
   node: number
@@ -52,7 +52,7 @@ export function regBadges(instructions: Instruction[]): RegBadge[] {
   return badges
 }
 
-export type BadgePose = RegBadge & {
+type BadgePose = RegBadge & {
   // held: waiting beside its node; new: written this step; spent: read this
   // step, so it travels to the node that reads it and is gone after.
   state: 'held' | 'new' | 'spent' | 'new spent'

@@ -805,6 +805,45 @@
   border-bottom: 0;
   box-shadow: inset 0 -0.5px 0 var(--line);
 }
+/* The step's note docked in the pane (trial, the lexer's steps): the
+   file's name on the bar as on the floating window, the note in its face,
+   then the class the pane keeps under its own name. */
+.ac-note-file {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ac .ac-bar .ac-note-undock {
+  padding: 0 2px;
+  color: var(--muted);
+  font-size: 13px;
+  text-decoration: none;
+  line-height: 1;
+}
+.ac .ac-bar .ac-note-undock:hover,
+.ac .ac-bar .ac-note-undock:focus-visible {
+  color: var(--ink);
+}
+.ac-note-step {
+  font-family: 'Notes Prose', var(--font-mono);
+  line-height: 1.5;
+}
+.ac .ac-note-step code {
+  font-family: var(--font-mono);
+}
+.ac-pane-head {
+  margin: 14px 0 4px;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 600;
+}
+.ac-window-body > .ac-pane-head {
+  margin-top: 12px;
+  font-family: var(--font-mono);
+}
+.ac-window-body > .ac-pane-blurb,
+.ac-window-body > .ac-lexemes {
+  font-family: var(--font-mono);
+}
 /* What the class is, over its kinds. */
 .ac-pane-blurb {
   margin: 0;
@@ -1638,10 +1677,6 @@
   width: max-content;
   min-width: 100%;
 }
-.ac-proof-forest.wrap {
-  flex-wrap: wrap;
-  row-gap: 10px;
-}
 .ac-proof {
   display: inline-grid;
   grid-template-columns: auto auto;
@@ -1773,34 +1808,40 @@
   margin: 0;
 }
 
-/* Trial (Stanley, 2026-09-26): the notes in the Berkeley Mono Prose build,
-   tighter and with serifed letters for running text, while code and the rest
-   of the page stay in the Def build the site serves. local() only, so it
-   shows only where Prose is installed; everyone else sees Def. */
+/* The notes are set in the Berkeley Mono Prose build, tighter and with
+   serifed letters for running text; code and the rest of the page stay in the
+   Def build (app/styles/fonts.css). Both are served from public/fonts. */
 @font-face {
   font-family: 'Notes Prose';
-  src: local('Berkeley Mono Prose Regular'), local('BerkeleyMonoProse-Regular');
+  src: url('/fonts/berkeley-mono/BerkeleyMonoProse-Regular.woff2')
+    format('woff2');
   font-style: normal;
   font-weight: 400;
+  font-display: swap;
 }
 @font-face {
   font-family: 'Notes Prose';
-  src: local('Berkeley Mono Prose Oblique'), local('BerkeleyMonoProse-Oblique');
+  src: url('/fonts/berkeley-mono/BerkeleyMonoProse-Oblique.woff2')
+    format('woff2');
   font-style: italic;
   font-weight: 400;
+  font-display: swap;
 }
 @font-face {
   font-family: 'Notes Prose';
-  src: local('Berkeley Mono Prose Bold'), local('BerkeleyMonoProse-Bold');
+  src: url('/fonts/berkeley-mono/BerkeleyMonoProse-Bold.woff2')
+    format('woff2');
   font-style: normal;
   font-weight: 700;
+  font-display: swap;
 }
 @font-face {
   font-family: 'Notes Prose';
-  src: local('Berkeley Mono Prose Bold Oblique'),
-    local('BerkeleyMonoProse-BoldOblique');
+  src: url('/fonts/berkeley-mono/BerkeleyMonoProse-Bold-Oblique.woff2')
+    format('woff2');
   font-style: italic;
   font-weight: 700;
+  font-display: swap;
 }
 
 /* The step's note, in a small window over the simulation (note-window.tsx):
@@ -1854,6 +1895,14 @@
 }
 .ac .ac-window-box:hover {
   color: var(--ink);
+}
+/* The dock arrow takes the bar's free space; the box sits right beside it. */
+.ac .ac-window-dock {
+  color: var(--muted);
+  font-size: 13px;
+}
+.ac .ac-window-dock + .ac-window-box {
+  margin-left: 0;
 }
 .ac-window-body {
   max-height: min(220px, 40vh);

@@ -12,7 +12,7 @@ import type { Frame, Trace } from './trace'
 
 type Point = { x: number; y: number }
 
-export type ParseView = {
+type ParseView = {
   /** Offset from the finished layout, in tree units, per shown node. */
   shift: Map<number, Point>
   /** An incoming operator shown a step early, where it will sit. */

@@ -70,6 +70,7 @@ export function NoteWindow({
   children,
   foot,
   docked = false,
+  onDock,
 }: {
   title: string
   error?: boolean
@@ -86,6 +87,8 @@ export function NoteWindow({
   foot?: ReactNode
   /** Docked over the controls (a phone): not dragged or sized. */
   docked?: boolean
+  /** Puts the note back in the pane under the source (↙ on the bar). */
+  onDock?: () => void
 }) {
   const ref = useRef<HTMLElement>(null)
   const still = useReducedMotion()
@@ -235,7 +238,7 @@ export function NoteWindow({
   const width = docked
     ? '100%'
     : shut
-      ? Math.ceil(title.length * TITLE_CH + 39)
+      ? Math.ceil(title.length * TITLE_CH + 39 + (onDock ? 15 : 0))
       : openW
   const timing = { duration: still || resizing ? 0 : 0.22, ease: EASE }
 
@@ -279,6 +282,17 @@ export function NoteWindow({
         onDoubleClick={roll}
       >
         <span className="ac-window-title">{title}</span>
+        {onDock && (
+          <button
+            type="button"
+            className="ac-window-box ac-window-dock"
+            aria-label="Dock notes"
+            title="Dock"
+            onClick={onDock}
+          >
+            ↙
+          </button>
+        )}
         <button
           type="button"
           className="ac-window-box"

@@ -20,13 +20,12 @@ export const EXPRESSIONS = new Set([
   'name',
   'number',
 ])
-export const CHECKS = new Set(['return', 'if', 'while', 'assign'])
+const CHECKS = new Set(['return', 'if', 'while', 'assign'])
 
 // Something above a line: a proven part, or a fact the rule reads off the
 // program (a declaration, a field, a function's return type).
 type Premise =
-  | { kind: 'part'; id: number }
-  | { kind: 'fact'; key: string; code: string }
+  { kind: 'part'; id: number } | { kind: 'fact'; key: string; code: string }
 
 type Rule = {
   premises: Premise[]
@@ -37,7 +36,7 @@ type Rule = {
   bad?: { id: number; expected: string }
 }
 
-export type Derivation = ReturnType<typeof derive>
+type Derivation = ReturnType<typeof derive>
 
 // Everything the type pass has proven by step `index`.
 export function derive(trace: Trace, source: string, index: number) {
@@ -80,7 +79,12 @@ export function derive(trace: Trace, source: string, index: number) {
 
   const text = (id: number) => {
     const n = trace.nodes[id]
-    const s = source.slice(n.start, n.end).replace(/\s+/g, ' ').trim()
+    // (an expression standing as a statement is read to its `;`)
+    const s = source
+      .slice(n.start, n.end)
+      .replace(/\s+/g, ' ')
+      .trim()
+      .replace(/;$/, '')
     return s.length > 22 ? `${s.slice(0, 21)}…` : s || n.label
   }
   const parent = new Map<number, number>()

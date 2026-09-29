@@ -5,7 +5,7 @@
 // packed in rows shaped like the view, the biggest first and registers
 // with no edges last. No randomness: a program always lays out the same way.
 
-export type GraphLayout = {
+type GraphLayout = {
   at: Map<string, { x: number; y: number }>
   // Half the extent each way, about the centre (0, 0).
   halfW: number

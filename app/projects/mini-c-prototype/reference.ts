@@ -15,12 +15,11 @@ import wrongTypeTrace from './reference/wrong-type.trace.json'
 
 import type { Trace } from './trace'
 
-export type Reference = {
+type Reference = {
   name: string
   file: string
   source: string
   ast: string
-  sem: string[]
   // Frames emitted by the compiler itself (util.ParseTrace); the animation
   // plays these instead of the toy recorder when the source matches.
   trace: Trace
@@ -37,7 +36,6 @@ const entry = (name: string, file: string, json: unknown): Reference => {
     file,
     source: (trace.text ?? '').replace(/\s+$/, ''),
     ast: trace.ast ?? '',
-    sem: trace.sem ?? [],
     trace,
   }
 }

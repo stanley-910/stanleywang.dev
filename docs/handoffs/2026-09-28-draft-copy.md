@@ -7,6 +7,9 @@ uncommitted work in this batch.
 
 ## On the page: intro, About and side pane (`animated.tsx`, `explain.ts`)
 
+- The docked note's buttons (trial, 2026-09-29): "Undock notes" (↗) and
+  "Dock notes" (↙), with the tooltips "Undock" and "Dock".
+
 - [explain.ts:330](../../app/projects/mini-c-prototype/explain.ts:330): the intro's
   bracket naming the bundle (the rest of the intro is your text).
 - [animated.tsx:2930](../../app/projects/mini-c-prototype/animated.tsx:2930): the
@@ -56,15 +59,28 @@ uncommitted work in this batch.
   its kind" in explain.ts): "`.` becomes a method call expression.", "`*`
   becomes a value at expression.", "`class Base { }` becomes a class
   declaration." New today; it replaced "becomes a expression node".
-- An expression statement's note, quoting the statement (your ask, via the
-  other session): "`p.x = 10;` doesn't start with a keyword, so it's an
-  expression statement: an expression, then `;`. Its expression comes next."
+- Expression statements (2026-09-29). The tracer no longer puts an `expr`
+  node over a call or a field assignment; the expression is the statement,
+  as `first =` already was. When such a node appears: "Where a statement
+  goes, an expression and its `;` make an expression statement, so this
+  node is the statement too." When it closes: "The call to `print_i` has its
+  argument `first`. The `;` after it ends the statement." and "`=` now holds
+  both inputs, `p.x` and `10`, and the `;` after them ends the statement."
+  Only a statement cut short by a parse error keeps an `expr` node: "`p.x`
+  doesn't start with a keyword, so it's an expression statement: an
+  expression, then `;`."
 - [explain.ts:485](../../app/projects/mini-c-prototype/explain.ts:485): the parse
   error note ("the end of the program" and so on).
 - ParseTrace.java:1880: the step title "Expected X, found Y" / "The parser
   stops at …".
 
 ## Check (`explain.ts`, `ParseTrace.java`)
+
+- Struct fields (2026-09-29): parse, "`int x` (a type, then an identifier)
+  inside `struct Point { }` becomes a field declaration."; type pass,
+  "`struct Point`'s field `x` is declared `int`, so any `.x` on a
+  `struct Point` has that type."; the declarations blurb now reads "a
+  variable, a struct's field, a function, or a struct or class type."
 
 - [explain.ts:499](../../app/projects/mini-c-prototype/explain.ts:499): a definition
   joining its forward declaration, a declaration of a built-in, one hiding

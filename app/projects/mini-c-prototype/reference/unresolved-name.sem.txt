@@ -1,6 +1,0 @@
-Parsing: pass
-semantic error: UNDEFINED_SYMBOL: variable is not declared | at=2:10 | variable='missing'
-semantic error: UNDEFINED_SYMBOL: variable expression has no resolved declaration | at=2:10 | variable='missing'
-semantic error: TYPE_MISMATCH: binary operator requires INT operands | at=2:18 | operator='+' | lhs=unknown | rhs=int
-semantic error: RETURN_MISMATCH: return type mismatch | at=2:3 | function='main' | expected=int | actual=unknown
-Semantic analysis: Failed (4 errors)

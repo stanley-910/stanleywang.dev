@@ -4,7 +4,7 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import type { Lane } from './lanes'
 import type { CSSProperties } from 'react'
 
-export const LANE_GAP = 8
+const LANE_GAP = 8
 const LANE_LEFT = 6
 const TAG_W = 26
 
