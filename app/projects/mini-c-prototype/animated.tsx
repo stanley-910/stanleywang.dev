@@ -2065,9 +2065,9 @@ export default function AnimatedCompiler() {
   const stepVr = graphFn && 'step' in w ? graphSteps[w.step]?.vr : undefined
   const paletteIndex = (r: string) => backend?.palette.indexOf(r) ?? -1
   // (to a tenth, so a resize by a few pixels doesn't lay it out again)
-  // (a phone's graph gets the stage less the zoom buttons' room below it:
+  // (a phone's graph gets the stage less a little room below it:
   // graphPoint)
-  const GRAPH_FOOT = 60
+  const GRAPH_FOOT = 16
   const viewAspect =
     Math.round(
       (viewW / Math.max(1, narrow ? viewH - GRAPH_FOOT : viewH)) * 10,
@@ -2089,11 +2089,10 @@ export default function AnimatedCompiler() {
   const graphPoint = (vr: string) => {
     const p = graphLayout?.at.get(vr) ?? { x: 0, y: 0 }
     // A phone's note is docked, not over the stage: no band for it at the
-    // top, but room at the bottom for the zoom buttons, and a whole node's
-    // circle clear of the edges.
+    // top, a little room at the bottom, and a whole node's circle clear of
+    // the edges.
     const margin = narrow ? 26 : 28
     const top = narrow ? 0 : Math.min(NOTE_BAND, viewH * 0.25)
-    // (the zoom buttons: 44px on a phone, and their 8px inset)
     const bottom = narrow ? GRAPH_FOOT : 0
     const room = viewH - top - bottom
     const fit = Math.min(
@@ -2261,7 +2260,7 @@ export default function AnimatedCompiler() {
       c.size(
         Math.max(sceneWidth + over, proofs.right),
         // (and room under the last to pan it clear of the zoom buttons;
-        // a phone's are 44px, over the tree's lowest row)
+        // a phone has none, so only a little)
         Math.max(
           sceneHeight + (narrow ? GRAPH_FOOT : 0),
           proofs.bottom && proofs.bottom + (narrow ? GRAPH_FOOT : 40),
@@ -2361,7 +2360,7 @@ export default function AnimatedCompiler() {
         ? 0
         : (lateRoom.get(frame.focus) ?? 0) * fit * c.view().k
     const dx = into(node.left - at.left, node.right - at.left + badge, 0, viewW)
-    // (on a phone, clear of the 44px zoom buttons along the bottom)
+    // (on a phone, a little clear of the bottom)
     const dy = into(
       node.top - at.top,
       node.bottom - at.top,

@@ -2325,14 +2325,9 @@
   .ac-note:not(.open) > .ac-bar {
     box-shadow: none;
   }
-  /* Thumb-sized, as the steps below. */
-  .ac-zoom button {
-    width: 44px;
-    height: 44px;
-  }
-  .ac-zoom svg {
-    width: 20px;
-    height: 20px;
+  /* A phone pinches instead: the buttons only covered the stage. */
+  .ac-zoom {
+    display: none;
   }
   .ac-note.open .ac-note-body {
     height: var(--flow-source, 132px);
