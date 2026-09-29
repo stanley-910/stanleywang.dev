@@ -134,7 +134,7 @@ export type Tag = {
 // One colouring attempt (GraphColouringRegAlloc.color) as the allocator
 // ran it: its palette, the simplify/select order, and for the attempt the
 // code uses, each spilled register's word in `.data`.
-export type Colouring = {
+type Colouring = {
   palette: string[]
   steps: {
     op: 'simplify' | 'spillCandidate' | 'select' | 'spill'
@@ -424,11 +424,10 @@ export type Trace = {
   registers: Record<string, string>
   error?: Span & { message: string }
   root?: number
-  // set only on compiler-emitted traces: the real ASTPrinter output and
-  // the semantic analyser's lines, so the reference panel needs no toy
+  // set only on compiler-emitted traces; `ast` is the real ASTPrinter
+  // output, which check-trace.cjs compares with the toy's tree
   text?: string
   ast?: string
-  sem?: string[]
   backend?: Backend
   layout?: Layout
   scopes?: RecordedScope[]
@@ -1191,41 +1190,6 @@ export function colouredUpTo(
   return out
 }
 
-/** Live-in/live-out per instruction id after `sweep` sweeps of function `fn`. */
-export function liveAfterSweep(
-  backend: Backend,
-  fn: number,
-  sweep: number,
-): Record<number, { in: string[]; out: string[] }> {
-  const f = backend.functions[fn]
-  const out: Record<number, { in: string[]; out: string[] }> = {}
-  for (const sw of f.liveness) {
-    if (typeof sw.sweep !== 'number' || sw.sweep > sweep) continue
-    for (const c of sw.changes)
-      out[f.first + c.block] = { in: c.in, out: c.out }
-  }
-  return out
-}
-/**
- * What sweep `sweep` of function `fn` made live, by instruction id,
- * counting every register: the recorded sets keep only virtual ones, but
- * the sweeps also track `$fp` and `$sp` (a loop's second sweep is `$fp`
- * going round the back edge).
- */
-export function liveAdded(
-  backend: Backend,
-  fn: number,
-  sweep: number,
-): Map<number, string[]> {
-  const f = backend.functions[fn]
-  const added = new Map<number, string[]>()
-  for (const sw of f.liveness)
-    if (sw.sweep === sweep && 'changes' in sw)
-      for (const c of sw.changes)
-        if (c.added.length) added.set(f.first + c.block, c.added)
-  return added
-}
-
 /**
  * Lays the tree out in pixels. Each subtree gets a slot as wide as its widest
  * row, so labels at any depth never overlap; parents sit over their children.
@@ -1359,31 +1323,4 @@ export function toSExpression(trace: Trace): string | undefined {
   }
   const body = trace.nodes[trace.root].children.map(stmt).join(',')
   return `Program(FunDef(INT,main,Block(${body})))`
-}
-// Indents an s-expression one node per line when it has nested children.
-export function prettySExpression(text: string): string {
-  type Node = { name: string; args: Node[] }
-  let i = 0
-  const parse = (): Node => {
-    let name = ''
-    while (i < text.length && !'(),'.includes(text[i])) name += text[i++]
-    const node: Node = { name, args: [] }
-    if (text[i] === '(') {
-      i++
-      while (text[i] !== ')') {
-        node.args.push(parse())
-        if (text[i] === ',') i++
-      }
-      i++
-    }
-    return node
-  }
-  const print = (n: Node, depth: number): string => {
-    const pad = ' '.repeat(depth)
-    if (!n.args.length) return pad + n.name
-    if (n.args.every((a) => !a.args.length))
-      return `${pad}${n.name}(${n.args.map((a) => a.name).join(', ')})`
-    return `${pad}${n.name}(\n${n.args.map((a) => print(a, depth + 1)).join(',\n')}\n${pad})`
-  }
-  return print(parse(), 0)
 }

@@ -50,7 +50,7 @@ export type StackPointer = {
   last: number
 }
 
-export type WordKind =
+type WordKind =
   | 'link' // the caller's `$fp`, `$ra`
   | 'return'
   | 'param'
@@ -104,7 +104,7 @@ export type StackFrame = {
 const DATA = -1 << 20
 const FP = -4
 
-export function sizeOf(t: CType, layout: Layout): number {
+function sizeOf(t: CType, layout: Layout): number {
   switch (t.k) {
     case 'int':
     case 'ptr':

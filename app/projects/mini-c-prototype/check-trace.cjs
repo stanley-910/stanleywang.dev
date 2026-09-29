@@ -16,7 +16,7 @@ const compiled = ts.transpileModule(
 ).outputText
 const sandbox = { exports: {} }
 vm.runInNewContext(compiled, sandbox)
-const { buildTrace, toSExpression, prettySExpression } = sandbox.exports
+const { buildTrace, toSExpression } = sandbox.exports
 const plain = (value) => JSON.parse(JSON.stringify(value))
 function run(source) {
   const t = buildTrace(source)
@@ -179,5 +179,4 @@ for (const r of refBox.exports.REFERENCES) {
   if (toy.error) continue // loops and calls are outside the toy's subset; the compiler's trace is authoritative
   assert.equal(toSExpression(toy), r.ast, r.name)
 }
-assert.match(prettySExpression('A(B(C,D),E)'), /^A\(\n B\(C, D\),\n E\n\)$/)
 console.log('trace checks passed')

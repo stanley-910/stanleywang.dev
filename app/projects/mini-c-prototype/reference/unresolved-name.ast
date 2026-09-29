@@ -1,1 +1,0 @@
-Program(FunDef(INT,main,Block(Return(BinOp(VarExpr(missing),ADD,IntLiteral(1))))))

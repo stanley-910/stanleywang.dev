@@ -1,2 +1,0 @@
-Parsing: pass
-Semantic analysis: Pass

@@ -9,7 +9,7 @@ import { parentsOf } from './parse-view'
 
 import type { Frame, Trace } from './trace'
 
-export type EmitPart = { node: number; from: number; to: number }
+type EmitPart = { node: number; from: number; to: number }
 
 const isLeaf = (trace: Trace, id: number) => {
   const kind = trace.nodes[id].kind
