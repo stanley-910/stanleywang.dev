@@ -40,8 +40,9 @@ export type CanvasView = { x: number; y: number; k: number }
 export type CanvasRest = { home: boolean; least: boolean; most: boolean }
 
 export type Canvas = {
-  // The content's size in canvas px (it can be wider than the stage).
-  size(width: number, height: number): void
+  // The content's size in canvas px (it can be wider than the stage), and
+  // how far it runs left of the stage's edge (parse's earlier statements).
+  size(width: number, height: number, left?: number): void
   // What covers the stage's right or bottom edge (the listing's pane): the
   // view is what's left, and the content pans out from under it.
   inset(right: number, bottom: number): void
@@ -103,7 +104,8 @@ export function startCanvas(
   let x = 0,
     y = 0,
     k = 1
-  let width = scene.clientWidth,
+  let lead = 0,
+    width = scene.clientWidth,
     height = scene.clientHeight
   let settleTimer = 0
   let spring = 0
@@ -121,11 +123,12 @@ export function startCanvas(
   const vh = () => Math.max(1, scene.clientHeight - cover.bottom)
 
   // Where the content's corner may go along one axis at zoom z.
-  const range = (content: number, view: number): Range =>
-    content <= view ? [0, view - content] : [view - content, 0]
+  // (content from `from` to `to` in screen px at x = 0, from ≤ 0)
+  const range = (from: number, to: number, view: number): Range =>
+    to - from <= view ? [-from, view - to] : [view - to, -from]
   const limits = (z = k) => ({
-    x: range(width * z, vw()),
-    y: range(height * z, vh()),
+    x: range(lead * z, width * z, vw()),
+    y: range(0, height * z, vh()),
   })
 
   const apply = () => {
@@ -449,7 +452,8 @@ export function startCanvas(
   apply()
 
   return {
-    size(w, h) {
+    size(w, h, l = 0) {
+      lead = Math.min(0, l)
       width = w
       height = h
       if (!retarget() && !settleTimer && !pair) settle()

@@ -2540,6 +2540,27 @@ export default function AnimatedCompiler() {
     return shift
   })()
   const over = typedOver
+  // Parse, on one statement of a wide tree: the rest of the tree runs off
+  // both sides of the stage, and panning reaches it (in px, from the
+  // stage's left edge).
+  const parseReach = (() => {
+    if (frame.phase !== 'Parse') return { left: 0, right: 0 }
+    let left = 0,
+      right = 0
+    const ids =
+      working.preview === undefined
+        ? frame.nodes
+        : [...frame.nodes, working.preview]
+    for (const id of ids) {
+      const slot = tree.at[id]
+      if (!slot) continue
+      const x = treeLeft + (slot.x + (working.shift.get(id)?.x ?? 0)) * spread
+      const half = ((trace.nodes[id].label.length * CHAR_PX + 2) * fit) / 2
+      left = Math.min(left, x - half - EDGE_PX)
+      right = Math.max(right, x + half + EDGE_PX)
+    }
+    return { left: Math.floor(left), right: Math.ceil(right) }
+  })()
   // Registers draws its interference graph in place of the tree.
   const treeShown = !graphShown
   // The canvas's bounds: the stage, and whatever runs past its right edge;
@@ -2550,12 +2571,18 @@ export default function AnimatedCompiler() {
     c.inset(cover.right, cover.bottom)
     if (treeShown)
       // (a phone keeps room under the tree to pan it clear of the controls)
-      c.size(sceneWidth + over, sceneHeight + (narrow ? GRAPH_FOOT : 0))
+      c.size(
+        Math.max(sceneWidth + over, parseReach.right),
+        sceneHeight + (narrow ? GRAPH_FOOT : 0),
+        parseReach.left,
+      )
     else c.size(viewW, viewH)
   }, [
     sceneWidth,
     sceneHeight,
     over,
+    parseReach.left,
+    parseReach.right,
     cover.right,
     cover.bottom,
     treeShown,
@@ -2776,15 +2803,23 @@ export default function AnimatedCompiler() {
     listingSide,
   ])
   // Heals (above): once the step has settled, anything a checked group
-  // still shows past what it draws is an exit that never finished.
+  // still shows past what it draws is an exit that never finished. The
+  // wait starts over whenever what's drawn changes too, not just on a
+  // step: a resize that drops tray tokens starts exits of its own, which
+  // get their time to finish rather than being cut short.
+  const healWait = useRef({ key: '', timer: 0 })
   useEffect(() => {
+    const want = drawn.current
+    const key = [index, slide, epoch, want.pieces, want.edges, want.held].join()
+    if (key === healWait.current.key) return
+    healWait.current.key = key
+    clearTimeout(healWait.current.timer)
     // (a step's new nodes can wait out its attach first: `arrive`)
     const settle = (reduced ? 0 : transition.duration * 2) * 1000 + 250
-    const timer = window.setTimeout(() => {
+    healWait.current.timer = window.setTimeout(() => {
       const scene = sceneRef.current
       if (!scene) return
       const on = (selector: string) => scene.querySelectorAll(selector).length
-      const want = drawn.current
       if (
         on('[data-piece]') > want.pieces ||
         on('[data-edge]') > want.edges ||
@@ -2792,10 +2827,15 @@ export default function AnimatedCompiler() {
       )
         setHeals((h) => h + 1)
     }, settle)
-    return () => clearTimeout(timer)
-    // (a step, a slide or a redraw starts the wait over)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [index, slide, epoch])
+  })
+  useEffect(
+    () => () => {
+      clearTimeout(healWait.current.timer)
+      // (Strict Mode unmounts and mounts again: the next commit re-arms)
+      healWait.current.key = ''
+    },
+    [],
+  )
   useEffect(
     () => () => {
       clearTimeout(followTimer.current)

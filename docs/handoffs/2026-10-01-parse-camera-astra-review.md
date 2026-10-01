@@ -18,3 +18,10 @@ Motion 11.18.2 **does honor `exit.transition`** for these properties. An unchang
 
 The error-card implementation was removed while this review was running; findings above reflect the current files. No files were edited. Live browser verification was unavailable because computer-use access to Helium was denied.
 
+
+## Status (2026-10-01, after commit 071e5da)
+
+- 1, 2, 6: fixed in 071e5da.
+- 3: fixed. `canvas.size()` takes a left extent; parse passes every drawn node's reach on both sides (`parseReach`), so panning gets to earlier statements.
+- 5: partly fixed. The heal wait restarts whenever the drawn counts change, not only on a step, so a resize's exits get their time. Identity comparison and per-group remounts were not done.
+- 4: left open. Plausible only, never observed; the fix means moving the jump bookkeeping into state.
