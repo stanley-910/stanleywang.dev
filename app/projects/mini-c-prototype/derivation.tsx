@@ -6,7 +6,7 @@
 // proof is its subtree upside down, leaves on top. Parts not yet joined
 // under a parent sit side by side, waiting for the bar that joins them.
 // The stage draws every statement's proof under the tree (proof-stage.tsx);
-// the side panel, the current rule (type-panel.tsx).
+// a node's hover, the rule that typed it (animated.tsx).
 import { returnType } from './type-view'
 
 import type { Trace } from './trace'

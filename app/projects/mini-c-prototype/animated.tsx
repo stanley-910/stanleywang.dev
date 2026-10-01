@@ -34,6 +34,7 @@ import {
 } from 'react'
 
 import { startCanvas, type Canvas, type CanvasRest } from './canvas-zoom'
+import { derive, ProofTree } from './derivation'
 import { detailTrace } from './detail'
 import { EmitLanes, lanesWidth } from './emit-lanes'
 import { withEmitBlocks, withEmitLines } from './emit-view'
@@ -78,7 +79,6 @@ import {
   type Trace,
   treePositions,
 } from './trace'
-import { hasTypeRule, TypePanel } from './type-panel'
 import { withTypeSteps } from './type-view'
 import '@/app/styles/markdown.css'
 import './animated.css'
@@ -142,7 +142,7 @@ const TREE_GAP = 14
 // A type badge's characters (10px).
 const TYPE_PX = 6
 const EDGE_PX = 24
-type PaneKind = 'token' | 'chars' | 'kinds' | 'scopes' | 'types' | 'stack'
+type PaneKind = 'token' | 'chars' | 'kinds' | 'scopes' | 'stack'
 // The side pane's headline over a class's list (DRAFT copy).
 const TOKEN_HEADS: Record<string, string> = {
   type: 'types',
@@ -918,9 +918,10 @@ export default function AnimatedCompiler() {
   // the step it first shows. The type pass makes room node by node as it
   // reaches them, rather than all at once.
   const badgeTexts = useMemo(() => {
-    const out: { id: number; width: number; step: number }[] = []
-    const fit = (id: number, text: string, step: number) =>
-      out.push({ id, width: text.length * TYPE_PX + 13, step })
+    const out: { id: number; width: number; step: number; only?: boolean }[] =
+      []
+    const fit = (id: number, text: string, step: number, only?: boolean) =>
+      out.push({ id, width: text.length * TYPE_PX + 13, step, only })
     for (const [id, { type, step }] of typedStep) fit(id, type, step)
     for (const [id, { type, step }] of functionType) fit(id, type, step)
     trace.frames.forEach((f, step) => {
@@ -931,6 +932,8 @@ export default function AnimatedCompiler() {
           f.why.node,
           builtinCall(f.why.node) ? sig + ' '.repeat(BUILTIN_TAG) : sig,
           step,
+          // (a call's signature shows on its own step only)
+          true,
         )
     })
     return out
@@ -2298,11 +2301,14 @@ export default function AnimatedCompiler() {
     namesDoneAt >= 0 &&
     (index > namesDoneAt ||
       (index === namesDoneAt && slide > 0 && decks.has(index)))
-  // Each node's widest badge so far.
+  // The room each node's badge takes this step: a call's signature on its
+  // step, then just its type, so the tree closes up again once the
+  // signature collapses (Stanley, 2026-10-01).
   const badgeRoom = useMemo(() => {
     const room = new Map<number, number>()
-    for (const { id, width, step } of badgeTexts)
-      if (step <= index) room.set(id, Math.max(room.get(id) ?? 0, width))
+    for (const { id, width, step, only } of badgeTexts)
+      if (only ? step === index : step <= index)
+        room.set(id, Math.max(room.get(id) ?? 0, width))
     return room
   }, [badgeTexts, index])
   // Every phase keeps the check layout, so the tree holds its shape from
@@ -3006,13 +3012,13 @@ export default function AnimatedCompiler() {
   // A node's type badge on this step. New ones fade in, an operator's own
   // after its operands'; a checked value and what it must fit go green when
   // the check lands; a mismatch shows what was needed.
-  // The type pass, as the tree: the checks the step's rule makes that can
-  // fail, each on the edge down to the child it holds to a type, green or
-  // red as the child's badge fits or doesn't: an operator's operands, a
-  // call's arguments, an assignment's value, both sides of `==`, a
-  // condition and a returned value (rules.tex). A literal's or a sizeof's
-  // type is fixed by its rule, so its edge stays plain (Stanley,
-  // 2026-10-01, from Fable's review).
+  // The type pass, as the tree: the checks the step's rule makes, each on
+  // the edge down to the child it holds to a type, green or red as the
+  // child's badge fits or doesn't: an operator's operands, a call's
+  // arguments, an assignment's value, both sides of `==`, a condition and
+  // a returned value (rules.tex). A literal's edge too: `"hi" + 1` fails
+  // on it, and its badge goes green with the rest (Stanley, 2026-10-01:
+  // only `×`'s edge went green under `4 + ×`).
   const asserts = (() => {
     const w = frame.why
     if (!typing || (w.kind !== 'check.expr' && w.kind !== 'check.fits'))
@@ -3030,13 +3036,10 @@ export default function AnimatedCompiler() {
           : n.label === '=' && kids.length === 2
             ? [kids[1]]
             : []
-    const fixed = (id: number) =>
-      trace.nodes[id].kind === 'number' || trace.nodes[id].label === 'SizeOf'
     const bad = w.kind === 'check.expr' ? w.bad : w.ok ? undefined : w.value
     const out = new Map<number, { ok: boolean }>()
     for (const k of held)
-      if (!fixed(k))
-        out.set(k, { ok: w.ok || (bad !== undefined && bad !== k) })
+      out.set(k, { ok: w.ok || (bad !== undefined && bad !== k) })
     return { node: w.node, edges: out }
   })()
   const typeBadge = (id: number) => {
@@ -3167,6 +3170,22 @@ export default function AnimatedCompiler() {
   const bindings = new Map(frame.links ?? [])
   if (w.kind === 'check.resolve' || w.kind === 'check.link')
     bindings.set(w.use, w.decl)
+  // A field access's line in its struct: `.x` on a `struct Point`, its
+  // `int x` (the struct's type as the type pass has it by now).
+  const fieldDecl = (id: number) => {
+    const n = trace.nodes[id]
+    if (n.kind !== 'expr' || !n.label.startsWith('.') || !n.children.length)
+      return undefined
+    const struct = typedStep
+      .get(n.children[0])
+      ?.type.match(/^struct (\w+)$/)?.[1]
+    const decl = trace.nodes.find(
+      (d) => d.kind === 'declare' && d.label === `struct ${struct} { }`,
+    )
+    return decl?.children.find((c) =>
+      trace.nodes[c].label.endsWith(` ${n.label.slice(1)}`),
+    )
+  }
   // Type pass: a step links its node to the declaration its type comes
   // from: a name to its declaration (type-view.ts), a call to its
   // function's, a field to its line in the struct.
@@ -3182,19 +3201,8 @@ export default function AnimatedCompiler() {
       )
       return fn ? [w.node, fn.id] : undefined
     }
-    if (n.kind === 'expr' && n.label.startsWith('.') && n.children.length) {
-      const struct = typedStep
-        .get(n.children[0])
-        ?.type.match(/^struct (\w+)$/)?.[1]
-      const decl = trace.nodes.find(
-        (d) => d.kind === 'declare' && d.label === `struct ${struct} { }`,
-      )
-      const field = decl?.children.find((c) =>
-        trace.nodes[c].label.endsWith(` ${n.label.slice(1)}`),
-      )
-      return field !== undefined ? [w.node, field] : undefined
-    }
-    return undefined
+    const field = fieldDecl(w.node)
+    return field !== undefined ? [w.node, field] : undefined
   })()
   if (typeLink) bindings.set(...typeLink)
   const links = [...bindings]
@@ -3299,22 +3307,101 @@ export default function AnimatedCompiler() {
       end: body ? trace.tokens[body.id - 1].end : f.end,
     }
   }
-  const pairMarks = resolve
+  // The type pass in the editor: what the step checks, and where each
+  // part's type comes from, so the matching types read in the source as
+  // they do on the tree (Stanley, 2026-10-01, from the return's `int
+  // main()` and `p.x + p.y`). A part is green, or red where the check
+  // broke; its type's source is its declaration (`struct Point p`), its
+  // field's line in the struct (`int x`), its function's signature, or,
+  // for a return, the enclosing function's. A literal, or an expression
+  // the pass typed on an earlier step, is its own source. Types come from
+  // declarations, never from what was assigned: `p.x` is `int` with or
+  // without `p.x = 10`.
+  type Mark = {
+    start: number
+    end: number
+    kind: 'use' | 'decl'
+    tone: 'ok' | 'bad'
+  }
+  const typeMarks = (() => {
+    if (!typing) return undefined
+    const w = frame.why
+    const marks: Mark[] = []
+    const span = (id: number) => ({
+      start: trace.nodes[id].start,
+      end: trace.nodes[id].end,
+    })
+    const sourceOf = (id: number) => {
+      const n = trace.nodes[id]
+      if (n.kind === 'call') {
+        const name = n.label.replace(/\(\)$/, '')
+        const fn = trace.nodes.find(
+          (f) => f.kind === 'function' && f.label === name,
+        )
+        return fn ? signatureSpan(fn.id) : undefined
+      }
+      const decl = bindings.get(id) ?? fieldDecl(id)
+      return decl !== undefined ? declSpan(decl) : undefined
+    }
+    const add = (id: number, ok = true) => {
+      const tone = ok ? 'ok' : 'bad'
+      marks.push({ ...span(id), kind: 'use', tone })
+      const from = sourceOf(id)
+      if (from) marks.push({ ...from, kind: 'decl', tone })
+    }
+    if (w.kind === 'check.type') {
+      const n = trace.nodes[w.node]
+      if (n.kind === 'function')
+        marks.push({ ...signatureSpan(w.node), kind: 'decl', tone: 'ok' })
+      else if (n.kind === 'declare')
+        marks.push({ ...declSpan(w.node), kind: 'decl', tone: 'ok' })
+      else add(w.node)
+    } else if (w.kind === 'check.expr') {
+      const held = [...(asserts?.edges ?? [])]
+      if (held.length) for (const [id, { ok }] of held) add(id, ok)
+      else add(w.node, w.ok)
+      // What the parts are held to: an assignment's target's type, a
+      // call's signature.
+      const n = trace.nodes[w.node]
+      const to =
+        n.label === '=' && n.children.length === 2
+          ? sourceOf(n.children[0])
+          : n.kind === 'call'
+            ? sourceOf(w.node)
+            : undefined
+      if (to) marks.push({ ...to, kind: 'decl', tone: w.ok ? 'ok' : 'bad' })
+    } else if (w.kind === 'check.fits') {
+      add(w.value, w.ok)
+      const tone = w.ok ? 'ok' : 'bad'
+      if (w.rule === 'return' && returnCheck)
+        marks.push({ ...signatureSpan(returnCheck.fn), kind: 'decl', tone })
+      if (w.rule === 'assign') {
+        const decl = bindings.get(w.node)
+        if (decl !== undefined)
+          marks.push({ ...declSpan(decl), kind: 'decl', tone })
+      }
+    } else return undefined
+    // In source order, one mark to a stretch (two uses of one name share
+    // its declaration).
+    const out: Mark[] = []
+    for (const m of marks.sort((a, b) => a.start - b.start))
+      if (!out.length || m.start >= out[out.length - 1].end) out.push(m)
+    return out.length ? out : undefined
+  })()
+  const pairMarks: Mark[] | undefined = resolve
     ? [
-        { ...trace.tokens[trace.nodes[resolve.use].token], kind: 'use' },
-        { ...declSpan(resolve.decl), kind: 'decl' },
+        {
+          ...trace.tokens[trace.nodes[resolve.use].token],
+          kind: 'use' as const,
+          tone: 'ok' as const,
+        },
+        {
+          ...declSpan(resolve.decl),
+          kind: 'decl' as const,
+          tone: 'ok' as const,
+        },
       ].sort((a, b) => a.start - b.start)
-    : returnCheck
-      ? [
-          {
-            start: trace.nodes[returnCheck.value].start,
-            end: trace.nodes[returnCheck.value].end,
-            kind: 'use',
-          },
-          { ...signatureSpan(returnCheck.fn), kind: 'decl' },
-        ].sort((a, b) => a.start - b.start)
-      : undefined
-  const pairTone = returnCheck && !returnCheck.ok ? 'bad' : 'ok'
+    : typeMarks
   const lines = source.split('\n')
   // The longest line, in characters (a tab as its two columns): the text
   // column is that wide, so a long line scrolls the whole pane sideways
@@ -3436,8 +3523,9 @@ export default function AnimatedCompiler() {
         : panePhase === 'Parse'
           ? 'kinds'
           : panePhase === 'Check'
-            ? typing
-              ? 'types'
+            ? // (the type pass's rule shows on hover, by its node: no pane)
+              typing
+              ? null
               : 'scopes'
             : panePhase === 'Emit' && namedTrace.recorded
               ? 'stack'
@@ -3508,11 +3596,9 @@ export default function AnimatedCompiler() {
           ? paneNode && NODE_HEADS[paneNode.cls]
           : paneKind === 'scopes'
             ? 'symbol table'
-            : paneKind === 'types'
-              ? 'typing rule'
-              : paneKind === 'stack'
-                ? 'stack frame'
-                : ''
+            : paneKind === 'stack'
+              ? 'stack frame'
+              : ''
   const paneBlurb =
     paneKind === 'token'
       ? paneToken && TOKEN_BLURBS[paneToken.cls]
@@ -3574,11 +3660,9 @@ export default function AnimatedCompiler() {
             ? scopes.scopes.some((sc) =>
                 sc.decls.some((d) => scopes.declaredStep(d) <= index),
               )
-            : paneKind === 'types'
-              ? !intro && hasTypeRule(frame.why)
-              : paneKind === 'stack'
-                ? !!stackNow || !!stackAt || (emitStage && !!oversized)
-                : false
+            : paneKind === 'stack'
+              ? !!stackNow || !!stackAt || (emitStage && !!oversized)
+              : false
   // With nothing to keep, the pane folds away: its top border, the divider,
   // runs down to the bottom and the source grows into the room; it comes
   // back up when a pass has something. `data-fold` on the editor: 'shut'
@@ -3590,15 +3674,16 @@ export default function AnimatedCompiler() {
     !welcome &&
     !intro &&
     !error &&
-    (panePhase === 'Tokens' ||
-      panePhase === 'Parse' ||
-      paneKind === 'scopes' ||
-      paneKind === 'types')
-  // A lexer, parser, name-pass or type-pass step has no sentence of its
-  // own: the class it's in (or the symbol table, or the typing rule) says
-  // it, named in the note's header (Stanley, 2026-09-30; the types,
-  // 2026-10-01). The finished tree keeps its sentence.
+    (panePhase === 'Tokens' || panePhase === 'Parse' || paneKind === 'scopes')
+  // A lexer, parser or name-pass step has no sentence of its own: the
+  // class it's in (or the symbol table) says it, named in the note's
+  // header (Stanley, 2026-09-30). The finished tree keeps its sentence.
   const classStep = passStep && frame.why.kind !== 'parse.done'
+  // Nor does a type-pass step, and with the typing rule section gone its
+  // note would be empty, so there is none: a node's rule shows on hover,
+  // by the node (Stanley, 2026-10-01). Its slide and an error keep theirs.
+  const typeStep =
+    !welcome && !intro && !error && typing && panePhase === 'Check'
   // A slide and the finished tree stand alone in the note: the pass's
   // record comes in with its first step.
   const noteAlone = !!intro || (passStep && !classStep)
@@ -3728,7 +3813,7 @@ export default function AnimatedCompiler() {
         y: at.y - trayOffset,
       }
     }
-    if (hoverNode) {
+    if (hoverNode && !typing) {
       const { cls, kind } = nodeKind(hoverNode, trace)
       return {
         key: `node-${hoverNode.id}`,
@@ -3742,6 +3827,9 @@ export default function AnimatedCompiler() {
     return undefined
   })()
   const cardText = card?.title.length ?? 0
+  // A node's card at the node's own size: on a shrunk tree, full size it
+  // dwarfed the labels (Stanley, 2026-10-01). A token's, at the tray's.
+  const ck = hoverNode ? fit : 1
   // Closed, the card is just the class, centred under the piece. Open, it
   // grows right and down to the full class list, its label nudged left.
   // Widths are exact because the text is monospace.
@@ -3749,7 +3837,7 @@ export default function AnimatedCompiler() {
     Math.max(8, Math.min(left, sceneWidth - width - 8))
   const cardAt = card && {
     closed: (() => {
-      const width = cardText * CARD_CHAR_PX + 22
+      const width = (cardText * CARD_CHAR_PX + 22) * ck
       return { left: clampLeft(card.x / unit - width / 2, width), width }
     })(),
     y: card.y,
@@ -3757,18 +3845,18 @@ export default function AnimatedCompiler() {
   // Open, it is only as wide as the class list needs (items are 6px padding
   // and a 1px border each side, 6px apart), up to 260 before it wraps.
   const listWidth = (card?.list ?? []).reduce(
-    (w, l, i) => w + l.length * CARD_CHAR_PX + 14 + (i ? 6 : 0),
+    (w, l, i) => w + (l.length * CARD_CHAR_PX + 14 + (i ? 6 : 0)) * ck,
     0,
   )
   const openWidth = Math.min(
-    260,
+    260 * ck,
     sceneWidth - 16,
-    Math.max(listWidth + 24, cardText * CARD_CHAR_PX + 22),
+    Math.max(listWidth + 24 * ck, (cardText * CARD_CHAR_PX + 22) * ck),
   )
   // Open, the list wraps at the card's width: its rows of items (6px apart)
   // under the title, for the height the placing below allows for.
   const openHeight = (() => {
-    const inner = openWidth - 22
+    const inner = (openWidth - 22 * ck) / ck
     let rows = card?.list.length ? 1 : 0,
       x = 0
     for (const l of card?.list ?? []) {
@@ -3778,7 +3866,7 @@ export default function AnimatedCompiler() {
         x = w
       } else x += (x ? 6 : 0) + w
     }
-    return 30 + (rows ? 10 + rows * 19.6 + (rows - 1) * 6 : 0)
+    return (30 + (rows ? 10 + rows * 19.6 + (rows - 1) * 6 : 0)) * ck
   })()
   // A node's card keeps clear of it and of the links on the stage: right of
   // the node, else under, left or above it, whichever crosses no link and
@@ -3796,17 +3884,17 @@ export default function AnimatedCompiler() {
     const c = toPx({ x: card.x, y: card.y })
     const under: Spot = {
       left: cardAt.closed.left,
-      top: c.y + 16,
+      top: c.y + 16 * ck,
       side: 'under',
     }
     const cardNode = hoverNode?.id
     if (cardNode === undefined) return under
     const half = pieceBox(cardNode).w / 2
     const spots: Spot[] = [
-      { left: c.x + half + 8, top: c.y - 15, side: 'right' },
+      { left: c.x + half + 8 * ck, top: c.y - 15 * ck, side: 'right' },
       under,
-      { left: c.x - half - 8, top: c.y - 15, side: 'left' },
-      { left: cardAt.closed.left, top: c.y - 16, side: 'above' },
+      { left: c.x - half - 8 * ck, top: c.y - 15 * ck, side: 'left' },
+      { left: cardAt.closed.left, top: c.y - 16 * ck, side: 'above' },
     ]
     const drawn = [...(linkRoutes?.entries() ?? [])]
       .filter(([key]) => {
@@ -3844,7 +3932,7 @@ export default function AnimatedCompiler() {
     // never needs another spot.
     const open = card.list.length > 0
     const w = open ? openWidth : cardAt.closed.width
-    const h = open ? openHeight : 30
+    const h = open ? openHeight : 30 * ck
     const cost = (spot: Spot) => {
       const s = {
         left:
@@ -3916,6 +4004,49 @@ export default function AnimatedCompiler() {
     }
   })()
 
+  // The type pass: hovering a node, or its type, shows the rule that gave
+  // it, one level up, as the typing rule section did (Stanley,
+  // 2026-10-01: it replaces that section and the class card). It sits over
+  // the node, else under it, at the node's size.
+  const proof = (() => {
+    if (!typing || !hoverNode) return undefined
+    const d = derive(trace, trace.text ?? source, index)
+    return d.proven(hoverNode.id) ? { d, id: hoverNode.id } : undefined
+  })()
+  const proofRef = useRef<HTMLDivElement>(null)
+  const [proofSize, setProofSize] = useState<{
+    key: string
+    w: number
+    h: number
+  } | null>(null)
+  const proofKey = proof ? `${proof.id}-${index}-${fit}` : ''
+  useLayoutEffect(() => {
+    const el = proofRef.current
+    if (!el) return
+    const next = { key: proofKey, w: el.offsetWidth, h: el.offsetHeight }
+    setProofSize((was) =>
+      was?.key === next.key && was.w === next.w && was.h === next.h
+        ? was
+        : next,
+    )
+  }, [proofKey])
+  const proofAt = (() => {
+    if (!proof) return undefined
+    const size = proofSize?.key === proofKey ? proofSize : undefined
+    if (!size) return { left: 0, top: 0, measured: false }
+    const box = pieceBox(proof.id)
+    const gap = 8 * fit
+    const above = box.y - gap - size.h
+    return {
+      left: Math.max(
+        4,
+        Math.min(box.x + box.w / 2 - size.w / 2, sceneWidth - size.w - 4),
+      ),
+      top: above >= 4 ? above : box.y + box.h + gap,
+      measured: true,
+    }
+  })()
+
   const stackColumn = (at?: { x: number; y: number }) => (
     <StackColumn
       key={at ? `${at.x},${at.y}` : 'docked'}
@@ -3942,7 +4073,7 @@ export default function AnimatedCompiler() {
   )
   // The step's note: docked at the bottom of the editor on a phone, under
   // the source it grows up into; a window over the stage elsewhere.
-  const noteWindow = !noteInPane && !pinnedError && (
+  const noteWindow = !noteInPane && !pinnedError && !typeStep && (
     <NoteWindow
       docked={narrow}
       height={flowSizes.note}
@@ -3987,9 +4118,6 @@ export default function AnimatedCompiler() {
           step={index}
           duration={transition.duration}
         />
-      )}
-      {paneInWindow && classStep && paneKind === 'types' && (
-        <TypePanel trace={trace} source={trace.text ?? source} index={index} />
       )}
     </NoteWindow>
   )
@@ -4186,12 +4314,12 @@ export default function AnimatedCompiler() {
                     {pairMarks ? (
                       <>
                         {pairMarks.map((mark, i) => (
-                          <Fragment key={mark.kind}>
+                          <Fragment key={mark.start}>
                             {source.slice(
                               i ? pairMarks[i - 1].end : 0,
                               mark.start,
                             )}
-                            <mark className={`${pairTone} ${mark.kind}`}>
+                            <mark className={`${mark.tone} ${mark.kind}`}>
                               {source.slice(mark.start, mark.end)}
                             </mark>
                           </Fragment>
@@ -4376,13 +4504,6 @@ export default function AnimatedCompiler() {
                   duration={transition.duration}
                 />
               )}
-              {!(noteInPane && noteAlone) && paneKind === 'types' && (
-                <TypePanel
-                  trace={trace}
-                  source={trace.text ?? source}
-                  index={index}
-                />
-              )}
               {!(noteInPane && noteAlone) &&
                 paneKind === 'stack' &&
                 (stackAt ? (
@@ -4399,7 +4520,7 @@ export default function AnimatedCompiler() {
               )}
             </div>
           </section>
-          {narrow && (
+          {narrow && noteWindow && (
             <div className="ac-flownote">
               {flowSplit('note')}
               {noteWindow}
@@ -5079,10 +5200,28 @@ export default function AnimatedCompiler() {
                       },
                     )}
                 </AnimatePresence>
+                {proof && proofAt && (
+                  <div
+                    ref={proofRef}
+                    key={`proof-${proof.id}`}
+                    className="ac-hover-proof"
+                    style={{
+                      left: proofAt.left,
+                      top: proofAt.top,
+                      maxWidth: sceneWidth - 8,
+                      visibility: proofAt.measured ? undefined : 'hidden',
+                      ['--ck' as string]: fit,
+                    }}
+                    aria-hidden
+                  >
+                    <ProofTree d={proof.d} id={proof.id} limit={1} />
+                  </div>
+                )}
                 {card && cardAt && cardBox && (
                   <motion.div
                     key={card.key}
                     className="ac-hover"
+                    style={{ '--ck': ck } as MotionStyle}
                     initial={false}
                     animate={cardBox}
                     transition={{ duration: reduced ? 0 : 0.22, ease: EASE }}
@@ -5104,7 +5243,7 @@ export default function AnimatedCompiler() {
                             <ul
                               className="ac-lexemes"
                               aria-label={card.label}
-                              style={{ width: openWidth - 22 }}
+                              style={{ width: openWidth - 22 * ck }}
                             >
                               {card.list.map((lexeme) => (
                                 <li

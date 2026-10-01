@@ -159,7 +159,8 @@
    rail along the bottom edge, on its own timeline. */
 .ac.bare :is(.ac-source, .ac-listing-scroll) {
   border-bottom: 9px solid transparent;
-  background-image: repeating-linear-gradient(
+  background-image:
+    repeating-linear-gradient(
       to bottom,
       var(--rail, transparent) 0 2px,
       transparent 2px 5px
@@ -1800,6 +1801,52 @@
     animation: none;
   }
 }
+/* The type pass's hover: the rule that typed a node, by the node, at its
+   size (--ck, the tree's fit). */
+.ac-hover-proof {
+  position: absolute;
+  padding: calc(6px * var(--ck, 1)) calc(10px * var(--ck, 1));
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Notes Prose', var(--font-mono);
+  font-size: calc(11px * var(--ck, 1));
+  line-height: 1.4;
+  pointer-events: none;
+  z-index: 6;
+}
+/* (no wider than the stage: a long expression wraps) */
+.ac .ac-hover-proof code {
+  padding: 0;
+  background: none;
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+}
+.ac-hover-proof .ac-proof {
+  max-width: 100%;
+}
+.ac-hover-proof .ac-proof-premises {
+  gap: calc(14px * var(--ck, 1));
+}
+.ac .ac-hover-proof .ac-proof-name {
+  font-size: 0.91em;
+  line-height: 1.1;
+}
+/* (it isn't the step's rule: drawn whole, not faded in, its line as thin
+   as any; and nothing in it opens, so a folded part isn't underlined) */
+.ac-hover-proof .ac-proof {
+  animation: none;
+}
+.ac-hover-proof .ac-proof > .ac-proof-line {
+  border-top-width: 1px;
+}
+.ac-hover-proof .ac-proof.folded {
+  border-bottom: 0;
+}
+.ac-hover-proof .ac-proof .ac-proof-conclusion,
+.ac-hover-proof .ac-proof .ac-proof-fact {
+  opacity: 1;
+}
 /* The same proofs on the stage, under the tree (proof-stage.tsx): one
    per statement, each in the place kept for it finished. */
 .ac-proof-stage {
@@ -1827,35 +1874,6 @@
 .ac-proof-measure {
   visibility: hidden;
 }
-.ac-type-caption {
-  display: block;
-  margin-bottom: 4px;
-}
-.ac-type-stack {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  border: 1px solid var(--line);
-}
-.ac-type-stack li {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 1px 8px;
-}
-/* A long expression wraps in its row (it's whole, not cut: derivation.tsx);
-   its state keeps to the right. */
-.ac .ac-type-stack li code {
-  min-width: 0;
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
-.ac-type-stack li > span {
-  flex: none;
-}
-.ac-type-stack li + li {
-  border-top: 1px solid var(--line);
-}
 .ac-type-done {
   margin: 0;
 }
@@ -1881,8 +1899,7 @@
 }
 @font-face {
   font-family: 'Notes Prose';
-  src: url('/fonts/berkeley-mono/BerkeleyMonoProse-Bold.woff2')
-    format('woff2');
+  src: url('/fonts/berkeley-mono/BerkeleyMonoProse-Bold.woff2') format('woff2');
   font-style: normal;
   font-weight: 700;
   font-display: swap;
@@ -2174,14 +2191,15 @@
   background: var(--line);
 }
 
-/* Card under a clicked or hovered token or node. */
+/* Card under a clicked or hovered token or node, at the node's size
+   (--ck, the tree's fit). */
 .ac-hover {
   position: absolute;
-  padding: 6px 10px;
+  padding: calc(6px * var(--ck, 1)) calc(10px * var(--ck, 1));
   border: 1px solid var(--line);
   background: var(--bg);
   color: var(--ink);
-  font-size: 11px;
+  font-size: calc(11px * var(--ck, 1));
   line-height: 1.4;
   white-space: nowrap;
   overflow: hidden;
@@ -2199,9 +2217,13 @@
   min-height: 0;
 }
 .ac-hover .ac-lexemes {
+  gap: calc(4px * var(--ck, 1));
   margin: 0;
-  padding: 8px 0 2px;
-  font-size: 11px;
+  padding: calc(8px * var(--ck, 1)) 0 calc(2px * var(--ck, 1));
+  font-size: calc(11px * var(--ck, 1));
+}
+.ac-hover .ac-lexemes li {
+  padding: 0 calc(4px * var(--ck, 1));
 }
 /* The step, by the scrubber it reads. */
 .ac-counter {
