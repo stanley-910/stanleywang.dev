@@ -1,0 +1,52 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "compiler-showcase",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "--hostname",
+        "127.0.0.1",
+        "--port",
+        "3107"
+      ],
+      "port": 3107,
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "main",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "/Users/stanley/Developer/portfolios/stanley-wang",
+        "run",
+        "dev",
+        "--",
+        "--hostname",
+        "127.0.0.1",
+        "--port",
+        "3000"
+      ],
+      "port": 3000
+    },
+    {
+      "name": "header-logo",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "/Users/stanley/worktrees/stanley-wang/2026-09-30_header-logo",
+        "run",
+        "dev",
+        "--",
+        "--hostname",
+        "127.0.0.1",
+        "--port",
+        "3108"
+      ],
+      "port": 3108
+    }
+  ]
+}
