@@ -546,6 +546,17 @@
   color: var(--ink);
   background: color-mix(in srgb, var(--ok) 32%, transparent);
 }
+/* A return that doesn't fit its function's signature, the same pair in
+   red. */
+.ac-text mark.bad.use {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--err) 8%, var(--bg));
+  box-shadow: inset 0 0 0 1px var(--err);
+}
+.ac-text mark.bad.decl {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--err) 32%, transparent);
+}
 /* Detailed lexer: characters read so far underlined, the current one a block
    (outlined when only looked at), skipped whitespace a faint band. */
 .ac-text mark.reading {
@@ -658,17 +669,11 @@
   cursor: col-resize;
   touch-action: none;
 }
-.ac-colsplit:hover,
-.ac-colsplit:focus-visible,
-.ac-colsplit:active {
+.ac-colsplit:is(:hover, :focus-visible, :active) {
   outline: none;
-  background: linear-gradient(
-    90deg,
-    transparent 3px,
-    var(--muted) 3px,
-    var(--muted) 4px,
-    transparent 4px
-  );
+}
+.ac-work:has(> .ac-colsplit:is(:hover, :focus-visible, :active)) .ac-editor {
+  border-right-color: var(--muted);
 }
 /* The note's top border, draggable. */
 .ac-split {
@@ -681,16 +686,13 @@
   cursor: row-resize;
   touch-action: none;
 }
-.ac-split:hover,
-.ac-split:focus-visible,
-.ac-split:active {
+/* Hovered, the border itself lights: a line drawn over it lands on a
+   fractional pixel and sits beside it, not on it. */
+.ac-split:is(:hover, :focus-visible, :active) {
   outline: none;
-  background: linear-gradient(
-    transparent 3px,
-    var(--muted) 3px,
-    var(--muted) 4px,
-    transparent 4px
-  );
+}
+.ac-note:has(> .ac-split:is(:hover, :focus-visible, :active)) {
+  border-top-color: var(--muted);
 }
 .ac-note-title {
   overflow: hidden;
@@ -850,8 +852,13 @@
   color: var(--muted);
   white-space: normal;
 }
-.ac-editor .ac-scopes {
+.ac-editor .ac-scopes,
+.ac-window-body .ac-scopes {
   line-height: 18px;
+}
+/* The symbol table in the floating window reads as it does docked. */
+.ac-window-body .ac-scopes {
+  font-family: var(--font-mono);
 }
 .ac-note-body {
   white-space: pre-line;
@@ -886,9 +893,8 @@
   /* The rows pan and zoom with the canvas (canvas-zoom.ts). */
   background-size: 100% calc(22px * var(--zoom, 1));
   background-position: 0 calc(var(--pan-y, 0px) - 1px);
-  /* Two fingers pan and pinch it (canvas-zoom.ts); one finger is left to
-     the page. */
-  touch-action: pan-y;
+  /* One finger pans it, two pan and pinch it (canvas-zoom.ts). */
+  touch-action: none;
 }
 /* Zoom out, in and fit, in the view's bottom-right corner (clear of the
    listing's pane, which it follows in and out). */
@@ -1056,9 +1062,13 @@
 .ac-flowsplit.listing {
   top: -8px;
 }
-/* (in the gap over the source's box or the dock: its middle, 3px up) */
-.ac-flowsplit:is(.editor, .note) {
-  top: -14.5px;
+/* (in the gap under the editor's box: its middle, 3px down) */
+.ac-flowsplit.editor {
+  bottom: -14.5px;
+}
+/* (on the line over the note docked in the editor) */
+.ac-flowsplit.note {
+  top: -11.5px;
 }
 .ac-flowsplit:is(:active, :focus-visible) {
   outline: none;
@@ -1180,6 +1190,22 @@
   font-size: inherit;
   color: var(--ink);
 }
+/* Under the table: a built-in lookup, which ends in no scope. */
+.ac-scope-note {
+  margin: 6px 0 0;
+  overflow: hidden;
+  color: var(--ink);
+  /* (a sentence, unlike the rows: it wraps to the pane) */
+  white-space: normal;
+}
+.ac-scope-note.err {
+  color: var(--err);
+}
+.ac-scope-note code {
+  padding: 0 3px;
+  background: var(--line);
+  color: var(--ink);
+}
 .ac-scope small.err {
   color: var(--err);
 }
@@ -1201,6 +1227,13 @@
 .ac-walk path {
   stroke: var(--ink);
   stroke-width: 2;
+}
+/* A return's check: its value's type up to its function's `→ T`. */
+.ac-return-link.ok {
+  stroke: var(--ok);
+}
+.ac-return-link.bad {
+  stroke: var(--err);
 }
 .ac-link-halo {
   stroke: var(--bg);
@@ -1354,6 +1387,11 @@
   border-style: dashed;
   border-color: var(--muted);
   color: var(--ink);
+}
+/* A built-in's signature: declared nowhere in the program, so said so. */
+.ac-piece small.ac-type.builtin::after {
+  content: ' built-in';
+  color: var(--faint);
 }
 /* A value and what it must fit: green once the check lands. */
 .ac-piece small.ac-type.ok {
@@ -1645,6 +1683,8 @@
 .ac-stack.docked {
   position: relative;
   width: min(100%, 300px);
+  /* (in the middle of its pane) */
+  margin: 0 auto;
 }
 /* The type pass's panel (type-panel.tsx): the statement's derivation,
    each rule its premises over a line, its name at the line's end, and the
@@ -1653,6 +1693,8 @@
    code in the page's own, no chips, all in ink. */
 .ac-types {
   display: grid;
+  /* (its parts held to the panel's width: a long one wraps or scrolls) */
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   font-family: 'Notes Prose', var(--font-mono);
   font-size: 11px;
@@ -1801,6 +1843,16 @@
   gap: 8px;
   padding: 1px 8px;
 }
+/* A long expression wraps in its row (it's whole, not cut: derivation.tsx);
+   its state keeps to the right. */
+.ac .ac-type-stack li code {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.ac-type-stack li > span {
+  flex: none;
+}
 .ac-type-stack li + li {
   border-top: 1px solid var(--line);
 }
@@ -1881,7 +1933,7 @@
   flex: none;
   overflow: hidden;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1920,8 +1972,9 @@
   white-space: pre-line;
 }
 /* Code inside a note stays in the page's own face, as on the stage, on a
-   chip so a name or `$ra` reads apart from the prose (Stanley, 2026-09-27). */
-.ac .ac-window-body code {
+   chip so a name or `$ra` reads apart from the prose (Stanley, 2026-09-27).
+   (At `.ac code`'s weight, so the symbol table's lit names keep theirs.) */
+.ac-window-body code {
   padding: 0 3px;
   background: var(--line);
   font-family: var(--font-mono);
@@ -2339,10 +2392,13 @@
     flex-direction: column;
     min-height: 0;
   }
+  /* The editor keeps one height, its bottom grip's (animated.tsx,
+     --flow-top), with the note docked at its bottom: a longer note grows
+     up into the source, never into the stage (Stanley, 2026-10-01). */
   .ac-editor {
     position: relative;
     flex: none;
-    height: auto;
+    height: var(--flow-top, 300px);
     min-height: 0;
     border-right: 0;
   }
@@ -2354,19 +2410,32 @@
   .ac-colsplit {
     display: none;
   }
-  /* The source and the side pane share one slot, its height the source's
-     (animated.tsx, --flow-source): the pane shows only its name until
-     its box opens it in the source's place, so the stage never gives up
-     room to it. */
+  /* The source and the side pane share one slot, what the note leaves:
+     the pane shows only its name until its box opens it in the source's
+     place. */
   .ac-source,
   .ac-source[data-sized='true'] {
-    height: var(--flow-source, 132px);
+    flex: 1 1 0;
+    height: auto;
+    min-height: 0;
   }
   .ac-editor:has(.ac-note.open) .ac-source {
     display: none;
   }
   .ac-note {
     flex: none;
+  }
+  .ac-note.open {
+    flex: 1 1 0;
+  }
+  /* (its record is in the note: the pass's steps) */
+  .ac-note.gone {
+    display: none;
+  }
+  .ac-flownote {
+    position: relative;
+    flex: none;
+    border-top: 1px solid var(--line);
   }
   .ac-note:not(.open) .ac-note-body {
     display: none;
@@ -2379,7 +2448,7 @@
     display: none;
   }
   .ac-note.open .ac-note-body {
-    height: var(--flow-source, 132px);
+    flex: 1 1 0;
     min-height: 0;
     overflow: auto;
   }
@@ -2431,9 +2500,6 @@
     border: 0;
     background: none;
   }
-  .ac-stage {
-    order: -1;
-  }
   .ac-scene {
     border: 1px solid var(--line);
   }
@@ -2466,7 +2532,6 @@
     width: 100% !important;
     max-width: none;
     border: 0;
-    border-bottom: 1px solid var(--line);
     clip-path: none;
   }
   .ac-window.docked .ac-window-bar {
@@ -2845,57 +2910,78 @@
   margin: 0;
 }
 
-/* The notes window's size grip (note-window.tsx): nothing at rest. Near
-   the bottom-right corner the corner folds over, a sticky note's dog-ear,
-   and dragging it resizes the window (Stanley, 2026-09-27). The window's
-   clip cuts the corner away (the stage shows through); the grip's
-   ::before is the flap folded over, its crease on the cut's diagonal.
-   --ear is the flap's size; -2px at rest puts the cut outside the box. */
-@property --ear {
-  syntax: '<length>';
-  inherits: true;
-  initial-value: -2px;
-}
-.ac-window {
-  --ear: -2px;
-  clip-path: polygon(
-    0 0,
-    100% 0,
-    100% calc(100% - var(--ear) - 2px),
-    calc(100% - var(--ear) - 2px) 100%,
-    0 100%
-  );
-  transition: --ear 0.2s cubic-bezier(0.22, 1, 0.36, 1);
-}
-.ac-window.ear,
-.ac-window:has(.ac-window-grip:focus-visible) {
-  --ear: 13px;
-}
+/* The notes window's size grip (note-window.tsx): its bottom-right
+   corner, nothing drawn (Stanley, 2026-09-30: no dog-ear). A keyboard's
+   focus marks the corner. */
 .ac-window-grip {
   position: absolute;
+  z-index: 2;
   right: 0;
   bottom: 0;
-  width: 20px;
-  height: 20px;
+  width: 8px;
+  height: 8px;
   cursor: nwse-resize;
   touch-action: none;
 }
 .ac-window-grip:focus-visible {
   outline: none;
+  box-shadow:
+    inset -1px 0 0 var(--muted),
+    inset 0 -1px 0 var(--muted);
 }
-.ac-window-grip::before {
-  content: '';
+/* The other edges and corners that size it: thin strips along the border,
+   over the bar's edge too, as a desktop window's. */
+.ac-window-edge {
   position: absolute;
-  right: 0;
+  z-index: 2;
+  touch-action: none;
+}
+.ac-window-edge.n,
+.ac-window-edge.s {
+  left: 8px;
+  right: 8px;
+  height: 5px;
+  cursor: ns-resize;
+}
+.ac-window-edge.w,
+.ac-window-edge.e {
+  top: 8px;
+  bottom: 8px;
+  width: 5px;
+  cursor: ew-resize;
+}
+.ac-window-edge.n {
+  top: 0;
+}
+.ac-window-edge.s {
   bottom: 0;
-  width: max(0px, var(--ear));
-  height: max(0px, var(--ear));
-  box-sizing: border-box;
-  /* (none at all at rest: a 1px border would still show a dot) */
-  border-top: min(1px, max(0px, var(--ear))) solid var(--faint);
-  border-left: min(1px, max(0px, var(--ear))) solid var(--faint);
-  background: var(--line);
-  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+.ac-window-edge.w {
+  left: 0;
+}
+.ac-window-edge.e {
+  right: 0;
+}
+.ac-window-edge.nw,
+.ac-window-edge.ne,
+.ac-window-edge.sw {
+  width: 8px;
+  height: 8px;
+}
+.ac-window-edge.nw {
+  top: 0;
+  left: 0;
+  cursor: nwse-resize;
+}
+.ac-window-edge.ne {
+  top: 0;
+  right: 0;
+  cursor: nesw-resize;
+}
+.ac-window-edge.sw {
+  bottom: 0;
+  left: 0;
+  cursor: nesw-resize;
 }
 @media (prefers-reduced-motion: reduce) {
   .ac-window {
@@ -2903,6 +2989,20 @@
   }
 }
 
+/* The type pass on the tree (animated.tsx asserts): an edge down to a
+   child the step's rule holds to a type, in the colour of whether its
+   type held. */
+.ac-edges path.assert.ok {
+  stroke: var(--ok);
+}
+.ac-edges path.assert.bad {
+  stroke: var(--err);
+}
+/* A token sliding into the node that absorbs it (a field's name into
+   `.value`) fades out over that node: the pointer is the node's. */
+.ac-piece.absorbed {
+  pointer-events: none;
+}
 /* PROTOTYPE: tree nodes drag (animated.tsx, nudged). */
 .ac-piece.node {
   cursor: grab;

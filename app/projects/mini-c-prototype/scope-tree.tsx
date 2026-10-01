@@ -134,6 +134,8 @@ export function ScopeTree({
             ? 'built-in'
             : undefined
 
+  const endsOutside = cue === 'built-in' || cue === 'not found'
+
   const scopeList = (s: number): ReactNode => {
     const decls = visibleDecls.get(s) ?? []
     const inner = shown.filter((c) => parentOf(c) === s)
@@ -197,14 +199,9 @@ export function ScopeTree({
               </motion.li>
             ),
           )}
-          {cue && s === last && (
+          {cue && !endsOutside && s === last && (
             <motion.li key="cue" {...row}>
-              {cue === 'not found' && use !== undefined ? (
-                // Which name wasn't found, not just that one wasn't.
-                <small className="err">
-                  <code>{nameOf(use)}</code> not found
-                </small>
-              ) : w.kind === 'check.nameError' ? (
+              {w.kind === 'check.nameError' ? (
                 <small className="err">{cue}</small>
               ) : (
                 <small>{cue}</small>
@@ -221,6 +218,24 @@ export function ScopeTree({
     <div className="ac-scopes" role="region" aria-label="Scopes">
       <span className={`ac-scope-name ${here(root)}`}>{list[root].label}</span>
       {scopeList(root)}
+      {/* A lookup that ends in no scope (a built-in, or no declaration at
+          all) is said under the table, not as a row of one, where it would
+          read as a declaration. */}
+      <AnimatePresence>
+        {endsOutside && use !== undefined && (
+          <motion.p
+            key={cue}
+            className={`ac-scope-note ${cue === 'not found' ? 'err' : ''}`}
+            {...row}
+          >
+            <code>{nameOf(use)}</code>
+            {cue === 'built-in'
+              ? // DRAFT copy
+                ' is built in, so it needs no declaration'
+              : ' not found'}
+          </motion.p>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
