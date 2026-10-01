@@ -1127,9 +1127,10 @@ export function instructionText(
 ) {
   const map = (v: string) => registers?.[v] || v
   if (instruction.text !== undefined) {
-    // real MIPS line: "li v0,4" → "li $t0,4" once v0 has a register
+    // real MIPS line: "li v0,4" → "li $t0,4" once v0 has a register; a
+    // machine register spelled alike (`$v0`) stays as it is
     const [op, rest = ''] = instruction.text.split(/\s+(.*)/)
-    return `${op.padEnd(7)}${rest.replace(/\bv\d+\b/g, map)}`
+    return `${op.padEnd(7)}${rest.replace(/(?<!\$)\bv\d+\b/g, map)}`
   }
   return `${instruction.op.padEnd(7)}${[...(instruction.dest ? [instruction.dest] : []), ...instruction.args].map(map).join(', ')}`
 }

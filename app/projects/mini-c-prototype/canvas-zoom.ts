@@ -1,6 +1,7 @@
 // The stage as a canvas: two fingers
 // on a trackpad (or a wheel) pan it, a pinch (or ctrl + wheel) zooms it
-// about the pointer, and two fingers on a touch screen do both; the
+// about the pointer; on a touch screen one finger pans it and two do both
+// (Stanley, 2026-10-01); the
 // stage's buttons zoom about the middle of the view. It starts
 // fitted (the layout the stage computes) and never lets the content leave:
 // zoomed out, it stays inside the stage; zoomed in, its edges stay at the
@@ -39,8 +40,9 @@ export type CanvasView = { x: number; y: number; k: number }
 export type CanvasRest = { home: boolean; least: boolean; most: boolean }
 
 export type Canvas = {
-  // The content's size in canvas px (it can be wider than the stage).
-  size(width: number, height: number): void
+  // The content's size in canvas px (it can be wider than the stage), and
+  // how far it runs left of the stage's edge (parse's earlier statements).
+  size(width: number, height: number, left?: number): void
   // What covers the stage's right or bottom edge (the listing's pane): the
   // view is what's left, and the content pans out from under it.
   inset(right: number, bottom: number): void
@@ -102,7 +104,8 @@ export function startCanvas(
   let x = 0,
     y = 0,
     k = 1
-  let width = scene.clientWidth,
+  let lead = 0,
+    width = scene.clientWidth,
     height = scene.clientHeight
   let settleTimer = 0
   let spring = 0
@@ -120,11 +123,12 @@ export function startCanvas(
   const vh = () => Math.max(1, scene.clientHeight - cover.bottom)
 
   // Where the content's corner may go along one axis at zoom z.
-  const range = (content: number, view: number): Range =>
-    content <= view ? [0, view - content] : [view - content, 0]
+  // (content from `from` to `to` in screen px at x = 0, from ≤ 0)
+  const range = (from: number, to: number, view: number): Range =>
+    to - from <= view ? [-from, view - to] : [view - to, -from]
   const limits = (z = k) => ({
-    x: range(width * z, vw()),
-    y: range(height * z, vh()),
+    x: range(lead * z, width * z, vw()),
+    y: range(0, height * z, vh()),
   })
 
   const apply = () => {
@@ -323,6 +327,8 @@ export function startCanvas(
 
   // Two fingers on a touch screen (below).
   let pair: { x: number; y: number; d: number } | null = null
+  // One finger: where it last was, and whether it has moved past a tap.
+  let one: { x: number; y: number; moved: boolean } | null = null
   // Safari's trackpad pinch (it sends gesture events, not ctrl + wheel).
   let gestureScale = 1
   const gestureStarted = (e: Event) => {
@@ -343,7 +349,8 @@ export function startCanvas(
   }
 
   // Two fingers on a touch screen: pan with their midpoint, zoom with
-  // their spread. One finger is left to the page.
+  // their spread. One finger pans, once it has moved past a tap (a tap
+  // still clicks what it's on).
   const measure = (t: TouchList) => {
     const a = local(t[0].clientX, t[0].clientY),
       b = local(t[1].clientX, t[1].clientY)
@@ -354,6 +361,12 @@ export function startCanvas(
     }
   }
   const touched = (e: TouchEvent) => {
+    if (e.touches.length === 1) {
+      const p = local(e.touches[0].clientX, e.touches[0].clientY)
+      one = { ...p, moved: false }
+      return
+    }
+    one = null
     if (e.touches.length !== 2) return
     e.preventDefault()
     stopSpring()
@@ -362,6 +375,22 @@ export function startCanvas(
     lastInput = 0
   }
   const touchMoved = (e: TouchEvent) => {
+    if (one && e.touches.length === 1) {
+      const p = local(e.touches[0].clientX, e.touches[0].clientY)
+      if (!one.moved) {
+        if (Math.hypot(p.x - one.x, p.y - one.y) < 4) return
+        one.moved = true
+        stopSpring()
+        clearTimeout(settleTimer)
+        lastInput = 0
+      }
+      e.preventDefault()
+      pan(p.x - one.x, p.y - one.y)
+      anchor = p
+      one = { ...p, moved: true }
+      apply()
+      return
+    }
     if (!pair || e.touches.length !== 2) return
     e.preventDefault()
     const now = measure(e.touches)
@@ -372,6 +401,12 @@ export function startCanvas(
     apply()
   }
   const touchEnded = (e: TouchEvent) => {
+    if (one) {
+      const moved = one.moved
+      one = null
+      if (moved) settle(performance.now() - lastInput < 60 ? speed : undefined)
+      return
+    }
     if (!pair || e.touches.length === 2) return
     pair = null
     settle(performance.now() - lastInput < 60 ? speed : undefined)
@@ -417,7 +452,8 @@ export function startCanvas(
   apply()
 
   return {
-    size(w, h) {
+    size(w, h, l = 0) {
+      lead = Math.min(0, l)
       width = w
       height = h
       if (!retarget() && !settleTimer && !pair) settle()

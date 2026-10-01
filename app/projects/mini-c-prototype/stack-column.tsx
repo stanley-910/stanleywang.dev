@@ -1,9 +1,9 @@
 import { motion } from 'motion/react'
-import { useEffect, useRef } from 'react'
+import { Fragment, useEffect, useRef } from 'react'
 
 import { wordAt } from './stack-view'
 
-import type { StackFrame, StackRow } from './stack-view'
+import type { StackFrame, StackPointer, StackRow } from './stack-view'
 import type { DragControls } from 'motion/react'
 import type { CSSProperties, PointerEvent, RefObject } from 'react'
 
@@ -13,14 +13,15 @@ import type { CSSProperties, PointerEvent, RefObject } from 'react'
 // current block's instructions play in order: a pointer slides as its
 // instruction's row appears, a word is outlined when it is read and
 // tinted when it is written. A register that holds a word's address points
-// at it from the right while it is live, and on the line that stores into
-// a word, it shows the register stored. It shows how the frame is built,
-// not what the words hold (Stanley, 2026-09-25).
+// at it from the right while it is live, dashed and dimmed; on the line
+// that stores into a word or loads from it, the word shows the register
+// (`← v2`, `→ v3`): holding an address isn't moving data. It shows how
+// the frame is built, not what the words hold (Stanley, 2026-09-25).
 //
-// It docks in the note card, under the step's sentence. Dragged a few
-// pixels, it pops out and floats where it's dropped, anywhere on the
-// simulation (beside the assembly, say); dropped back on the note card, it
-// docks again.
+// It docks by the listing, in its own pane or beside it (animated.tsx).
+// Dragged a few pixels, it pops out and floats where it's dropped,
+// anywhere on the simulation, with no box or heading (Stanley,
+// 2026-10-01); dropped back where it docks, it docks again.
 export function StackColumn({
   frame,
   count,
@@ -109,6 +110,8 @@ export function StackColumn({
     return null
   }
   const fade = duration * 0.6
+  // A store's or a load's register, on its way in or out of the word.
+  const moveFor = duration * 0.7
   const touched = frame.touches.filter(
     (t) => t.at >= frame.first + start && t.at < frame.first + done,
   )
@@ -148,30 +151,62 @@ export function StackColumn({
       </motion.span>
     )
   }
-  // The register a line stores into a word, on that line.
-  const storedAt = (addr: number) => {
-    const store = frame.touches.find(
-      (t) => t.at === line && t.addr === addr && t.kind === 'write' && t.reg,
+  // What a line moves through a word, on that line: the register stored
+  // into it (`← v2`) or loaded from it (`→ v3`). A register that only
+  // holds the word's address points at it from outside, dashed (below):
+  // the one moves data, the other doesn't (Stanley, 2026-10-01).
+  const movedAt = (addr: number) => {
+    const t = frame.touches.find(
+      (t) => t.at === line && t.addr === addr && t.reg,
     )
-    return store?.reg && /^v\d+$/.test(store.reg) ? store.reg : undefined
+    return t?.reg && /^v\d+$/.test(t.reg)
+      ? { reg: t.reg, kind: t.kind }
+      : undefined
   }
   // Address registers live on this line, by the row they point at.
-  const pointing = new Map<number, string[]>()
+  const pointing = new Map<number, StackPointer[]>()
   for (const p of frame.pointers) {
     const r = frame.rowOf.get(p.addr)
     if (r !== undefined && p.def <= line && line <= p.last)
-      pointing.set(r, [...(pointing.get(r) ?? []), p.vr])
+      pointing.set(r, [...(pointing.get(r) ?? []), p])
   }
-  // Room on the right for the most registers that ever point at one word
-  // together (and `$sp`), so none is cut off at the card's edge.
+  // The address a word holds on this line (`p` holding `&x`), by the name
+  // of the word it is the address of.
+  const holdsAt = (addr: number) => {
+    const h = frame.holds.find(
+      (h) => h.addr === addr && h.from < line && line <= h.to,
+    )
+    return h && (wordAt(frame, h.of, line)?.label || undefined)
+  }
+  // The row `$sp` ends this block on: registers pointing there sit after
+  // it, `‹ $sp v1`, not under it (Stanley, 2026-10-01: they ran together).
+  const spY = pose.sp === null ? null : y(pose.sp)
+  // Room on the right for the labels out there on this line, `‹ $sp` at
+  // least, as `$fp ›` takes on the left: the words sit in the middle and
+  // give up width only as registers come to point at them, not for the
+  // most the function ever has (Stanley, 2026-10-01). (One over: `┄`
+  // and `‹` can come from a wider font.)
   const room = Math.max(
-    3,
+    '‹ $sp'.length,
+    ...[...pointing].map(
+      ([i, ps]) =>
+        ps.map((p) => p.vr).join(' ').length +
+        (rowY(i) === spY ? '‹ $sp ┄ ' : '‹┄ ').length +
+        1,
+    ),
+  )
+  // Out on the stage (floating), the most the function ever needs, so it
+  // keeps one width and is placed clear of the listing (popStack).
+  const roomMax = Math.max(
+    room,
     ...frame.pointers.map(
       (p) =>
         frame.pointers
           .filter((q) => q.addr === p.addr && q.def <= p.def && p.def <= q.last)
           .map((q) => q.vr)
-          .join(' ').length,
+          .join(' ').length +
+        '‹ $sp ┄ '.length +
+        1,
     ),
   )
   // Where it is now, in the simulation's coordinates.
@@ -198,7 +233,8 @@ export function StackColumn({
       style={
         {
           ...(at && { left: at.x, top: at.y }),
-          '--room': room + 2,
+          '--room': at ? roomMax : room,
+          '--room-max': roomMax,
         } as CSSProperties
       }
       drag={!!at}
@@ -228,14 +264,6 @@ export function StackColumn({
         press.current = null
       }}
     >
-      {/* Docked, the panel's "stack frame" title says what it is; afloat
-          on the stage, it says it itself. */}
-      {at && (
-        <div className="ac-label">
-          <span>stack</span>
-          <small>$fp offset</small>
-        </div>
-      )}
       <div
         className="ac-stack-body"
         style={{
@@ -294,7 +322,14 @@ export function StackColumn({
           const value =
             r.fold || kind === 'link' || kind === 'saved' || kind === 'spare'
               ? undefined
-              : storedAt(r.addr)
+              : movedAt(r.addr)
+          const holding = r.fold ? undefined : holdsAt(r.addr)
+          // What the word's name shows (for where its value sits).
+          const shown = whose
+            ? `${whose} ${what}`
+            : what === 'return'
+              ? 'return value'
+              : what
           // Keyframes: in when its instruction's row arrives, out when the
           // one that frees it does.
           const inAt = appears === null ? 0 : delayOf(frame.first + appears)
@@ -316,13 +351,14 @@ export function StackColumn({
           return (
             <motion.div
               key={moving ? `${r.addr}-${step}` : r.addr}
-              className={`ac-stack-cell ${kind} ${r.addr >= 0 && !r.data ? 'caller' : ''} ${r.addr === -4 ? 'edge' : ''} ${r.fold ? 'fold' : ''} ${released ? 'released' : ''} ${touch ? touch.kind : ''}`}
+              className={`ac-stack-cell ${kind} ${r.addr >= 0 && !r.data ? 'caller' : ''} ${r.addr === -4 ? 'edge' : ''} ${r.fold ? 'fold' : ''} ${released ? 'released' : ''} ${touch ? touch.kind : ''} ${value?.kind === 'write' && !still ? 'arrive' : ''}`}
               style={
                 {
                   top: rowY(i),
                   // Neighbours share a border.
                   height: row + 1,
                   '--delay': `${touch ? delayOf(touch.at) : 0}s`,
+                  '--for': `${moveFor}s`,
                 } as CSSProperties
               }
               initial={moving ? { opacity: opacity[0] } : false}
@@ -344,33 +380,75 @@ export function StackColumn({
                 {what === 'return' ? 'return value' : what}
               </span>
               {value !== undefined && (
-                <motion.b
-                  key={value}
-                  className="ac-stack-value"
-                  initial={still ? false : { opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{
-                    duration: still ? 0 : fade,
-                    delay: still ? 0 : delayOf(line),
-                  }}
+                // On its line, the register moves: a store slides in from
+                // the right, where the registers are, and lands in the word
+                // (which flashes, .arrive); a load drifts out towards them
+                // (Stanley, 2026-10-01). `--from`: where the word's name
+                // ends, so the store starts past the word's right edge.
+                <b
+                  key={`${value.kind}-${value.reg}`}
+                  className={`ac-stack-value ${value.kind} ${still ? '' : 'arrive'}`}
+                  data-reg={value.reg}
+                  style={
+                    {
+                      '--from': `calc(${shown.length}ch + 6px)`,
+                      '--at': `${delayOf(line)}s`,
+                      '--for': `${moveFor}s`,
+                    } as CSSProperties
+                  }
                 >
-                  ← {value}
-                </motion.b>
+                  {value.kind === 'write' ? '←' : '→'} {value.reg}
+                </b>
+              )}
+              {value === undefined && holding && (
+                // What a pointer variable holds, once stored: `&x`.
+                <em className="ac-stack-holds">&amp;{holding}</em>
               )}
               <small>{offset}</small>
             </motion.div>
           )
         })}
-        {[...pointing].map(([i, regs]) => (
+        {[...pointing].map(([i, ps]) => (
           <motion.span
             key={`reg-${i}`}
-            className="ac-stack-ptr reg"
+            className={`ac-stack-ptr reg ${rowY(i) === spY ? 'after-sp' : ''}`}
             style={{ top: rowY(i) }}
             initial={still ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: still ? 0 : fade }}
           >
-            {regs.join(' ')}
+            {ps.map((p, j) => {
+              // On the line that sets it, it comes down (or up) from where
+              // its address came from: counted from `$fp`, or loaded out
+              // of a pointer variable's word (Stanley, 2026-10-01).
+              const from =
+                p.from === undefined ? undefined : frame.rowOf.get(p.from)
+              const arrives =
+                !still &&
+                from !== undefined &&
+                from !== i &&
+                p.def >= frame.first + start &&
+                p.def <= line
+              return (
+                <Fragment key={p.vr}>
+                  {j > 0 && ' '}
+                  <span
+                    className={arrives ? 'arrive' : undefined}
+                    style={
+                      arrives
+                        ? ({
+                            '--dy': `${rowY(from) - rowY(i)}px`,
+                            '--at': `${delayOf(p.def)}s`,
+                            '--for': `${moveFor}s`,
+                          } as CSSProperties)
+                        : undefined
+                    }
+                  >
+                    {p.vr}
+                  </span>
+                </Fragment>
+              )
+            })}
           </motion.span>
         ))}
         {pointer('fp', '$fp')}

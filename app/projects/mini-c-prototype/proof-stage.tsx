@@ -131,7 +131,7 @@ export function ProofStage({
     onExtent(extent)
   })
 
-  const d = derive(trace, source, index)
+  const d = useMemo(() => derive(trace, source, index), [trace, source, index])
   const current = d.focus === null ? null : d.rootOf(d.focus)
 
   return (

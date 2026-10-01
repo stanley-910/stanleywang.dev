@@ -8,6 +8,10 @@
   --wash: #f4f4f5;
   --err: #9a4b2b;
   --ok: #2f7a4b;
+  /* Virtual registers, lit on the allocator's first slide: the site's
+     accent, its stars' gold (app/page.tsx), which the register palette
+     (INK in animated.tsx) doesn't use. */
+  --vreg: rgb(186, 149, 94);
   --row: 22px;
   position: relative;
   /* Out to the site header's margins (48px each side, lg:px-12). */
@@ -29,6 +33,7 @@
   --wash: #18181b;
   --err: #e5a58a;
   --ok: #8fcfa2;
+  --vreg: rgb(186, 149, 94);
 }
 .ac *,
 .ac *::before,
@@ -159,7 +164,8 @@
    rail along the bottom edge, on its own timeline. */
 .ac.bare :is(.ac-source, .ac-listing-scroll) {
   border-bottom: 9px solid transparent;
-  background-image: repeating-linear-gradient(
+  background-image:
+    repeating-linear-gradient(
       to bottom,
       var(--rail, transparent) 0 2px,
       transparent 2px 5px
@@ -546,6 +552,17 @@
   color: var(--ink);
   background: color-mix(in srgb, var(--ok) 32%, transparent);
 }
+/* A return that doesn't fit its function's signature, the same pair in
+   red. */
+.ac-text mark.bad.use {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--err) 8%, var(--bg));
+  box-shadow: inset 0 0 0 1px var(--err);
+}
+.ac-text mark.bad.decl {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--err) 32%, transparent);
+}
 /* Detailed lexer: characters read so far underlined, the current one a block
    (outlined when only looked at), skipped whitespace a faint band. */
 .ac-text mark.reading {
@@ -635,6 +652,21 @@
 .ac-editor[data-fold] .ac-split {
   pointer-events: none;
 }
+/* Minimized by its bar's button: the note is its bar, at the bottom, and
+   the source takes the rest. */
+.ac-editor:has(> .ac-note.min) .ac-source,
+.ac-editor:has(> .ac-note.min) .ac-source[data-sized='true'] {
+  flex-grow: 1;
+}
+.ac-note.min {
+  flex: none;
+}
+.ac-note.min > :is(.ac-note-body, .ac-split) {
+  display: none;
+}
+.ac-note.min > .ac-bar {
+  border-bottom: 0;
+}
 .ac-note {
   position: relative;
   display: flex;
@@ -658,17 +690,11 @@
   cursor: col-resize;
   touch-action: none;
 }
-.ac-colsplit:hover,
-.ac-colsplit:focus-visible,
-.ac-colsplit:active {
+.ac-colsplit:is(:hover, :focus-visible, :active) {
   outline: none;
-  background: linear-gradient(
-    90deg,
-    transparent 3px,
-    var(--muted) 3px,
-    var(--muted) 4px,
-    transparent 4px
-  );
+}
+.ac-work:has(> .ac-colsplit:is(:hover, :focus-visible, :active)) .ac-editor {
+  border-right-color: var(--muted);
 }
 /* The note's top border, draggable. */
 .ac-split {
@@ -681,16 +707,13 @@
   cursor: row-resize;
   touch-action: none;
 }
-.ac-split:hover,
-.ac-split:focus-visible,
-.ac-split:active {
+/* Hovered, the border itself lights: a line drawn over it lands on a
+   fractional pixel and sits beside it, not on it. */
+.ac-split:is(:hover, :focus-visible, :active) {
   outline: none;
-  background: linear-gradient(
-    transparent 3px,
-    var(--muted) 3px,
-    var(--muted) 4px,
-    transparent 4px
-  );
+}
+.ac-note:has(> .ac-split:is(:hover, :focus-visible, :active)) {
+  border-top-color: var(--muted);
 }
 .ac-note-title {
   overflow: hidden;
@@ -850,8 +873,13 @@
   color: var(--muted);
   white-space: normal;
 }
-.ac-editor .ac-scopes {
+.ac-editor .ac-scopes,
+.ac-window-body .ac-scopes {
   line-height: 18px;
+}
+/* The symbol table in the floating window reads as it does docked. */
+.ac-window-body .ac-scopes {
+  font-family: var(--font-mono);
 }
 .ac-note-body {
   white-space: pre-line;
@@ -886,9 +914,8 @@
   /* The rows pan and zoom with the canvas (canvas-zoom.ts). */
   background-size: 100% calc(22px * var(--zoom, 1));
   background-position: 0 calc(var(--pan-y, 0px) - 1px);
-  /* Two fingers pan and pinch it (canvas-zoom.ts); one finger is left to
-     the page. */
-  touch-action: pan-y;
+  /* One finger pans it, two pan and pinch it (canvas-zoom.ts). */
+  touch-action: none;
 }
 /* Zoom out, in and fit, in the view's bottom-right corner (clear of the
    listing's pane, which it follows in and out). */
@@ -987,6 +1014,77 @@
 .ac-listing.side .ac-listing-scroll {
   bottom: 0;
 }
+/* With the stack's pane under it (stackPane in animated.tsx), the side
+   listing is a column: the listing takes what the pane leaves. */
+.ac-listing.side:has(> .ac-stackpane) {
+  display: flex;
+  flex-direction: column;
+}
+.ac-listing.side:has(> .ac-stackpane) > .ac-listing-scroll {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+}
+.ac-stackpane {
+  position: relative;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  /* (at most most of the pane: the listing keeps its floor) */
+  max-height: calc(100% - 96px);
+  min-height: 0;
+  border-top: 1px solid var(--line);
+}
+.ac-stackpane:has(> .ac-split:is(:hover, :focus-visible, :active)) {
+  border-top-color: var(--muted);
+}
+.ac-stackpane-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 10px 8px 12px;
+  overflow: auto;
+}
+/* (as wide as the pane allows, up to its own width; in a narrow pane,
+   words no narrower than 120px, and the pane scrolls sideways to the
+   rest, as the listing does) */
+/* Clipped at its sides: while the words ease aside for a new label
+   (`--room`), the label would stick out past it for a moment, and the
+   pane would grow a scrollbar for that moment and jump (Stanley,
+   2026-10-01). (Within the pane's padding, for a glyph wider than 1ch
+   in another font; never at the bottom, where the last word's border
+   hangs 1px below.) */
+.ac-stackpane-body .ac-stack.docked,
+.ac-stackbeside .ac-stack.docked {
+  overflow-x: clip;
+  overflow-clip-margin: 8px;
+}
+.ac-stackpane-body .ac-stack.docked {
+  width: auto;
+  max-width: var(--stack-w);
+  min-width: calc(120px + (var(--room, 5) + 5) * 1ch + 6px);
+  margin: 0 auto;
+}
+.ac-bar-tools {
+  display: flex;
+  gap: 8px;
+}
+/* Along the bottom, the stack is a column right of the lanes, held in
+   view as the listing scrolls. */
+.ac-listing.foot .ac-listing-scroll {
+  display: flex;
+  align-items: flex-start;
+}
+.ac-stackbeside {
+  position: sticky;
+  top: 0;
+  flex: none;
+  /* (room on the left for `$fp ›`, clear of the lanes' names) */
+  padding: 8px 12px 12px calc(6ch + 8px);
+}
+.ac-stackbeside .ac-stack.docked {
+  width: var(--stack-w);
+  margin: 0;
+}
 .ac-listing.foot .ac-listing-scroll {
   right: 0;
 }
@@ -1056,9 +1154,13 @@
 .ac-flowsplit.listing {
   top: -8px;
 }
-/* (in the gap over the source's box or the dock: its middle, 3px up) */
-.ac-flowsplit:is(.editor, .note) {
-  top: -14.5px;
+/* (in the gap under the editor's box: its middle, 3px down) */
+.ac-flowsplit.editor {
+  bottom: -14.5px;
+}
+/* (on the line over the note docked in the editor) */
+.ac-flowsplit.note {
+  top: -11.5px;
 }
 .ac-flowsplit:is(:active, :focus-visible) {
   outline: none;
@@ -1080,6 +1182,34 @@
   height: 100%;
   color: var(--ink);
   overflow: visible;
+}
+/* The canvas's lines keep their weight on screen at any zoom: a stroke
+   scales with the canvas, so zoomed in to read a big tree drawn small,
+   its edges came out three times as thick as anything else (Stanley,
+   2026-10-01). Not vector-effect: non-scaling-stroke, which measured
+   pathLength in the wrong space (toPx in animated.tsx). --zoom is
+   canvas-zoom.ts's. */
+.ac-canvas svg [stroke-width='1'] {
+  stroke-width: calc(1px / var(--zoom, 1));
+}
+.ac-canvas .ac-walk path {
+  stroke-width: calc(2px / var(--zoom, 1));
+}
+.ac-canvas .ac-link-halo {
+  stroke-width: calc(3px / var(--zoom, 1));
+}
+/* Borders too: the boxes on the canvas (pieces, badges, register tags,
+   the hover cards and their lists) keep a one-pixel outline at any zoom,
+   as a token's card does in the lexer (Stanley, 2026-10-01). */
+.ac-canvas .ac-piece,
+.ac-canvas .ac-piece small.ac-type,
+.ac-canvas .ac-piece.node.preview,
+.ac-canvas .ac-piece.node.preview.focused,
+.ac-canvas .ac-reg,
+.ac-canvas .ac-hover,
+.ac-canvas .ac-hover .ac-lexemes li,
+.ac-canvas .ac-hover-proof {
+  border-width: calc(1px / var(--zoom, 1));
 }
 /* Parse: a shown node not yet attached, and the group being read. */
 .ac-held {
@@ -1180,6 +1310,22 @@
   font-size: inherit;
   color: var(--ink);
 }
+/* Under the table: a built-in lookup, which ends in no scope. */
+.ac-scope-note {
+  margin: 6px 0 0;
+  overflow: hidden;
+  color: var(--ink);
+  /* (a sentence, unlike the rows: it wraps to the pane) */
+  white-space: normal;
+}
+.ac-scope-note.err {
+  color: var(--err);
+}
+.ac-scope-note code {
+  padding: 0 3px;
+  background: var(--line);
+  color: var(--ink);
+}
 .ac-scope small.err {
   color: var(--err);
 }
@@ -1201,6 +1347,13 @@
 .ac-walk path {
   stroke: var(--ink);
   stroke-width: 2;
+}
+/* A return's check: its value's type up to its function's `→ T`. */
+.ac-return-link.ok {
+  stroke: var(--ok);
+}
+.ac-return-link.bad {
+  stroke: var(--err);
 }
 .ac-link-halo {
   stroke: var(--bg);
@@ -1354,6 +1507,11 @@
   border-style: dashed;
   border-color: var(--muted);
   color: var(--ink);
+}
+/* A built-in's signature: declared nowhere in the program, so said so. */
+.ac-piece small.ac-type.builtin::after {
+  content: ' built-in';
+  color: var(--faint);
 }
 /* A value and what it must fit: green once the check lands. */
 .ac-piece small.ac-type.ok {
@@ -1604,6 +1762,36 @@
 .ac-arg.focus.def {
   color: var(--ok);
 }
+/* The register allocator's first slide: every virtual register lit in a
+   colour of its own, the ones it has to fit into real registers. */
+.ac-arg {
+  /* (out of the lit slide, it fades back) */
+  transition:
+    color 0.4s,
+    text-shadow 0.4s;
+}
+.ac-arg.lit {
+  color: var(--vreg);
+  text-shadow: 0 0 4px color-mix(in srgb, var(--vreg) 30%, transparent);
+  animation: ac-vreg-in 0.28s ease-out calc(var(--lit-at, 0) * 45ms) both;
+}
+/* A fast downward sweep, a line at a time (--lit-at): each flares as it
+   lights, then settles to its glow, before the next one does. */
+@keyframes ac-vreg-in {
+  from {
+    color: var(--ink);
+    text-shadow: 0 0 0 transparent;
+  }
+  35% {
+    color: color-mix(in srgb, var(--vreg) 75%, #fff);
+    text-shadow: 0 0 6px color-mix(in srgb, var(--vreg) 60%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ac-arg.lit {
+    animation: none;
+  }
+}
 /* A physical register in the listing, in its lane's colour; it flashes
    as it replaces a virtual one. */
 .ac-phys {
@@ -1635,8 +1823,15 @@
 /* The stack column: one word per row, high addresses at the top. */
 /* Docked under the note's sentence; dragged out, it floats above
    everything in the simulation. */
+/* One width whatever its pointers need (`--room`, .ac-stack-body's
+   margins): more registers beside it narrow the words, down to 120px,
+   before the whole widens (Stanley, 2026-10-01). */
 .ac-stack {
-  width: calc(196px + (var(--room, 5) - 5) * 1ch);
+  --stack-w: max(
+    calc(176px + 14ch),
+    calc(120px + (var(--room, 5) + 5) * 1ch + 6px)
+  );
+  width: var(--stack-w);
   font-size: 11px;
   white-space: normal;
   cursor: grab;
@@ -1645,6 +1840,8 @@
 .ac-stack.docked {
   position: relative;
   width: min(100%, 300px);
+  /* (in the middle of its pane) */
+  margin: 0 auto;
 }
 /* The type pass's panel (type-panel.tsx): the statement's derivation,
    each rule its premises over a line, its name at the line's end, and the
@@ -1653,6 +1850,8 @@
    code in the page's own, no chips, all in ink. */
 .ac-types {
   display: grid;
+  /* (its parts held to the panel's width: a long one wraps or scrolls) */
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   font-family: 'Notes Prose', var(--font-mono);
   font-size: 11px;
@@ -1758,6 +1957,54 @@
     animation: none;
   }
 }
+/* The type pass's hover: the rule that typed a node, by the node, at its
+   size (--ck, the tree's fit). */
+.ac-hover-proof {
+  position: absolute;
+  padding: calc(6px * var(--ck, 1)) calc(10px * var(--ck, 1));
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Notes Prose', var(--font-mono);
+  font-size: calc(11px * var(--ck, 1));
+  line-height: 1.4;
+  pointer-events: none;
+  z-index: 6;
+}
+/* (no wider than the stage: a long expression wraps) */
+.ac .ac-hover-proof code {
+  padding: 0;
+  background: none;
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+}
+.ac-hover-proof .ac-proof {
+  max-width: 100%;
+}
+.ac-hover-proof .ac-proof-premises {
+  gap: calc(14px * var(--ck, 1));
+}
+.ac .ac-hover-proof .ac-proof-name {
+  font-size: 0.91em;
+  line-height: 1.1;
+}
+/* (it isn't the step's rule: drawn whole, not faded in, its line as thin
+   as any; and nothing in it opens, so a folded part isn't underlined) */
+.ac-hover-proof .ac-proof {
+  animation: none;
+}
+/* (a hairline at any zoom, as the tree's edges are: the card zooms with
+   the canvas, --zoom from canvas-zoom.ts) */
+.ac-hover-proof .ac-proof > .ac-proof-line {
+  border-top-width: calc(1px / var(--zoom, 1));
+}
+.ac-hover-proof .ac-proof.folded {
+  border-bottom: 0;
+}
+.ac-hover-proof .ac-proof .ac-proof-conclusion,
+.ac-hover-proof .ac-proof .ac-proof-fact {
+  opacity: 1;
+}
 /* The same proofs on the stage, under the tree (proof-stage.tsx): one
    per statement, each in the place kept for it finished. */
 .ac-proof-stage {
@@ -1785,25 +2032,6 @@
 .ac-proof-measure {
   visibility: hidden;
 }
-.ac-type-caption {
-  display: block;
-  margin-bottom: 4px;
-}
-.ac-type-stack {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  border: 1px solid var(--line);
-}
-.ac-type-stack li {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 1px 8px;
-}
-.ac-type-stack li + li {
-  border-top: 1px solid var(--line);
-}
 .ac-type-done {
   margin: 0;
 }
@@ -1829,8 +2057,7 @@
 }
 @font-face {
   font-family: 'Notes Prose';
-  src: url('/fonts/berkeley-mono/BerkeleyMonoProse-Bold.woff2')
-    format('woff2');
+  src: url('/fonts/berkeley-mono/BerkeleyMonoProse-Bold.woff2') format('woff2');
   font-style: normal;
   font-weight: 700;
   font-display: swap;
@@ -1881,7 +2108,7 @@
   flex: none;
   overflow: hidden;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1920,8 +2147,9 @@
   white-space: pre-line;
 }
 /* Code inside a note stays in the page's own face, as on the stage, on a
-   chip so a name or `$ra` reads apart from the prose (Stanley, 2026-09-27). */
-.ac .ac-window-body code {
+   chip so a name or `$ra` reads apart from the prose (Stanley, 2026-09-27).
+   (At `.ac code`'s weight, so the symbol table's lit names keep theirs.) */
+.ac-window-body code {
   padding: 0 3px;
   background: var(--line);
   font-family: var(--font-mono);
@@ -1936,23 +2164,31 @@
 .ac-window.err .ac-window-head {
   color: var(--err);
 }
+/* Afloat, no box: the stack itself on the stage, and what labels it on
+   a faint ground of their own so they read apart from the tree's text
+   (Stanley, 2026-10-01). */
+/* Out on the stage, nothing bounds it: the words keep their width (the
+   docked one's at `--room: 5`), and it is as wide as its labels ever
+   need (`--room-max`), not narrowed for them (Stanley, 2026-10-01). */
 .ac-stack.floating {
   position: absolute;
   z-index: 30;
-  padding: 6px 0 8px;
-  border: 1px solid var(--line);
-  background: var(--bg);
+  width: calc(176px + (var(--room-max, 5) + 9) * 1ch);
+}
+.ac-stack.floating .ac-stack-ptr {
+  background: color-mix(in srgb, var(--ink) 8%, var(--bg));
 }
 .ac-stack:active {
   cursor: grabbing;
 }
 /* `--room`: characters kept free right of the words for the registers
-   that point at them (set per function). */
+   that point at them (set per line). */
 .ac-stack .ac-label {
   display: flex;
   justify-content: space-between;
   padding: 0 calc(var(--room, 5) * 1ch + 3px) 4px calc(5ch + 3px);
   font-size: inherit;
+  transition: padding 0.3s ease-out;
   white-space: nowrap;
 }
 /* What the right column counts: bytes above (+) or below (−) `$fp`. */
@@ -1961,14 +2197,108 @@
   color: var(--faint);
 }
 /* What a word holds: the register stored in it, then its value. */
+/* What a line moves through the word: `← v2` stored into it, `→ v3`
+   loaded out of it, on that line only. */
 .ac-stack-value {
+  position: relative;
+  z-index: 1;
   margin: 0 auto 0 6px;
   font-weight: 400;
   color: var(--ink);
 }
+/* (`100cqw`: the word's width, .ac-stack-cell's container) */
+.ac-stack-value.write.arrive {
+  animation: ac-store-in var(--for, 0.4s) cubic-bezier(0.2, 0.7, 0.3, 1)
+    var(--at, 0s) both;
+}
+.ac-stack-value.read.arrive {
+  animation: ac-load-out var(--for, 0.4s) ease-out var(--at, 0s) both;
+}
+/* Lands, then the word lights up. */
+.ac-stack-cell.write.arrive {
+  animation: ac-store-flash calc(var(--for, 0.4s) * 1.4) ease-out
+    calc(var(--delay, 0s) + var(--for, 0.4s) * 0.8);
+}
+@keyframes ac-store-in {
+  from {
+    transform: translateX(calc(100cqw - var(--from, 0px) + 1ch));
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes ac-load-out {
+  from {
+    transform: translateX(-2ch);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+/* A load: the register leaves the word for the right, where the
+   registers are, and `→ v4` stays to say where it went. */
+.ac-stack-value.read.arrive::after {
+  content: attr(data-reg);
+  position: absolute;
+  left: 2ch;
+  opacity: 0;
+  animation: ac-load-leave calc(var(--for, 0.4s) * 1.2) ease-in var(--at, 0s);
+}
+@keyframes ac-load-leave {
+  from {
+    transform: none;
+    opacity: 1;
+  }
+  to {
+    transform: translateX(calc(100cqw - var(--from, 0px)));
+    opacity: 0;
+  }
+}
+/* What a pointer variable holds: the address of another word. */
+.ac-stack-holds {
+  flex-shrink: 0;
+  margin: 0 auto 0 6px;
+  font-style: normal;
+  color: var(--muted);
+  white-space: nowrap;
+}
+/* A register given a word's address arrives from where it was counted
+   (`$fp`) or loaded from (a pointer variable's word). */
+.ac-stack-ptr.reg > .arrive {
+  display: inline-block;
+  animation: ac-ptr-in var(--for, 0.4s) ease-in-out var(--at, 0s) both;
+}
+@keyframes ac-ptr-in {
+  from {
+    transform: translateY(var(--dy, 0px));
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes ac-store-flash {
+  25% {
+    border-color: var(--ok);
+    background-color: color-mix(in srgb, var(--ok) 60%, var(--bg));
+  }
+}
 .ac-stack-body {
   position: relative;
   margin: 0 calc(var(--room, 5) * 1ch + 3px) 0 calc(5ch + 3px);
+  /* (`--room` follows the line's labels: the words ease aside) */
+  transition: margin 0.3s ease-out;
 }
 .ac-stack-cell {
   position: absolute;
@@ -1985,6 +2315,8 @@
   transition:
     border-color 0.3s var(--delay, 0s),
     background-color 0.3s var(--delay, 0s);
+  /* (for its value's slide in, .ac-stack-value) */
+  container-type: inline-size;
 }
 .dark .ac-stack-cell {
   border-color: #3f3f46;
@@ -2078,14 +2410,24 @@
   content: '‹ ';
   color: var(--muted);
 }
-/* Registers holding a word's address, while they are live. */
+/* Registers holding a word's address, while they are live: a dashed
+   reference from outside, dimmed, since nothing moves until a load or a
+   store through it (`.ac-stack-value`, in the word). */
 .ac-stack-ptr.reg {
   left: 100%;
   padding-left: 3px;
+  color: var(--muted);
 }
 .ac-stack-ptr.reg::before {
-  content: '‹ ';
-  color: var(--muted);
+  content: '‹┄ ';
+  color: var(--faint);
+}
+/* On `$sp`'s row: after it, a space apart, under its arrow, still dashed. */
+.ac-stack-ptr.reg.after-sp {
+  left: calc(100% + 6ch);
+}
+.ac-stack-ptr.reg.after-sp::before {
+  content: '┄ ';
 }
 
 .ac-ins {
@@ -2121,14 +2463,15 @@
   background: var(--line);
 }
 
-/* Card under a clicked or hovered token or node. */
+/* Card under a clicked or hovered token or node, at the node's size
+   (--ck, the tree's fit). */
 .ac-hover {
   position: absolute;
-  padding: 6px 10px;
+  padding: calc(6px * var(--ck, 1)) calc(10px * var(--ck, 1));
   border: 1px solid var(--line);
   background: var(--bg);
   color: var(--ink);
-  font-size: 11px;
+  font-size: calc(11px * var(--ck, 1));
   line-height: 1.4;
   white-space: nowrap;
   overflow: hidden;
@@ -2146,9 +2489,13 @@
   min-height: 0;
 }
 .ac-hover .ac-lexemes {
+  gap: calc(4px * var(--ck, 1));
   margin: 0;
-  padding: 8px 0 2px;
-  font-size: 11px;
+  padding: calc(8px * var(--ck, 1)) 0 calc(2px * var(--ck, 1));
+  font-size: calc(11px * var(--ck, 1));
+}
+.ac-hover .ac-lexemes li {
+  padding: 0 calc(4px * var(--ck, 1));
 }
 /* The step, by the scrubber it reads. */
 .ac-counter {
@@ -2339,10 +2686,13 @@
     flex-direction: column;
     min-height: 0;
   }
+  /* The editor keeps one height, its bottom grip's (animated.tsx,
+     --flow-top), with the note docked at its bottom: a longer note grows
+     up into the source, never into the stage (Stanley, 2026-10-01). */
   .ac-editor {
     position: relative;
     flex: none;
-    height: auto;
+    height: var(--flow-top, 300px);
     min-height: 0;
     border-right: 0;
   }
@@ -2354,19 +2704,32 @@
   .ac-colsplit {
     display: none;
   }
-  /* The source and the side pane share one slot, its height the source's
-     (animated.tsx, --flow-source): the pane shows only its name until
-     its box opens it in the source's place, so the stage never gives up
-     room to it. */
+  /* The source and the side pane share one slot, what the note leaves:
+     the pane shows only its name until its box opens it in the source's
+     place. */
   .ac-source,
   .ac-source[data-sized='true'] {
-    height: var(--flow-source, 132px);
+    flex: 1 1 0;
+    height: auto;
+    min-height: 0;
   }
   .ac-editor:has(.ac-note.open) .ac-source {
     display: none;
   }
   .ac-note {
     flex: none;
+  }
+  .ac-note.open {
+    flex: 1 1 0;
+  }
+  /* (its record is in the note: the pass's steps) */
+  .ac-note.gone {
+    display: none;
+  }
+  .ac-flownote {
+    position: relative;
+    flex: none;
+    border-top: 1px solid var(--line);
   }
   .ac-note:not(.open) .ac-note-body {
     display: none;
@@ -2379,7 +2742,7 @@
     display: none;
   }
   .ac-note.open .ac-note-body {
-    height: var(--flow-source, 132px);
+    flex: 1 1 0;
     min-height: 0;
     overflow: auto;
   }
@@ -2431,9 +2794,6 @@
     border: 0;
     background: none;
   }
-  .ac-stage {
-    order: -1;
-  }
   .ac-scene {
     border: 1px solid var(--line);
   }
@@ -2466,7 +2826,6 @@
     width: 100% !important;
     max-width: none;
     border: 0;
-    border-bottom: 1px solid var(--line);
     clip-path: none;
   }
   .ac-window.docked .ac-window-bar {
@@ -2845,57 +3204,78 @@
   margin: 0;
 }
 
-/* The notes window's size grip (note-window.tsx): nothing at rest. Near
-   the bottom-right corner the corner folds over, a sticky note's dog-ear,
-   and dragging it resizes the window (Stanley, 2026-09-27). The window's
-   clip cuts the corner away (the stage shows through); the grip's
-   ::before is the flap folded over, its crease on the cut's diagonal.
-   --ear is the flap's size; -2px at rest puts the cut outside the box. */
-@property --ear {
-  syntax: '<length>';
-  inherits: true;
-  initial-value: -2px;
-}
-.ac-window {
-  --ear: -2px;
-  clip-path: polygon(
-    0 0,
-    100% 0,
-    100% calc(100% - var(--ear) - 2px),
-    calc(100% - var(--ear) - 2px) 100%,
-    0 100%
-  );
-  transition: --ear 0.2s cubic-bezier(0.22, 1, 0.36, 1);
-}
-.ac-window.ear,
-.ac-window:has(.ac-window-grip:focus-visible) {
-  --ear: 13px;
-}
+/* The notes window's size grip (note-window.tsx): its bottom-right
+   corner, nothing drawn (Stanley, 2026-09-30: no dog-ear). A keyboard's
+   focus marks the corner. */
 .ac-window-grip {
   position: absolute;
+  z-index: 2;
   right: 0;
   bottom: 0;
-  width: 20px;
-  height: 20px;
+  width: 8px;
+  height: 8px;
   cursor: nwse-resize;
   touch-action: none;
 }
 .ac-window-grip:focus-visible {
   outline: none;
+  box-shadow:
+    inset -1px 0 0 var(--muted),
+    inset 0 -1px 0 var(--muted);
 }
-.ac-window-grip::before {
-  content: '';
+/* The other edges and corners that size it: thin strips along the border,
+   over the bar's edge too, as a desktop window's. */
+.ac-window-edge {
   position: absolute;
-  right: 0;
+  z-index: 2;
+  touch-action: none;
+}
+.ac-window-edge.n,
+.ac-window-edge.s {
+  left: 8px;
+  right: 8px;
+  height: 5px;
+  cursor: ns-resize;
+}
+.ac-window-edge.w,
+.ac-window-edge.e {
+  top: 8px;
+  bottom: 8px;
+  width: 5px;
+  cursor: ew-resize;
+}
+.ac-window-edge.n {
+  top: 0;
+}
+.ac-window-edge.s {
   bottom: 0;
-  width: max(0px, var(--ear));
-  height: max(0px, var(--ear));
-  box-sizing: border-box;
-  /* (none at all at rest: a 1px border would still show a dot) */
-  border-top: min(1px, max(0px, var(--ear))) solid var(--faint);
-  border-left: min(1px, max(0px, var(--ear))) solid var(--faint);
-  background: var(--line);
-  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+.ac-window-edge.w {
+  left: 0;
+}
+.ac-window-edge.e {
+  right: 0;
+}
+.ac-window-edge.nw,
+.ac-window-edge.ne,
+.ac-window-edge.sw {
+  width: 8px;
+  height: 8px;
+}
+.ac-window-edge.nw {
+  top: 0;
+  left: 0;
+  cursor: nwse-resize;
+}
+.ac-window-edge.ne {
+  top: 0;
+  right: 0;
+  cursor: nesw-resize;
+}
+.ac-window-edge.sw {
+  bottom: 0;
+  left: 0;
+  cursor: nesw-resize;
 }
 @media (prefers-reduced-motion: reduce) {
   .ac-window {
@@ -2903,6 +3283,20 @@
   }
 }
 
+/* The type pass on the tree (animated.tsx asserts): an edge down to a
+   child the step's rule holds to a type, in the colour of whether its
+   type held. */
+.ac-edges path.assert.ok {
+  stroke: var(--ok);
+}
+.ac-edges path.assert.bad {
+  stroke: var(--err);
+}
+/* A token sliding into the node that absorbs it (a field's name into
+   `.value`) fades out over that node: the pointer is the node's. */
+.ac-piece.absorbed {
+  pointer-events: none;
+}
 /* PROTOTYPE: tree nodes drag (animated.tsx, nudged). */
 .ac-piece.node {
   cursor: grab;
@@ -2916,8 +3310,16 @@
 .ac-dock-slot {
   display: grid;
   place-items: center;
+  width: 100%;
   height: 96px;
   margin-top: 4px;
   border: 1px dashed var(--line);
+  background: none;
   color: var(--faint);
+  font: inherit;
+  cursor: pointer;
+}
+.ac-stackbeside .ac-dock-slot {
+  width: 200px;
+  margin-top: 0;
 }

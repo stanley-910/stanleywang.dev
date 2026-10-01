@@ -1,5 +1,11 @@
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { useEffect, useRef, useState } from 'react'
+import {
+  AnimatePresence,
+  animate,
+  motion,
+  useMotionValue,
+  useReducedMotion,
+} from 'motion/react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import type { ReactNode, RefObject } from 'react'
 
@@ -9,7 +15,10 @@ import type { ReactNode, RefObject } from 'react'
 // by, and a − that rolls it up into its top-left corner, to the name and
 // a + that grows it back out (Stanley, 2026-09-26). A grip at its bottom
 // right sizes it: the width within bounds, the height only as a cap, so it
-// never grows past what the note needs (2026-09-27). Where it sits, its
+// never grows past what the note needs (2026-09-27); until then it fits
+// the note (2026-10-01). Its other edges and corners size it too, as any
+// window's (2026-09-30): a left or top edge moves that side and keeps the
+// opposite one where it is. Where it sits, its
 // size and whether it's rolled up are remembered in this browser. On a
 // phone it docks over the controls instead (animated.css .ac-dock): no bar
 // to drag or grip to size, only the − that rolls it up.
@@ -18,16 +27,27 @@ const MARGIN = 8
 const OPEN_W = 264
 const MIN_W = 220
 const MAX_W = 480
-// The body's height cap: CSS gives min(220px, 40vh) until it's dragged.
+// The body's least height cap, once dragged (until then it fits the note).
 const MIN_H = 72
 // One arrow key's nudge of the grip.
 const NUDGE = 16
-// How far into the bottom-right corner the pointer folds the dog-ear.
-const EAR_ZONE = 20
 // Advance of one character of the 11px title.
 const TITLE_CH = 6.6
 // The page's easing for cards that open and close (animated.tsx).
 const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number]
+
+// The edges and corners that size it besides the grip's (bottom right):
+// which sides each one moves.
+type Sides = { l?: boolean; r?: boolean; t?: boolean; b?: boolean }
+const EDGES: [string, Sides][] = [
+  ['n', { t: true }],
+  ['s', { b: true }],
+  ['w', { l: true }],
+  ['e', { r: true }],
+  ['nw', { t: true, l: true }],
+  ['ne', { t: true, r: true }],
+  ['sw', { b: true, l: true }],
+]
 
 type Place = {
   x: number
@@ -70,6 +90,8 @@ export function NoteWindow({
   children,
   foot,
   docked = false,
+  height = null,
+  cap = Infinity,
   onDock,
 }: {
   title: string
@@ -87,6 +109,10 @@ export function NoteWindow({
   foot?: ReactNode
   /** Docked over the controls (a phone): not dragged or sized. */
   docked?: boolean
+  /** Docked: its height as dragged; null fits the note. */
+  height?: number | null
+  /** Docked: the most a note that fits its text may take. */
+  cap?: number
   /** Puts the note back in the pane under the source (↙ on the bar). */
   onDock?: () => void
 }) {
@@ -128,12 +154,16 @@ export function NoteWindow({
   // The width it can have here: a size saved on a wider screen gives way
   // (and comes back when there's room), rather than clipping the note.
   const [room, setRoom] = useState(Infinity)
+  // The area's bottom, in bounds' coordinates: how far a note that fits
+  // its text may reach down before it scrolls.
+  const [floor, setFloor] = useState(Infinity)
   useEffect(() => {
     const area = bounds.current
     if (!area) return
     const observer = new ResizeObserver(() => {
       const inner = (areaRef.current ?? area).getBoundingClientRect()
       setRoom(Math.max(0, Math.floor(inner.width - 2 * MARGIN)))
+      setFloor(inner.bottom - area.getBoundingClientRect().top)
       setPlace((p) => (p ? clamp(p) : p))
     })
     observer.observe(area)
@@ -182,57 +212,128 @@ export function NoteWindow({
   const roomRef = useRef(room)
   roomRef.current = room
   const current = () => ({
-    w: Math.min(placeRef.current?.w ?? OPEN_W, roomRef.current),
+    // (a note fitted to its text starts from the width it's drawn at)
+    w: Math.min(
+      placeRef.current?.w ?? ref.current?.offsetWidth ?? OPEN_W,
+      roomRef.current,
+    ),
     h: bodyRef.current?.offsetHeight ?? MIN_H,
   })
 
+  // A drag on an edge or corner: from where it started, each side it
+  // moves goes with the pointer. A left or top side moves the window too,
+  // so the opposite side stays put; the top only as far as the note needs,
+  // since the height is a cap and a taller cap wouldn't grow it.
+  const edging = useRef<{
+    sides: Sides
+    px: number
+    py: number
+    place: Place
+    w: number
+    h: number
+    natural: number
+    bodyTop: number
+  } | null>(null)
+  const edgeTo = (clientX: number, clientY: number) => {
+    const d = edging.current
+    const outer = bounds.current
+    const inner = area?.current ?? outer
+    if (!d || !outer || !inner) return
+    const o = outer.getBoundingClientRect()
+    const i = inner.getBoundingClientRect()
+    const dx = clientX - d.px
+    const dy = clientY - d.py
+    const within = (v: number, lo: number, hi: number) =>
+      Math.round(Math.max(lo, Math.min(v, hi)))
+    let { x, y } = d.place
+    let { w, h } = d
+    if (d.sides.r)
+      w = within(w + dx, MIN_W, Math.min(MAX_W, i.right - o.left - x - MARGIN))
+    if (d.sides.l) {
+      const right = d.place.x + d.w
+      w = within(
+        w - dx,
+        MIN_W,
+        Math.min(MAX_W, right - (i.left - o.left + MARGIN)),
+      )
+      x = right - w
+    }
+    if (d.sides.b) h = within(h + dy, MIN_H, i.bottom - d.bodyTop - MARGIN)
+    if (d.sides.t) {
+      const bottom = d.place.y + d.h
+      const most = Math.min(d.natural, bottom - (i.top - o.top + MARGIN))
+      h = within(h - dy, Math.min(MIN_H, d.natural), most)
+      y = bottom - h
+    }
+    setPlace((p) => (p ? { ...p, x, y, w, h } : p))
+  }
+
   const shut = !!place?.shut
-  // The dog-ear (animated.css): folded while the pointer is in the window's
-  // bottom-right corner. Found by where the pointer is, not by hovering the
-  // grip: the fold clips the window there, and a clipped corner isn't
-  // hovered, so it would unfold under the pointer and fold again. A press
-  // anywhere in the corner, the cut part too, takes the grip.
-  const gripRef = useRef<HTMLDivElement>(null)
-  const [ear, setEar] = useState(false)
+  // Until it's sized by hand, a note fits its text (Stanley, 2026-10-01):
+  // as tall as it runs, to the area's bottom, and wide enough for what
+  // doesn't wrap (the symbol table's rows), measured at the width it opens
+  // at so it narrows again for a note that needs less.
+  const [fitW, setFitW] = useState(OPEN_W)
+  // Every render: the note's content is what changes it. (Measured at the
+  // opening width, the same content gives the same width: it settles.)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => {
+    const body = bodyRef.current
+    if (!body || docked || place?.w !== undefined) return
+    const was = body.style.width
+    body.style.width = `${OPEN_W - 2}px`
+    const need = Math.min(MAX_W, Math.max(OPEN_W, body.scrollWidth + 2))
+    body.style.width = was
+    if (need !== fitW) setFitW(need)
+  })
+  // Docked, it fits its note too, up to the cap it's given (the editor's
+  // room above it), and glides to the next note's height (Stanley,
+  // 2026-10-01).
+  const [fitDock, setFitDock] = useState<number | null>(null)
+  const measureDock = () => {
+    const body = bodyRef.current
+    if (!body || !docked || height !== null) return
+    const was = body.style.height
+    body.style.height = 'auto'
+    const need = Math.max(28, Math.min(cap, body.scrollHeight))
+    body.style.height = was
+    setFitDock(need)
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useLayoutEffect(measureDock)
+  // (and as what's in it grows in: a record's cards open after the step)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (shut || docked) {
-      setEar(false)
+    const body = bodyRef.current
+    if (!body || !docked || height !== null) return
+    const observer = new ResizeObserver(measureDock)
+    for (const child of Array.from(body.children)) observer.observe(child)
+    return () => observer.disconnect()
+  })
+  const dockH = height ?? fitDock
+  // Glided by an effect rather than `animate`: a StrictMode reattach stops
+  // Motion's own animation midway (as animated.tsx's GlidingPath), where an
+  // effect runs again and finishes it. Set at once the first time, and
+  // while its edge is dragged.
+  const dockHeight = useMotionValue(0)
+  const primed = useRef(false)
+  useEffect(() => {
+    if (!docked || dockH === null) return
+    if (!primed.current || height !== null || still) {
+      primed.current = true
+      dockHeight.set(dockH)
       return
     }
-    const inCorner = (e: PointerEvent) => {
-      const box = ref.current?.getBoundingClientRect()
-      return (
-        !!box &&
-        e.clientX >= box.right - EAR_ZONE &&
-        e.clientX <= box.right &&
-        e.clientY >= box.bottom - EAR_ZONE &&
-        e.clientY <= box.bottom
-      )
-    }
-    const moved = (e: PointerEvent) => {
-      if (!sizing.current) setEar(e.pointerType !== 'touch' && inCorner(e))
-    }
-    const pressed = (e: PointerEvent) => {
-      const grip = gripRef.current
-      if (!grip || e.button !== 0 || !inCorner(e)) return
-      if (grip.contains(e.target as Node)) return
-      e.preventDefault()
-      grip.setPointerCapture(e.pointerId)
-      sizing.current = { x: e.clientX, y: e.clientY, ...current() }
-      setResizing(true)
-    }
-    const away = () => setEar(false)
-    document.addEventListener('pointermove', moved, { passive: true })
-    document.addEventListener('pointerdown', pressed, { capture: true })
-    window.addEventListener('blur', away)
-    return () => {
-      document.removeEventListener('pointermove', moved)
-      document.removeEventListener('pointerdown', pressed, { capture: true })
-      window.removeEventListener('blur', away)
-    }
-    // (current() reads the latest place and room through refs)
-  }, [shut, docked])
-  const openW = Math.min(place?.w ?? OPEN_W, room)
+    const run = animate(dockHeight, dockH, { duration: 0.22, ease: EASE })
+    return () => run.stop()
+  }, [docked, dockH, height, still, dockHeight])
+  const openW = Math.min(place?.w ?? fitW, room)
+  // Bar (22px) and borders over the body.
+  // (none until the area is measured)
+  const fitH =
+    place && Number.isFinite(floor)
+      ? Math.max(MIN_H, floor - place.y - 24 - MARGIN)
+      : undefined
   // Rolled up it is just the name and a +, exactly as wide as those
   // (monospace, 6.6px a character at 11px, plus the bar's padding).
   const width = docked
@@ -245,7 +346,7 @@ export function NoteWindow({
   return (
     <motion.section
       ref={ref}
-      className={`ac-window ${docked ? 'docked' : ''} ${shut ? 'shut' : ''} ${error ? 'err' : ''} ${ear || resizing ? 'ear' : ''}`}
+      className={`ac-window ${docked ? 'docked' : ''} ${shut ? 'shut' : ''} ${error ? 'err' : ''}`}
       aria-label="Current step"
       initial={false}
       animate={{ width }}
@@ -259,6 +360,47 @@ export function NoteWindow({
               { visibility: 'hidden' }
       }
     >
+      {!docked &&
+        !shut &&
+        place &&
+        EDGES.map(([name, sides]) => (
+          <div
+            key={name}
+            className={`ac-window-edge ${name}`}
+            aria-hidden="true"
+            onPointerDown={(e) => {
+              const body = bodyRef.current
+              if (e.button !== 0 || !body) return
+              e.preventDefault()
+              e.stopPropagation()
+              e.currentTarget.setPointerCapture(e.pointerId)
+              edging.current = {
+                sides,
+                px: e.clientX,
+                py: e.clientY,
+                place,
+                ...current(),
+                natural: body.scrollHeight,
+                bodyTop: body.getBoundingClientRect().top,
+              }
+              setResizing(true)
+            }}
+            onPointerMove={(e) => edgeTo(e.clientX, e.clientY)}
+            onPointerUp={() => {
+              if (!edging.current) return
+              edging.current = null
+              setResizing(false)
+              setPlace((p) => {
+                if (p) save(p)
+                return p
+              })
+            }}
+            onPointerCancel={() => {
+              edging.current = null
+              setResizing(false)
+            }}
+          />
+        ))}
       <div
         className="ac-window-bar"
         onPointerDown={(e) => {
@@ -317,20 +459,23 @@ export function NoteWindow({
           >
             {/* Laid out at the open width throughout, so the text wraps
                 the same while the window grows and its height is right. */}
-            <div
+            <motion.div
               ref={bodyRef}
               className="ac-window-body"
               style={
-                docked ? undefined : { width: openW - 2, maxHeight: place?.h }
+                docked
+                  ? dockH === null
+                    ? undefined
+                    : { height: dockHeight }
+                  : { width: openW - 2, maxHeight: place?.h ?? fitH }
               }
               aria-live={live ? 'polite' : 'off'}
             >
               {children}
-            </div>
+            </motion.div>
             {foot}
             {!docked && (
               <div
-                ref={gripRef}
                 className="ac-window-grip"
                 role="separator"
                 aria-orientation="vertical"

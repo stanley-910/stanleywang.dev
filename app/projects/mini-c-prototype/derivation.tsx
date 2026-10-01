@@ -6,7 +6,7 @@
 // proof is its subtree upside down, leaves on top. Parts not yet joined
 // under a parent sit side by side, waiting for the bar that joins them.
 // The stage draws every statement's proof under the tree (proof-stage.tsx);
-// the side panel, the current rule (type-panel.tsx).
+// a node's hover, the rule that typed it (animated.tsx).
 import { returnType } from './type-view'
 
 import type { Trace } from './trace'
@@ -85,7 +85,8 @@ export function derive(trace: Trace, source: string, index: number) {
       .replace(/\s+/g, ' ')
       .trim()
       .replace(/;$/, '')
-    return s.length > 22 ? `${s.slice(0, 21)}…` : s || n.label
+    // (whole: a cut expression hid what was being typed, Stanley, 2026-10-01)
+    return s || n.label
   }
   const parent = new Map<number, number>()
   for (const n of trace.nodes) for (const c of n.children) parent.set(c, n.id)
@@ -110,6 +111,18 @@ export function derive(trace: Trace, source: string, index: number) {
     const n = trace.nodes[id]
     return source.slice(n.start, source.indexOf(')', n.start) + 1)
   }
+  // A function's type in the stage's shorthand, `(int) → int`, as its badge
+  // reads: its parameters' types (declarations before the body's `{`) and
+  // what it returns.
+  const signature = (fn: number, returns: string | undefined) => {
+    const f = trace.nodes[fn]
+    const body = trace.tokens.find((t) => t.id > f.token && t.text === '{')
+    const params = f.children
+      .map((c) => trace.nodes[c])
+      .filter((c) => c.kind === 'declare' && (!body || c.token < body.id))
+      .map((c) => c.label.slice(0, c.label.lastIndexOf(' ')).trim())
+    return `(${params.join(', ')}) → ${returns ?? '?'}`
+  }
   const fact = (key: string, code: string): Premise => ({
     kind: 'fact',
     key,
@@ -123,11 +136,11 @@ export function derive(trace: Trace, source: string, index: number) {
       .map((c): Premise => ({ kind: 'part', id: c }))
     const bad = failed.get(id) ?? undefined
     const ok = !failed.has(id)
-    // A function's return type, read off its header.
+    // A function's type, read off its header.
     if (n.kind === 'function')
       return {
         premises: [fact('decl', header(id))],
-        conclusion: `${n.label} returns ${known.get(id)}`,
+        conclusion: `${n.label} : ${signature(id, known.get(id))}`,
         name: 'Fun',
         ok,
       }
@@ -146,7 +159,12 @@ export function derive(trace: Trace, source: string, index: number) {
       )
       const needs =
         n.kind === 'return' && fn
-          ? [fact('returns', `${fn.label} returns ${returnType(trace, fn.id)}`)]
+          ? [
+              fact(
+                'returns',
+                `${fn.label} : ${signature(fn.id, returnType(trace, fn.id))}`,
+              ),
+            ]
           : n.kind === 'assign'
             ? [
                 fact(
@@ -157,7 +175,13 @@ export function derive(trace: Trace, source: string, index: number) {
             : []
       return {
         premises: [...parts, ...needs],
-        conclusion: `${head(id)} ${ok ? 'ok' : '✗'}`,
+        // (the statement alone: whether it held shows in its colour, not a
+        // mark after it, Stanley, 2026-10-01; an assignment is an
+        // expression, though, with its target's type, as its badge says)
+        conclusion:
+          n.kind === 'assign' && known.has(id)
+            ? `${head(id)} : ${known.get(id)}`
+            : head(id),
         name:
           n.kind === 'return'
             ? 'Return'
@@ -170,7 +194,8 @@ export function derive(trace: Trace, source: string, index: number) {
         bad,
       }
     }
-    const conclusion = `${text(id)} : ${ok ? known.get(id) : '✗'}`
+    // (an expression that didn't type is `unknown`, as the compiler has it)
+    const conclusion = `${text(id)} : ${ok ? known.get(id) : 'unknown'}`
     // A name has the type of the declaration it was linked to.
     if (n.kind === 'name') {
       const decl = declOf.get(id)

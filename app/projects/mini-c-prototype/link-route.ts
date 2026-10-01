@@ -424,6 +424,7 @@ export function linkRouter(obstacles: Box[], opts: RouteOptions = {}) {
     return cost
   }
 
+  let tightRouter: ReturnType<typeof linkRouter> | undefined
   const route = (from: Box, to: Box): Route => {
     const fc = { x: from.x + from.w / 2, y: from.y + from.h / 2 }
     const tc = { x: to.x + to.w / 2, y: to.y + to.h / 2 }
@@ -431,11 +432,12 @@ export function linkRouter(obstacles: Box[], opts: RouteOptions = {}) {
     const fallback = (): Route => {
       // A crowded row may have room for the wire but not its clearance.
       if (clearX > 0 || clearY > 0) {
-        const tight = linkRouter(obstacles, {
+        tightRouter ??= linkRouter(obstacles, {
           ...opts,
           clearance: { x: 0, y: 0 },
           radius: 0,
-        }).route(from, to)
+        })
+        const tight = tightRouter.route(from, to)
         if (tight.clean) return tight
       }
       const lift = 28 + Math.abs(fc.x - tc.x) * 0.12
@@ -619,7 +621,35 @@ export function linkRouter(obstacles: Box[], opts: RouteOptions = {}) {
       bends,
     }
   }
-  return { route }
+  // One router belongs to one geometry. A later step or hover can reuse
+  // the exact path; none of its A* work depends on which link is lit.
+  const routes = new Map<string, Route>()
+  return {
+    route(from: Box, to: Box): Route {
+      // A box from the obstacle list has its fitted side clearances;
+      // an equal, separate endpoint uses the defaults. Keep both cases.
+      const key = [
+        side.get(from)?.left,
+        side.get(from)?.right,
+        side.get(to)?.left,
+        side.get(to)?.right,
+        from.x,
+        from.y,
+        from.w,
+        from.h,
+        to.x,
+        to.y,
+        to.w,
+        to.h,
+      ].join()
+      let found = routes.get(key)
+      if (!found) {
+        found = route(from, to)
+        routes.set(key, found)
+      }
+      return found
+    },
+  }
 }
 
 // Drops repeated and collinear points.

@@ -29,6 +29,9 @@ export function withTypeSteps(trace: Trace): Trace {
   const out: Frame[] = []
   for (const frame of trace.frames) {
     const w = frame.why
+    // (no closing step: the last node's type is the pass's end; Stanley,
+    // 2026-10-01)
+    if (w.kind === 'check.typesDone') continue
     if (!TYPED.has(w.kind)) {
       out.push(frame)
       continue

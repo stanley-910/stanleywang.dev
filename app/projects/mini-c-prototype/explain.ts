@@ -2,7 +2,7 @@
 // from trace data, so the same wording serves presets and typed programs.
 // Backticks mark code spans; the page renders them as <code>.
 import { readerOf } from './detail'
-import { stackFrames } from './stack-view'
+import { stackFrames, wordAt } from './stack-view'
 import { attemptOf } from './trace'
 
 import type {
@@ -754,23 +754,18 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
           ? Number(room.text?.split(',').pop()) * -1
           : 0
       const saveRa = run.some((i) => i.text?.startsWith('sw $ra'))
-      // DRAFT copy, after Stanley's pushRegisters note.
-      const push = run.some((i) => i.op === 'pushRegisters')
-        ? ` Last, ${code('pushRegisters')}, a placeholder that register allocation expands, makes room on the stack for the physical registers it will use.`
-        : ''
-      return `Before its body, ${code(n.label)} builds a stack frame: it saves the caller's frame pointer, points ${code('$fp')} at this frame${saveRa ? ', keeps the return address' : ''}${bytes ? `, and reserves ${bytes} bytes for the variables it declares` : ''}.${push} None of these lines is written in your code.`
+      // (pushRegisters isn't shown in emit: register allocation adds it,
+      // Stanley, 2026-10-01; emit-view.ts withoutPlaceholders)
+      return `Before its body, ${code(n.label)} builds a stack frame: it saves the caller's frame pointer, points ${code('$fp')} at this frame${saveRa ? ', keeps the return address' : ''}${bytes ? `, and reserves ${bytes} bytes for the variables it declares` : ''}. None of these lines is written in your code.`
     }
     case 'emit.epilogue': {
       const n = node(w.node)
       if (w.of) return explainFrameLine(trace, n, w.of, w.from)
       const run = trace.instructions.slice(w.from, w.to + 1)
       const exits = run.some((i) => i.op === 'syscall')
-      // DRAFT copy: the popRegisters sentence.
-      const pop = run.some((i) => i.op === 'popRegisters')
-        ? ` First, ${code('popRegisters')} brings back the physical registers saved at the start. Then it`
-        : ' It'
+      // (nor popRegisters: see the prologue)
       const back = `puts ${code('$sp')} and ${code('$fp')} back the way the caller left them`
-      return `${code(n.label)} is done.${pop} ${back}, and ${exits ? 'exits with a system call' : `jumps back to the caller with ${code('jr $ra')}`}.`
+      return `${code(n.label)} is done. It ${back}, and ${exits ? 'exits with a system call' : `jumps back to the caller with ${code('jr $ra')}`}.`
     }
     case 'emit.value':
       return `${code(node(w.node).label)} already lives in ${code(w.v)} from its assignment, so no instruction is needed.`
@@ -906,6 +901,17 @@ function explainBlock(
   return `${listed[0].toUpperCase()}${listed.slice(1)}.`
 }
 
+// What the word a load reads holds, when it is an address a line stored
+// there (stack-view.ts): `p`'s `&x`, by the name of the word, `x`.
+function heldAddress(trace: Trace, at: number) {
+  const frame = stackFrames(trace).find((f) => f.first <= at && at <= f.last)
+  const read = frame?.touches.find((t) => t.at === at && t.kind === 'read')
+  const h =
+    read &&
+    frame?.holds.find((h) => h.addr === read.addr && h.from < at && at <= h.to)
+  return (h && frame && wordAt(frame, h.of, at)?.label) || undefined
+}
+
 // Line by line (emit-view.ts), DRAFT copy: a short sentence per line of a
 // node's run, saying what the line is for rather than repeating it.
 function explainLine(
@@ -950,7 +956,8 @@ function explainLine(
         return operandNote(ins)
       if (ins.op === 'lw') {
         const base = /\((v\d+)\)/.exec(ins.text ?? '')?.[1] ?? ''
-        return `Load the word at ${code(base)}, offset 0, so ${code(n.label)} itself, into ${code(ins.dest ?? '')}.`
+        const holds = heldAddress(trace, at)
+        return `Load the word at ${code(base)}, offset 0, so ${code(n.label)} itself${holds ? `, the address of ${code(holds)},` : ''} into ${code(ins.dest ?? '')}.`
       }
       const offset = Number(/,(-?\d+)$/.exec(ins.text ?? '')?.[1] ?? 0)
       // A name loaded again in the same function: the compiler reloads it
@@ -1009,14 +1016,10 @@ function explainFrameLine(
     (what === undefined || tag.for === what || tag.reg === what)
   // GraphColouringRegAlloc expands both once registers are allocated.
   if (is('push-registers')) {
-    // GraphColouringRegAlloc saves every register the function is given.
-    const saved = stackFrames(trace).find((f) => f.name === n.label)?.saved
-    const which = saved?.length
-      ? ` For ${fn} that is ${list(saved.map(code))}, ${saved.length === 1 ? 'one word' : `${saved.length} words`}.`
-      : ''
     // Stanley's copy (2026-09-28), with "helper function" as a placeholder
-    // instruction: it isn't a call.
-    return `Here we use a placeholder, ${code('pushRegisters')}, which expands during register allocation: it makes room on the stack for every physical register ${fn} will use, and saves each one there.${which}`
+    // instruction: it isn't a call. Which registers, and how many, waits
+    // for the allocator (Stanley, 2026-10-01; stack-view.ts drawnSaved).
+    return `Here we use a placeholder, ${code('pushRegisters')}, which expands during register allocation: it makes room on the stack for every physical register ${fn} will use, and saves each one there.`
   }
   if (is('pop-registers'))
     return `${code('popRegisters')} is the same placeholder in reverse: during register allocation it expands into loads that bring back each saved physical register and give its room on the stack back.`
