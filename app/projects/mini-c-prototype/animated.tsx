@@ -23,6 +23,7 @@ import {
   type ComponentProps,
   type CSSProperties,
   Fragment,
+  memo,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
   useCallback,
@@ -142,7 +143,10 @@ const TREE_GAP = 14
 // A type badge's characters (10px).
 const TYPE_PX = 6
 const EDGE_PX = 24
-type PaneKind = 'token' | 'chars' | 'kinds' | 'scopes' | 'stack'
+// The share of the stage's width the parser's view gives the statement it
+// is in, while it builds a tree too wide to show whole.
+const SCOPE_ROOM = 0.6
+type PaneKind = 'token' | 'chars' | 'kinds' | 'scopes'
 // The side pane's headline over a class's list (DRAFT copy).
 const TOKEN_HEADS: Record<string, string> = {
   type: 'types',
@@ -459,6 +463,65 @@ function GlidingPath({
   }, [shape, d])
   return <motion.path d={shape} {...rest} />
 }
+
+// Most steps only light a different edge. Keep settled paths out of
+// Motion's render work; their presence and the stage's epoch still govern
+// arrivals and exits (Stanley, 2026-10-01).
+const TreeEdge = memo(function TreeEdge({
+  d,
+  className,
+  opacity,
+  duration,
+  drawTime,
+  moveTime,
+  immediate,
+}: {
+  d: string
+  className?: string
+  opacity: number
+  duration: number
+  drawTime: number
+  moveTime: number
+  immediate: boolean
+}) {
+  // A detached edge (a step back) goes at once: it keeps the places it had,
+  // so while the view moves under it, it would hang where the tree was.
+  const leave = {
+    duration: Math.min(0.15, duration / 2),
+    ease: 'easeOut' as const,
+  }
+  return (
+    <GlidingPath
+      data-edge=""
+      className={className}
+      d={d}
+      glide={immediate ? { duration: 0 } : { duration: moveTime, ease: EASE }}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1}
+      initial={{ pathLength: 0, opacity: 0 }}
+      animate={{ pathLength: 1, opacity }}
+      exit={{
+        pathLength: 0,
+        opacity: 0,
+        transition: leave,
+      }}
+      transition={{
+        duration,
+        ease: EASE,
+        ...(immediate && {
+          d: { duration: 0 },
+          left: { duration: 0 },
+          top: { duration: 0 },
+          scale: { duration: 0 },
+        }),
+        // An attached edge's stroke draws across the step, evenly, rather
+        // than mostly in its first fifth as the page's easing would.
+        pathLength: { duration: drawTime, ease: 'easeInOut' },
+      }}
+    />
+  )
+})
 
 function MorphText({ text }: { text: string }) {
   const reduced = useReducedMotion()
@@ -884,6 +947,12 @@ export default function AnimatedCompiler() {
     }
     return out
   }, [trace])
+  const functions = useMemo(() => {
+    const byName = new Map<string, Trace['nodes'][number]>()
+    for (const n of trace.nodes)
+      if (n.kind === 'function' && !byName.has(n.label)) byName.set(n.label, n)
+    return byName
+  }, [trace])
   // What a call's arguments must match, its function's signature:
   // `twice : (int) → int`. A parameter's type is written out, never worked
   // out; the arguments are what get derived and checked against it.
@@ -892,13 +961,11 @@ export default function AnimatedCompiler() {
       const n = trace.nodes[id]
       if (n.kind !== 'call') return undefined
       const name = n.label.replace(/\(\)$/, '')
-      const fn = trace.nodes.find(
-        (f) => f.kind === 'function' && f.label === name,
-      )
+      const fn = functions.get(name)
       const sig = fn ? functionType.get(fn.id)?.type : BUILTINS[name]
       return sig ? `${name} : ${sig}` : undefined
     },
-    [trace, functionType],
+    [trace, functionType, functions],
   )
   // A call to a built-in: its signature is tagged so, having no
   // declaration in the program to link to.
@@ -906,13 +973,9 @@ export default function AnimatedCompiler() {
     (id: number) => {
       const n = trace.nodes[id]
       const name = n.label.replace(/\(\)$/, '')
-      return (
-        n.kind === 'call' &&
-        name in BUILTINS &&
-        !trace.nodes.some((f) => f.kind === 'function' && f.label === name)
-      )
+      return n.kind === 'call' && name in BUILTINS && !functions.has(name)
     },
-    [trace],
+    [trace, functions],
   )
   // Each type badge (or what a return must match): its width in pixels and
   // the step it first shows. The type pass makes room node by node as it
@@ -965,11 +1028,11 @@ export default function AnimatedCompiler() {
     })
     return at
   }, [trace])
-  // Name-link routes, worked out once per step and stage size (below).
+  // Name-link routes survive steps with the same geometry (below).
   const routeCache = useRef<{
     trace: Trace
     key: string
-    routes: Map<string, Route>
+    router: ReturnType<typeof linkRouter>
   } | null>(null)
   // Once parsing starts, a `*` that multiplies waits in the tray as the `×`
   // the tree will show; a prefix `*` stays as typed.
@@ -1081,6 +1144,14 @@ export default function AnimatedCompiler() {
   const [stackAt, setStackAt] = useState<{ x: number; y: number } | null>(null)
   const stackDrag = useDragControls()
   const stackStart = useRef<ReactPointerEvent | null>(null)
+  // The stack's place by the listing, where it docks (stackPane): under it
+  // in a pane of its own when the listing is a column at the side, folded
+  // to its bar or as tall as dragged (null: as tall as the stack); beside
+  // it when the listing runs along the bottom (Stanley, 2026-10-01).
+  const [stackFold, setStackFold] = useState(false)
+  const [stackH, setStackH] = useState<number | null>(null)
+  const stackSplit = useRef<{ y: number; h: number; max: number } | null>(null)
+  const stackDockRef = useRef<HTMLDivElement>(null)
   const noteRef = useRef<HTMLElement>(null)
   const [hoverIns, setHoverIns] = useState<number | null>(null)
   // A virtual register under focus in emit (`fn:vr`): where it is written
@@ -1404,6 +1475,9 @@ export default function AnimatedCompiler() {
     Math.min(Number.isSafeInteger(step) ? step : 0, trace.frames.length - 1),
   )
   const frame = trace.frames[index]
+  // Membership is asked for every edge and piece, not just once per step.
+  const attached = useMemo(() => new Set(frame.attached), [frame.attached])
+  const consumed = useMemo(() => new Set(frame.consumed), [frame.consumed])
   // Which way the last step went. Stepping back doesn't replay the step it
   // lands on: its sequences (rows in turn, a register travelling up the
   // tree, the name pass's walk, a link drawing) settle straight to where
@@ -2304,13 +2378,20 @@ export default function AnimatedCompiler() {
   // The room each node's badge takes this step: a call's signature on its
   // step, then just its type, so the tree closes up again once the
   // signature collapses (Stanley, 2026-10-01).
+  // Past the last badge (and a one-step signature's collapse), emit keeps
+  // the same room. Its steps needn't lay the typed tree out again.
+  const lastBadgeStep = useMemo(
+    () => Math.max(-1, ...badgeTexts.map((b) => b.step + 1)),
+    [badgeTexts],
+  )
+  const badgeIndex = Math.min(index, lastBadgeStep)
   const badgeRoom = useMemo(() => {
     const room = new Map<number, number>()
     for (const { id, width, step, only } of badgeTexts)
-      if (only ? step === index : step <= index)
+      if (only ? step === badgeIndex : step <= badgeIndex)
         room.set(id, Math.max(room.get(id) ?? 0, width))
     return room
-  }, [badgeTexts, index])
+  }, [badgeTexts, badgeIndex])
   // Every phase keeps the check layout, so the tree holds its shape from
   // the parse to the registers; badges (types, then registers) push nodes
   // aside only where they would collide (typedShift, below). Emit used to
@@ -2344,7 +2425,10 @@ export default function AnimatedCompiler() {
   // finished tree's places, so earlier statements sit off to the side. A
   // small tree is laid out whole throughout, as before.
   // Parse: unattached nodes wait in their holder's open slot (parse-view.ts).
-  const working = parseView(trace, index, parents, groups, baseTree.at)
+  const working = useMemo(
+    () => parseView(trace, index, parents, groups, baseTree.at),
+    [trace, index, parents, groups, baseTree],
+  )
   const scope = (() => {
     if (
       wholeSpread >= 1 ||
@@ -2402,8 +2486,12 @@ export default function AnimatedCompiler() {
       ? { lo, width: hi - lo, depth: Math.max(depth, 1), levels }
       : undefined
   })()
+  // (the statement in at most SCOPE_ROOM of the stage's width, so what's
+  // around it stays in view: at the full width it took, the view sat so
+  // close that the rest of the tree was gone, Stanley, 2026-10-01; a hand
+  // can still zoom in as far as it likes)
   const naturalSpread = scope
-    ? Math.max(wholeSpread, Math.min(treeRoom / scope.width, 1))
+    ? Math.max(wholeSpread, Math.min((treeRoom * SCOPE_ROOM) / scope.width, 1))
     : wholeSpread
   const natural = {
     spread: naturalSpread,
@@ -2422,11 +2510,14 @@ export default function AnimatedCompiler() {
   // the one finished before the next begins (Stanley, 2026-10-01). Stepping
   // back has no order to show.
   const prevFrame = index > 0 ? trace.frames[index - 1] : undefined
+  const previousNodes = useMemo(() => new Set(prevFrame?.nodes), [prevFrame])
+  const previousAttached = useMemo(
+    () => new Set(prevFrame?.attached),
+    [prevFrame],
+  )
   const attaches =
-    !back &&
-    !!prevFrame &&
-    frame.attached.some((c) => !prevFrame.attached.includes(c))
-  const isNew = (id: number) => !!prevFrame && !prevFrame.nodes.includes(id)
+    !back && !!prevFrame && frame.attached.some((c) => !previousAttached.has(c))
+  const isNew = (id: number) => !!prevFrame && !previousNodes.has(id)
   // Such a step takes about as long as any other: the fill its first part,
   // the move and the arrivals the rest (Stanley, 2026-10-01: two steps'
   // length was too slow).
@@ -2501,23 +2592,26 @@ export default function AnimatedCompiler() {
   // How far the type pass's tree runs past the stage's right edge; the
   // stage scrolls sideways that far rather than squeeze it (Stanley,
   // 2026-09-25).
-  let typedOver = 0
-  const typedShift = (() => {
-    if (!shiftRoom) return undefined
-    const shift = new Map<number, number>()
-    const baseX = (id: number) => treeLeft + (tree.at[id]?.x ?? 0) * spread
+  const typedRows = useMemo(() => {
     const rows = new Map<number, number[]>()
     for (const n of trace.nodes) {
       const row = tree.at[n.id]?.y
       if (row === undefined) continue
-      rows.set(row, [...(rows.get(row) ?? []), n.id])
+      const ids = rows.get(row)
+      if (ids) ids.push(n.id)
+      else rows.set(row, [n.id])
     }
+    return [...rows].sort(([a], [b]) => a - b).map(([, ids]) => ids)
+  }, [trace, tree])
+  const { shift: typedShift, over } = useMemo(() => {
+    if (!shiftRoom) return { shift: undefined, over: 0 }
+    const shift = new Map<number, number>()
+    const baseX = (id: number) => treeLeft + (tree.at[id]?.x ?? 0) * spread
     let right = -Infinity
     let left = Infinity
-    for (const row of [...rows.keys()].sort((a, b) => a - b)) {
+    for (const row of typedRows) {
       let edge = -Infinity
-      const ids = rows.get(row) ?? []
-      ids.sort((a, b) => baseX(a) - baseX(b))
+      const ids = [...row].sort((a, b) => baseX(a) - baseX(b))
       for (const id of ids) {
         const parent = parents.get(id)
         let x =
@@ -2541,11 +2635,19 @@ export default function AnimatedCompiler() {
       Math.max(0, right - end),
       Math.max(0, left - EDGE_PX),
     )
-    typedOver = Math.max(0, right - slide - end)
     for (const [id, d] of shift) shift.set(id, d - slide)
-    return shift
-  })()
-  const over = typedOver
+    return { shift, over: Math.max(0, right - slide - end) }
+  }, [
+    shiftRoom,
+    treeLeft,
+    tree,
+    spread,
+    typedRows,
+    parents,
+    trace,
+    fit,
+    treeRoom,
+  ])
   // Parse, on one statement of a wide tree: the rest of the tree runs off
   // both sides of the stage, and panning reaches it (in px, from the
   // stage's left edge).
@@ -2626,6 +2728,7 @@ export default function AnimatedCompiler() {
   const follow = () => {
     if (pinnedError) return followError()
     if (typing) return followFocus()
+    if (naming) return followNames()
     if (!late) return
     const M = 24
     // How far to move one axis to bring [lo, hi] into [lo0 + m, hi0 - m];
@@ -2664,27 +2767,14 @@ export default function AnimatedCompiler() {
         })
       }
     }
-    const scene = sceneRef.current
-    const c = canvas.current
-    if (!emitStage || !scene || !c || c.busy() || handOff()) return
-    const node = scene
-      .querySelector<HTMLElement>('.ac-piece.focused')
-      ?.getBoundingClientRect()
-    if (!node) return
-    const at = scene.getBoundingClientRect()
-    const badge =
-      frame.focus === null
-        ? 0
-        : (lateRoom.get(frame.focus) ?? 0) * fit * c.view().k
-    const dx = into(node.left - at.left, node.right - at.left + badge, 0, viewW)
+    if (!emitStage || frame.focus === null) return
     // (on a phone, a little clear of the bottom)
-    const dy = into(
-      node.top - at.top,
-      node.bottom - at.top,
-      0,
-      narrow ? viewH - GRAPH_FOOT : viewH,
-    )
-    if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) c.panBy(dx, dy, !reduced)
+    bringIn([frame.focus], {
+      side: M,
+      above: M,
+      below: M + (narrow ? GRAPH_FOOT : 0),
+      right: (lateRoom.get(frame.focus) ?? 0) * fit,
+    })
   }
   // A hand on the view (a drag, the wheel, a pinch, the zoom buttons)
   // stops the steps panning it for the rest of that pass, so the reader
@@ -2699,38 +2789,79 @@ export default function AnimatedCompiler() {
   // and their labels under it (the proofs it used to frame are gone,
   // Stanley, 2026-10-01).
   const followFocus = () => {
+    if (frame.focus !== null)
+      bringIn([frame.focus], {
+        side: 40,
+        above: 24,
+        below: narrow ? GRAPH_FOOT : 120,
+      })
+  }
+  // Pans just far enough to bring the nodes in (with `right` more px past
+  // the first, for its badge), inside margins; all of them if they fit,
+  // else the first. Measured where the pieces are headed (pieceBox), not
+  // where they are mid-move, so the view moves with the step, as the
+  // parser's does (Stanley, 2026-10-01). Nothing moves for what's already
+  // in view, or against a hand on the canvas this pass.
+  const bringIn = (
+    ids: number[],
+    m: { side: number; above: number; below: number; right?: number },
+  ) => {
     const c = canvas.current
-    const scene = sceneRef.current
-    const node = scene
-      ?.querySelector<HTMLElement>('.ac-piece.focused')
-      ?.getBoundingClientRect()
-    if (!c || !node || !scene || c.busy() || handOff()) return
-    const at = scene.getBoundingClientRect()
-    const side = 40,
-      above = 24,
-      below = narrow ? GRAPH_FOOT : 120
+    const shown = ids.filter((id) => frame.nodes.includes(id))
+    if (!c || !shown.length || c.busy() || handOff()) return
+    const v = c.view()
+    const boxes = shown.map((id, i) => {
+      const b = pieceBox(id)
+      return {
+        l: v.x + b.x * v.k,
+        r: v.x + (b.x + b.w) * v.k + (i ? 0 : (m.right ?? 0) * v.k),
+        t: v.y + b.y * v.k,
+        b: v.y + (b.y + b.h) * v.k,
+      }
+    })
+    const all = boxes.reduce((a, b) => ({
+      l: Math.min(a.l, b.l),
+      r: Math.max(a.r, b.r),
+      t: Math.min(a.t, b.t),
+      b: Math.max(a.b, b.b),
+    }))
+    const fits =
+      all.r - all.l <= viewW - 2 * m.side &&
+      all.b - all.t <= viewH - m.above - m.below
+    const at = fits ? all : boxes[0]
+    // (what doesn't fit shows from its start)
     const into = (
       lo: number,
       hi: number,
       size: number,
       m0: number,
       m1: number,
-    ) => (lo < m0 ? m0 - lo : hi > size - m1 ? size - m1 - hi : 0)
-    const dx = into(
-      node.left - at.left,
-      node.right - at.left,
-      viewW,
-      side,
-      side,
-    )
-    const dy = into(
-      node.top - at.top,
-      node.bottom - at.top,
-      viewH,
-      above,
-      below,
-    )
+    ) =>
+      lo < m0 || hi - lo > size - m0 - m1
+        ? m0 - lo
+        : hi > size - m1
+          ? size - m1 - hi
+          : 0
+    const dx = into(at.l, at.r, viewW, m.side, m.side)
+    const dy = into(at.t, at.b, viewH, m.above, m.below)
     if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) c.panBy(dx, dy, !reduced)
+  }
+  // The name pass: the step's name and the declaration it's tied to in
+  // view, or the name alone when both don't fit (Stanley, 2026-10-01: the
+  // camera follows every pass's action, as the parser's does).
+  const followNames = () => {
+    const w = frame.why
+    const ids =
+      w.kind === 'check.declare'
+        ? [w.decl]
+        : w.kind === 'check.resolve' || w.kind === 'check.link'
+          ? [w.use, w.decl]
+          : w.kind === 'check.unresolved' || w.kind === 'check.builtin'
+            ? [w.use]
+            : frame.focus !== null
+              ? [frame.focus]
+              : []
+    bringIn(ids, { side: 40, above: 24, below: narrow ? GRAPH_FOOT : 48 })
   }
   // An error: its node or token in view, however the pass had the view.
   const followError = () => {
@@ -2770,13 +2901,16 @@ export default function AnimatedCompiler() {
   useEffect(() => {
     followRef.current = follow
   })
-  // After the step lands (nodes moving are measured where they end), and
-  // never against a hand on the canvas. One follow at a time: steps coming
-  // faster than that (playing) are caught up by the next, which reads the
-  // latest step.
+  // As the step starts, the view moving with it (bringIn measures where
+  // pieces are headed); an error's, after it lands, as it measures the
+  // pieces themselves. Never against a hand on the canvas. One follow at a
+  // time: steps coming faster than that (playing) are caught up by the
+  // next, which reads the latest step.
   const followTimer = useRef(0)
   const lastStep = useRef(0)
-  const followDelay = (reduced ? 0 : transition.duration) * 1000 + 30
+  // (read in effects: `pinnedError` is worked out further down)
+  const followDelay = () =>
+    (reduced || !pinnedError ? 0 : transition.duration) * 1000 + 30
   const followDelayRef = useRef(followDelay)
   useEffect(() => {
     followDelayRef.current = followDelay
@@ -2790,10 +2924,10 @@ export default function AnimatedCompiler() {
       // Once more when the latest step has landed, if it came after this
       // one was set.
       const left =
-        followDelayRef.current - (performance.now() - lastStep.current)
+        followDelayRef.current() - (performance.now() - lastStep.current)
       if (left > 0) followTimer.current = window.setTimeout(fire, left)
     }
-    followTimer.current = window.setTimeout(fire, followDelay)
+    followTimer.current = window.setTimeout(fire, followDelay())
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     index,
@@ -2864,8 +2998,12 @@ export default function AnimatedCompiler() {
   const pieceHalf = ((narrow ? 20 : 22) * fit) / 2
   // A phone drops the token tray's room once the parse has emptied it.
   const trayGone = narrow && frame.phase !== 'Tokens' && frame.phase !== 'Parse'
+  const fullTray = useMemo(
+    () => packTray(trace.tokens, sceneWidth),
+    [trace, sceneWidth],
+  )
   const { top: treeTop, band: rowsBand } = treeRows(
-    trayGone ? {} : packTray(trace.tokens, sceneWidth),
+    trayGone ? {} : fullTray,
     sceneHeight,
     { depth: viewDepth, levels: viewLevels },
     pieceHalf,
@@ -2876,21 +3014,6 @@ export default function AnimatedCompiler() {
   const treeBand = scope
     ? Math.min(rowsBand, viewLevels * SCOPE_ROW_PX)
     : rowsBand
-  // A detached edge (a step back) goes at once: it keeps the places it had,
-  // so while the view moves under it, it would hang where the tree was.
-  const edgeLeave = {
-    duration: Math.min(0.15, transition.duration / 2),
-    ease: 'easeOut' as const,
-  }
-  // An attached edge's stroke draws across the step, evenly, rather than
-  // mostly in its first fifth as the page's easing would.
-  const edgeDraw = {
-    ...transition,
-    pathLength: {
-      duration: attaches ? fillTime : transition.duration,
-      ease: 'easeInOut' as const,
-    },
-  }
   // A pointer's place on the canvas, in its own (unzoomed) px.
   const canvasPoint = (cx: number, cy: number) => {
     const box = sceneRef.current?.getBoundingClientRect()
@@ -2915,7 +3038,12 @@ export default function AnimatedCompiler() {
       y: Math.min(h - pad, Math.max(pad, at.y + n.y)) - at.y,
     }
   }
+  // Geometry is shared by pieces, edges, badges, cards and the router.
+  // Render-local caches also follow the held camera and a live node drag.
+  const points = new Map<number, { x: number; y: number }>()
   const point = (id: number) => {
+    const cached = points.get(id)
+    if (cached) return cached
     const slot = tree.at[id] ?? { x: tree.width / 2, y: tree.depth }
     const at = slot
     const shift = working.shift.get(id)
@@ -2927,10 +3055,12 @@ export default function AnimatedCompiler() {
     // Crowded rows keep their extra room until the stage's floor. Then
     // the tree fits below the tray instead of raising its root into it.
     const row = p.y / Math.max(1, viewDepth)
-    return {
+    const pnt = {
       x,
       y: ((treeTop + row * treeBand) * VIEW_H) / sceneHeight + (n?.y ?? 0),
     }
+    points.set(id, pnt)
+    return pnt
   }
   // Edges meet a node's box at its top and bottom centre. Ports are worked
   // out in pixels, where the box's height is (22px, 20px when small or on
@@ -3118,7 +3248,7 @@ export default function AnimatedCompiler() {
     const edges = [
       ...frame.nodes.flatMap((p) =>
         trace.nodes[p].children
-          .filter((ch) => frame.attached.includes(ch))
+          .filter((ch) => attached.has(ch))
           .map((ch) => edgeUp(p, ch)),
       ),
       ...working.held.map(([holder, child]) => edgePath(holder, child)),
@@ -3196,9 +3326,7 @@ export default function AnimatedCompiler() {
     const n = trace.nodes[w.node]
     if (n.kind === 'call') {
       const name = n.label.replace(/\(\)$/, '')
-      const fn = trace.nodes.find(
-        (f) => f.kind === 'function' && f.label === name,
-      )
+      const fn = functions.get(name)
       return fn ? [w.node, fn.id] : undefined
     }
     const field = fieldDecl(w.node)
@@ -3215,13 +3343,10 @@ export default function AnimatedCompiler() {
   const linkRoutes = (() => {
     if (!(naming || hoverLinked || typeLink) || (!links.length && !missing))
       return undefined
-    const key = `${index}|${sceneWidth}|${sceneHeight}|${narrow}|${JSON.stringify(links)}|${JSON.stringify([...nudged])}`
-    const cached = routeCache.current
-    if (cached?.trace === trace && cached.key === key) return cached.routes
     const boxes = frame.nodes.map(pieceBox)
     const edges = frame.nodes.flatMap((id) =>
       trace.nodes[id].children
-        .filter((c) => frame.attached.includes(c))
+        .filter((c) => attached.has(c))
         .map((c) => {
           const p = toPx(point(id)),
             q = toPx(point(c))
@@ -3231,23 +3356,43 @@ export default function AnimatedCompiler() {
           }
         }),
     )
-    const router = linkRouter(boxes, {
-      edges,
-      walls: [],
-      bounds: { x: 4, y: 4, w: sceneWidth - 8, h: sceneHeight - 8 },
-    })
-    const routes = new Map(
-      links.map(([use, decl]) => [
-        `${use}-${decl}`,
-        router.route(pieceBox(use), pieceBox(decl)),
-      ]),
-    )
+    // Only geometry invalidates pathfinding, not the step or its bindings.
+    // Actual boxes include badge shifts, the held camera and dragged nodes.
+    const key = JSON.stringify([sceneWidth, sceneHeight, boxes, edges])
+    if (routeCache.current?.trace !== trace || routeCache.current.key !== key)
+      routeCache.current = {
+        trace,
+        key,
+        router: linkRouter(boxes, {
+          edges,
+          walls: [],
+          bounds: { x: 4, y: 4, w: sceneWidth - 8, h: sceneHeight - 8 },
+        }),
+      }
+    const { router } = routeCache.current
+    const routes = new Map<string, Route>()
+    for (const [use, decl] of links) {
+      // NameLinks draws these; a hovered card also avoids the current
+      // resolve's line, even on the slide before the next pass.
+      if (
+        (naming && w.kind === 'check.namesDone') ||
+        typeLink?.[0] === use ||
+        ((naming || (!!hoverNode && !typing)) &&
+          (w.kind === 'check.resolve' || w.kind === 'check.link') &&
+          w.use === use) ||
+        hover === use ||
+        hover === decl
+      )
+        routes.set(
+          `${use}-${decl}`,
+          router.route(pieceBox(use), pieceBox(decl)),
+        )
+    }
     if (missing)
       routes.set(
         `miss-${missing.use}`,
         router.route(pieceBox(missing.use), pieceBox(missing.root)),
       )
-    routeCache.current = { trace, key, routes }
     return routes
   })()
   const shownNodes =
@@ -3280,15 +3425,13 @@ export default function AnimatedCompiler() {
   ]
   const shownInstructions = trace.instructions.slice(0, frame.instructionCount)
   const rowStagger = back ? 0 : transition.duration * 0.35
-  const functionNames = new Set(
-    trace.nodes.filter((n) => n.kind === 'function').map((n) => n.label),
-  )
+  const functionNames = functions
   const tray = trace.tokens.filter(
     (t) =>
       !parsed ||
       (!owners.has(t.id) &&
         (absorbed(t.id) === undefined
-          ? !(frame.consumed.includes(t.id) && KEEP_HIDDEN.includes(t.text))
+          ? !(consumed.has(t.id) && KEEP_HIDDEN.includes(t.text))
           : absorbed(t.id) !== 'gone')),
   )
   const tokenPoints = packTray(tray, sceneWidth)
@@ -3335,9 +3478,7 @@ export default function AnimatedCompiler() {
       const n = trace.nodes[id]
       if (n.kind === 'call') {
         const name = n.label.replace(/\(\)$/, '')
-        const fn = trace.nodes.find(
-          (f) => f.kind === 'function' && f.label === name,
-        )
+        const fn = functions.get(name)
         return fn ? signatureSpan(fn.id) : undefined
       }
       const decl = bindings.get(id) ?? fieldDecl(id)
@@ -3510,8 +3651,9 @@ export default function AnimatedCompiler() {
   // one) it shows the first to come, nothing lit. With nothing to keep
   // (the welcome, register allocation) the pane folds away.
   // A slide opens the pass after its frame, so the pane is that pass's,
-  // looking ahead with nothing lit. Emit keeps its pane while the stack
-  // floats: it's where the stack docks again.
+  // looking ahead with nothing lit. Emit and registers keep none: the
+  // stack has its own, by the listing (stackPane), and the pane under the
+  // source holds the note, as every pass's does (Stanley, 2026-10-01).
   const panePhase = intro && deck ? deck.phase : frame.phase
   const paneKind: PaneKind | null =
     index === 0 && !intro
@@ -3527,9 +3669,7 @@ export default function AnimatedCompiler() {
               typing
               ? null
               : 'scopes'
-            : panePhase === 'Emit' && namedTrace.recorded
-              ? 'stack'
-              : null
+            : null
   // The nearest step in this pass that passes `test`: this one or back,
   // else the first ahead (`ahead`); only ahead on a slide.
   const nearest = (test: (f: Frame) => boolean) => {
@@ -3596,9 +3736,7 @@ export default function AnimatedCompiler() {
           ? paneNode && NODE_HEADS[paneNode.cls]
           : paneKind === 'scopes'
             ? 'symbol table'
-            : paneKind === 'stack'
-              ? 'stack frame'
-              : ''
+            : ''
   const paneBlurb =
     paneKind === 'token'
       ? paneToken && TOKEN_BLURBS[paneToken.cls]
@@ -3660,9 +3798,7 @@ export default function AnimatedCompiler() {
             ? scopes.scopes.some((sc) =>
                 sc.decls.some((d) => scopes.declaredStep(d) <= index),
               )
-            : paneKind === 'stack'
-              ? !!stackNow || !!stackAt || (emitStage && !!oversized)
-              : false
+            : false
   // With nothing to keep, the pane folds away: its top border, the divider,
   // runs down to the bottom and the source grows into the room; it comes
   // back up when a pass has something. `data-fold` on the editor: 'shut'
@@ -3684,13 +3820,16 @@ export default function AnimatedCompiler() {
   // by the node (Stanley, 2026-10-01). Its slide and an error keep theirs.
   const typeStep =
     !welcome && !intro && !error && typing && panePhase === 'Check'
-  // A slide and the finished tree stand alone in the note: the pass's
-  // record comes in with its first step.
-  const noteAlone = !!intro || (passStep && !classStep)
+  // Emit's and the allocator's steps: their note docks in the pane under
+  // the source, or floats, as the other passes' do (Stanley, 2026-10-01).
+  const lateStep = !welcome && !intro && !error && late
+  // A slide, the finished tree and a late step stand alone in the note:
+  // the pass's record comes in with its first step.
+  const noteAlone = !!intro || (passStep && !classStep) || lateStep
   // On a phone there is no window to undock: the record goes down to the
   // note docked at the bottom, and the pane under the source folds away
   // (Stanley, 2026-10-01).
-  const paneNote = welcome || !!intro || passStep
+  const paneNote = welcome || !!intro || passStep || lateStep
   const noteInPane = paneNote && noteDocked && !narrow
   const paneInWindow = paneNote && (!noteDocked || narrow)
   const noteName = classStep && paneLabel ? paneLabel : noteFile
@@ -4008,11 +4147,15 @@ export default function AnimatedCompiler() {
   // it, one level up, as the typing rule section did (Stanley,
   // 2026-10-01: it replaces that section and the class card). It sits over
   // the node, else under it, at the node's size.
-  const proof = (() => {
-    if (!typing || !hoverNode) return undefined
-    const d = derive(trace, trace.text ?? source, index)
-    return d.proven(hoverNode.id) ? { d, id: hoverNode.id } : undefined
-  })()
+  const wantsProof = typing && !!hoverNode
+  const derivation = useMemo(
+    () => (wantsProof ? derive(trace, trace.text ?? source, index) : undefined),
+    [wantsProof, trace, source, index],
+  )
+  const proof =
+    hoverNode && derivation?.proven(hoverNode.id)
+      ? { d: derivation, id: hoverNode.id }
+      : undefined
   const proofRef = useRef<HTMLDivElement>(null)
   const [proofSize, setProofSize] = useState<{
     key: string
@@ -4060,7 +4203,7 @@ export default function AnimatedCompiler() {
       step={index}
       at={at}
       bounds={rootRef}
-      dock={noteRef}
+      dock={stackDockRef}
       controls={stackDrag}
       pickup={stackStart}
       onUndock={(to, event) => {
@@ -4070,6 +4213,142 @@ export default function AnimatedCompiler() {
       onMove={setStackAt}
       onDock={() => setStackAt(null)}
     />
+  )
+  // Popped out by its button: afloat at the top of the stage, left of
+  // where it docks, as the note window is undocked by its own.
+  const popStack = () => {
+    const root = rootRef.current?.getBoundingClientRect()
+    const dock = stackDockRef.current?.getBoundingClientRect()
+    const stage = stageRef.current?.getBoundingClientRect()
+    if (!root || !dock || !stage) return
+    setStackAt({
+      x: Math.max(8, dock.left - root.left - 280),
+      y: Math.max(8, stage.top - root.top + 16),
+    })
+  }
+  // (DRAFT copy)
+  const stackTooBig = emitStage && oversized && (
+    <p className="ac-type-done">
+      {`${oversized.name} takes ${oversized.size.toLocaleString()} bytes, too many to draw the stack (over ${MAX_DRAWN_BYTES.toLocaleString()}).`}
+    </p>
+  )
+  const stackDocked = stackAt ? (
+    // DRAFT copy (dropped on, or clicked, it takes the stack back)
+    <button
+      type="button"
+      className="ac-dock-slot"
+      onClick={() => setStackAt(null)}
+    >
+      drop the stack here
+    </button>
+  ) : (
+    stackColumn()
+  )
+  const stackShown = emitStage && (!!stackNow || !!oversized)
+  // The listing a column at the side: the stack in a pane under it, with
+  // a bar to fold it or pop it out and a border to size it by, as the
+  // note's pane under the source has.
+  const stackBelow = listingSide && !listingFlow
+  const stackPane = stackShown && stackBelow && (
+    <section
+      className={`ac-stackpane ${stackFold ? 'folded' : ''}`}
+      style={{
+        width: listingW - 1,
+        height: stackFold ? undefined : (stackH ?? undefined),
+      }}
+      aria-label="Stack frame"
+    >
+      {!stackFold && (
+        // Drag the border to size it; double-click resets.
+        <div
+          className="ac-split"
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label="Resize stack"
+          tabIndex={0}
+          onPointerDown={(e) => {
+            const pane = e.currentTarget.parentElement
+            const listing = pane?.parentElement
+            if (!pane || !listing) return
+            e.preventDefault()
+            e.currentTarget.setPointerCapture(e.pointerId)
+            stackSplit.current = {
+              y: e.clientY,
+              h: pane.offsetHeight,
+              max: listing.clientHeight - 96,
+            }
+          }}
+          onPointerMove={(e) => {
+            const d = stackSplit.current
+            if (d)
+              setStackH(
+                Math.round(
+                  Math.min(d.max, Math.max(29, d.h - (e.clientY - d.y))),
+                ),
+              )
+          }}
+          onPointerUp={() => {
+            stackSplit.current = null
+          }}
+          onDoubleClick={() => setStackH(null)}
+          onKeyDown={(e) => {
+            if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
+            e.preventDefault()
+            e.stopPropagation()
+            const pane = e.currentTarget.parentElement
+            const listing = pane?.parentElement
+            if (!pane || !listing) return
+            const step = e.key === 'ArrowUp' ? ASM_ROW : -ASM_ROW
+            setStackH(
+              Math.min(
+                listing.clientHeight - 96,
+                Math.max(29, pane.offsetHeight + step),
+              ),
+            )
+          }}
+        />
+      )}
+      <div className="ac-bar">
+        <span className="ac-note-title">stack frame</span>
+        <span className="ac-bar-tools">
+          {!stackAt && !stackFold && stackNow && (
+            <button
+              type="button"
+              className="ac-note-undock"
+              aria-label="Pop out stack"
+              title="Pop out"
+              onClick={popStack}
+            >
+              ↗
+            </button>
+          )}
+          <button
+            type="button"
+            className="ac-note-undock"
+            aria-label={stackFold ? 'Expand stack' : 'Collapse stack'}
+            aria-expanded={!stackFold}
+            title={stackFold ? 'Expand' : 'Collapse'}
+            onClick={() => setStackFold(!stackFold)}
+          >
+            {stackFold ? '+' : '−'}
+          </button>
+        </span>
+      </div>
+      {!stackFold && (
+        <div className="ac-stackpane-body" ref={stackDockRef}>
+          {stackDocked}
+          {stackTooBig}
+        </div>
+      )}
+    </section>
+  )
+  // The listing along the bottom (or a phone's, under the stage): the
+  // stack one more column, right of the lanes, no border between.
+  const stackBeside = stackShown && !stackBelow && (
+    <div className="ac-stackbeside" ref={stackDockRef}>
+      {stackDocked}
+      {stackTooBig}
+    </div>
   )
   // The step's note: docked at the bottom of the editor on a phone, under
   // the source it grows up into; a window over the stage elsewhere.
@@ -4504,20 +4783,6 @@ export default function AnimatedCompiler() {
                   duration={transition.duration}
                 />
               )}
-              {!(noteInPane && noteAlone) &&
-                paneKind === 'stack' &&
-                (stackAt ? (
-                  // DRAFT copy
-                  <div className="ac-dock-slot">drop the stack here</div>
-                ) : (
-                  stackColumn()
-                ))}
-              {emitStage && oversized && (
-                // DRAFT copy
-                <p className="ac-type-done">
-                  {`${oversized.name} takes ${oversized.size.toLocaleString()} bytes, too many to draw the stack (over ${MAX_DRAWN_BYTES.toLocaleString()}).`}
-                </p>
-              )}
             </div>
           </section>
           {narrow && noteWindow && (
@@ -4550,13 +4815,12 @@ export default function AnimatedCompiler() {
                         frame.nodes.flatMap((id) => {
                           const n = trace.nodes[id]
                           return n.children
-                            .filter((child) => frame.attached.includes(child))
+                            .filter((child) => attached.has(child))
                             .map((child) => {
                               const d = edgeUp(id, child)
                               return (
-                                <GlidingPath
+                                <TreeEdge
                                   key={`${id}-${child}`}
-                                  data-edge=""
                                   className={(() => {
                                     // (an edge the step's node asserts)
                                     const a =
@@ -4568,26 +4832,22 @@ export default function AnimatedCompiler() {
                                       : undefined
                                   })()}
                                   d={d}
-                                  glide={pathGlide}
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth={1}
-                                  initial={{ pathLength: 0, opacity: 0 }}
-                                  animate={{
-                                    pathLength: 1,
-                                    // The finished tree is lit throughout.
-                                    opacity:
-                                      frame.focus === id ||
-                                      frame.why.kind === 'parse.done'
-                                        ? 1
-                                        : 0.45,
-                                  }}
-                                  exit={{
-                                    pathLength: 0,
-                                    opacity: 0,
-                                    transition: edgeLeave,
-                                  }}
-                                  transition={edgeDraw}
+                                  opacity={
+                                    frame.focus === id ||
+                                    frame.why.kind === 'parse.done'
+                                      ? 1
+                                      : 0.45
+                                  }
+                                  duration={transition.duration}
+                                  drawTime={
+                                    attaches ? fillTime : transition.duration
+                                  }
+                                  moveTime={moveTime}
+                                  immediate={
+                                    resizing ||
+                                    dragging !== null ||
+                                    listingDragging
+                                  }
                                 />
                               )
                             })
@@ -4650,8 +4910,7 @@ export default function AnimatedCompiler() {
                       // sockets behind until the settle check (2026-10-01).
                       const d = edgePath(holder, id)
                       const key = `held-${holder}-${id}`
-                      const called =
-                        index > 0 && !trace.frames[index - 1].nodes.includes(id)
+                      const called = index > 0 && !previousNodes.has(id)
                       return (
                         <motion.g
                           key={key}
@@ -4760,13 +5019,13 @@ export default function AnimatedCompiler() {
                       pieces.map(({ token, nodeId, key }) => {
                         const node =
                           nodeId === undefined ? undefined : trace.nodes[nodeId]
-                        const consumed = frame.consumed.includes(token.id)
+                        const isConsumed = consumed.has(token.id)
                         const typeToken =
                           parsed && !node ? absorbed(token.id) : undefined
                         if (typeToken === 'gone') return null
                         if (
                           parsed &&
-                          consumed &&
+                          isConsumed &&
                           !node &&
                           typeToken === undefined &&
                           KEEP_HIDDEN.includes(token.text)
@@ -4802,9 +5061,7 @@ export default function AnimatedCompiler() {
                           )
                         const pending =
                           node !== undefined &&
-                          node.children.some(
-                            (child) => !frame.attached.includes(child),
-                          )
+                          node.children.some((child) => !attached.has(child))
                         const declaredAt =
                           node === undefined
                             ? undefined
@@ -5807,7 +6064,9 @@ export default function AnimatedCompiler() {
                         </div>
                       )}
                     </div>
+                    {stackBeside}
                   </div>
+                  {stackPane}
                 </motion.div>
               )}
             </AnimatePresence>

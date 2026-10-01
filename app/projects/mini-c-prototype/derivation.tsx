@@ -176,8 +176,12 @@ export function derive(trace: Trace, source: string, index: number) {
       return {
         premises: [...parts, ...needs],
         // (the statement alone: whether it held shows in its colour, not a
-        // mark after it, Stanley, 2026-10-01)
-        conclusion: head(id),
+        // mark after it, Stanley, 2026-10-01; an assignment is an
+        // expression, though, with its target's type, as its badge says)
+        conclusion:
+          n.kind === 'assign' && known.has(id)
+            ? `${head(id)} : ${known.get(id)}`
+            : head(id),
         name:
           n.kind === 'return'
             ? 'Return'

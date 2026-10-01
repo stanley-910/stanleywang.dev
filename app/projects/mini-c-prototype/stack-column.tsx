@@ -17,10 +17,10 @@ import type { CSSProperties, PointerEvent, RefObject } from 'react'
 // a word, it shows the register stored. It shows how the frame is built,
 // not what the words hold (Stanley, 2026-09-25).
 //
-// It docks in the note card, under the step's sentence. Dragged a few
-// pixels, it pops out and floats where it's dropped, anywhere on the
-// simulation (beside the assembly, say); dropped back on the note card, it
-// docks again.
+// It docks by the listing, in its own pane or beside it (animated.tsx).
+// Dragged a few pixels, it pops out and floats where it's dropped,
+// anywhere on the simulation, with no box or heading (Stanley,
+// 2026-10-01); dropped back where it docks, it docks again.
 export function StackColumn({
   frame,
   count,
@@ -228,14 +228,6 @@ export function StackColumn({
         press.current = null
       }}
     >
-      {/* Docked, the panel's "stack frame" title says what it is; afloat
-          on the stage, it says it itself. */}
-      {at && (
-        <div className="ac-label">
-          <span>stack</span>
-          <small>$fp offset</small>
-        </div>
-      )}
       <div
         className="ac-stack-body"
         style={{

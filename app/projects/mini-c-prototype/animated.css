@@ -994,6 +994,57 @@
 .ac-listing.side .ac-listing-scroll {
   bottom: 0;
 }
+/* With the stack's pane under it (stackPane in animated.tsx), the side
+   listing is a column: the listing takes what the pane leaves. */
+.ac-listing.side:has(> .ac-stackpane) {
+  display: flex;
+  flex-direction: column;
+}
+.ac-listing.side:has(> .ac-stackpane) > .ac-listing-scroll {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+}
+.ac-stackpane {
+  position: relative;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  /* (at most most of the pane: the listing keeps its floor) */
+  max-height: calc(100% - 96px);
+  min-height: 0;
+  border-top: 1px solid var(--line);
+}
+.ac-stackpane:has(> .ac-split:is(:hover, :focus-visible, :active)) {
+  border-top-color: var(--muted);
+}
+.ac-stackpane-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 10px 10px 12px;
+  overflow: auto;
+}
+.ac-bar-tools {
+  display: flex;
+  gap: 8px;
+}
+/* Along the bottom, the stack is a column right of the lanes, held in
+   view as the listing scrolls. */
+.ac-listing.foot .ac-listing-scroll {
+  display: flex;
+  align-items: flex-start;
+}
+.ac-stackbeside {
+  position: sticky;
+  top: 0;
+  flex: none;
+  /* (room on the left for `$fp ›`, clear of the lanes' names) */
+  padding: 8px 12px 12px calc(6ch + 8px);
+}
+.ac-stackbeside .ac-stack.docked {
+  width: calc(196px + (var(--room, 5) - 5) * 1ch);
+  margin: 0;
+}
 .ac-listing.foot .ac-listing-scroll {
   right: 0;
 }
@@ -1091,6 +1142,34 @@
   height: 100%;
   color: var(--ink);
   overflow: visible;
+}
+/* The canvas's lines keep their weight on screen at any zoom: a stroke
+   scales with the canvas, so zoomed in to read a big tree drawn small,
+   its edges came out three times as thick as anything else (Stanley,
+   2026-10-01). Not vector-effect: non-scaling-stroke, which measured
+   pathLength in the wrong space (toPx in animated.tsx). --zoom is
+   canvas-zoom.ts's. */
+.ac-canvas svg [stroke-width='1'] {
+  stroke-width: calc(1px / var(--zoom, 1));
+}
+.ac-canvas .ac-walk path {
+  stroke-width: calc(2px / var(--zoom, 1));
+}
+.ac-canvas .ac-link-halo {
+  stroke-width: calc(3px / var(--zoom, 1));
+}
+/* Borders too: the boxes on the canvas (pieces, badges, register tags,
+   the hover cards and their lists) keep a one-pixel outline at any zoom,
+   as a token's card does in the lexer (Stanley, 2026-10-01). */
+.ac-canvas .ac-piece,
+.ac-canvas .ac-piece small.ac-type,
+.ac-canvas .ac-piece.node.preview,
+.ac-canvas .ac-piece.node.preview.focused,
+.ac-canvas .ac-reg,
+.ac-canvas .ac-hover,
+.ac-canvas .ac-hover .ac-lexemes li,
+.ac-canvas .ac-hover-proof {
+  border-width: calc(1px / var(--zoom, 1));
 }
 /* Parse: a shown node not yet attached, and the group being read. */
 .ac-held {
@@ -1837,8 +1916,10 @@
 .ac-hover-proof .ac-proof {
   animation: none;
 }
+/* (a hairline at any zoom, as the tree's edges are: the card zooms with
+   the canvas, --zoom from canvas-zoom.ts) */
 .ac-hover-proof .ac-proof > .ac-proof-line {
-  border-top-width: 1px;
+  border-top-width: calc(1px / var(--zoom, 1));
 }
 .ac-hover-proof .ac-proof.folded {
   border-bottom: 0;
@@ -2006,12 +2087,15 @@
 .ac-window.err .ac-window-head {
   color: var(--err);
 }
+/* Afloat, no box: the stack itself on the stage, and what labels it on
+   a faint ground of their own so they read apart from the tree's text
+   (Stanley, 2026-10-01). */
 .ac-stack.floating {
   position: absolute;
   z-index: 30;
-  padding: 6px 0 8px;
-  border: 1px solid var(--line);
-  background: var(--bg);
+}
+.ac-stack.floating .ac-stack-ptr {
+  background: color-mix(in srgb, var(--ink) 8%, var(--bg));
 }
 .ac-stack:active {
   cursor: grabbing;
@@ -3038,8 +3122,16 @@
 .ac-dock-slot {
   display: grid;
   place-items: center;
+  width: 100%;
   height: 96px;
   margin-top: 4px;
   border: 1px dashed var(--line);
+  background: none;
   color: var(--faint);
+  font: inherit;
+  cursor: pointer;
+}
+.ac-stackbeside .ac-dock-slot {
+  width: 200px;
+  margin-top: 0;
 }
