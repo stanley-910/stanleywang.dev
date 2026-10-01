@@ -4,15 +4,17 @@
 // entered, so the caller's words (return slot, arguments) sit at 0 and
 // above and this frame's below; `$fp` ends up at -4.
 //
-// It shows how the frame is built and taken apart, and which word each
-// line touches; not what the words hold (Stanley, 2026-09-25). All of it
-// is what the compiler decided: the words and their names come from
-// trace.layout (what MemAllocCodeGen gave each declaration), what each
-// line is for from its tag (CodeGen.tag: "the address of `pair.right`",
-// "a word for `twice`'s `n`", "the byte copy of `a` into `b`"), and the
-// registers pushRegisters saves from what the allocator turned it into.
-// `$sp` and `$fp` move as the lines say; a register holds a word's address
-// from the line tagged as forming it.
+// It shows how the frame is built and taken apart, which word each line
+// touches, and which addresses the code puts where (`p` holding `&x`);
+// not the values the program computes at run time (Stanley, 2026-09-25;
+// addresses, 2026-10-01). All of it is what the compiler decided: the
+// words and their names come from trace.layout (what MemAllocCodeGen gave
+// each declaration), what each line is for from its tag (CodeGen.tag:
+// "the address of `pair.right`", "a word for `twice`'s `n`", "the byte
+// copy of `a` into `b`"), and the registers pushRegisters saves from what
+// the allocator turned it into. `$sp` and `$fp` move as the lines say; a
+// register holds a word's address from the line tagged as forming it, or
+// from loading it out of a word a line stored it in.
 import type {
   CType,
   Instruction,
@@ -33,7 +35,7 @@ export type StackTouch = {
   at: number
   addr: number
   kind: 'read' | 'write'
-  /** A write: the register stored. */
+  /** The register stored (a write), or loaded into (a read). */
   reg?: string
   /** Somewhere in an object, not a known word (`cells[i]`, a copy). */
   wide?: boolean
@@ -48,7 +50,15 @@ export type StackPointer = {
   addr: number
   def: number
   last: number
+  /** Where its address came from: the word `$fp` or `$sp` points at, for
+   * one counted from them; the word it was loaded out of, for one a
+   * pointer variable held (`lw v6,0(v7)`, `p` holding `&x`). */
+  from?: number
 }
+
+/** A word holding another's address (`sw v3,0(v2)`, `p = &x`), from the
+ * line that stores it until one stores something else there. */
+export type StackHold = { addr: number; of: number; from: number; to: number }
 
 type WordKind =
   | 'link' // the caller's `$fp`, `$ra`
@@ -89,6 +99,7 @@ export type StackFrame = {
   owners: Owner[]
   touches: StackTouch[]
   pointers: StackPointer[]
+  holds: StackHold[]
   /** Words below `$sp` a later line still reads (the epilogue's
    * restores), after each instruction. */
   kept: Set<number>[]
@@ -304,6 +315,11 @@ function build(
   }
   const objectAt = (a: number) => objects.find((o) => a >= o.lo && a < o.hi)
   const saved = savedBy(trace, fn)
+  // What the emit stack draws for pushRegisters and popRegisters: nothing.
+  // Emit hasn't shown yet which registers a function needs, so words saved
+  // for three of them would give the allocator's answer away before it is
+  // worked out (Stanley, 2026-10-01). `$sp` stays where the locals leave it.
+  const drawnSaved: string[] = []
 
   // ---- `$sp` and `$fp`, line by line ------------------------------------
   const poses: StackPose[] = [{ sp: 0, fp: null }]
@@ -318,8 +334,8 @@ function build(
       } else if (op === 'addiu' && a[0] === '$fp' && a[1] === '$sp')
         next.fp = pose.sp
       else if (op === 'lw' && a[0] === '$fp') next.fp = null
-      else if (op === 'pushRegisters') next.sp = pose.sp - 4 * saved.length
-      else if (op === 'popRegisters') next.sp = pose.sp + 4 * saved.length
+      else if (op === 'pushRegisters') next.sp = pose.sp - 4 * drawnSaved.length
+      else if (op === 'popRegisters') next.sp = pose.sp + 4 * drawnSaved.length
     }
     poses.push(next)
   }
@@ -328,6 +344,27 @@ function build(
   const held = new Map<string, Addr>()
   const touches: StackTouch[] = []
   const pointers: StackPointer[] = []
+  // What a word holds, when it is an address a register held: a pointer
+  // variable's `&x`, so a load out of it is followed to `x`, and so are
+  // the loads and stores through what it loaded (`*p`).
+  const holds: StackHold[] = []
+  const holding = new Map<number, StackHold>()
+  const store = (w: number, of: Addr | undefined, k: number) => {
+    const was = holding.get(w)
+    if (was) {
+      was.to = first + k - 1
+      holding.delete(w)
+    }
+    if (of?.exact == null) return
+    const h = {
+      addr: w,
+      of: Math.floor(of.exact / 4) * 4,
+      from: first + k,
+      to: last,
+    }
+    holds.push(h)
+    holding.set(w, h)
+  }
   const word = (a: number): Addr => ({ exact: a, lo: a, hi: a + 4 })
   const whole = (o: Obj, off: number | null): Addr =>
     off === null
@@ -402,11 +439,14 @@ function build(
       const h = resolve(tag.of, k, tag)
       if (h) {
         held.set(dest, h)
+        const base =
+          a[1] === '$fp' ? poses[k].fp : a[1] === '$sp' ? poses[k].sp : null
         pointers.push({
           vr: dest,
           addr: h.exact === null ? h.hi - 4 : Math.floor(h.exact / 4) * 4,
           def: first + k,
           last: lastUse(dest, k),
+          ...(base !== null && { from: base }),
         })
       }
     }
@@ -449,7 +489,7 @@ function build(
     }
     if (op === 'pushRegisters' || op === 'popRegisters') {
       const lo = Math.min(poses[k].sp, poses[k + 1].sp)
-      for (let w = lo; w < lo + 4 * saved.length; w += 4)
+      for (let w = lo; w < lo + 4 * drawnSaved.length; w += 4)
         touches.push({
           at: first + k,
           addr: w,
@@ -465,8 +505,28 @@ function build(
           t,
           /w$/.test(op) ? 4 : 1,
           op.startsWith('s') ? 'write' : 'read',
-          op.startsWith('s') ? a[0] : undefined,
+          a[0],
         )
+      const w = t?.exact == null ? null : Math.floor(t.exact / 4) * 4
+      if (op.startsWith('s')) {
+        // (a store somewhere unknown might be anywhere in its object)
+        if (w !== null) store(w, op === 'sw' ? held.get(a[0]) : undefined, k)
+        else if (t)
+          for (const x of [...holding.keys()])
+            if (x >= t.lo && x < t.hi) store(x, undefined, k)
+      } else if (op === 'lw' && dest && w !== null) {
+        const h = holding.get(w)
+        if (h) {
+          held.set(dest, word(h.of))
+          pointers.push({
+            vr: dest,
+            addr: h.of,
+            def: first + k,
+            last: lastUse(dest, k),
+            from: w,
+          })
+        }
+      }
     }
   }
 
@@ -483,7 +543,7 @@ function build(
     const { op } = code(k)
     const tag = at(k).tag
     if (op === 'pushRegisters')
-      saved.forEach((r, j) =>
+      drawnSaved.forEach((r, j) =>
         hold(poses[k].sp - 4 * (j + 1), k + 1, {
           label: `saved ${r}`,
           kind: 'saved',
@@ -536,9 +596,8 @@ function build(
       (f) => f.name === callee.name,
     )
     let low = Math.min(...ws.map((w) => w.addr))
-    for (const r of theirs === undefined || theirs < 0
-      ? []
-      : savedBy(trace, theirs))
+    // (a callee's saved registers too, for the same reason: drawnSaved)
+    for (const r of theirs === undefined || theirs < 0 ? [] : drawnSaved)
       ws.push({ addr: (low -= 4), label: `saved ${r}`, kind: 'saved' })
     const shown =
       ws.length > 8
@@ -650,6 +709,7 @@ function build(
     owners,
     touches,
     pointers,
+    holds,
     kept,
     top,
     saved,

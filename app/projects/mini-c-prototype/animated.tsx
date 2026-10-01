@@ -38,7 +38,12 @@ import { startCanvas, type Canvas, type CanvasRest } from './canvas-zoom'
 import { derive, ProofTree } from './derivation'
 import { detailTrace } from './detail'
 import { EmitLanes, lanesWidth } from './emit-lanes'
-import { withEmitBlocks, withEmitLines } from './emit-view'
+import {
+  isPlaceholder,
+  withEmitBlocks,
+  withEmitLines,
+  withoutPlaceholders,
+} from './emit-view'
 import {
   explain,
   NODE_KINDS,
@@ -235,6 +240,7 @@ const ASM_CH = 7.2
 const SPLIT_KEY = 'mini-c-split'
 // Whether the step's note sits in the pane under the source or floats.
 const DOCK_KEY = 'mini-c-note-docked'
+const NOTE_MIN_KEY = 'mini-c-note-minimized'
 const SPLIT_MIN = SOURCE_ROW * 3 + 8
 const WIDTH_KEY = 'mini-c-editor-width'
 // The listing pane's width beside the stage, and its height along the
@@ -722,9 +728,11 @@ export default function AnimatedCompiler() {
         ? namedTrace.trace
         : withTypeSteps(
             withoutLiveness(
-              blocks
-                ? withEmitBlocks(namedTrace.trace)
-                : withEmitLines(namedTrace.trace),
+              withoutPlaceholders(
+                blocks
+                  ? withEmitBlocks(namedTrace.trace)
+                  : withEmitLines(namedTrace.trace),
+              ),
             ),
           ),
     [namedTrace],
@@ -809,7 +817,10 @@ export default function AnimatedCompiler() {
         ...trace.instructions.map((ins) => {
           const args = (ins.text ?? ins.op).split(/\s+(.*)/)[1] ?? ''
           // (as long again once registers have their real names: v8 → $t3)
-          return Math.max(args.length, args.replace(/\bv\d+\b/g, '$t0').length)
+          return Math.max(
+            args.length,
+            args.replace(/(?<!\$)\bv\d+\b/g, '$t0').length,
+          )
         }),
       ),
     [trace],
@@ -1261,6 +1272,20 @@ export default function AnimatedCompiler() {
       if (localStorage.getItem(DOCK_KEY) === '0') setNoteDocked(false)
     } catch {}
   }, [])
+  // Docked, the note can fold down to its bar at the bottom of the editor,
+  // the source taking its room (Stanley, 2026-10-01).
+  const [noteMin, setNoteMin] = useState(false)
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(NOTE_MIN_KEY) === '1') setNoteMin(true)
+    } catch {}
+  }, [])
+  const minimizeNote = (min: boolean) => {
+    setNoteMin(min)
+    try {
+      localStorage.setItem(NOTE_MIN_KEY, min ? '1' : '0')
+    } catch {}
+  }
   const dockNote = (docked: boolean) => {
     setNoteDocked(docked)
     try {
@@ -1864,7 +1889,7 @@ export default function AnimatedCompiler() {
       return 680
     const rows = trace.instructions.slice(v.from, v.to + 1)
     const reads = rows.some((ins) =>
-      (ins.text?.match(/\bv\d+\b/g) ?? []).some((r) => r !== ins.dest),
+      (ins.text?.match(/(?<!\$)\bv\d+\b/g) ?? []).some((r) => r !== ins.dest),
     )
     return Math.max(
       680,
@@ -2054,7 +2079,9 @@ export default function AnimatedCompiler() {
   )
   const listingSide = sceneWidth - listingFits >= 280
   // Dragged, it can be narrower than its lines (it scrolls sideways) or
-  // wider, as long as some of the stage stays in view.
+  // wider, as long as some of the stage stays in view; the stack's pane
+  // under it scrolls sideways too (Stanley, 2026-10-01: it needn't be
+  // as wide as the stack).
   const clampListingW = (w: number) =>
     Math.round(Math.min(Math.max(w, 160), sceneWidth - 200))
   const clampListingH = (h: number) =>
@@ -2988,6 +3015,20 @@ export default function AnimatedCompiler() {
 
   const deck = decks.get(index)
   const intro = slide > 0 ? deck?.slides[slide - 1] : undefined
+  // The register allocator's slides sit on emit's last step: the stack
+  // stays out of them, and the first lights every virtual register the
+  // listing uses, all the new ones emit made (Stanley, 2026-10-01).
+  const allocSlides = !!intro && deck?.phase === 'Registers'
+  const allocIntro = allocSlides && deck?.slides[0] === intro
+  // (the sweep starts at the first line with a virtual register)
+  const firstLit = allocIntro
+    ? Math.max(
+        0,
+        trace.instructions.findIndex((ins) =>
+          /(?<!\$)\bv\d+\b/.test(ins.text ?? ''),
+        ),
+      )
+    : 0
   // On a slide the tabs show the phase it opens.
   const shownPhase = intro && deck ? deck.phase : frame.phase
   const shownTab = tabs.find(
@@ -3424,6 +3465,15 @@ export default function AnimatedCompiler() {
       })),
   ]
   const shownInstructions = trace.instructions.slice(0, frame.instructionCount)
+  // Emit's listing leaves out pushRegisters and popRegisters (their labels
+  // stay); the allocator's adds them. Lines are numbered as shown.
+  const hideHolds = frame.phase === 'Emit'
+  const rowNumbers = useMemo(() => {
+    let n = 0
+    return trace.instructions.map((ins) =>
+      hideHolds && isPlaceholder(ins.op) ? 0 : ++n,
+    )
+  }, [trace, hideHolds])
   const rowStagger = back ? 0 : transition.duration * 0.35
   const functionNames = functions
   const tray = trace.tokens.filter(
@@ -4221,8 +4271,17 @@ export default function AnimatedCompiler() {
     const dock = stackDockRef.current?.getBoundingClientRect()
     const stage = stageRef.current?.getBoundingClientRect()
     if (!root || !dock || !stage) return
+    // Its width out on the stage (.ac-stack.floating), read off the docked
+    // one before it goes, so it lands clear of the listing.
+    const docked = stackDockRef.current?.querySelector<HTMLElement>('.ac-stack')
+    let w = 280
+    if (docked) {
+      docked.classList.replace('docked', 'floating')
+      w = docked.offsetWidth
+      docked.classList.replace('floating', 'docked')
+    }
     setStackAt({
-      x: Math.max(8, dock.left - root.left - 280),
+      x: Math.max(8, dock.left - root.left - w - 8),
       y: Math.max(8, stage.top - root.top + 16),
     })
   }
@@ -4244,7 +4303,7 @@ export default function AnimatedCompiler() {
   ) : (
     stackColumn()
   )
-  const stackShown = emitStage && (!!stackNow || !!oversized)
+  const stackShown = emitStage && !allocSlides && (!!stackNow || !!oversized)
   // The listing a column at the side: the stack in a pane under it, with
   // a bar to fold it or pop it out and a border to size it by, as the
   // note's pane under the source has.
@@ -4693,7 +4752,7 @@ export default function AnimatedCompiler() {
             ref={noteRef}
             // Folded away, nothing in it can be reached (its separator).
             inert={!paneOpen}
-            className={`ac-note ${error ? 'err' : ''} ${sideShown ? 'open' : ''} ${narrow && paneInWindow ? 'gone' : ''}`}
+            className={`ac-note ${error ? 'err' : ''} ${sideShown ? 'open' : ''} ${narrow && paneInWindow ? 'gone' : ''} ${noteInPane && noteMin ? 'min' : ''}`}
             aria-label="Current step"
             aria-live={playing ? 'off' : 'polite'}
           >
@@ -4734,15 +4793,27 @@ export default function AnimatedCompiler() {
             {noteInPane ? (
               <div className="ac-bar">
                 <span className="ac-note-file">{noteName}</span>
-                <button
-                  type="button"
-                  className="ac-note-undock"
-                  aria-label="Undock notes"
-                  title="Undock"
-                  onClick={() => dockNote(false)}
-                >
-                  ↗
-                </button>
+                <span className="ac-bar-tools">
+                  <button
+                    type="button"
+                    className="ac-note-undock"
+                    aria-label="Undock notes"
+                    title="Undock"
+                    onClick={() => dockNote(false)}
+                  >
+                    ↗
+                  </button>
+                  <button
+                    type="button"
+                    className="ac-note-undock"
+                    aria-label={noteMin ? 'Expand notes' : 'Minimize notes'}
+                    aria-expanded={!noteMin}
+                    title={noteMin ? 'Expand' : 'Minimize'}
+                    onClick={() => minimizeNote(!noteMin)}
+                  >
+                    {noteMin ? '+' : '−'}
+                  </button>
+                </span>
               </div>
             ) : (
               paneLabel && (
@@ -5853,7 +5924,7 @@ export default function AnimatedCompiler() {
                         const head = asmHeads.get(i)
                         const operands = (text: string) =>
                           emitStage
-                            ? text.split(/\b(v\d+)\b/).map((part, j) => {
+                            ? text.split(/(?<!\$)\b(v\d+)\b/).map((part, j) => {
                                 if (j % 2 === 0) return part
                                 const key = `${ins.fn}:${part}`
                                 const on = key === regFocus?.key && !!focusLane
@@ -5861,7 +5932,15 @@ export default function AnimatedCompiler() {
                                   <span
                                     key={j}
                                     data-vr
-                                    className={`ac-arg ${on ? 'focus' : ''} ${on && j === 1 && i === focusLane.def ? 'def' : ''}`}
+                                    className={`ac-arg ${on ? 'focus' : ''} ${on && j === 1 && i === focusLane.def ? 'def' : ''} ${allocIntro ? 'lit' : ''}`}
+                                    // (lit row by row, down the listing)
+                                    style={
+                                      allocIntro
+                                        ? ({
+                                            '--lit-at': i - firstLit,
+                                          } as CSSProperties)
+                                        : undefined
+                                    }
                                     onMouseEnter={() => focusReg(key, false)}
                                     onMouseLeave={blurReg}
                                     onClick={() => focusReg(key, true)}
@@ -5918,7 +5997,7 @@ export default function AnimatedCompiler() {
                               }
                               onMouseLeave={clearHover}
                             >
-                              <span>{i + 1}</span>
+                              <span>{rowNumbers[i]}</span>
                               {hold && !line ? (
                                 <code className="ac-hold">{op}</code>
                               ) : (
@@ -5992,7 +6071,9 @@ export default function AnimatedCompiler() {
                                       </motion.div>
                                     ),
                                   )
-                                : [row()]),
+                                : hideHolds && hold
+                                  ? []
+                                  : [row()]),
                             ]}
                           </Fragment>
                         )
@@ -6001,7 +6082,15 @@ export default function AnimatedCompiler() {
                       register's colour once the allocator picks one. */}
                       {lanesShown && (
                         <EmitLanes
-                          left={lanesAt}
+                          // At the column's right edge when it's wider than
+                          // the lines (its gutter and border, the listing's
+                          // 12px), else just past the longest line
+                          // (Stanley, 2026-10-01).
+                          left={
+                            listingSide && !listingFlow
+                              ? Math.max(lanesAt, listingW - 10 - 12 - lanesW)
+                              : lanesAt
+                          }
                           lanes={lanes.lanes}
                           columns={lanes.columns}
                           count={frame.instructionCount}
@@ -6073,7 +6162,7 @@ export default function AnimatedCompiler() {
           </div>
         </section>
       </div>
-      {emitStage && stackAt && stackColumn(stackAt)}
+      {emitStage && !allocSlides && stackAt && stackColumn(stackAt)}
       {/* On a phone the note and the controls dock to the bottom of the
           screen, so a step and what it means stay in view with the stage
           (animated.css); elsewhere the dock is no box at all. */}
