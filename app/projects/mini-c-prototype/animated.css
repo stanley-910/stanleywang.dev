@@ -759,6 +759,59 @@
 .ac-note-body strong {
   font-weight: 600;
 }
+/* A slide's code, as the guide's examples are set (.ac-guide-ex); over
+   .ac pre's reset. */
+.ac .ac-slide-code {
+  margin: 8px 0 0;
+  padding: 6px 8px;
+  overflow-x: auto;
+  border-left: 2px solid var(--faint);
+  background: color-mix(in srgb, var(--line) 45%, var(--bg));
+  font-family: var(--font-mono);
+  line-height: 1.45;
+  /* (a token stream wraps between tokens in a narrow pane) */
+  white-space: pre-wrap;
+}
+/* A slide's quote (Markdown's `>`): set off by a rule, a step quieter. */
+.ac-slide-quote {
+  margin: 10px 0 0;
+  padding: 0 0 0 10px;
+  border-left: 2px solid var(--faint);
+  color: var(--muted);
+  white-space: normal;
+}
+/* A slide's hint, last: a pointer to a setting, quieter than the text. */
+.ac-slide-hint {
+  margin: 10px 0 0;
+  color: var(--muted);
+  white-space: normal;
+}
+/* The setting it names, a link that flips it. */
+.ac .ac-hint-link {
+  display: inline;
+  padding: 0;
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--faint);
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.ac .ac-hint-link:hover {
+  text-decoration-color: var(--ink);
+}
+/* The settings cog, in the line, as on the bar. */
+.ac-hint-cog {
+  display: inline-block;
+  width: 1.1em;
+  height: 1.1em;
+  vertical-align: -0.2em;
+  stroke-width: 1.75;
+}
+/* (not the inline code's chip, which the note's code takes) */
+.ac .ac-slide-code code {
+  padding: 0;
+  background: none;
+}
 /* Lexeme-to-category pairs on an intro slide. */
 .ac-slide-table {
   margin-top: 10px;

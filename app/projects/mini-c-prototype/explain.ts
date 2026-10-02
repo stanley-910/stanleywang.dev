@@ -347,15 +347,16 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
   const statementToo = `Where a statement goes, an expression and its ${code(';')} make an expression statement, so this node is the statement too.`
   switch (w.kind) {
     case 'ready':
-      // Stanley's copy (2026-10-02); a comma after "journey that is" so
-      // the sentence reads on.
+      // Stanley's copy (2026-10-02). "and" added before "stepping"; the
+      // "..." filled with his earlier "the often beautiful, often
+      // monstrous journey".
       return (
         'This is an interactive demonstration of a **C compiler** I created ' +
-        "as part of McGill's Compiler Design course. Its goal is to show " +
-        'how source code is translated into assembly, and the often ' +
-        'beautiful, often monstrous journey that is, by visualizing each ' +
-        'stage of compilation in an intuitive and educational way.' +
-        '\n\nPlease enjoy!\n\nStanley'
+        "as part of McGill's Compiler Design course.\n\nBy live-compiling code " +
+        'in your browser and stepping through each stage of compilation in ' +
+        'an intuitive and educational way, I hope to show how source code is ' +
+        'actually translated into assembly, and the often beautiful, often ' +
+        'monstrous journey that is.\n\nPlease enjoy!\n\n**Stanley**'
       )
     case 'token': {
       // With step titles the token is in the header and the body names its
@@ -452,9 +453,23 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
           // DRAFT copy: named by its kind in the list under the note
           // (`.` becomes a method call expression).
           const { cls, kind } = nodeKind(n)
-          return kind && (cls === 'expression' || cls === 'statement')
-            ? `${code(n.label)} becomes ${article(`${kind} ${cls}`)}.`
-            : `${code(n.label)} becomes ${article(describe(n))} node.`
+          const becomes =
+            kind && (cls === 'expression' || cls === 'statement')
+              ? `${code(n.label)} becomes ${article(`${kind} ${cls}`)}.`
+              : `${code(n.label)} becomes ${article(describe(n))} node.`
+          // DRAFT copy. `&arr[1]`, `*s.p`: a postfix `[]` or field binds
+          // tighter than the prefix operator before it, so it goes under it.
+          const postfix = kind === 'index' || kind === 'field'
+          const prefix =
+            parent &&
+            parent.start < n.start &&
+            (parent.kind === 'unary' ||
+              ['value at', 'address of', 'cast'].includes(
+                nodeKind(parent).kind ?? '',
+              ))
+          return postfix && prefix && n.children.length
+            ? `${becomes} It binds tighter than ${code(parent.label)}, so it takes ${src(n.children[0])} first, and ${code(parent.label)} applies to the result.`
+            : becomes
         }
       }
     }
@@ -1184,6 +1199,17 @@ export type Slide = {
   lanes?: true
   /** Part of the welcome (readme.txt), not of a phase. */
   readme?: true
+  /** A code block under the body (before any table). */
+  code?: string
+  /** A muted line last: a setting the slide points to, which the line
+   * turns on (and the settings menu opens on). */
+  hint?: 'detailedLexer'
+  /** Set off under the body, as a Markdown `>` quote. */
+  quote?: string
+  /** Shown only in this example, or in every example but this one (by its
+   * name in the picker). */
+  onlyIn?: string
+  notIn?: string
 }
 
 /** The welcome's slides after its first page: what a compiler is, before
@@ -1214,30 +1240,60 @@ export const README_SLIDES: Slide[] = [
 export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
   Tokens: [
     {
-      title: 'Where do we start?',
+      // Stanley's copy (2026-10-02), untitled; "is the first phase" and
+      // "character-by-character" for "is first phase" and "character by
+      // character".
+      title: '',
       body:
-        'Before anything else, the compiler scans through the source code, ' +
-        'character by character, and outputs a stream of **tokens**. Each ' +
-        'token consists of the lexeme plus the syntactic category it belongs to:',
-      table: [
-        ['int', 'type'],
-        ['return', 'keyword'],
-        ['x', 'identifier'],
-      ],
+        '**Lexical analysis** is the first phase of compilation. It converts ' +
+        'the raw character input of your program into **tokens**.\n\nA ' +
+        '**token** is simply a sequence of characters (lexeme) alongside a ' +
+        '**type**, which describes what kind of thing it is.\n\nFor ' +
+        'example, `int x = 42;` becomes:',
+      // As the compiler prints them (Token.toString): the category, and
+      // what was read for a name or a literal.
+      code: 'INT IDENTIFIER(x) ASSIGN INT_LITERAL(42) SC',
+      hint: 'detailedLexer',
     },
   ],
   Parse: [
+    // Stanley's copy (2026-10-02), untitled like the lexer's; "is to
+    // create" read "is create", and `_abstract_` is the note's `*abstract*`.
     {
-      title: 'Toking (Abstract Syntax) Trees',
+      title: '',
       body:
-        "Great. Now what? As you can imagine, this isn't enough to output " +
-        'machine code. To get us one step closer, the **Parser** takes the ' +
-        'stream of tokens and transforms into a form that later passes of ' +
-        'the compiler can easily walk through with the meaning of the ' +
-        'program encoded into the structure of the tree itself!',
+        "The **parser** checks the tokens from the lexer against the language's " +
+        '**grammar**, a formal set of rules for what valid code looks like, ' +
+        'and rejects anything out of order with a **syntax error**.',
+      quote:
+        "For example, try deleting the semicolon from any line. Since C's " +
+        'grammar specifies that statements must end in a semicolon, it is ' +
+        'caught by the parser.',
     },
     {
+      title: '',
+      body:
+        'The other key responsibility of the parser is to create a ' +
+        'representation of the program which later phases can easily walk, ' +
+        'check, and translate for their purposes.\n\nTo do this, we use an ' +
+        "**Abstract Syntax Tree (AST)**. It's *abstract* because it leaves " +
+        'out details that only matter when code is written as linear text, ' +
+        'like parentheses and semicolons. Those symbols exist to mark ' +
+        'grouping and boundaries in a flat stream, but become redundant once ' +
+        "the tree's hierarchy captures that structure.",
+    },
+    {
+      // The link opens the Precedence example on its own slides, below.
+      title: '',
+      notIn: 'Precedence',
+      body:
+        'To view an interesting problem this solves, take a look at the ' +
+        '[Precedence](example:Precedence) code example.',
+    },
+    // Only in the Precedence example, in place of the slide above.
+    {
       title: 'The Problem with Precedence',
+      onlyIn: 'Precedence',
       body:
         'This solves interesting problems like precedence. How do you make ' +
         "sure the code that is generated correctly PEMDAS's something like " +
@@ -1246,6 +1302,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
     },
     {
       title: 'The Problem with Precedence',
+      onlyIn: 'Precedence',
       // Stanley's aside; the parenthetical, "infix" and the last clause are
       // filled in at his request.
       body:
