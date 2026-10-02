@@ -7,7 +7,7 @@ import {
 } from 'motion/react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
-import type { ReactNode, RefObject } from 'react'
+import type { HTMLAttributes, ReactNode, RefObject } from 'react'
 
 // The step's explanation, in a small window of its own over the simulation,
 // so the pane under the source can hold what the phase keeps track of (the
@@ -58,9 +58,9 @@ type Place = {
   h?: number
 }
 
-const load = (): Place | null => {
+const load = (key: string): Place | null => {
   try {
-    const saved = JSON.parse(localStorage.getItem(KEY) ?? 'null')
+    const saved = JSON.parse(localStorage.getItem(key) ?? 'null')
     return saved && typeof saved.x === 'number' && typeof saved.y === 'number'
       ? {
           x: saved.x,
@@ -74,9 +74,9 @@ const load = (): Place | null => {
     return null
   }
 }
-const save = (place: Place) => {
+const saveTo = (key: string, place: Place) => {
   try {
-    localStorage.setItem(KEY, JSON.stringify(place))
+    localStorage.setItem(key, JSON.stringify(place))
   } catch {}
 }
 
@@ -93,6 +93,16 @@ export function NoteWindow({
   height = null,
   cap = Infinity,
   onDock,
+  storeKey = KEY,
+  label = 'Current step',
+  noun = 'notes',
+  openWidth = OPEN_W,
+  lead,
+  trail,
+  away = false,
+  onHandle,
+  className = '',
+  rootProps,
 }: {
   title: string
   error?: boolean
@@ -115,7 +125,28 @@ export function NoteWindow({
   cap?: number
   /** Puts the note back in the pane under the source (↙ on the bar). */
   onDock?: () => void
+  /** Another window of the same kind (the syntax guide): where its place is
+   *  remembered, its name, what its buttons call it, its opening width. */
+  storeKey?: string
+  label?: string
+  noun?: string
+  openWidth?: number
+  /** A button on the bar before its name (the guide's pin). */
+  lead?: ReactNode
+  /** A button at the bar's end, after the − (the guide's ×). */
+  trail?: ReactNode
+  /** Out of sight for now (kept mounted, so it keeps its place). */
+  away?: boolean
+  /** Dragged, sized or rolled up by hand. */
+  onHandle?: () => void
+  className?: string
+  /** Focus and clipboard handlers for the window (the guide's). */
+  rootProps?: Pick<
+    HTMLAttributes<HTMLElement>,
+    'tabIndex' | 'onPointerDown' | 'onFocus' | 'onBlur' | 'onCopy'
+  >
 }) {
+  const save = (place: Place) => saveTo(storeKey, place)
   const ref = useRef<HTMLElement>(null)
   const still = useReducedMotion()
   const [place, setPlace] = useState<Place | null>(null)
@@ -147,7 +178,7 @@ export function NoteWindow({
   }
   // After mount, once every ref (the bounds' included) is attached.
   useEffect(() => {
-    setPlace(clamp(load() ?? { ...start(), shut: false }))
+    setPlace(clamp(load(storeKey) ?? { ...start(), shut: false }))
     // Once, on mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -173,13 +204,15 @@ export function NoteWindow({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bounds])
 
-  const roll = () =>
+  const roll = () => {
+    onHandle?.()
     setPlace((p) => {
       if (!p) return p
       const next = { ...p, shut: !p.shut }
       save(next)
       return next
     })
+  }
 
   // A size within bounds: the width between its limits and inside the
   // area, the height cap from its floor to the area's bottom.
@@ -214,7 +247,7 @@ export function NoteWindow({
   const current = () => ({
     // (a note fitted to its text starts from the width it's drawn at)
     w: Math.min(
-      placeRef.current?.w ?? ref.current?.offsetWidth ?? OPEN_W,
+      placeRef.current?.w ?? ref.current?.offsetWidth ?? openWidth,
       roomRef.current,
     ),
     h: bodyRef.current?.offsetHeight ?? MIN_H,
@@ -273,7 +306,7 @@ export function NoteWindow({
   // as tall as it runs, to the area's bottom, and wide enough for what
   // doesn't wrap (the symbol table's rows), measured at the width it opens
   // at so it narrows again for a note that needs less.
-  const [fitW, setFitW] = useState(OPEN_W)
+  const [fitW, setFitW] = useState(openWidth)
   // Every render: the note's content is what changes it. (Measured at the
   // opening width, the same content gives the same width: it settles.)
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -281,8 +314,8 @@ export function NoteWindow({
     const body = bodyRef.current
     if (!body || docked || place?.w !== undefined) return
     const was = body.style.width
-    body.style.width = `${OPEN_W - 2}px`
-    const need = Math.min(MAX_W, Math.max(OPEN_W, body.scrollWidth + 2))
+    body.style.width = `${openWidth - 2}px`
+    const need = Math.min(MAX_W, Math.max(openWidth, body.scrollWidth + 2))
     body.style.width = was
     if (need !== fitW) setFitW(need)
   })
@@ -339,15 +372,23 @@ export function NoteWindow({
   const width = docked
     ? '100%'
     : shut
-      ? Math.ceil(title.length * TITLE_CH + 39 + (onDock ? 15 : 0))
+      ? Math.ceil(
+          title.length * TITLE_CH +
+            39 +
+            (onDock ? 15 : 0) +
+            (lead ? 21 : 0) +
+            (trail ? 15 : 0),
+        )
       : openW
   const timing = { duration: still || resizing ? 0 : 0.22, ease: EASE }
 
   return (
     <motion.section
       ref={ref}
-      className={`ac-window ${docked ? 'docked' : ''} ${shut ? 'shut' : ''} ${error ? 'err' : ''}`}
-      aria-label="Current step"
+      {...rootProps}
+      className={`ac-window ${docked ? 'docked' : ''} ${shut ? 'shut' : ''} ${error ? 'err' : ''} ${away ? 'away' : ''} ${className}`}
+      aria-label={label}
+      aria-hidden={away || undefined}
       initial={false}
       animate={{ width }}
       transition={timing}
@@ -374,6 +415,7 @@ export function NoteWindow({
               e.preventDefault()
               e.stopPropagation()
               e.currentTarget.setPointerCapture(e.pointerId)
+              onHandle?.()
               edging.current = {
                 sides,
                 px: e.clientX,
@@ -413,6 +455,7 @@ export function NoteWindow({
         onPointerMove={(e) => {
           const d = drag.current
           if (!d || !place) return
+          onHandle?.()
           setPlace(
             clamp({ ...place, x: e.clientX - d.dx, y: e.clientY - d.dy }),
           )
@@ -423,12 +466,13 @@ export function NoteWindow({
         }}
         onDoubleClick={roll}
       >
+        {lead}
         <span className="ac-window-title">{title}</span>
         {onDock && (
           <button
             type="button"
             className="ac-window-box ac-window-dock"
-            aria-label="Dock notes"
+            aria-label={`Dock ${noun}`}
             title="Dock"
             onClick={onDock}
           >
@@ -438,12 +482,13 @@ export function NoteWindow({
         <button
           type="button"
           className="ac-window-box"
-          aria-label={shut ? 'Expand notes' : 'Minimize notes'}
+          aria-label={shut ? `Expand ${noun}` : `Minimize ${noun}`}
           aria-expanded={!shut}
           onClick={roll}
         >
           {shut ? '+' : '−'}
         </button>
+        {trail}
       </div>
       {/* Anchored at its top left: rolling up shrinks it into that corner,
           unrolling grows it back out, as a lexeme's card opens. */}
@@ -479,7 +524,7 @@ export function NoteWindow({
                 className="ac-window-grip"
                 role="separator"
                 aria-orientation="vertical"
-                aria-label="Resize notes"
+                aria-label={`Resize ${noun}`}
                 aria-valuenow={openW}
                 aria-valuemin={MIN_W}
                 aria-valuemax={MAX_W}
@@ -490,6 +535,7 @@ export function NoteWindow({
                   e.preventDefault()
                   e.stopPropagation()
                   e.currentTarget.setPointerCapture(e.pointerId)
+                  onHandle?.()
                   sizing.current = { x: e.clientX, y: e.clientY, ...current() }
                   setResizing(true)
                 }}

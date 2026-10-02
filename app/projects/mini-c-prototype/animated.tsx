@@ -2,8 +2,11 @@
 import {
   ChevronLeft,
   ChevronRight,
+  Fullscreen,
   Maximize,
-  Maximize2,
+  Minimize,
+  Pin,
+  Settings,
   ZoomIn,
   ZoomOut,
 } from 'lucide-react'
@@ -50,6 +53,7 @@ import {
   nodeKind,
   tokenKind,
   PHASE_SLIDES,
+  README_SLIDES,
   STEP_SLIDES,
   type Slide,
   lexemesOf,
@@ -64,7 +68,12 @@ import { NameLinks } from './name-links'
 import { NoteWindow } from './note-window'
 import { groupsOf, parentsOf, parseView } from './parse-view'
 import { startRailCurve } from './rail-curve'
-import { compileReal, compilerLoaded, REAL_MAX_CHARS } from './real'
+import {
+  compileReal,
+  compiledTrace,
+  compilerLoaded,
+  REAL_MAX_CHARS,
+} from './real'
 import { FIRST_ERROR, findReference, REFERENCES } from './reference'
 import { badgesAt, regBadges } from './reg-badges'
 import { withoutLiveness } from './regs-view'
@@ -114,7 +123,10 @@ const isTypeStep = (f: Frame) =>
 const speeds = [0.5, 1, 1.5, 2]
 const KEEP_HIDDEN = ['int', '(', ')', '{', '}', ';', '=', ',']
 const HOVER_DELAY = 250
-// The keyboard, as the ? menu lists it.
+// How long an example waits for compiler.js to load before it plays the
+// trace recorded from it instead (a typed program waits real.ts's LOAD_MS).
+const PRESET_LOAD_MS = 4000
+// The keyboard, as the settings menu lists it.
 const KEYS: [string[], string][] = [
   [['spc'], 'play / pause'],
   [['←', '→'], 'step'],
@@ -253,6 +265,125 @@ const EDITOR_MIN = 240
 const STAGE_MIN = 360
 // Scrollbars turned off in the options menu, per browser.
 const BARE_KEY = 'mini-c-no-scrollbars'
+const GUIDE_KEY = 'mini-c-no-guide'
+const GUIDE_PIN_KEY = 'mini-c-guide-pinned'
+const GUIDE_WINDOW_KEY = 'mini-c-guide-window'
+// DRAFT copy: what Mini-C takes, beside the editor while it's in use, for
+// someone who writes C the usual way. From the course's grammar and
+// SemanticUtils' built-ins; every example was run through compiler.js, the
+// right ones compiling and the `not` ones failing (2026-10-02).
+// What's selected in the guide, as Markdown: a rule's title a heading,
+// code in backticks, an example a fenced block (Stanley, 2026-10-02).
+// Within one example it is that code as it stands.
+function guideMarkdown(node: Node): string {
+  if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? ''
+  if (!(node instanceof Element || node instanceof DocumentFragment)) return ''
+  const inner = () => [...node.childNodes].map(guideMarkdown).join('')
+  if (!(node instanceof Element)) return inner()
+  if (node.classList.contains('ac-window-bar')) return ''
+  switch (node.tagName) {
+    case 'PRE': {
+      // (its label on the box around it, when that is selected too)
+      const label = node.parentElement?.getAttribute('data-label')
+      return `\n${label ? `${label}:\n\n` : ''}\`\`\`c\n${(node.textContent ?? '').replace(/\n+$/, '')}\n\`\`\`\n\n`
+    }
+    case 'CODE':
+      return `\`${node.textContent ?? ''}\``
+    case 'H4':
+      return `### ${inner().trim()}\n\n`
+    case 'P':
+      return `${inner().trim()}\n\n`
+    default:
+      return inner()
+  }
+}
+
+// (`not`: the usual C for the same thing, which Mini-C rejects)
+// An example's lines, its `//` comments muted.
+function GuideCode({ code }: { code: string }) {
+  return code.split('\n').map((line, i, all) => (
+    <span
+      key={i}
+      className={line.trimStart().startsWith('//') ? 'cm' : undefined}
+    >
+      {line}
+      {i < all.length - 1 && '\n'}
+    </span>
+  ))
+}
+
+// (`text`: a paragraph, or several)
+type GuideRule = {
+  title: string
+  text?: string | string[]
+  code?: string
+  not?: string
+}
+const GUIDE: GuideRule[] = [
+  {
+    title: 'Declarations',
+    // At the top of the function, then the rest of it (Stanley, 2026-10-02).
+    code: 'void main() {\n  int x;\n  int y;\n  // rest of function\n  x = 4;\n  ...\n}',
+    not: 'int x = 4;',
+  },
+  {
+    title: 'Loops',
+    text: 'There is no `for`, `do` or `switch`.',
+    code: 'i = 0;\nwhile (i < 10) {\n  i = i + 1;\n}',
+  },
+  {
+    // Every operator Mini-C has, a statement each (compiled with
+    // compiler.js, 2026-10-02).
+    title: 'Operators',
+    code: [
+      '// arithmetic',
+      'x = a + b - c * d / e % f;',
+      'x = -a;',
+      '// comparison and logic',
+      'y = a < b || a <= b || a > b;',
+      'y = a >= b && a == b && a != b;',
+      '// address and dereference',
+      'p = &x;',
+      'x = *p;',
+      '// fields and indexing',
+      'x = s.f + arr[0];',
+      '// sizeof and casts',
+      "x = sizeof(int) + (int)'c';",
+    ].join('\n'),
+  },
+  {
+    title: 'Field access',
+    code: '// s is a struct\ns.field = 1;\n// p points to a struct\n(*p).field = 1;',
+    not: 'p->field = 1;',
+  },
+  {
+    title: 'Types',
+    text: '`int`, `char` and `void`, structs, pointers and arrays.',
+    code: 'struct node {\n  int value;\n  struct node* next;\n};\nchar name[8];',
+  },
+  {
+    title: 'Built-ins',
+    text: 'In place of the standard library:',
+    // Their signatures as SemanticUtils declares them, each with what it
+    // does and the cast the compiler's own tests write with it (tests/*.c:
+    // print_s((char*)"..."), (struct Node*)mcmalloc(sizeof(struct Node))).
+    code: [
+      '// prints a string: (char*)"hi"',
+      'void print_s(char* s);',
+      '// prints an int',
+      'void print_i(int i);',
+      '// prints a char',
+      'void print_c(char c);',
+      '// reads a char from input',
+      'char read_c();',
+      '// reads an int from input',
+      'int read_i();',
+      '// allocates memory; cast it',
+      'void* mcmalloc(int size);',
+    ].join('\n'),
+    not: 'malloc(size);\nprintf(format, ...);',
+  },
+]
 const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number]
 // The interference graph keeps below a step's note (about four lines).
 const NOTE_BAND = 104
@@ -698,30 +829,31 @@ function Picker({
 export default function AnimatedCompiler() {
   const [source, setSource] = useState(examples[0].source)
   const reference = useMemo(() => findReference(source), [source])
-  // Typed programs go through the real compiler in a worker (real.ts); the
-  // teaching compiler covers the wait and any failure.
+  // Every program goes through the real compiler in a worker (real.ts),
+  // the examples too (Stanley, 2026-10-02). While it loads, and if it
+  // fails, an example shows the trace recorded from it ahead of time and a
+  // typed program the teaching compiler's.
   const [real, setReal] = useState<{ source: string; trace: Trace } | null>(
     null,
   )
+  const live =
+    real?.source === source ? real.trace : compiledTrace(source) || undefined
   // The last source the real compiler gave up on; until then the teaching
   // compiler's errors are held back, as the real trace may replace them.
   const [realFailed, setRealFailed] = useState<string | null>(null)
   const realPending =
-    !reference &&
-    real?.source !== source &&
-    realFailed !== source &&
-    source.length <= REAL_MAX_CHARS
-  // Presets play the compiler's recorded frames: the parse steps in the
-  // order its parser took them, and the name and type steps its analysers
+    !live && realFailed !== source && source.length <= REAL_MAX_CHARS
+  // The compiler's frames, live or recorded: the parse steps in the order
+  // its parser took them, and the name and type steps its analysers
   // recorded.
   // Emit line by line, or in blocks (emit-view.ts).
   const [emitBlocks, setEmitBlocks] = useState(false)
   const namedTrace = useMemo(() => {
-    const recorded = reference?.trace ?? (real?.source === source && real.trace)
+    const recorded = live ?? reference?.trace
     return recorded
       ? { trace: recorded, recorded: true }
       : { trace: buildTrace(source), recorded: false }
-  }, [source, reference, real])
+  }, [source, reference, live])
   const withEmit = useCallback(
     (blocks: boolean) =>
       !namedTrace.recorded
@@ -742,7 +874,7 @@ export default function AnimatedCompiler() {
   const [detailed, setDetailed] = useState(false)
   // Step titles over the explanation; off while Stanley reads without them.
   const [titles, setTitles] = useState(false)
-  // The footer's "?" menu, which holds the view switches.
+  // The footer's settings menu (its cog), which holds the view switches.
   const [moreOpen, setMoreOpen] = useState(false)
   const moreRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -761,19 +893,25 @@ export default function AnimatedCompiler() {
     }
   }, [moreOpen])
   // About: its own tab on a wide screen; on a phone, where the tabs need
-  // the row, it opens from the "?" menu and a tap anywhere else closes it.
+  // the row, it opens from the settings menu. Either way a press anywhere
+  // else closes it (Stanley, 2026-10-02).
   const [aboutOpen, setAboutOpen] = useState(false)
   const aboutRef = useRef<HTMLDetailsElement>(null)
   const { resolvedTheme, setTheme } = useTheme()
   useEffect(() => {
-    if (!aboutOpen || !window.matchMedia('(max-width: 640px)').matches) return
+    if (!aboutOpen) return
     const away = (event: PointerEvent) => {
       if (!aboutRef.current?.contains(event.target as Node)) setAboutOpen(false)
     }
     const escape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
       setAboutOpen(false)
-      moreRef.current?.querySelector('button')?.focus()
+      // (back to what opened it: the menu's cog on a phone, its tab here)
+      const phone = window.matchMedia('(max-width: 640px)').matches
+      ;(phone
+        ? moreRef.current?.querySelector('button')
+        : aboutRef.current?.querySelector('summary')
+      )?.focus()
     }
     document.addEventListener('pointerdown', away)
     document.addEventListener('keydown', escape)
@@ -1124,6 +1262,12 @@ export default function AnimatedCompiler() {
       else if (deck.phase === phase)
         at.set(first - 1, { phase, slides: [...deck.slides, ...slides] })
     }
+    // The welcome's own slides come first on its step, before the lexer's.
+    const opening = at.get(0)
+    at.set(0, {
+      phase: opening?.phase ?? trace.frames[0]?.phase ?? 'Tokens',
+      slides: [...README_SLIDES, ...(opening?.slides ?? [])],
+    })
     return at
   }, [trace.frames, namedTrace.recorded])
   const [playing, setPlaying] = useState(false)
@@ -1180,19 +1324,15 @@ export default function AnimatedCompiler() {
   // null lets the note grow up into it as it needs.
   const [sourceHeight, setSourceHeight] = useState<number | null>(null)
   const drag = useRef<{ y: number; height: number; max: number } | null>(null)
+  // Kept for the visit only: each load opens with the note fitting its
+  // text (Stanley, 2026-10-02: a saved split left the welcome scrolling).
+  // An older visit's saved split is cleared.
   useEffect(() => {
     try {
-      const saved = Number(localStorage.getItem(SPLIT_KEY))
-      if (saved > 0) setSourceHeight(saved)
+      localStorage.removeItem(SPLIT_KEY)
     } catch {}
   }, [])
-  const saveSplit = (height: number | null) => {
-    setSourceHeight(height)
-    try {
-      if (height === null) localStorage.removeItem(SPLIT_KEY)
-      else localStorage.setItem(SPLIT_KEY, String(Math.round(height)))
-    } catch {}
-  }
+  const saveSplit = (height: number | null) => setSourceHeight(height)
   // The editor column's width once its border with the stage has been
   // dragged; null keeps the stylesheet's width for the screen size.
   const [editorWidth, setEditorWidth] = useState<number | null>(null)
@@ -1310,6 +1450,45 @@ export default function AnimatedCompiler() {
   // Scrollbars off: panes scroll by wheel, touch or keys, and keep only
   // the dashed rail as a hint (animated.css, `.ac.bare`).
   const [bare, setBare] = useState(false)
+  // The syntax guide beside the editor while it has focus; off from the ?
+  // menu (Stanley, 2026-10-02).
+  const [guideOn, setGuideOn] = useState(true)
+  const [guideHeld, setGuideHeld] = useState(false)
+  // Pinned (its pin, or moved or sized by hand), it stays up as a window
+  // of its own; unpinned, it goes, and next opens by the editor again
+  // (Stanley, 2026-10-02).
+  const [guidePinned, setGuidePinned] = useState(false)
+  const [guideEpoch, setGuideEpoch] = useState(0)
+  useEffect(() => {
+    try {
+      setGuidePinned(localStorage.getItem(GUIDE_PIN_KEY) === '1')
+    } catch {}
+  }, [])
+  const pinGuide = (on: boolean) => {
+    setGuidePinned(on)
+    try {
+      if (on) localStorage.setItem(GUIDE_PIN_KEY, '1')
+      else {
+        localStorage.removeItem(GUIDE_PIN_KEY)
+        localStorage.removeItem(GUIDE_WINDOW_KEY)
+      }
+    } catch {}
+    if (on) return
+    setGuideHeld(false)
+    setGuideEpoch((n) => n + 1)
+  }
+  useEffect(() => {
+    try {
+      setGuideOn(localStorage.getItem(GUIDE_KEY) !== '1')
+    } catch {}
+  }, [])
+  const saveGuide = (on: boolean) => {
+    setGuideOn(on)
+    try {
+      if (on) localStorage.removeItem(GUIDE_KEY)
+      else localStorage.setItem(GUIDE_KEY, '1')
+    } catch {}
+  }
   // Maximized: the tool covers the window, the site's header and all, until
   // back (or Esc). It opens that way (Stanley, 2026-09-29).
   const [max, setMax] = useState(true)
@@ -1627,24 +1806,36 @@ export default function AnimatedCompiler() {
     return () => window.removeEventListener('pointerdown', away)
   }, [pinned])
   useEffect(() => {
-    if (reference) return
+    if (compiledTrace(source)) return
     const abort = new AbortController()
-    const timer = setTimeout(() => {
-      compileReal(source, abort.signal).then(
-        (trace) => {
-          // A different trace: start it from the top, as an edit does.
-          setReal({ source, trace })
-          setStep(0)
-          setSlide(0)
-          clearHover()
-        },
-        (error: Error) => {
-          if (error.message === 'aborted') return
-          setRealFailed(source)
-          console.warn('real compiler:', error.message)
-        },
-      )
-    }, 250)
+    // (an example at once, and with less patience for a slow load: its
+    // recorded trace is the same program's)
+    const timer = setTimeout(
+      () => {
+        compileReal(
+          source,
+          abort.signal,
+          reference ? PRESET_LOAD_MS : undefined,
+        ).then(
+          (trace) => {
+            setReal({ source, trace })
+            // An example's live trace is the one it already shows: its step
+            // (a link's ?frame=) stays. Anything else starts from the top,
+            // as an edit does.
+            if (reference) return
+            setStep(0)
+            setSlide(0)
+            clearHover()
+          },
+          (error: Error) => {
+            if (error.message === 'aborted') return
+            setRealFailed(source)
+            console.warn('real compiler:', error.message)
+          },
+        )
+      },
+      reference ? 0 : 250,
+    )
     return () => {
       clearTimeout(timer)
       abort.abort()
@@ -3015,6 +3206,15 @@ export default function AnimatedCompiler() {
 
   const deck = decks.get(index)
   const intro = slide > 0 ? deck?.slides[slide - 1] : undefined
+  // The welcome and its slides are one readme, counted on their own; the
+  // lexer's slides after them, theirs.
+  const readmeCount =
+    index === 0 ? (deck?.slides.filter((s) => s.readme).length ?? 0) : 0
+  const onReadme = index === 0 && (slide === 0 || !!intro?.readme)
+  const slideCount = onReadme
+    ? readmeCount + 1
+    : (deck?.slides.length ?? 0) - readmeCount
+  const slideAt = onReadme ? slide + 1 : slide - readmeCount
   // The register allocator's slides sit on emit's last step: the stack
   // stays out of them, and the first lights every virtual register the
   // listing uses, all the new ones emit made (Stanley, 2026-10-01).
@@ -3619,7 +3819,7 @@ export default function AnimatedCompiler() {
   // a slide's own title is the heading inside (Stanley, 2026-09-28).
   const noteFile = error
     ? 'error.log'
-    : !intro && index === 0
+    : index === 0 && onReadme
       ? 'readme.txt'
       : `${shownTab?.label ?? 'notes'}.txt`
   const noteText =
@@ -4409,6 +4609,106 @@ export default function AnimatedCompiler() {
       {stackTooBig}
     </div>
   )
+  // The syntax guide (GUIDE): up while the editor or it has focus, or
+  // pinned; a window as the note's, its bar to drag, its edges to size.
+  const guideUp = guidePinned || editing || guideHeld
+  const guideWindow = guideOn && (
+    <NoteWindow
+      key={guideEpoch}
+      className="guide"
+      title="mini-c.txt"
+      label="Mini-C syntax"
+      noun="guide"
+      storeKey={GUIDE_WINDOW_KEY}
+      openWidth={300}
+      live={false}
+      bounds={rootRef}
+      area={workRef}
+      start={windowStart}
+      away={!guideUp}
+      onHandle={() => {
+        if (!guidePinned) pinGuide(true)
+      }}
+      lead={
+        <button
+          type="button"
+          className={`ac-window-box ac-window-pin ${guidePinned ? 'on' : ''}`}
+          aria-label={guidePinned ? 'Unpin guide' : 'Pin guide'}
+          aria-pressed={guidePinned}
+          title={guidePinned ? 'Unpin' : 'Pin'}
+          onClick={() => pinGuide(!guidePinned)}
+        >
+          <Pin aria-hidden="true" />
+        </button>
+      }
+      trail={
+        // Off until the settings menu's "syntax guide" turns it back on.
+        <button
+          type="button"
+          className="ac-window-box ac-window-close"
+          aria-label="Close guide"
+          title="Close"
+          onClick={() => saveGuide(false)}
+        >
+          ×
+        </button>
+      }
+      rootProps={{
+        // Pressed, it holds itself up before the editor lets go, so its
+        // text can be selected and copied.
+        tabIndex: -1,
+        onPointerDown: () => setGuideHeld(true),
+        onFocus: () => setGuideHeld(true),
+        onBlur: (e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null))
+            setGuideHeld(false)
+        },
+        onCopy: (e) => {
+          const sel = window.getSelection()
+          if (!sel || sel.isCollapsed || !sel.rangeCount) return
+          const md = guideMarkdown(sel.getRangeAt(0).cloneContents())
+            .replace(/\n{3,}/g, '\n\n')
+            .trim()
+          if (!md) return
+          e.preventDefault()
+          e.clipboardData.setData('text/plain', md)
+        },
+      }}
+    >
+      <div className="ac-guide-text">
+        {GUIDE.map((r) => (
+          <section key={r.title}>
+            <h4>{r.title}</h4>
+            {[r.text ?? []].flat().map((t) => (
+              <p key={t}>
+                <Prose text={t} />
+              </p>
+            ))}
+            {/* Each block names its language in its corner: the
+                        right way is Mini-C, the usual way only C. */}
+            {r.code && (
+              <div className="ac-guide-ex" data-label="Mini-C">
+                <pre>
+                  <code>
+                    <GuideCode code={r.code} />
+                  </code>
+                </pre>
+              </div>
+            )}
+            {r.not && (
+              <div className="ac-guide-ex bad" data-label="C">
+                <pre>
+                  <code>
+                    <GuideCode code={r.not} />
+                  </code>
+                </pre>
+              </div>
+            )}
+          </section>
+        ))}
+      </div>
+    </NoteWindow>
+  )
   // The step's note: docked at the bottom of the editor on a phone, under
   // the source it grows up into; a window over the stage elsewhere.
   const noteWindow = !noteInPane && !pinnedError && !typeStep && (
@@ -4424,18 +4724,23 @@ export default function AnimatedCompiler() {
       area={workRef}
       start={windowStart}
       foot={
-        intro &&
+        (intro || onReadme) &&
         deck &&
-        deck.slides.length > 1 && (
+        slideCount > 1 && (
           <div className="ac-note-foot">
             <button
               type="button"
               className="ac-slides"
               aria-label="Skip intro"
-              onClick={() => seek(index + 1)}
+              // (the readme skips to the lexer's slides, if it has any)
+              onClick={() =>
+                onReadme && deck.slides.length > readmeCount
+                  ? setSlide(readmeCount + 1)
+                  : seek(index + 1)
+              }
             >
               <span className="count">
-                {slide}/{deck.slides.length}
+                {slideAt}/{slideCount}
               </span>
               <span className="skip">skip</span>
             </button>
@@ -4471,15 +4776,6 @@ export default function AnimatedCompiler() {
         <Link href="/projects" className="ac-home" aria-label="Projects">
           <ChevronLeft aria-hidden="true" />
         </Link>
-        {max && (
-          <button
-            type="button"
-            className="ac-back"
-            onClick={() => setMax(false)}
-          >
-            ← back
-          </button>
-        )}
         <nav className="ac-phases" aria-label="Compiler phases">
           {tabs.map((tab) => {
             const types = 'types' in tab
@@ -4508,53 +4804,49 @@ export default function AnimatedCompiler() {
         >
           <summary>about</summary>
           <div>
+            {/* Stanley's copy (2026-10-02). */}
             <p>
-              Step through step by step, seeing a brief depiction of how your
-              code gets compiled into target machine code. This simulation was
-              built by bundling my compiler source code with TeaVM. Every
-              program you compile here uses the code I wrote for my
-              compiler&apos;s class I took last winter,{' '}
+              The compiler was built for{' '}
               <a
                 href="https://www.cs.mcgill.ca/~cs520/2026/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="prose-link"
               >
-                COMP520
-              </a>{' '}
-              at McGill University, taught by the lovely Christophe Dubach.
+                COMP 520
+              </a>
+              , taught in Winter 2026 by Professor Christophe Dubach.
             </p>
-            {/* DRAFT copy: how the compiler got into the browser. */}
             <p>
-              The compiler is written in Java.{' '}
+              Any code you write is live-compiled directly in your browser, made
+              possible by{' '}
               <a
-                href="https://teavm.org"
+                href="https://teavm.org/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="prose-link"
               >
                 TeaVM
-              </a>{' '}
-              compiles it into JavaScript (not WebAssembly), changed only where
-              its smaller Java library falls short, and your browser runs it in
-              a background worker, so a compile that takes too long is stopped
-              instead of freezing the page. Beside it runs a tracer that records
-              every decision the compiler makes, from each token to each
-              register, and that record is what you step through.
+              </a>
+              , which <strong>transpiles</strong> my compiler&apos;s Java source
+              code into minified JavaScript.
             </p>
           </div>
         </details>
-        {!max && (
-          <button
-            type="button"
-            className="ac-max"
-            aria-label="Maximize"
-            title="Maximize (f)"
-            onClick={() => setMax(true)}
-          >
-            <Maximize2 aria-hidden="true" />
-          </button>
-        )}
+        {/* Full screen and back, in one place (Stanley, 2026-10-02). */}
+        <button
+          type="button"
+          className="ac-max"
+          aria-label={max ? 'Exit full screen' : 'Full screen'}
+          title={max ? 'Exit full screen (f)' : 'Full screen (f)'}
+          onClick={() => setMax((m) => !m)}
+        >
+          {max ? (
+            <Minimize aria-hidden="true" />
+          ) : (
+            <Fullscreen aria-hidden="true" />
+          )}
+        </button>
       </header>
 
       <div
@@ -6175,6 +6467,7 @@ export default function AnimatedCompiler() {
         }
       >
         {!narrow && noteWindow}
+        {guideWindow}
 
         <footer className="ac-keys" aria-label="Controls">
           <button
@@ -6226,12 +6519,13 @@ export default function AnimatedCompiler() {
           {/* A click goes round the speeds; - and + step through them. */}
           <button
             className="ac-roomy"
-            aria-label={`Speed ${speed}×`}
+            aria-label={`Speed ${speed}x`}
             onClick={() =>
               setSpeed((s) => speeds[(speeds.indexOf(s) + 1) % speeds.length])
             }
           >
-            {speed}×
+            {/* A plain x, a touch bigger than × (Stanley, 2026-10-02) */}
+            {speed}x
           </button>
           <input
             aria-label="Animation step"
@@ -6256,11 +6550,13 @@ export default function AnimatedCompiler() {
           <div className="ac-more" ref={moreRef}>
             <button
               type="button"
-              aria-label="Options"
+              aria-label="Settings"
+              title="Settings"
               aria-expanded={moreOpen}
               onClick={() => setMoreOpen((o) => !o)}
             >
-              ?
+              {/* A cog, not a ? (Stanley, 2026-10-02). */}
+              <Settings aria-hidden="true" />
             </button>
             {moreOpen && (
               <div className="ac-more-menu" role="menu">
@@ -6287,7 +6583,7 @@ export default function AnimatedCompiler() {
                     )
                   }
                 >
-                  speed {speed}×
+                  speed {speed}x
                 </button>
                 <button
                   type="button"
@@ -6335,6 +6631,15 @@ export default function AnimatedCompiler() {
                 >
                   <span aria-hidden="true">{bare ? '[ ]' : '[x]'}</span>
                   scrollbars
+                </button>
+                <button
+                  type="button"
+                  role="menuitemcheckbox"
+                  aria-checked={guideOn}
+                  onClick={() => saveGuide(!guideOn)}
+                >
+                  <span aria-hidden="true">{guideOn ? '[x]' : '[ ]'}</span>
+                  syntax guide
                 </button>
                 <button
                   type="button"

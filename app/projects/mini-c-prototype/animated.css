@@ -239,10 +239,10 @@
   gap: 24px;
   padding: 6px 0 10px;
 }
+/* The phases at the top left, after the way back; about at the right. */
 .ac-phases {
   display: flex;
   gap: 14px;
-  margin-left: auto;
 }
 .ac-phases button {
   padding: 1px 4px;
@@ -255,20 +255,26 @@
 }
 .ac-about {
   position: relative;
+  margin-left: auto;
   color: var(--muted);
   z-index: 4;
 }
+/* Greyer than the phases: it isn't one. */
 .ac-about summary {
   cursor: pointer;
   list-style: none;
   padding: 1px 4px;
+  color: var(--faint);
+}
+.ac-about summary:hover {
+  color: var(--muted);
 }
 .ac-about summary::-webkit-details-marker {
   display: none;
 }
 .ac-about[open] summary {
-  color: var(--bg);
-  background: var(--ink);
+  color: var(--ink);
+  background: var(--line);
 }
 .ac-about > div {
   position: absolute;
@@ -290,21 +296,17 @@
   align-self: center;
   display: grid;
   place-items: center;
+  /* (the phases' gap from about, not the header's) */
+  margin-left: -10px;
   color: var(--muted);
 }
-.ac .ac-max:hover,
-.ac .ac-back:hover {
+.ac .ac-max:hover {
   color: var(--ink);
 }
 .ac-max svg {
   width: 14px;
   height: 14px;
   stroke-width: 1.75;
-}
-.ac .ac-back {
-  padding: 1px 4px;
-  color: var(--muted);
-  white-space: nowrap;
 }
 /* Maximized: over the whole window, the site's header and art under it,
    so nothing up there answers the pointer. (A phone's tool is always the
@@ -2633,12 +2635,11 @@
     transform: none;
     background: var(--bg);
   }
-  .ac-max,
-  .ac-back {
+  .ac-max {
     display: none;
   }
   /* One row: back, then the phases, scrolling if they must. About moves
-     to the "?" menu. */
+     to the settings menu. */
   .ac-top {
     flex: none;
     align-items: center;
@@ -3169,6 +3170,138 @@
 
 .ac-more {
   position: relative;
+  display: flex;
+  align-items: center;
+}
+/* The cog, drawn as the bar's other icons are (.ac-step, .ac-max). */
+.ac-more > button svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 1.75;
+}
+/* The syntax guide: a window as the note's (.ac-window, note-window.tsx),
+   over the stage's corner by the editor while the editor or it has focus,
+   or pinned. A soft shadow: it hovers over what it doesn't belong to. */
+.ac-window.guide {
+  z-index: 36;
+  box-shadow: 0 6px 24px color-mix(in srgb, #000 18%, transparent);
+  transition:
+    opacity 0.18s ease-out,
+    translate 0.18s ease-out;
+}
+.ac-window.guide:focus {
+  outline: none;
+}
+.ac-window.guide.away {
+  opacity: 0;
+  translate: 0 -6px;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 0.18s ease-out,
+    translate 0.18s ease-out,
+    visibility 0s 0.18s;
+}
+.ac .ac-window-pin {
+  display: flex;
+  /* (before the name, so the bar's gap and no more) */
+  margin: 0 0 0 -4px;
+  color: var(--faint);
+}
+/* (beside the −, not pushed to the end: the − already is) */
+.ac .ac-window-close {
+  margin-left: 0;
+  font-size: 13px;
+}
+.ac .ac-window-pin.on {
+  color: var(--ink);
+}
+.ac .ac-window-pin svg {
+  width: 11px;
+  height: 11px;
+}
+.ac-window.guide .ac-window-body {
+  padding: 10px 6px 12px 12px;
+  font-size: 12px;
+  cursor: text;
+  user-select: text;
+}
+.ac-guide-text p {
+  margin: 0;
+}
+.ac-guide-text p + p {
+  margin-top: 4px;
+}
+.ac-guide-text section {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.ac-guide-text section:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+.ac-guide-text h4 {
+  margin: 0 0 2px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.ac .ac-guide-text code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.ac-guide-text p code {
+  padding: 0 3px;
+  background: var(--line);
+}
+/* Each example names its language in its corner (not selected, so a copy
+   is the code): Mini-C on the right way, C on the usual way it rejects.
+   The label is on the box around the code, so it stays put while a long
+   line scrolls under it. */
+.ac-guide-ex {
+  position: relative;
+  margin-top: 6px;
+  border-left: 2px solid var(--ok);
+  background: color-mix(in srgb, var(--line) 45%, var(--bg));
+}
+.ac-guide-ex.bad {
+  margin-top: 4px;
+  border-left-color: var(--err);
+}
+.ac-guide-ex::before {
+  content: attr(data-label);
+  position: absolute;
+  top: 4px;
+  right: 7px;
+  z-index: 1;
+  padding-left: 4px;
+  background: color-mix(in srgb, var(--line) 45%, var(--bg));
+  font-family: 'Notes Prose', var(--font-mono);
+  font-size: 10px;
+  color: color-mix(in srgb, var(--ok) 70%, var(--muted));
+  user-select: none;
+}
+.ac-guide-ex.bad::before {
+  color: color-mix(in srgb, var(--err) 70%, var(--muted));
+}
+.ac-guide-text pre {
+  margin: 0;
+  /* (the label's room, clear of the code) */
+  padding: 6px calc(8px + 7ch) 6px 8px;
+  overflow-x: auto;
+  line-height: 1.45;
+  white-space: pre;
+}
+/* A comment, muted as in an editor. */
+.ac-guide-text pre .cm {
+  color: var(--faint);
+}
+/* (not the inline code's chip, which the note's code takes) */
+.ac .ac-guide-text pre code {
+  padding: 0;
+  background: none;
 }
 .ac-more-menu {
   position: absolute;
