@@ -16,6 +16,11 @@ const TIMEOUT_MS = 2000
 const LOAD_MS = 15000
 // Set once compiler.js has loaded in any worker; later loads hit the cache.
 export let compilerLoaded = false
+// The last few programs compiled, so going back to one (an example picked
+// again, an edit undone) is instant rather than another compile.
+const compiled = new Map<string, Trace>()
+const KEEP = 24
+export const compiledTrace = (source: string) => compiled.get(source)
 
 const workerSource = (url: string) => `
 import { trace } from ${JSON.stringify(url)}
@@ -29,8 +34,19 @@ onmessage = (event) => {
 }
 `
 
-export const compileReal = (source: string, signal: AbortSignal) =>
+// `loadMs`: how long compiler.js may take to load (an example has its
+// recorded trace to fall back on, so it waits less).
+export const compileReal = (
+  source: string,
+  signal: AbortSignal,
+  loadMs = LOAD_MS,
+) =>
   new Promise<Trace>((resolve, reject) => {
+    const known = compiled.get(source)
+    if (known) {
+      resolve(known)
+      return
+    }
     if (source.length > REAL_MAX_CHARS) {
       reject(new Error(`over ${REAL_MAX_CHARS} characters`))
       return
@@ -74,7 +90,7 @@ export const compileReal = (source: string, signal: AbortSignal) =>
     }
     worker.onmessageerror = () => fail('unreadable reply from the compiler')
     // Until compiler.js has loaded; then the compile's own timeout.
-    timer = setTimeout(() => fail(`not loaded after ${LOAD_MS} ms`), LOAD_MS)
+    timer = setTimeout(() => fail(`not loaded after ${loadMs} ms`), loadMs)
     worker.onmessage = (
       event: MessageEvent<{
         ready?: boolean
@@ -108,8 +124,13 @@ export const compileReal = (source: string, signal: AbortSignal) =>
           const printed = compilerError(out?.log ?? '', source)
           if (printed) trace.error = printed
         }
-        if (trace?.frames?.length) resolve(trace)
-        else reject(new Error(event.data?.error ?? 'compiler failed'))
+        if (trace?.frames?.length) {
+          compiled.delete(source)
+          compiled.set(source, trace)
+          if (compiled.size > KEEP)
+            compiled.delete(compiled.keys().next().value as string)
+          resolve(trace)
+        } else reject(new Error(event.data?.error ?? 'compiler failed'))
       } catch (error) {
         // A reply that isn't a trace (malformed JSON, an unexpected shape).
         reject(error instanceof Error ? error : new Error(String(error)))

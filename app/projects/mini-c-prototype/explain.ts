@@ -347,16 +347,15 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
   const statementToo = `Where a statement goes, an expression and its ${code(';')} make an expression statement, so this node is the statement too.`
   switch (w.kind) {
     case 'ready':
-      // Stanley's copy (2026-09-27); "MIPs" read MIPS, and the "…" after it
-      // a full stop. DRAFT copy: the bracket he left, naming the bundle.
+      // Stanley's copy (2026-10-02); a comma after "journey that is" so
+      // the sentence reads on.
       return (
-        'Welcome to an interactive demonstration of the compiler I wrote for ' +
-        'a subset of the C programming language! It follows the traces of ' +
-        'the real compiler, running right here in your browser, so every ' +
-        'step you see is true to the actual process of how your code would ' +
-        'be compiled into a target assembly language. In this case, we are ' +
-        'targeting MIPS. Feel free to try out your own C code or edit the ' +
-        'examples!\n\n– Stanley'
+        'This is an interactive demonstration of a **C compiler** I created ' +
+        "as part of McGill's Compiler Design course. Its goal is to show " +
+        'how source code is translated into assembly, and the often ' +
+        'beautiful, often monstrous journey that is, by visualizing each ' +
+        'stage of compilation in an intuitive and educational way.' +
+        '\n\nPlease enjoy!\n\nStanley'
       )
     case 'token': {
       // With step titles the token is in the header and the body names its
@@ -1183,7 +1182,29 @@ export type Slide = {
   head?: [string, string]
   /** About the live-range bars, which only the real compiler's traces draw. */
   lanes?: true
+  /** Part of the welcome (readme.txt), not of a phase. */
+  readme?: true
 }
+
+/** The welcome's slides after its first page: what a compiler is, before
+ * the lexer's own (Stanley, 2026-10-02). */
+export const README_SLIDES: Slide[] = [
+  {
+    // Stanley's copy (2026-10-02); "include such as" read "include".
+    title: 'Background',
+    readme: true,
+    body:
+      "Before you dive in, here's a quick primer on what a compiler is " +
+      'and does:\n\nA compiler **translates** a source language to a ' +
+      'target language. A source-to-assembly compiler like mine targets a ' +
+      'specific **Instruction Set Architecture** (ISA), which defines the ' +
+      'instructions, registers, and memory model a processor supports.' +
+      '\n\nEach ISA has its own **assembly language**, a human-"readable" ' +
+      'way of writing the instructions a processor can execute. Common ' +
+      'ISAs include x86 (Intel) or ARM (Mac).\n\nMy compiler uses a ' +
+      '**simplified subset** of C as its source and targets the **MIPS ISA**.',
+  },
+]
 
 /**
  * Text-only slides that open a phase. They sit just before the phase's first
