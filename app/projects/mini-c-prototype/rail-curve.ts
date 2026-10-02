@@ -1,5 +1,5 @@
 // The scrollbar's thumb, as light
-// in the dashed rail: a stretch of it (half a thumb's length) brightens
+// in the dashed rail: a stretch of it (as long as a thumb would be) brightens
 // where the pane is scrolled to (the top of the rail at the start, the
 // bottom at the end), while it's scrolled by hand, and a little after,
 // so you see where you ended; then it fades back into the rail. Resting on the bar lights it
@@ -15,9 +15,11 @@
 // wheel there (the native thumb is as long as the view, so it wouldn't
 // keep a short stretch under the pointer).
 
-// The lit stretch: this share of the length a thumb would have, at least
-// MIN_LENGTH px and at most half the rail.
-const SHARE = 0.5
+// The lit stretch: as long as a thumb would be (the rail's share of it
+// that the pane shows of its content), at least MIN_LENGTH px. A pane
+// with little to scroll gets a stretch nearly the whole rail that moves
+// as little as the content does (Stanley, 2026-10-02: "it should mimic
+// how much the window is actually scrolling").
 const MIN_LENGTH = 40
 // How far the lit stretch bends off the rail, in px (0: it doesn't).
 const LIFT = 0
@@ -84,6 +86,21 @@ function shownOf(p: HTMLElement) {
   return { left, top, right, bottom }
 }
 
+// Whether a vertical scrollbar shows on a pane (and so takes the end of the
+// horizontal bar's room), and how wide the room past its client area is
+// (that bar, or an empty gutter kept by scrollbar-gutter), in client px.
+function hasVerticalBar(p: HTMLElement) {
+  const overflow = getComputedStyle(p).overflowY
+  return (
+    overflow === 'scroll' ||
+    (overflow === 'auto' && p.scrollHeight > p.clientHeight)
+  )
+}
+function gutterOf(p: HTMLElement) {
+  const border = parseFloat(getComputedStyle(p).borderRightWidth) || 0
+  return Math.max(0, p.offsetWidth - p.clientLeft - p.clientWidth - border)
+}
+
 // The rail of a pane on an axis, in viewport px: where it runs, the bar
 // across it and where its 1px line sits, and where the lit stretch is on
 // it. On whole px, as the scrollbar it stands in for is laid out, so the
@@ -94,6 +111,7 @@ function railOf(p: HTMLElement, axis: Axis, bare: boolean) {
   // A pane on the zoomed stage (canvas-zoom.ts) is drawn at this scale;
   // its client sizes aren't.
   const k = (y ? box.height / p.offsetHeight : box.width / p.offsetWidth) || 1
+  const dpr = window.devicePixelRatio || 1
   const start = Math.round(
     y
       ? bare
@@ -103,38 +121,41 @@ function railOf(p: HTMLElement, axis: Axis, bare: boolean) {
         ? box.left
         : box.left + p.clientLeft * k,
   )
-  const length = y
-    ? bare
-      ? box.height
-      : p.clientHeight * k
-    : bare
-      ? box.width
-      : p.clientWidth * k
-  const scroll = y
-    ? p.scrollHeight - p.clientHeight
-    : p.scrollWidth - p.clientWidth
+  // What the pane shows along the axis: its client area, and (sideways) a
+  // gutter kept for a vertical scrollbar that isn't there (scrollbar-gutter:
+  // stable on .ac-source). Chrome counts that gutter as shown: the native
+  // bar runs across it, and the content scrolls only as far as it, 9px
+  // short of scrollWidth - clientWidth, which once put the lit stretch
+  // half way along a rail scrolled to its end (Stanley, 2026-10-02).
+  const port = y
+    ? p.clientHeight
+    : p.clientWidth + (hasVerticalBar(p) ? 0 : gutterOf(p))
+  const length = bare ? (y ? box.height : box.width) : port * k
+  // How far it scrolls. Its scroll size is a whole px, so up to half a px
+  // of this may be out of reach; that close counts as the end.
+  const scroll = Math.max(0, (y ? p.scrollHeight : p.scrollWidth) - port - 0.5)
   const at = y ? p.scrollTop : p.scrollLeft
   // The bar, across: past the pane's client area, to its edge.
   const bar = y
     ? box.left + (p.clientLeft + p.clientWidth) * k
     : box.top + (p.clientTop + p.clientHeight) * k
   const end = y ? box.right : box.bottom
-  const view = y
-    ? p.clientHeight / p.scrollHeight
-    : p.clientWidth / p.scrollWidth
-  const size = Math.min(
-    length / 2,
-    Math.max(MIN_LENGTH * k, length * view * SHARE),
-  )
-  const from = start + (scroll > 0 ? at / scroll : 0) * (length - size)
+  const view = port / (y ? p.scrollHeight : p.scrollWidth)
+  const size = Math.min(length, Math.max(MIN_LENGTH * k, length * view))
+  const from =
+    start + (scroll > 0 ? Math.min(1, at / scroll) : 0) * (length - size)
   return {
     box,
     start,
     length,
     bar,
     end,
-    // (snapped to whole px unscaled, to match the rail row for row)
-    across: k === 1 ? Math.round(bar + 4) + 0.5 : bar + 4.5 * k,
+    // (unscaled, snapped to a whole device px, as the compositor places
+    // the native bar of a pane at a fractional offset, as the docked
+    // column's panes are; snapping to a CSS px put it a device px off,
+    // row for row)
+    across:
+      k === 1 ? (Math.round((bar + 4) * dpr) + dpr / 2) / dpr : bar + 4.5 * k,
     k,
     scroll,
     at,
@@ -635,12 +656,18 @@ export function startRailCurve(root: HTMLElement): (() => void) | null {
   const passive = { capture: true, passive: true }
   const on: On[] = [
     [root, 'scroll', scrolled, passive],
-    ...['wheel', 'touchmove', 'pointerdown', 'pointermove'].map(
-      (type): On => [root, type, touched, passive],
-    ),
-    ...['pointerover', 'touchstart', 'focusin'].map(
-      (type): On => [root, type, noticed, passive],
-    ),
+    ...['wheel', 'touchmove', 'pointerdown', 'pointermove'].map((type): On => [
+      root,
+      type,
+      touched,
+      passive,
+    ]),
+    ...['pointerover', 'touchstart', 'focusin'].map((type): On => [
+      root,
+      type,
+      noticed,
+      passive,
+    ]),
     [root, 'pointermove', moved as EventListener, passive],
     [grip, 'pointerdown', pressed as EventListener, {}],
     [grip, 'pointermove', dragged as EventListener, {}],
