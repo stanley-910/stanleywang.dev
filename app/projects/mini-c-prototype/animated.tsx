@@ -194,8 +194,10 @@ const TOKEN_BLURBS: Record<string, string> = {
   logical: 'Join two conditions: both true, or either.',
   delimiter: 'Punctuation that groups code or separates its parts.',
   assign: 'Stores the value on its right in the place on its left.',
+  // Stanley's line (2026-10-02), its "and anything else" filled in from
+  // the grammar: what else an IDENT names.
   identifier:
-    'Names the program chooses: a letter or `_`, then letters, digits or `_`.',
+    'Names that identify variables, functions, and structs, as well as parameters, fields, and classes.',
   number: 'A whole number, in decimal digits.',
   string: 'Text between double quotes.',
   character: 'One character between single quotes.',
@@ -418,7 +420,14 @@ const linkable = (href: string) => {
 }
 
 // Explanation strings mark code with backticks.
-function Prose({ text }: { text: string }) {
+// `[Precedence](example:Precedence)` opens that example (`onExample`).
+function Prose({
+  text,
+  onExample,
+}: {
+  text: string
+  onExample?: (name: string) => void
+}) {
   return (
     <>
       {text.split('`').map((part, i) =>
@@ -428,6 +437,18 @@ function Prose({ text }: { text: string }) {
           <span key={i}>
             {part.split(INLINE).map((run, j) => {
               const link = /^\[([^\]]+)\]\(([^)]+)\)$/.exec(run)
+              const example = link?.[2].match(/^example:(.+)$/)?.[1]
+              if (link && example && onExample)
+                return (
+                  <button
+                    key={j}
+                    type="button"
+                    className="ac-hint-link"
+                    onClick={() => onExample(example)}
+                  >
+                    {link[1]}
+                  </button>
+                )
               if (link && linkable(link[2]))
                 return (
                   <a
@@ -1246,7 +1267,12 @@ export default function AnimatedCompiler() {
       )
       // (a slide about the bars needs them: the teaching compiler, when the
       // real one can't run, draws none)
-      const shown = slides?.filter((s) => namedTrace.recorded || !s.lanes)
+      const shown = slides?.filter(
+        (s) =>
+          (namedTrace.recorded || !s.lanes) &&
+          (!s.onlyIn || s.onlyIn === reference?.name) &&
+          s.notIn !== reference?.name,
+      )
       if (first > 0 && shown?.length)
         at.set(first - 1, { phase: phase as Phase, slides: shown })
     }
@@ -1269,7 +1295,7 @@ export default function AnimatedCompiler() {
       slides: [...README_SLIDES, ...(opening?.slides ?? [])],
     })
     return at
-  }, [trace.frames, namedTrace.recorded])
+  }, [trace.frames, namedTrace.recorded, reference?.name])
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState(1)
   const [hover, setHover] = useState<number | null>(null)
@@ -2251,6 +2277,26 @@ export default function AnimatedCompiler() {
     setPlaying(false)
     clearHover()
   }
+  // A slide's link to an example (the parser's to Precedence) opens it on
+  // the first slide only it has, once its slides are laid out.
+  const [openOn, setOpenOn] = useState<string | null>(null)
+  const openExample = (name: string) => {
+    const example = examples.find((e) => e.name === name)
+    if (!example) return
+    update(example.source)
+    setOpenOn(name)
+  }
+  useEffect(() => {
+    if (!openOn || reference?.name !== openOn) return
+    for (const [at, deck] of decks) {
+      const i = deck.slides.findIndex((s) => s.onlyIn === openOn)
+      if (i < 0) continue
+      setStep(at)
+      setSlide(i + 1)
+      break
+    }
+    setOpenOn(null)
+  }, [openOn, reference?.name, decks])
 
   const late = frame.phase === 'Emit' || frame.phase === 'Registers'
   // Emit and registers: the listing slides out in a pane of its own over
@@ -3469,10 +3515,14 @@ export default function AnimatedCompiler() {
       : undefined
   // Where a landing node's class sits (parse): under it, else right, left
   // or above, whichever crosses no edge on the stage and covers no other
-  // piece. The right is taken when the node has a parse cue there.
+  // piece. Covering a neighbour costs as much as a whole edge (21 samples)
+  // through the class: text over text is the worst of them.
   const landingSpot = (() => {
     if (!landing || (w.kind !== 'parse.node' && w.kind !== 'parse.wait'))
       return undefined
+    // A cue on the node says more than its class, which the list under the
+    // note lights anyway; the two side by side crowded a neighbour.
+    if (working.cue?.node === w.node) return 'none'
     const id = w.node
     const c = toPx(point(id))
     const half = pieceBox(id).w / 2
@@ -3484,7 +3534,7 @@ export default function AnimatedCompiler() {
       { side: 'right', x: c.x + half + 6, y: c.y - th / 2 },
       { side: 'left', x: c.x - half - 6 - tw, y: c.y - th / 2 },
       { side: 'above', x: c.x - tw / 2, y: c.y + pieceHalf - 24 - th },
-    ].filter((s) => s.side !== 'right' || working.cue?.node !== id)
+    ]
     // Every edge drawn this step, sampled along its cubic.
     const edges = [
       ...frame.nodes.flatMap((p) =>
@@ -3525,7 +3575,8 @@ export default function AnimatedCompiler() {
           b.x + b.w > s.x &&
           b.y < s.y + th &&
           b.y + b.h > s.y,
-      ).length
+      ).length *
+        2100
     return spots.reduce((a, b) => (cost(b) < cost(a) ? b : a)).side
   })()
   const naming =
@@ -3805,22 +3856,24 @@ export default function AnimatedCompiler() {
   // The name pass: the note card holds the scopes instead of a sentence.
   const statusText = error
     ? error.message
-    : intro
-      ? intro.title
-      : index === 0
-        ? narrow
-          ? // DRAFT copy: the phone's wording of the line above
-            'Press play to compile your code!'
-          : 'Press space to compile your code!'
-        : frame.why.kind === 'token'
-          ? `Token: \`${trace.tokens[frame.why.token].text}\``
-          : frame.title
+    : intro?.readme
+      ? // (the readme's pages are named by their file: background.txt)
+        ''
+      : intro
+        ? intro.title
+        : index === 0
+          ? // No line over the welcome (Stanley, 2026-10-02).
+            ''
+          : frame.why.kind === 'token'
+            ? `Token: \`${trace.tokens[frame.why.token].text}\``
+            : frame.title
   // The notes window's name: the tab it's under, slides and steps alike;
   // a slide's own title is the heading inside (Stanley, 2026-09-28).
   const noteFile = error
     ? 'error.log'
     : index === 0 && onReadme
-      ? 'readme.txt'
+      ? // hello.txt, then background.txt (Stanley, 2026-10-02)
+        `${(intro?.title ?? 'hello').toLowerCase()}.txt`
       : `${shownTab?.label ?? 'notes'}.txt`
   const noteText =
     intro?.body ??
@@ -3841,17 +3894,16 @@ export default function AnimatedCompiler() {
       <Prose text={statusText} />
     </span>
   )
-  // A slide's small two-column table, under its body.
-  const slideTable = intro?.table && (
+  const slideRows = (rows: [string, string][], head?: [string, string]) => (
     <table className="ac-slide-table">
       <thead>
         <tr>
-          <th>{intro.head?.[0] ?? 'lexeme'}</th>
-          <th>{intro.head?.[1] ?? 'category'}</th>
+          <th>{head?.[0] ?? 'lexeme'}</th>
+          <th>{head?.[1] ?? 'category'}</th>
         </tr>
       </thead>
       <tbody>
-        {intro.table.map(([lexeme, category]) => (
+        {rows.map(([lexeme, category]) => (
           <tr key={lexeme}>
             <td>
               <code>{lexeme}</code>
@@ -3861,6 +3913,44 @@ export default function AnimatedCompiler() {
         ))}
       </tbody>
     </table>
+  )
+  // A slide's small two-column table, under its body, and its hint last.
+  const slideTable = (intro?.table ||
+    intro?.hint ||
+    intro?.code ||
+    intro?.quote) && (
+    <>
+      {intro.quote && (
+        <blockquote className="ac-slide-quote">
+          <Prose text={intro.quote} />
+        </blockquote>
+      )}
+      {intro.code && (
+        <pre className="ac-slide-code">
+          <code>{intro.code}</code>
+        </pre>
+      )}
+      {intro.table && slideRows(intro.table, intro.head)}
+      {intro.hint === 'detailedLexer' && (
+        // Stanley's copy (2026-10-02): the setting it names flips here, and
+        // the settings menu opens to show it.
+        <p className="ac-slide-hint">
+          Hint:{' '}
+          <button
+            type="button"
+            className="ac-hint-link"
+            onClick={() => {
+              switchLexer(!detailed)
+              setMoreOpen(true)
+            }}
+          >
+            {detailed ? 'turn off' : 'turn on'} detailed lexer
+          </button>{' '}
+          in <Settings className="ac-hint-cog" aria-label="settings" /> to see
+          the character-by-character handling.
+        </p>
+      )}
+    </>
   )
   // Hidden layers size the panel for the tallest lexer step, but only on the
   // steps themselves: the welcome and slides keep their own height.
@@ -3873,7 +3963,7 @@ export default function AnimatedCompiler() {
       <div className="ac-note-stack">
         <div className="ac-note-layer">
           {heading}
-          <Prose text={noteText} />
+          <Prose text={noteText} onExample={openExample} />
           {slideTable}
         </div>
         {(sizing ? tallestTokenSteps : []).map((v) => (
@@ -3889,7 +3979,7 @@ export default function AnimatedCompiler() {
     ) : (
       <>
         {heading}
-        <Prose text={noteText} />
+        <Prose text={noteText} onExample={openExample} />
         {slideTable}
       </>
     )
@@ -5613,6 +5703,7 @@ export default function AnimatedCompiler() {
                               <small>{tokenKind(token)}</small>
                             )}
                             {landing &&
+                              landingSpot !== 'none' &&
                               node &&
                               (w.kind === 'parse.node' ||
                                 w.kind === 'parse.wait') &&

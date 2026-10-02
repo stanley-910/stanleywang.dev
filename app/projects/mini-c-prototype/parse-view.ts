@@ -120,7 +120,7 @@ export function parseView(
     const focus = frame.focus
     // A second `=` wins by grouping right to left, not by binding tighter.
     const tighter =
-      w.incoming === '=' && w.pending === '=' ? 'right first' : 'tighter'
+      w.incoming === '=' && w.pending === '=' ? 'right to left' : 'tighter'
     if (w.relation === 'tighter' && preview !== undefined)
       cue = { node: preview, text: tighter }
     else if (w.relation === 'tighter') {
@@ -138,9 +138,7 @@ export function parseView(
               : `${pending.label} first`,
       }
     }
-  } else if (w.kind === 'parse.wait' && trace.nodes[w.node].label === '=')
-    cue = { node: w.node, text: 'right first' }
-  else if (w.kind === 'parse.node' && next?.why.kind === 'parse.precedence')
+  } else if (w.kind === 'parse.node' && next?.why.kind === 'parse.precedence')
     cue = { node: w.node, text: 'held' }
 
   // The innermost group being read, kept until its piece is attached.

@@ -4,6 +4,7 @@ import breakContinueTrace from './reference/break-continue.trace.json'
 import classesTrace from './reference/classes.trace.json'
 import fibonacciTrace from './reference/fibonacci.trace.json'
 import functionCallTrace from './reference/function-call.trace.json'
+import helloWorldTrace from './reference/hello-world.trace.json'
 import loopTrace from './reference/loop.trace.json'
 import missingSemicolonTrace from './reference/missing-semicolon.trace.json'
 import pointerTrace from './reference/pointer.trace.json'
@@ -46,6 +47,8 @@ const entry = (name: string, file: string, json: unknown): Reference => {
 // Astra, 2026-09-28-example-lineup-astra-answer.md). Traces recorded with
 // the page's compiler bundle, as trace.sh would with the JVM.
 export const REFERENCES: Reference[] = [
+  // The page opens on it (Stanley, 2026-10-02); recorded with compiler.js.
+  entry('Hello world', 'hello-world', helloWorldTrace),
   entry('Precedence', 'precedence', precedenceTrace),
   entry('Function call', 'function-call', functionCallTrace),
   entry('Loop', 'loop', loopTrace),
