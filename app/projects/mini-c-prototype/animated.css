@@ -176,8 +176,7 @@
    rail along the bottom edge, on its own timeline. */
 .ac.bare :is(.ac-source, .ac-listing-scroll) {
   border-bottom: 9px solid transparent;
-  background-image:
-    repeating-linear-gradient(
+  background-image: repeating-linear-gradient(
       to bottom,
       var(--rail, transparent) 0 2px,
       transparent 2px 5px
@@ -2130,6 +2129,15 @@
   background: var(--line);
   font-family: var(--font-mono);
 }
+/* The note's text, wrapped only so the narration can find its words. */
+.ac-note-text {
+  display: contents;
+}
+/* The word being said (narration.tsx). */
+::highlight(narration) {
+  background-color: color-mix(in srgb, var(--vreg) 35%, transparent);
+  color: var(--ink);
+}
 /* What the note is about (the welcome, a slide, an error, a step title). */
 .ac-window-head {
   display: block;
@@ -2517,7 +2525,8 @@
   align-items: center;
   gap: 6px;
 }
-.ac-step svg {
+.ac-step svg,
+.ac-voice svg {
   width: 16px;
   height: 16px;
   stroke-width: 1.75;
@@ -2853,7 +2862,8 @@
   }
   /* Left to right: `?`, the count, the scrubber, then play and the steps
      at the right edge, under a right thumb (Stanley, 2026-09-28). */
-  .ac-more {
+  .ac-more,
+  .ac-voice {
     order: 1;
   }
   .ac-counter {

@@ -851,6 +851,9 @@ export type Slide = {
    * name in the picker). */
   onlyIn?: string
   notIn?: string
+  /** Its part of the narration (public/mini-c/narration.json); a body
+   * with a register count has a part for each count, as `voice:k`. */
+  voice?: string
 }
 
 /** The welcome's slides after its first page: what a compiler is, before
@@ -859,6 +862,7 @@ export const README_SLIDES: Slide[] = [
   {
     // Stanley's copy (2026-10-02); "include such as" read "include".
     title: 'Background',
+    voice: 'background',
     readme: true,
     body:
       "Before you dive in, here's a quick primer on what a compiler is " +
@@ -885,6 +889,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
       // "character-by-character" for "is first phase" and "character by
       // character".
       title: '',
+      voice: 'tokens',
       body:
         '**Lexical analysis** is the first phase of compilation. It converts ' +
         'the raw character input of your program into **tokens**.\n\nA ' +
@@ -902,6 +907,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
     // create" read "is create", and `_abstract_` is the note's `*abstract*`.
     {
       title: '',
+      voice: 'grammar',
       body:
         "The **parser** checks the tokens from the lexer against the language's " +
         '**grammar**, a formal set of rules for what valid code looks like, ' +
@@ -914,6 +920,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
     },
     {
       title: '',
+      voice: 'ast',
       body:
         'The other key responsibility of the parser is to create a ' +
         'representation of the program which later phases can easily walk, ' +
@@ -927,6 +934,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
     {
       // The link opens the Precedence example on its own slides, below.
       title: '',
+      voice: 'precedence',
       notIn: 'Precedence',
       body:
         'To view an interesting problem this solves, take a look at the ' +
@@ -935,6 +943,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
     // Only in the Precedence example, in place of the slide above.
     {
       title: 'The Problem with Precedence',
+      voice: 'precedence-problem',
       onlyIn: 'Precedence',
       body:
         'This solves interesting problems like precedence. How do you make ' +
@@ -944,6 +953,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
     },
     {
       title: 'The Problem with Precedence',
+      voice: 'precedence-aside',
       onlyIn: 'Precedence',
       // Stanley's aside; the parenthetical, "infix" and the last clause are
       // filled in at his request.
@@ -963,6 +973,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
   Check: [
     {
       title: 'Semantic Analysis',
+      voice: 'semantic',
       // Stanley's copy (2026-10-06).
       body:
         'The parser guarantees the structural validity of a program. ' +
@@ -975,6 +986,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
     },
     {
       title: 'Name Analysis',
+      voice: 'names',
       // Stanley's copy (2026-10-06); "your code is properly declared" read
       // "your code that is properly declared", "going straight" read "going
       // to straight", and a comma after `{…}`.
@@ -1005,6 +1017,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
     // read "the work".
     {
       title: 'From Tree to Instructions',
+      voice: 'emit',
       body:
         'Now that our AST is well-declared and well-typed, we can finally ' +
         'use it for what it was built for: generating **assembly**.\n\nCode ' +
@@ -1013,6 +1026,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
     },
     {
       title: 'Speaking to Hardware',
+      voice: 'hardware',
       body:
         'Unlike C, assembly describes exactly what your processor does, one ' +
         'step at a time. Each line is roughly a single **instruction** that runs ' +
@@ -1030,6 +1044,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
       // Split from Speaking to Hardware at Stanley's request (2026-10-06):
       // his sentences, the virtual memory analogy and liveness.
       title: 'Infinite Registers',
+      voice: 'infinite',
       body:
         'We assume for this phase that we have an infinite ' +
         'amount of registers to work with. ' +
@@ -1055,6 +1070,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
     },
     {
       title: 'The Stack',
+      voice: 'stack',
       body:
         'Each time a function is called, it needs room for its own ' +
         'parameters and local variables. That room comes from the ' +
@@ -1072,6 +1088,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
     },
     {
       title: 'Caller and Callee',
+      voice: 'convention',
       code:
         'int square(int n) {   // callee\n  return n * n;\n}\n\n' +
         'void main() {         // caller\n  int y;\n  y = square(4);\n}',
@@ -1096,6 +1113,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
     },
     {
       title: 'Saving Registers, Later',
+      voice: 'saving',
       body:
         'Back in step 2, the callee "saves any registers it\'s about to ' +
         'use." But with infinite virtual registers, we don\'t yet know which ' +
@@ -1112,6 +1130,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
   Registers: [
     {
       title: 'Register Allocation',
+      voice: 'registers',
       body:
         'In emit, we gave every value its own virtual register and put off ' +
         'mapping them onto real registers until now. MIPS, our target ' +
@@ -1126,6 +1145,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
       // DRAFT copy (2026-10-06): the Spilling example's cap
       // (GraphColouringRegAlloc.registerLimit).
       title: 'Only Four',
+      voice: 'only-four',
       onlyIn: 'Spilling',
       body:
         'To show what happens when the registers run out, this example ' +
@@ -1134,6 +1154,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
     },
     {
       title: 'Liveness',
+      voice: 'liveness',
       lanes: true,
       body:
         'The liveness ranges beside the assembly are the foundation of how ' +
@@ -1181,6 +1202,7 @@ export const STEP_SLIDES: {
       // side of `=` has to be".
       {
         title: 'Type Checking',
+        voice: 'types',
         body:
           "Now let's take a look at well-typed code. Would these examples " +
           'count?',
@@ -1188,6 +1210,7 @@ export const STEP_SLIDES: {
       },
       {
         title: 'Type Checking',
+        voice: 'lvalues',
         body:
           'This code is not meaningful, even though we have properly defined ' +
           'variables where we use them. The issue is typing. In both examples ' +
@@ -1211,6 +1234,7 @@ export const STEP_SLIDES: {
     slides: [
       {
         title: 'Interference Graph',
+        voice: 'interference',
         body:
           "You'll now see these liveness ranges mapped onto an " +
           '**interference graph**. Each virtual register is a dot (a ' +
@@ -1229,6 +1253,7 @@ export const STEP_SLIDES: {
     slides: [
       {
         title: 'Graph Colouring',
+        voice: 'colouring',
         body:
           'Fitting our virtual registers into {k} real ones now becomes a ' +
           '**graph colouring** problem: give every node one of {k} colours, ' +
@@ -1240,6 +1265,7 @@ export const STEP_SLIDES: {
       },
       {
         title: "Chaitin's Algorithm",
+        voice: 'chaitin',
         body:
           "**Chaitin's algorithm** is one such heuristic, used by compilers " +
           'to colour the interference graph and so allocate registers. It ' +
@@ -1262,6 +1288,7 @@ export const STEP_SLIDES: {
       {
         // DRAFT copy, not dictated: as the slides around it.
         title: 'When None Are Easy',
+        voice: 'none-easy',
         body:
           'Sometimes every node left has {k} or more edges, and there is no ' +
           "easy node to set aside. Chaitin's original algorithm would spill " +
@@ -1280,6 +1307,7 @@ export const STEP_SLIDES: {
     slides: [
       {
         title: 'Colour in Reverse',
+        voice: 'reverse',
         body:
           'Once every node has been set aside on the stack, we pop them off, ' +
           'starting with the last one we set aside. Each node takes the ' +
@@ -1301,6 +1329,7 @@ export const STEP_SLIDES: {
     slides: [
       {
         title: 'Spilling',
+        voice: 'spilling',
         notIn: 'Spilling',
         body:
           SPILLED +
@@ -1312,6 +1341,7 @@ export const STEP_SLIDES: {
       {
         // (the capped palette never needs the second attempt)
         title: 'Spilling',
+        voice: 'spilling-four',
         onlyIn: 'Spilling',
         body:
           SPILLED +
@@ -1328,6 +1358,7 @@ export const STEP_SLIDES: {
     slides: [
       {
         title: 'Saving Registers, Now',
+        voice: 'saving-now',
         body:
           'Back in emit, we left two placeholders, `pushRegisters` and ' +
           "`popRegisters`, because we didn't know yet which real registers " +

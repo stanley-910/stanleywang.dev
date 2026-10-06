@@ -7,6 +7,8 @@ import {
   Minimize,
   Pin,
   Settings,
+  Volume2,
+  VolumeX,
   ZoomIn,
   ZoomOut,
 } from 'lucide-react'
@@ -63,6 +65,7 @@ import { springLayout } from './graph-layout'
 import { lanesOf, registersOf } from './lanes'
 import { linkRouter, type Box, type Route } from './link-route'
 import { NameLinks } from './name-links'
+import { useNarration, VOICE_RATES } from './narration'
 import { NoteWindow } from './note-window'
 import { groupsOf, parentsOf, parseView } from './parse-view'
 import { startRailCurve } from './rail-curve'
@@ -289,6 +292,7 @@ const SPLIT_KEY = 'mini-c-split'
 // Whether the step's note sits in the pane under the source or floats.
 const DOCK_KEY = 'mini-c-note-docked'
 const NOTE_MIN_KEY = 'mini-c-note-minimized'
+const VOICE_RATE_KEY = 'mini-c-voice-rate'
 const SPLIT_MIN = SOURCE_ROW * 3 + 8
 const WIDTH_KEY = 'mini-c-editor-width'
 // The listing pane's width beside the stage, and its height along the
@@ -1279,6 +1283,25 @@ export default function AnimatedCompiler() {
   // the welcome), and a pass's before its first step; `slide` counts through
   // them, 0 meaning the frame itself.
   const [slide, setSlide] = useState(0)
+  // The footer's speaker: off until pressed, so nothing plays on arrival.
+  const [narrating, setNarrating] = useState(false)
+  // The voice's speed is kept for the next visit.
+  const [voiceRate, setVoiceRate] = useState(1)
+  useEffect(() => {
+    try {
+      const saved = Number(localStorage.getItem(VOICE_RATE_KEY))
+      if (VOICE_RATES.includes(saved)) setVoiceRate(saved)
+    } catch {}
+  }, [])
+  const nextVoiceRate = () => {
+    const rate =
+      VOICE_RATES[(VOICE_RATES.indexOf(voiceRate) + 1) % VOICE_RATES.length]
+    setVoiceRate(rate)
+    try {
+      localStorage.setItem(VOICE_RATE_KEY, String(rate))
+    } catch {}
+  }
+  const noteTextRef = useRef<HTMLDivElement>(null)
   const decks = useMemo(() => {
     const at = new Map<number, { phase: Phase; slides: Slide[] }>()
     // (a slide about the bars needs them: the teaching compiler, when the
@@ -3365,6 +3388,21 @@ export default function AnimatedCompiler() {
 
   const deck = decks.get(index)
   const intro = slide > 0 ? deck?.slides[slide - 1] : undefined
+  // The welcome and the slides read aloud, when the footer's speaker is on.
+  // (a slide that counts the registers has a part for each count)
+  const speaking = useNarration(
+    narrating,
+    intro
+      ? intro.voice &&
+          (intro.body.includes('{k')
+            ? `${intro.voice}:${trace.backend?.k ?? 18}`
+            : intro.voice)
+      : index === 0
+        ? 'welcome'
+        : undefined,
+    noteTextRef,
+    voiceRate,
+  )
   // The welcome and its slides are one readme, counted on their own; the
   // lexer's slides after them, theirs.
   const readmeCount =
@@ -4015,13 +4053,14 @@ export default function AnimatedCompiler() {
       )}
     </>
   )
+  // (the narration lights its words inside `noteTextRef`)
   const noteBody = (
-    <>
+    <div ref={noteTextRef} className="ac-note-text">
       {heading}
       {intro?.codeFirst && slideCode}
       <Prose text={noteText} onExample={openExample} />
       {slideExtras}
-    </>
+    </div>
   )
   // What the pane under the source keeps: each pass's own record (Stanley,
   // 2026-09-27). The lexer shows the token's class, the parser the node's,
@@ -6817,6 +6856,30 @@ export default function AnimatedCompiler() {
           >
             {String(index).padStart(2, '0')}/{String(last).padStart(2, '0')}
           </span>
+          <button
+            type="button"
+            className={`ac-voice ${speaking ? 'on' : ''}`}
+            aria-label="Narration"
+            title="Narration"
+            aria-pressed={narrating}
+            onClick={() => setNarrating((n) => !n)}
+          >
+            {narrating ? (
+              <Volume2 aria-hidden="true" />
+            ) : (
+              <VolumeX aria-hidden="true" />
+            )}
+          </button>
+          {narrating && (
+            <button
+              className="ac-roomy"
+              aria-label={`Voice speed ${voiceRate}x`}
+              title="Voice speed"
+              onClick={nextVoiceRate}
+            >
+              {voiceRate}x
+            </button>
+          )}
           <div className="ac-more" ref={moreRef}>
             <button
               type="button"
@@ -6855,6 +6918,16 @@ export default function AnimatedCompiler() {
                 >
                   speed {speed}x
                 </button>
+                {narrating && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="ac-cramped"
+                    onClick={nextVoiceRate}
+                  >
+                    voice {voiceRate}x
+                  </button>
+                )}
                 <button
                   type="button"
                   role="menuitem"
