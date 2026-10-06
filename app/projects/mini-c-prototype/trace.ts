@@ -386,15 +386,12 @@ export type Why =
       degree: number
     }
   // `abandoned`: a step of the 18-colour attempt the allocator threw away.
-  // `from`: a run of steps shown as one (regs-view.ts withColouringRuns),
-  // its first step; `step` is its last.
   | {
       kind: 'reg.simplify'
       fn: number
       step: number
       at: number | null
       abandoned?: true
-      from?: number
     }
   | {
       kind: 'reg.spillCandidate'
@@ -409,7 +406,6 @@ export type Why =
       step: number
       at: number | null
       abandoned?: true
-      from?: number
     }
   | {
       kind: 'reg.spill'

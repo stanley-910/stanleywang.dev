@@ -38,30 +38,3 @@ export function withSaveSteps(trace: Trace): Trace {
   })
   return { ...trace, frames }
 }
-
-// Each run of nodes set aside one after another, and each run coming back,
-// plays as one step: a step per node said the same thing over and over
-// (Stanley, 2026-10-06). A spill candidate and a spill keep their own
-// steps, as do the run's ends: the graph is drawn as of the run's last.
-export function withColouringRuns(trace: Trace): Trace {
-  const frames: Trace['frames'] = []
-  for (const frame of trace.frames) {
-    const w = frame.why
-    const last = frames[frames.length - 1]
-    const was = last?.why
-    if (
-      (w.kind === 'reg.simplify' || w.kind === 'reg.select') &&
-      was?.kind === w.kind &&
-      was.fn === w.fn &&
-      !!was.abandoned === !!w.abandoned
-    ) {
-      frames[frames.length - 1] = {
-        ...frame,
-        why: { ...w, from: was.from ?? was.step },
-      }
-      continue
-    }
-    frames.push(frame)
-  }
-  return { ...trace, frames }
-}
