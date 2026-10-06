@@ -113,12 +113,11 @@ export type StackFrame = {
   steps: Map<number, ConventionStep>
 }
 
-/** One step of the calling convention, numbered as the Caller and Callee
- * slide lists them: the caller sets up the call (1), the callee's prologue
- * (2), its result and epilogue (3), the caller after it returns (4).
- * `main` has no caller here, so its prologue and epilogue name no side. */
+/** One step of the calling convention, as the Caller and Callee slide
+ * lists them: the caller sets up the call, the callee's prologue, its
+ * result and epilogue, the caller after it returns. `main` has no caller
+ * here, so its prologue and epilogue name no side. */
 export type ConventionStep = {
-  n: 1 | 2 | 3 | 4
   who?: 'caller' | 'callee'
   what: string
 }
@@ -133,42 +132,39 @@ export function conventionStep(
   switch (tag.role) {
     case 'reserve':
       if (tag.for === 'arg')
-        return { n: 1, who: 'caller', what: `argument for ${tag.call}` }
+        return { who: 'caller', what: `argument for ${tag.call}` }
       if (tag.for === 'result')
-        return { n: 1, who: 'caller', what: `room for ${tag.call}'s result` }
-      return { n: 2, who: callee, what: 'prologue' }
+        return { who: 'caller', what: `room for ${tag.call}'s result` }
+      return { who: callee, what: 'prologue' }
     case 'store':
-      if (tag.call)
-        return { n: 1, who: 'caller', what: `argument for ${tag.call}` }
-      if (tag.into === 'return') return { n: 3, who: callee, what: 'result' }
+      if (tag.call) return { who: 'caller', what: `argument for ${tag.call}` }
+      if (tag.into === 'return') return { who: callee, what: 'result' }
       return undefined
     case 'call':
-      return { n: 1, who: 'caller', what: `jump to ${tag.call}` }
+      return { who: 'caller', what: `jump to ${tag.call}` }
     case 'save':
     case 'set-fp':
     case 'push-registers':
-      return { n: 2, who: callee, what: 'prologue' }
+      return { who: callee, what: 'prologue' }
     case 'jump.epilogue':
-      return { n: 3, who: callee, what: 'return' }
+      return { who: callee, what: 'return' }
     case 'pop-registers':
     case 'restore':
     case 'return':
-      return { n: 3, who: callee, what: 'epilogue' }
+      return { who: callee, what: 'epilogue' }
     case 'syscall.code':
     case 'syscall':
       // main's exit, after its epilogue (print_i's and the like are body)
-      return tag.call === 'exit'
-        ? { n: 3, who: callee, what: 'exit' }
-        : undefined
+      return tag.call === 'exit' ? { who: callee, what: 'exit' } : undefined
     case 'release':
       return tag.for === 'call'
-        ? { n: 4, who: 'caller', what: 'clear arguments' }
-        : { n: 3, who: callee, what: 'epilogue' }
+        ? { who: 'caller', what: 'clear arguments' }
+        : { who: callee, what: 'epilogue' }
     case 'load':
     case 'addr':
       if (tag.of === 'result')
-        return { n: 4, who: 'caller', what: `read ${tag.call}'s result` }
-      if (tag.of === 'return') return { n: 3, who: callee, what: 'result' }
+        return { who: 'caller', what: `read ${tag.call}'s result` }
+      if (tag.of === 'return') return { who: callee, what: 'result' }
       return undefined
     default:
       return undefined

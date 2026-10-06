@@ -85,8 +85,8 @@ export function StackColumn({
   const line = shownTo - 1
   // On a call, the callee's frame shows under `$sp`, as it will sit.
   const call = frame.calls.get(line)
-  // The calling convention's step the line takes, numbered as the Caller
-  // and Callee slide lists them.
+  // The calling convention's step the line takes (the Caller and Callee
+  // slide's).
   const convention = frame.steps.get(line)
   const extra = call?.words.length ?? 0
   // Rows top down; globals sit under the stack, one row's gap below it.
@@ -270,12 +270,11 @@ export function StackColumn({
       <div className="ac-stack-step">
         {convention && (
           <motion.span
-            key={`${convention.n}-${convention.who}-${convention.what}`}
+            key={`${convention.who}-${convention.what}`}
             initial={still ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: still ? 0 : fade }}
           >
-            <b>{convention.n}</b>
             {convention.who && <i>{convention.who}</i>}
             {convention.what}
           </motion.span>
