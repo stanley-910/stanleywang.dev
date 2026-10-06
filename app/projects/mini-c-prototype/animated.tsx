@@ -2990,6 +2990,28 @@ export default function AnimatedCompiler() {
     fit,
     treeRoom,
   ])
+  const pieceHalf = ((narrow ? 20 : 22) * fit) / 2
+  // A phone drops the token tray's room once the parse has emptied it.
+  const trayGone = narrow && frame.phase !== 'Tokens' && frame.phase !== 'Parse'
+  const fullTray = useMemo(
+    () => packTray(trace.tokens, sceneWidth),
+    [trace, sceneWidth],
+  )
+  const { top: treeTop, band: rowsBand } = treeRows(
+    trayGone ? {} : fullTray,
+    sceneHeight,
+    { depth: viewDepth, levels: viewLevels },
+    pieceHalf,
+    narrow,
+  )
+  // Close in on a statement, its few rows keep a tree's spacing rather
+  // than spreading over the stage's height.
+  const treeBand = scope
+    ? Math.min(rowsBand, viewLevels * SCOPE_ROW_PX)
+    : rowsBand
+  // Where the tree's last row ends: below the stage's floor for a tree too
+  // deep to fit, and the canvas reaches that far (treeRows).
+  const treeFloor = Math.ceil(treeTop + treeBand + pieceHalf + 16)
   // Parse, on one statement of a wide tree: the rest of the tree runs off
   // both sides of the stage, and panning reaches it (in px, from the
   // stage's left edge).
@@ -3023,7 +3045,7 @@ export default function AnimatedCompiler() {
       // (a phone keeps room under the tree to pan it clear of the controls)
       c.size(
         Math.max(sceneWidth + over, parseReach.right),
-        sceneHeight + (narrow ? GRAPH_FOOT : 0),
+        Math.max(sceneHeight, treeFloor) + (narrow ? GRAPH_FOOT : 0),
         parseReach.left,
       )
     else c.size(viewW, viewH)
@@ -3033,6 +3055,7 @@ export default function AnimatedCompiler() {
     over,
     parseReach.left,
     parseReach.right,
+    treeFloor,
     cover.right,
     cover.bottom,
     treeShown,
@@ -3360,25 +3383,6 @@ export default function AnimatedCompiler() {
       t.phase === shownPhase &&
       (t.phase !== 'Check' || 'types' in t === typing),
   )
-  const pieceHalf = ((narrow ? 20 : 22) * fit) / 2
-  // A phone drops the token tray's room once the parse has emptied it.
-  const trayGone = narrow && frame.phase !== 'Tokens' && frame.phase !== 'Parse'
-  const fullTray = useMemo(
-    () => packTray(trace.tokens, sceneWidth),
-    [trace, sceneWidth],
-  )
-  const { top: treeTop, band: rowsBand } = treeRows(
-    trayGone ? {} : fullTray,
-    sceneHeight,
-    { depth: viewDepth, levels: viewLevels },
-    pieceHalf,
-    narrow,
-  )
-  // Close in on a statement, its few rows keep a tree's spacing rather
-  // than spreading over the stage's height.
-  const treeBand = scope
-    ? Math.min(rowsBand, viewLevels * SCOPE_ROW_PX)
-    : rowsBand
   // A pointer's place on the canvas, in its own (unzoomed) px.
   const canvasPoint = (cx: number, cy: number) => {
     const box = sceneRef.current?.getBoundingClientRect()
@@ -6239,6 +6243,7 @@ export default function AnimatedCompiler() {
                         >
                           {vr}
                           {colour && <small>{colour}</small>}
+                          {spilled.has(vr) && <small>memory</small>}
                           {order && <i>{order}</i>}
                         </motion.span>
                       )

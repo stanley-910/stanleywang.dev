@@ -38,7 +38,7 @@ export function treeRows(
   const top = (last * height) / 480 + (narrow ? 10 : 11) + 16 + half
   // A phone's short stage keeps 30px a level while there's room, rather
   // than squeezing the rows onto one another.
-  const band = Math.min(
+  const fitted = Math.min(
     Math.max(
       (Math.min((tree.depth / Math.max(1, tree.levels)) * 235, 295) * height) /
         480,
@@ -46,5 +46,10 @@ export function treeRows(
     ),
     Math.max(0, height - top - half - 16),
   )
+  // However deep the tree, a level is a node's height and a gap: a tree
+  // too deep for the stage runs past its floor, where the canvas pans,
+  // rather than its rows landing on one another (Stanley, 2026-10-06, a
+  // 24-level sum).
+  const band = Math.max(fitted, tree.depth * (2 * half + 4))
   return { top, band }
 }
