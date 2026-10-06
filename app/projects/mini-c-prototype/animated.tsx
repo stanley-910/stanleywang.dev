@@ -4283,6 +4283,10 @@ export default function AnimatedCompiler() {
   // Emit's and the allocator's steps: their note docks in the pane under
   // the source, or floats, as the other passes' do (Stanley, 2026-10-01).
   const lateStep = !welcome && !intro && !error && late
+  // A late step with nothing to say (a node set aside or popped back: the
+  // graph shows it) has no note at all, docked or floating: the pane folds
+  // away until a step with one (Stanley, 2026-10-06).
+  const silentStep = lateStep && !noteText
   // An lvalue error has a note as a step does, docked or floating: the bar
   // says what can't be assigned to, the note why, which the stage can't show.
   const errorNote =
@@ -4295,7 +4299,8 @@ export default function AnimatedCompiler() {
   // On a phone there is no window to undock: the record goes down to the
   // note docked at the bottom, and the pane under the source folds away
   // (Stanley, 2026-10-01).
-  const paneNote = welcome || !!intro || passStep || lateStep || errorNote
+  const paneNote =
+    welcome || !!intro || passStep || (lateStep && !silentStep) || errorNote
   const noteInPane = paneNote && noteDocked && !narrow
   const paneInWindow = paneNote && (!noteDocked || narrow)
   const noteName = classStep && paneLabel ? paneLabel : noteFile
@@ -5016,7 +5021,8 @@ export default function AnimatedCompiler() {
   // the source it grows up into; a window over the stage elsewhere.
   const noteWindow = !noteInPane &&
     (!pinnedError || errorNote) &&
-    !typeStep && (
+    !typeStep &&
+    !silentStep && (
       <NoteWindow
         docked={narrow}
         height={flowSizes.note}
