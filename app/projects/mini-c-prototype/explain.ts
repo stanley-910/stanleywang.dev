@@ -785,14 +785,9 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
         : w.parts && w.parts.length > 1
           ? explainBlock(trace, w.parts)
           : explainMips(trace, n, run)
-      // DRAFT: the first virtual register opens the live-range lanes.
-      const firstDef = trace.instructions.findIndex((i) =>
-        /^v\d+$/.test(i.dest ?? ''),
-      )
-      const said =
-        firstDef >= w.from && firstDef <= w.to
-          ? `From here on, every value gets a virtual register, and the lanes on the right track its life: live from the line that writes it to the last line that reads it. ${line}`
-          : line
+      // (the first virtual register's lanes: the Infinite Registers slide
+      // says what they are)
+      const said = line
       return dead
         ? `${said} ${run.length === 1 ? 'It' : code(dead.text ?? dead.op)} never runs: the jump before it always leaves first, so the register allocator drops it.`
         : said
@@ -837,18 +832,18 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
     case 'reg.live':
       return ''
     case 'reg.interfere':
-      return `Two registers interfere when they are live at the same time: they cannot share a real register. ${w.nodes} virtual registers, ${w.edges} ${w.edges === 1 ? 'overlap' : 'overlaps'}${w.busiest ? `; ${code(w.busiest)} overlaps the most, with ${w.degree}` : ''}.`
+      // DRAFT copy: only the counts; the Interference Graph slide before it
+      // says what an edge means (Stanley, 2026-10-06).
+      return `${w.nodes} nodes and ${w.edges} ${w.edges === 1 ? 'edge' : 'edges'}${w.busiest ? `; ${code(w.busiest)} has the most, ${w.degree}` : ''}.`
     // No note while nodes are set aside and popped one by one: the graph
     // shows each move, and the slides before them say the rule (Stanley,
     // 2026-10-06: the note only said again how many neighbours it had).
+    // Nor on the spill candidate (When None Are Easy says why it's picked)
+    // and the placeholders lit (Saving Registers, Now says why).
     case 'reg.simplify':
     case 'reg.select':
+    case 'reg.spillCandidate':
       return ''
-    case 'reg.spillCandidate': {
-      const f = trace.backend?.functions[w.fn]
-      const st = f && attemptOf(f, w).steps[w.step]
-      return `Every remaining register overlaps ${f ? attemptOf(f, w).palette.length : 'k'} or more others. ${code(st?.vr ?? '')} has the most edges, so it is set aside${f ? ` as ${pushNumber(attemptOf(f, w).steps, w.step)}` : ''}, the one that may have to spill.`
-    }
     case 'reg.spill': {
       const f = trace.backend?.functions[w.fn]
       const st = f && attemptOf(f, w).steps[w.step]
@@ -871,8 +866,7 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
       const regs = (holder('pushRegisters')?.out ?? []).flatMap(
         (t) => /^sw (\$\w+),/.exec(t)?.[1] ?? [],
       )
-      if (w.stage === 'mark')
-        return `Back in emit, we left two placeholders in ${name}, ${code('pushRegisters')} and ${code('popRegisters')}, because we didn't know yet which real registers it would use. Now we do, so we can fill them in.`
+      if (w.stage === 'mark') return ''
       if (regs.length === 0)
         return w.stage === 'push'
           ? `${name} ends up needing no registers to save, so ${code('pushRegisters')} becomes nothing.`
@@ -884,12 +878,9 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
     case 'reg.done': {
       if (w.fn === undefined)
         return 'Every temporary now has a physical register. Reuse kept the count small.'
-      // The count ("2 real registers cover every virtual one") is cut
-      // (Stanley, 2026-10-06); with spills, what the code now does with
-      // them stays. DRAFT copy.
-      return w.spills
-        ? `In the code, each spilled value is loaded through ${code('$t8')} or ${code('$t9')} before a read and stored after a write.`
-        : ''
+      // The count ("2 real registers cover every virtual one") is cut, and
+      // the spill code is the Spilling slide's (Stanley, 2026-10-06).
+      return ''
     }
   }
 }
@@ -1351,18 +1342,6 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
   // slides open the second pass (STEP_SLIDES).
   Check: [
     {
-      title: 'Correct Grammar, Wrong Program',
-      // Stanley's copy; "out" read "our", and the list follows the real
-      // pass order at his request.
-      body:
-        "Now that we've made our AST, how do we know it actually represents " +
-        'a well-formed program? Just because it adheres structurally to ' +
-        'proper grammar, it could still be meaningless (`x = "hello" * true;`, ' +
-        "calling a function that doesn't exist, `break` outside a loop). This " +
-        'phase will check for well-formed programs by conducting semantic ' +
-        'analysis, name resolution and scoping, and type analysis.',
-    },
-    {
       title: 'Semantic Analysis',
       // Stanley's copy (2026-10-06).
       body:
@@ -1396,7 +1375,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
         "`while` loop's body checks the loop's block first, then the " +
         "function's, then the globals.\n\nEach " +
         "time we link the usage to its declaration inside that node's " +
-        'metadata so that later passes (like typechecking) can inspect the ' +
+        'metadata so that later passes (like type checking) can inspect the ' +
         'type of a variable/function/what-have-you by going straight to the ' +
         'declaration.',
     },
@@ -1425,7 +1404,14 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
         'them, and moving the results back out.\n\nFor example, `x = a + b;` ' +
         'becomes:\n1. load `a` from memory into a register\n2. load `b` into ' +
         'another register\n3. add them into a third\n4. store that result ' +
-        'back into `x`\n\nWe assume for this phase that we have an infinite ' +
+        'back into `x`',
+    },
+    {
+      // Split from Speaking to Hardware at Stanley's request (2026-10-06):
+      // his sentences, the virtual memory analogy and liveness.
+      title: 'Infinite Registers',
+      body:
+        'We assume for this phase that we have an infinite ' +
         'amount of registers to work with. ' +
         // DRAFT copy (2026-10-06): the OS analogy, explained, in place of
         // "Similar to how in virtualization we assume an infinite amount of
@@ -1511,7 +1497,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
         'mapping them onto real registers until now. MIPS, our target ' +
         'architecture, gives us only 18 registers to freely hand out ' +
         '(`$t0`–`$t9` and `$s0`–`$s7`). However, even a short program can ' +
-        'use well past that many virtual ones. The **register allocator**’s ' +
+        "use well past that many virtual ones. The **register allocator**'s " +
         'job is to map every virtual register to a real one without ' +
         "exceeding the processor's finite supply.",
     },
@@ -1603,7 +1589,7 @@ export const STEP_SLIDES: {
           "You'll now see these liveness ranges mapped onto an " +
           '**interference graph**. Each virtual register is a dot (a ' +
           '**node**), and two nodes are joined by a line (an **edge**), ' +
-          'making them **adjacent**, if their live ranges overlap. That ' +
+          'making them **adjacent**, if their liveness ranges overlap. That ' +
           'means they **interfere**, and therefore cannot share a register.',
       },
     ],
