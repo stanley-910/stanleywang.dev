@@ -154,7 +154,7 @@ const asciiArtLightSmall = `
           /__.-'|_|--|_|  ❀𖡼.𖤣𖥧𖡼.𖤣𖥧 ⋆˚✿˖°`
 
 export const AsciiArt = () => {
-  const { theme } = useTheme()
+  const { resolvedTheme: theme } = useTheme()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
