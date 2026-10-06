@@ -1,11 +1,20 @@
 /* Animated compiler, revision D — dense mono layout on the site's zinc shell. */
 .ac {
-  --bg: #fff;
+  /* Light: an off-white rather than #fff, lines and the faint grey a
+     step darker, and register colours at about half the tint, so what
+     reads as a deep tint on black isn't a bright pastel on white
+     (Stanley, 2026-10-06). */
+  --bg: #f7f7f8;
   --ink: #18181b;
   --muted: #71717a;
-  --faint: #a1a1aa;
-  --line: #e4e4e7;
-  --wash: #f4f4f5;
+  --faint: #8a8a94;
+  --line: #dcdce0;
+  --wash: #ebebee;
+  /* How much of a register's colour goes into a fill: a coloured node, the
+     node a step is about, and the flash as it lands in the listing. */
+  --fill: 9%;
+  --fill-strong: 20%;
+  --fill-flash: 24%;
   --err: #9a4b2b;
   --ok: #2f7a4b;
   /* Virtual registers, lit on the allocator's first slide: the site's
@@ -34,6 +43,9 @@
   --err: #e5a58a;
   --ok: #8fcfa2;
   --vreg: rgb(186, 149, 94);
+  --fill: 16%;
+  --fill-strong: 34%;
+  --fill-flash: 40%;
 }
 .ac *,
 .ac *::before,
@@ -1865,7 +1877,7 @@
 }
 @keyframes ac-phys-in {
   from {
-    background: color-mix(in oklab, var(--c) 40%, transparent);
+    background: color-mix(in oklab, var(--c) var(--fill-flash), transparent);
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -3127,7 +3139,7 @@
 }
 .ac-vr.coloured {
   border-color: var(--tint);
-  background: color-mix(in srgb, var(--c) 16%, var(--bg));
+  background: color-mix(in srgb, var(--c) var(--fill), var(--bg));
   color: var(--tint);
 }
 /* Set aside: a ghost in place, with its place on the stack. */
@@ -3170,7 +3182,7 @@
 }
 .ac-vr.coloured.focused {
   border-color: var(--tint);
-  background: color-mix(in srgb, var(--c) 34%, var(--bg));
+  background: color-mix(in srgb, var(--c) var(--fill-strong), var(--bg));
   color: var(--ink);
 }
 .ac-vr.coloured.focused i {
