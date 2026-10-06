@@ -10,6 +10,7 @@ import type {
   Frame,
   Instruction,
   LexDecision,
+  LvalueError,
   Span,
   Tag,
   Token,
@@ -309,6 +310,44 @@ const roleWord: Record<string, string> = {
   argument: 'argument',
   statement: 'statement',
   value: 'value',
+}
+
+// DRAFT copy: why the part of an lvalue error that isn't a place in memory
+// isn't one, by what kind of expression it is.
+const NOT_A_PLACE: Record<string, string> = {
+  number: 'is a number: a value, with nowhere to store anything.',
+  character: 'is a character: a value, with nowhere to store anything.',
+  string: 'is a string literal: text fixed in the program, not a variable.',
+  call: "is the value the call hands back. It isn't kept anywhere, so there's nowhere for a value to go.",
+  operator:
+    "is worked out on the spot and isn't kept anywhere, so there's nowhere for a value to go.",
+  address:
+    'is an address: a value that says where something is, not the place itself.',
+  cast: 'is a converted copy of a value, not the variable it came from.',
+  sizeof: 'is a number the compiler works out, not a place.',
+  assignment: 'is the value that was just stored, not the place it went.',
+  new: 'is a new object, not a variable that holds one.',
+  value: 'is a value, not a place.',
+}
+
+/** The note on an lvalue error: the rule, why this expression breaks it,
+ *  and what does count (DRAFT copy). */
+function lvalueNote(lv: LvalueError): string {
+  const rule =
+    lv.context === 'assign'
+      ? `The left side of ${code('=')} says where the value goes, so it has to be a place in memory: an **lvalue**.`
+      : `${code('&')} gives where something is stored, so what it takes has to be a place in memory: an **lvalue**.`
+  const why = `${code(lv.at)} ${NOT_A_PLACE[lv.kind] ?? NOT_A_PLACE.value}`
+  // Through a pointer, C would take it; Mini-C's rule is stricter.
+  const pointer =
+    lv.through === 'deref' || (lv.through === 'index' && lv.kind !== 'string')
+  const part = !lv.through
+    ? ''
+    : pointer
+      ? ` In C, ${code(lv.outer ?? lv.whole)} would be fine, since a pointer says where to store wherever it came from. Mini-C is stricter: it only stores through a pointer kept in a variable, a field or an element, so put ${code(lv.at)} in a variable first.`
+      : ` ${code(lv.whole)} is part of it, and ${lv.through === 'field' ? 'a field is only a place when its struct is one' : 'an element is only a place when its array is one'}.`
+  const list = `The lvalues are a variable (${code('x')}), a field (${code('s.x')}), an array element (${code('a[i]')}), and what a pointer points to (${code('*p')}). The last three count only when what they're taken from is one too.`
+  return `${rule}\n\n${why}${part}\n\n${list}`
 }
 
 /** The sentence behind a frame: what was decided and why. */
@@ -621,11 +660,15 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
     // What the error is about: a type, else what it spans (a name, a
     // statement), or with nothing to point at the whole program, unquoted.
     case 'check.typeError':
-      return w.about !== undefined
-        ? `${code(w.about)}: ${w.message}. The compiler stops here.`
-        : w.node === trace.root
-          ? `${w.message[0].toUpperCase()}${w.message.slice(1)}. The compiler stops here.`
-          : `${code(text(trace, frame.span))}: ${w.message}. The compiler stops here.`
+      return w.lvalue
+        ? lvalueNote(w.lvalue)
+        : w.said
+          ? `${w.said} The compiler stops here.`
+          : w.about !== undefined
+            ? `${code(w.about)}: ${w.message}. The compiler stops here.`
+            : w.node === trace.root
+              ? `${w.message[0].toUpperCase()}${w.message.slice(1)}. The compiler stops here.`
+              : `${code(text(trace, frame.span))}: ${w.message}. The compiler stops here.`
     case 'check.type': {
       const n = node(w.node)
       const owner = structOf(trace, n)
@@ -653,6 +696,8 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
       if (!w.ok) {
         const bad = w.bad == null ? undefined : node(w.bad)
         const got = bad && w.typed.find(([id]) => id === bad.id)?.[1]
+        if (w.lvalue) return lvalueNote(w.lvalue)
+        if (w.said) return `${w.said} The compiler stops here.`
         if (!bad || !w.expected)
           return w.message
             ? `${src(w.node)} doesn't type-check: ${w.message}. The compiler stops here.` // DRAFT copy

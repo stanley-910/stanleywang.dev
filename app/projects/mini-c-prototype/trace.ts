@@ -14,8 +14,7 @@ export type Token = Span & {
 // looked at (`look`), and what for (Tokeniser.ReadObserver lists the
 // words); or an error it reported there.
 export type LexRead =
-  | { at: number; does: LexDecision; look?: true }
-  | { at: number; error: string }
+  { at: number; does: LexDecision; look?: true } | { at: number; error: string }
 export type LexDecision =
   // taken: between tokens, then the first character of a token
   | 'space'
@@ -197,6 +196,21 @@ export type Backend = {
 // The decision behind a frame, as facts rather than prose. explain.ts turns
 // these into sentences, so wording lives in one place and works for any
 // source text. Ids refer to trace.tokens / trace.nodes / trace.instructions.
+/** An lvalue error, taken apart (ParseTrace lvalueJson): `=`'s target or
+ *  `&`'s operand, the whole of it, the part that isn't a place in memory and
+ *  what kind of expression that is, and what reaches it (a field, an index or
+ *  a `*`), if anything. */
+export type LvalueError = {
+  context: 'assign' | 'address'
+  whole: string
+  at: string
+  kind: string
+  through: 'field' | 'index' | 'deref' | null
+  outer: string | null
+  wholeNode: number | null
+  atNode: number | null
+}
+
 export type Why =
   | { kind: 'ready' }
   | { kind: 'token'; token: number }
@@ -287,6 +301,9 @@ export type Why =
       typed: [number, string][]
       /** The type the error is about, which has no node or place of its own. */
       about?: string
+      /** The whole error in words, where the tracer explains it (an lvalue). */
+      said?: string
+      lvalue?: LvalueError
     }
   // (`decl`: a name's declaration, where its type comes from; type-view.ts)
   | {
@@ -310,6 +327,9 @@ export type Why =
       expected?: string | null
       /** TypeAnalyzer's words, on a failure no operand explains. */
       message?: string | null
+      /** The whole error in words, where the tracer explains it (an lvalue). */
+      said?: string
+      lvalue?: LvalueError
     }
   // A statement checks a value against what it needs: an assignment's
   // target, a condition (int), or the function's return type.
@@ -537,7 +557,7 @@ export function buildTrace(source: string): Trace {
     // What it read on the way to each token, in the real tokeniser's words
     // (Token.reads), so the detailed lexer plays these tokens too.
     let reads: LexRead[] = []
-    for (let offset = 0; offset < source.length; ) {
+    for (let offset = 0; offset < source.length;) {
       if (/\s/.test(source[offset])) {
         reads.push({ at: offset, does: 'space' })
         offset++
