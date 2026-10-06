@@ -71,7 +71,7 @@ import {
 } from './real'
 import { FIRST_ERROR, findReference, REFERENCES } from './reference'
 import { badgesAt, regBadges } from './reg-badges'
-import { withoutLiveness } from './regs-view'
+import { withSaveSteps, withoutLiveness } from './regs-view'
 import { ScopeTree } from './scope-tree'
 import { scopesOf } from './scopes'
 import { StackColumn } from './stack-column'
@@ -84,6 +84,7 @@ import {
   instructionText,
   rewritten,
   type Frame,
+  type Instruction,
   type LexDecision,
   type Token,
   type Trace,
@@ -923,10 +924,12 @@ export default function AnimatedCompiler() {
       !namedTrace.recorded
         ? namedTrace.trace
         : withTypeSteps(
-            withoutLiveness(
-              blocks
-                ? withEmitBlocks(namedTrace.trace)
-                : withEmitLines(namedTrace.trace),
+            withSaveSteps(
+              withoutLiveness(
+                blocks
+                  ? withEmitBlocks(namedTrace.trace)
+                  : withEmitLines(namedTrace.trace),
+              ),
             ),
           ),
     [namedTrace],
@@ -2560,7 +2563,8 @@ export default function AnimatedCompiler() {
       : backend
         ? backend.functions.length - 1
         : 0
-  const stepIndex = 'step' in w ? w.step : w.kind === 'reg.done' ? Infinity : -1
+  const finished = w.kind === 'reg.done' || w.kind === 'reg.saves'
+  const stepIndex = 'step' in w ? w.step : finished ? Infinity : -1
   const coloured =
     backend && frame.phase === 'Registers'
       ? colouredUpTo(
@@ -2580,11 +2584,25 @@ export default function AnimatedCompiler() {
         : null
   // Functions the allocator is done with: the listing shows the code it
   // wrote for them, saves, restores and spill code included.
-  const rewrittenFns = regView
-    ? w.kind === 'reg.done'
-      ? fnIndex + 1
-      : fnIndex
-    : 0
+  const rewrittenFns = regView ? (finished ? fnIndex + 1 : fnIndex) : 0
+  // The function just rewritten keeps pushRegisters and popRegisters as
+  // placeholders until their own steps expand them (withSaveSteps): lit
+  // together, then the saves, then the restores.
+  const saves = w.kind === 'reg.saves' ? w.stage : undefined
+  const heldBack = (ins: Instruction) =>
+    regView &&
+    ins.fn === fnIndex &&
+    ((ins.op === 'pushRegisters' && saves !== 'push' && saves !== 'pop') ||
+      (ins.op === 'popRegisters' && saves !== 'pop'))
+  const savesLit = (ins: Instruction) =>
+    saves !== undefined &&
+    ins.fn === fnIndex &&
+    (saves === 'mark'
+      ? ins.op === 'pushRegisters' || ins.op === 'popRegisters'
+      : ins.op === (saves === 'push' ? 'pushRegisters' : 'popRegisters'))
+  // (rows move when a placeholder expands: the lanes measure them again)
+  const listingLayout =
+    rewrittenFns * 4 + (saves ? ['mark', 'push', 'pop'].indexOf(saves) + 1 : 0)
   const graphFn = regView ? backend.functions[fnIndex] : undefined
   const graphSteps = graphFn ? attemptOf(graphFn, w).steps : []
   const graphShown = regView
@@ -6414,14 +6432,16 @@ export default function AnimatedCompiler() {
                       style={lanesShown ? { minWidth: listingMin } : undefined}
                     >
                       {shownInstructions.map((ins, i) => {
-                        const current = currentRange
-                          ? i >= currentRange[0] && i <= currentRange[1]
-                          : !emitStage &&
-                            ((frame.phase === 'Emit' &&
-                              i === shownInstructions.length - 1) ||
-                              (frame.phase === 'Registers' &&
-                                !backend &&
-                                i === frame.allocationCount - 1))
+                        const current = saves
+                          ? savesLit(ins)
+                          : currentRange
+                            ? i >= currentRange[0] && i <= currentRange[1]
+                            : !emitStage &&
+                              ((frame.phase === 'Emit' &&
+                                i === shownInstructions.length - 1) ||
+                                (frame.phase === 'Registers' &&
+                                  !backend &&
+                                  i === frame.allocationCount - 1))
                         // A block's rows arrive one after another.
                         const enter = {
                           ...transition,
@@ -6447,7 +6467,9 @@ export default function AnimatedCompiler() {
                         // Functions the allocator is done with: the code it
                         // wrote, saves, restores and spill code included.
                         const lines =
-                          ins.fn !== undefined && ins.fn < rewrittenFns
+                          ins.fn !== undefined &&
+                          ins.fn < rewrittenFns &&
+                          !heldBack(ins)
                             ? rewritten(ins)
                             : undefined
                         // The line the instruction became; for a placeholder,
@@ -6587,7 +6609,7 @@ export default function AnimatedCompiler() {
                                     ) : (
                                       <motion.div
                                         key={`added-${j}`}
-                                        className="ac-ins added"
+                                        className={`ac-ins added ${saves && current ? 'current' : ''}`}
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
                                         transition={transition}
@@ -6654,7 +6676,7 @@ export default function AnimatedCompiler() {
                           stagger={rowStagger}
                           duration={transition.duration}
                           still={!!reduced}
-                          layout={rewrittenFns}
+                          layout={listingLayout}
                           tint={
                             regView
                               ? (key) => {

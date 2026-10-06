@@ -417,6 +417,9 @@ export type Why =
   // 18 colours spilled `spills` registers: colour again with `k`.
   | { kind: 'reg.retry'; fn: number; spills: number; k: number }
   | { kind: 'reg.done'; fn?: number; used?: number; spills?: number }
+  // After a function's rewrite (regs-view.ts withSaveSteps): its
+  // placeholders lit, then pushRegisters expanded, then popRegisters.
+  | { kind: 'reg.saves'; fn: number; stage: 'mark' | 'push' | 'pop' }
 
 export type Frame = {
   phase: 'Tokens' | 'Parse' | 'Check' | 'Emit' | 'Registers'

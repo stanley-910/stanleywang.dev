@@ -884,20 +884,31 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
     // DRAFT copy
     case 'reg.retry':
       return `With all 18 registers, ${w.spills} ${w.spills === 1 ? 'value finds' : 'values find'} none free. A spilled value is loaded into a register before each read and stored from one after each write, so the allocator colours the graph again with ${w.k}, keeping ${code('$t8')} and ${code('$t9')} for that spill code.`
+    // DRAFT copy (2026-10-06): the placeholders from emit, expanded.
+    case 'reg.saves': {
+      const fn = w.fn
+      const name = code(trace.backend?.functions[fn]?.name ?? '')
+      const holder = (op: string) =>
+        trace.instructions.find((i) => i.fn === fn && i.op === op)
+      const regs = (holder('pushRegisters')?.out ?? []).flatMap(
+        (t) => /^sw (\$\w+),/.exec(t)?.[1] ?? [],
+      )
+      if (w.stage === 'mark')
+        return `Back in emit, we left two placeholders in ${name}, ${code('pushRegisters')} and ${code('popRegisters')}, because we didn't know yet which real registers it would use. Now we do, so we can fill them in.`
+      if (regs.length === 0)
+        return w.stage === 'push'
+          ? `${name} ends up needing no registers to save, so ${code('pushRegisters')} becomes nothing.`
+          : `With nothing saved, ${code('popRegisters')} becomes nothing too.`
+      return w.stage === 'push'
+        ? `${code('pushRegisters')} becomes a save for each register ${name} uses (${list(regs.map(code))}): make room for a word on the stack, then store the register in it.`
+        : `${code('popRegisters')} is the same in reverse: each saved register is loaded back, last saved first, and its word given back to the stack${trace.backend?.functions[fn]?.name === 'main' ? '' : ', so the caller finds its registers as it left them'}.`
+    }
     case 'reg.done': {
       if (w.fn === undefined)
         return 'Every temporary now has a physical register. Reuse kept the count small.'
-      // DRAFT copy: what the rewrite turns the placeholders and spills into.
-      const fn = w.fn
-      const saves = trace.instructions.some(
-        (i) => i.fn === fn && i.op === 'pushRegisters' && i.out?.length,
-      )
+      // DRAFT copy: what the rewrite turns spills into (pushRegisters and
+      // popRegisters expand in steps of their own, reg.saves).
       const rewrite = [
-        ...(saves
-          ? [
-              `${code('pushRegisters')} and ${code('popRegisters')} become saves and restores of the registers in use`,
-            ]
-          : []),
         ...(w.spills
           ? [
               `each spilled value is loaded through ${code('$t8')} or ${code('$t9')} before a read and stored after a write`,
@@ -1516,30 +1527,31 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
         'placeholder with the actual saves and restores.',
     },
   ],
-  // Draft copy, for Stanley to rewrite. The graph colouring and Chaitin
-  // slides open their steps (STEP_SLIDES); the liveness slides
-  // follow the Opus liveness answer (docs/handoffs, 2026-09-24).
+  // DRAFT copy (2026-10-06), for Stanley to rewrite: written to his
+  // emit slides' voice, every term introduced where it first appears. The
+  // colouring slides open their steps (STEP_SLIDES).
   Registers: [
     {
       title: 'Register Allocation',
       body:
-        'The code so far uses a fresh virtual register for every value, and ' +
-        'even a short loop runs into the dozens. The machine has 18 we can ' +
-        'hand out (`$t0`–`$t9` and `$s0`–`$s7`). The **register allocator** ' +
-        'maps each virtual register onto a real one. Two values can share a ' +
-        "register as long as they're never needed at the same time; when " +
-        "they can't all fit, some are **spilled** to memory, which costs a " +
-        'load or store every time they are used.',
+        'In emit, we gave every value its own virtual register and left ' +
+        "fitting them onto real ones for later. Now it's later.\n\nMIPS " +
+        'gives us 18 registers we can freely hand out (`$t0`–`$t9` and ' +
+        '`$s0`–`$s7`), but even a short program can use dozens of virtual ' +
+        "ones. The **register allocator**'s job is to give every virtual " +
+        'register a real one, reusing the same real register wherever it ' +
+        'safely can.',
     },
     {
-      title: 'Liveness',
+      title: 'Sharing Registers',
       lanes: true,
-      // DRAFT copy (2026-09-28): the sweeps that work liveness out are
-      // skipped, so this points at the bars emit already drew.
       body:
-        "A value is **live** from where it's written to the last place it's " +
-        'read: the bars beside the code are those lives. Two values can ' +
-        'share a register only if their bars never overlap.',
+        'Remember the bars beside the assembly? Two virtual registers can ' +
+        'share a real register as long as their bars never overlap, since ' +
+        'one value is done before the other one starts.\n\nFor example, in ' +
+        '`x = a + b; y = c + d;`, the registers holding `a` and `b` are ' +
+        'both done by the time `c` is loaded, so `c` and `d` can reuse ' +
+        'their registers.',
     },
   ],
 }
@@ -1590,6 +1602,7 @@ export const STEP_SLIDES: {
       },
     ],
   },
+  // DRAFT copy (2026-10-06), as the phase slides above.
   {
     phase: 'Registers',
     // The first interference graph: Registers opens on it (the liveness
@@ -1599,12 +1612,16 @@ export const STEP_SLIDES: {
       {
         title: 'Graph Colouring',
         body:
-          'Two values that are live at the same time **interfere**: they ' +
-          "can't share a register. Draw each virtual register as a node and " +
-          'join every pair that interferes, and allocation becomes a ' +
-          'colouring puzzle: give each node one of 18 colours so that no two ' +
-          'joined nodes match. Finding the fewest colours is NP-hard, so ' +
-          'compilers use a fast heuristic instead.',
+          'To find out which registers can share, we draw an **interference ' +
+          'graph**. Each virtual register is a dot (a **node**), and we draw ' +
+          'a line (an **edge**) between two nodes if their live ranges ' +
+          "overlap, meaning they **interfere** and can't share a register." +
+          '\n\nNow picture each real register as a colour. Giving out ' +
+          'registers becomes colouring the graph: give every node one of 18 ' +
+          'colours, so that no two nodes joined by an edge get the same one.' +
+          '\n\nFinding the best colouring is famously hard (no one knows a ' +
+          'fast way to do it for every graph), so compilers use a shortcut ' +
+          'that works well in practice.',
       },
     ],
   },
@@ -1617,13 +1634,14 @@ export const STEP_SLIDES: {
       {
         title: 'Set Aside the Easy Ones',
         body:
-          'This is **Chaitin’s** heuristic. A node with fewer than 18 ' +
-          'neighbours can always be coloured later: even if every neighbour ' +
-          'gets a different register, one of the 18 is left for it. So the ' +
-          'allocator sets it aside and takes its edges out of the graph, ' +
-          'which lowers its neighbours’ counts and makes more of them easy. ' +
-          'Each node set aside is numbered by when it went: the numbers are ' +
-          'its place on a stack.',
+          "The shortcut my compiler uses is **Chaitin's algorithm**. It " +
+          'starts by looking for easy nodes: any node with fewer than 18 ' +
+          'edges. No matter which colours its neighbours end up with, they ' +
+          "can use at most 17 of the 18, so there's always one left over for " +
+          'it.\n\nSo we set the easy node aside, taking it and its edges out ' +
+          "of the graph. That lowers its neighbours' edge counts, which can " +
+          'make them easy too. Each node set aside is numbered in the order ' +
+          'it was taken out, so we can bring them back in reverse later.',
       },
     ],
   },
@@ -1632,13 +1650,14 @@ export const STEP_SLIDES: {
     starts: (frame) => frame.why.kind === 'reg.spillCandidate',
     slides: [
       {
-        title: 'When None Is Easy',
+        title: 'When None Are Easy',
         body:
-          'Sometimes every node left has 18 or more neighbours. The ' +
-          'allocator sets one aside anyway, the one with the most edges, ' +
-          'as a **spill candidate**. It may still get a register: if its ' +
-          'neighbours end up sharing a few, one is left over (Briggs’s ' +
-          'optimistic twist on Chaitin).',
+          'Sometimes every node left has 18 or more edges, and there is no ' +
+          'easy node to set aside. We set one aside anyway, the one with the ' +
+          'most edges, and mark it as a **spill candidate**: it might not get ' +
+          'a colour when we come back to it.\n\nIt might still get lucky, ' +
+          'though. If its neighbours end up sharing colours among ' +
+          'themselves, there can be one left over for it.',
       },
     ],
   },
@@ -1649,13 +1668,33 @@ export const STEP_SLIDES: {
       {
         title: 'Colour in Reverse',
         body:
-          'Now the stack comes back off, highest number first, and each ' +
-          "node takes the first register its neighbours aren't using. " +
-          'Reversing is what keeps the promise: a node comes back to the ' +
-          'same neighbours it had when it was set aside, fewer than 18, so ' +
-          'a register is always free. A spill candidate is the one ' +
-          'exception, and a candidate that finds none is **spilled** to ' +
-          'memory.',
+          'Once every node is set aside, we bring them back in reverse ' +
+          'order, last one out first. Each node takes the first colour none ' +
+          'of its neighbours already has.\n\nGoing in reverse is what makes ' +
+          'this work: a node comes back to the same neighbours it had when ' +
+          'it was set aside, fewer than 18 of them, so a colour is always ' +
+          'free. The only exception is a spill candidate. If one comes back ' +
+          'and every colour is taken, it is **spilled**.',
+      },
+    ],
+  },
+  // Only programs whose 18-colour attempt spills reach it.
+  {
+    phase: 'Registers',
+    starts: (frame) => frame.why.kind === 'reg.retry',
+    slides: [
+      {
+        title: 'Spilling',
+        body:
+          "A spilled value doesn't get a register at all. It lives in " +
+          'memory instead, in a 4-byte slot of the **data section** (memory ' +
+          "set aside for the program's whole run), and is loaded into a " +
+          'register right before every instruction that reads it, then ' +
+          'stored back right after every instruction that writes it.\n\nBut ' +
+          'those loads and stores need registers to work through too! So ' +
+          'when the first attempt spills, my allocator throws that colouring ' +
+          'away and starts over with 16 colours, keeping `$t8` and `$t9` ' +
+          'free just for spill code.',
       },
     ],
   },
@@ -1666,29 +1705,30 @@ export const STEP_SLIDES: {
       {
         title: 'Why It Pays Off',
         body:
-          'Registers are the fastest storage the processor has; memory is ' +
-          'many times slower. By letting values that are never live together ' +
-          'share a register, dozens of virtual registers fit in a handful of ' +
-          'real ones, so the program keeps its working values out of memory. ' +
-          'The placeholders expand too: `pushRegisters` becomes one save for ' +
-          'each real register in use, not all 18.',
+          'Registers are the fastest storage the processor has, and memory ' +
+          'is many times slower. By letting values that are never live at ' +
+          'the same time share a register, dozens of virtual registers fit ' +
+          'into a handful of real ones, and every value the program is ' +
+          'working with stays in a register instead of memory.',
       },
     ],
   },
-  // DRAFT copy: only programs whose 18-colour attempt spills reach it.
+  // Before a function's placeholders expand (regs-view.ts withSaveSteps).
   {
     phase: 'Registers',
-    starts: (frame) => frame.why.kind === 'reg.retry',
+    starts: (frame) => frame.why.kind === 'reg.saves',
     slides: [
       {
-        title: 'Spilling',
+        title: 'Saving Registers, Now',
         body:
-          'A spilled value lives in a word of memory in `.data`. Before a ' +
-          'line reads it, the allocator loads it into a register; after a ' +
-          'line writes it, it stores it back. Those loads and stores need ' +
-          'registers of their own, so when the first attempt spills, the ' +
-          'allocator throws that colouring away and starts over with 16 ' +
-          'colours, keeping `$t8` and `$t9` free for spill code.',
+          'Back in emit, we left two placeholders, `pushRegisters` and ' +
+          "`popRegisters`, because we didn't know yet which real registers " +
+          'each function would use. Now that the allocator has decided, we ' +
+          'can fill them in.\n\n`pushRegisters` becomes a save of each ' +
+          'register the function uses, at the end of its prologue, and ' +
+          '`popRegisters` restores them at the start of its epilogue. That ' +
+          'way, whoever called the function gets its registers back exactly ' +
+          'as it left them.',
       },
     ],
   },
