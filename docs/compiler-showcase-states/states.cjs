@@ -4,7 +4,7 @@
 const fs = require('fs')
 const { chromium } = require('playwright-core')
 const exe = `${process.env.HOME}/Library/Caches/ms-playwright/chromium-1217/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing`
-const URL = 'http://127.0.0.1:3107/projects/mini-c-prototype'
+const URL = 'http://127.0.0.1:3107/projects/mini-compiler'
 const OUT = `${__dirname}/states`
 const CUSTOM = 'int main() {\n  int a;\n  int b;\n  int c;\n  int d;\n  a = 10;\n  b = 5;\n  c = 3;\n  d = 8;\n  return a + b * c - d;\n}'
 const CUSTOM_ERR = 'int main() {\n  int a;\n  a = 20;\n  return a / 4 * 2;\n}'

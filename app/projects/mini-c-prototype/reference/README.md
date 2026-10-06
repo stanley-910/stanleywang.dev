@@ -14,24 +14,19 @@ Grammar note found while generating these: real Mini-C rejects initializers in
 declarations (`int x = 4;` fails with `expected (SC) found (ASSIGN)`). The sketch
 was changed to reject them too.
 
-## Register allocation traces
+## Register allocation
 
-`RegAllocTrace` can write `<name>.regalloc.json` (no longer stored here), recording the graph-colouring allocator step by step for each
-program that passes semantic analysis: per function, the CFG (one block per
-instruction), every liveness sweep, the interference graph, and the simplify/select
-colouring order. `loop.k2.regalloc.json` is the same program with the palette capped
-at two registers so two virtual registers spill. Regenerate from the compiler repo:
-
-    tests/showcase/regalloc.sh <name> [--k N]      # writes tests/showcase/out/<name>.regalloc.json
-
-The dumper (`src/test/util/RegAllocTrace.java`) re-implements the liveness and
-colouring loops to record them and asserts its results equal the allocator's own
-before writing anything.
+The allocator's working is recorded inside each `.trace.json` (see "Back end"
+below). `RegAllocTrace` can still write a standalone `<name>.regalloc.json`
+(`tests/showcase/regalloc.sh <name> [--k N]` in the compiler repo), but none are
+stored here and the page doesn't read them.
 
 ## Animation traces
 
-`<name>.trace.json` holds the frames variant D plays for each preset: Tokens, Parse
-and Check phases, plus the token list, tree nodes and `ASTPrinter` output. They are emitted by `src/test/util/ParseTrace.java` in
+`<name>.trace.json` holds the frames the page plays for each example, from the
+lexer through register allocation, plus the token list, tree nodes and
+`ASTPrinter` output. The examples are recorded with the page's own bundle
+(`compiler.js`, `trace(source, registers)`), as `trace.sh` would with the JVM. They are emitted by `src/test/util/ParseTrace.java` in
 the compiler repo, which does not instrument the parser: it derives the frames from
 the token stream and the AST's token anchors, so the tree shape is the parser's own.
 
@@ -69,9 +64,13 @@ uses. The JSON gains:
   interference graph, and the simplify/select steps, checked against the
   allocator's own result before writing.
 - `registers`: the final virtual-to-physical map.
+- `data`: the data section as code generation wrote it (strings, globals); the
+  allocator's spill slots are each function's `labels`.
 - Emit frames (`emit.prologue`, `emit.instr` with an inclusive `from`..`to`
-  range, `emit.epilogue`) and Registers frames (`reg.cfg`, `reg.live`,
-  `reg.interfere`, `reg.simplify`, `reg.select`, `reg.spill`, `reg.done`).
+  range, `emit.epilogue`) and Registers frames (`reg.interfere`,
+  `reg.simplify`, `reg.spillCandidate`, `reg.select`, `reg.spill`, `reg.retry`,
+  `reg.done`). `reg.cfg` and `reg.live` are recorded too, but the page leaves
+  them out (`regs-view.ts`).
 
 `tests/showcase/trace.sh <name>` regenerates everything; the page reads only the
 trace.

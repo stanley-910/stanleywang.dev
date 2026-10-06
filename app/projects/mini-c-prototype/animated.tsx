@@ -308,10 +308,6 @@ const GUIDE_WINDOW_KEY = 'mini-c-guide-window'
 const AST_KEY = 'mini-c-no-ast-guide'
 const AST_WINDOW_KEY = 'mini-c-ast-window'
 const AST_W = 300
-// DRAFT copy: what Mini-C takes, beside the editor while it's in use, for
-// someone who writes C the usual way. From the course's grammar and
-// SemanticUtils' built-ins; every example was run through compiler.js, the
-// right ones compiling and the `not` ones failing (2026-10-02).
 // What's selected in the guide, as Markdown: a rule's title a heading,
 // code in backticks, an example a fenced block (Stanley, 2026-10-02).
 // Within one example it is that code as it stands.
@@ -338,7 +334,6 @@ function guideMarkdown(node: Node): string {
   }
 }
 
-// (`not`: the usual C for the same thing, which Mini-C rejects)
 // An example's lines, its `//` comments muted.
 function GuideCode({ code }: { code: string }) {
   return code.split('\n').map((line, i, all) => (
@@ -352,7 +347,12 @@ function GuideCode({ code }: { code: string }) {
   ))
 }
 
-// (`text`: a paragraph, or several)
+// DRAFT copy: what Mini-C takes, beside the editor while it's in use, for
+// someone who writes C the usual way. From the course's grammar and
+// SemanticUtils' built-ins; every example was run through compiler.js, the
+// right ones compiling and the `not` ones failing (2026-10-02).
+// (`text`: a paragraph, or several; `not`: the usual C for the same thing,
+// which Mini-C rejects)
 type GuideRule = {
   title: string
   text?: string | string[]
@@ -1449,8 +1449,8 @@ export default function AnimatedCompiler() {
   const [sideOpen, setSideOpen] = useState(false)
   // The step's note, docked in the pane under the source over what that
   // pane keeps, or floating in its own window with that pane's record
-  // (Stanley, 2026-09-29: one place for both, not two). Trial: the lexer's
-  // steps only, on a wide screen; elsewhere it floats as before.
+  // (Stanley, 2026-09-29: one place for both, not two), on a wide screen;
+  // a phone docks it at the bottom of the editor.
   const [noteDocked, setNoteDocked] = useState(true)
   useEffect(() => {
     try {
@@ -4025,8 +4025,8 @@ export default function AnimatedCompiler() {
   )
   // What the pane under the source keeps: each pass's own record (Stanley,
   // 2026-09-27). The lexer shows the token's class, the parser the node's,
-  // the name pass its scopes, the type pass its rule, emit the stack frame.
-  // A pass is steady: a step with nothing of its own keeps what the last
+  // the name pass its scopes; the type pass has none (its rule shows on
+  // hover). A pass is steady: a step with nothing of its own keeps what the last
   // one showed, and before its first (a pass opening on a step without
   // one) it shows the first to come, nothing lit. With nothing to keep
   // (the welcome, register allocation) the pane folds away.

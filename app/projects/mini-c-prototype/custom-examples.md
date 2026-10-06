@@ -1,9 +1,11 @@
 # Custom-code test examples
 
-Paste these into the editor's custom mode. Custom source runs through the in-browser
-sketch (`trace.ts`), not the Java compiler, so it only accepts one `int main()` with
-`int` declarations, assignments, one final `return`, `+ - *`, parentheses, at most
-90 tokens and 32 tree nodes.
+Paste these into the editor. Typed code compiles with the real compiler in the
+browser (`real.ts`, `public/mini-c/compiler.js`); only if that fails to load does
+it fall back to the in-browser sketch (`trace.ts`), which accepts one
+`int main()` with `int` declarations, assignments, one final `return`, `+ - *`,
+parentheses, at most 90 tokens and 32 tree nodes. These examples were written to
+work in both.
 
 Adapted from `tests/parser/arithmetic_1.c`, `arithmetic_2.c` and
 `variable_initialization.c` in the compiler repo (`void main` → `int main` with a
