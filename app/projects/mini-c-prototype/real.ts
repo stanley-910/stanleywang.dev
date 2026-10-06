@@ -18,16 +18,19 @@ const LOAD_MS = 15000
 export let compilerLoaded = false
 // The last few programs compiled, so going back to one (an example picked
 // again, an edit undone) is instant rather than another compile.
+// (keyed by the register cap too: the spilling example compiles with four)
 const compiled = new Map<string, Trace>()
 const KEEP = 24
-export const compiledTrace = (source: string) => compiled.get(source)
+const keyOf = (source: string, registers: number) => `${registers}:${source}`
+export const compiledTrace = (source: string, registers = 0) =>
+  compiled.get(keyOf(source, registers))
 
 const workerSource = (url: string) => `
 import { trace } from ${JSON.stringify(url)}
 postMessage({ ready: true })
 onmessage = (event) => {
   try {
-    postMessage({ ok: true, json: trace(event.data) })
+    postMessage({ ok: true, json: trace(event.data.source, event.data.registers) })
   } catch (error) {
     postMessage({ ok: false, error: String(error && error.message || error) })
   }
@@ -35,14 +38,18 @@ onmessage = (event) => {
 `
 
 // `loadMs`: how long compiler.js may take to load (an example has its
-// recorded trace to fall back on, so it waits less).
+// recorded trace to fall back on, so it waits less). `registers`: the
+// allocator's palette capped at that many (BrowserTrace.trace), 0 for all
+// 18.
 export const compileReal = (
   source: string,
   signal: AbortSignal,
   loadMs = LOAD_MS,
+  registers = 0,
 ) =>
   new Promise<Trace>((resolve, reject) => {
-    const known = compiled.get(source)
+    const key = keyOf(source, registers)
+    const known = compiled.get(key)
     if (known) {
       resolve(known)
       return
@@ -125,8 +132,8 @@ export const compileReal = (
           if (printed) trace.error = printed
         }
         if (trace?.frames?.length) {
-          compiled.delete(source)
-          compiled.set(source, trace)
+          compiled.delete(key)
+          compiled.set(key, trace)
           if (compiled.size > KEEP)
             compiled.delete(compiled.keys().next().value as string)
           resolve(trace)
@@ -136,5 +143,5 @@ export const compileReal = (
         reject(error instanceof Error ? error : new Error(String(error)))
       }
     }
-    worker.postMessage(source)
+    worker.postMessage({ source, registers })
   })

@@ -1542,6 +1542,16 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
         "exceeding the processor's finite supply.",
     },
     {
+      // DRAFT copy (2026-10-06): the Spilling example's cap
+      // (GraphColouringRegAlloc.registerLimit).
+      title: 'Only Four',
+      onlyIn: 'Spilling',
+      body:
+        'To show what happens when the registers run out, this example ' +
+        'pretends we only have {k} of them, `$t0` to `$t3`. Even a sum of ' +
+        'five numbers is too much.',
+    },
+    {
       title: 'Liveness',
       lanes: true,
       body:
@@ -1553,6 +1563,11 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
     },
   ],
 }
+
+/** A slide's register count: `{k}` is how many the allocator may hand out
+ * (18, or four in Spilling), `{k-1}` one fewer. */
+export const withRegisterCount = (text: string, k: number) =>
+  text.replaceAll('{k-1}', String(k - 1)).replaceAll('{k}', String(k))
 
 /**
  * Slides that open a pass partway through a phase. Each sits on the frame
@@ -1629,8 +1644,8 @@ export const STEP_SLIDES: {
       {
         title: 'Graph Colouring',
         body:
-          'Fitting our virtual registers into 18 real ones now becomes a ' +
-          '**graph colouring** problem: give every node one of 18 colours, ' +
+          'Fitting our virtual registers into {k} real ones now becomes a ' +
+          '**graph colouring** problem: give every node one of {k} colours, ' +
           'one per real register, such that no two adjacent nodes share a ' +
           'colour.\n\nThere is no known fast way to find the best colouring ' +
           'for every graph, so compilers today use **heuristics**: rules of ' +
@@ -1643,13 +1658,13 @@ export const STEP_SLIDES: {
           "**Chaitin's algorithm** is one such heuristic, used by compilers " +
           'to colour the interference graph and so allocate registers. It ' +
           'works by first finding nodes with fewer edges than the number of ' +
-          'real registers we have available: 18. Even if such a node has the ' +
-          'most neighbours it can, 17, and they all take different colours, ' +
+          'real registers we have available: {k}. Even if such a node has the ' +
+          'most neighbours it can, {k-1}, and they all take different colours, ' +
           'there is still one colour left over for it.\n\nSo we take this ' +
           'easy-to-colour node and set it aside, pushing it onto a **stack** ' +
           '(a pile where the last thing in is the first thing out), and ' +
           'remove it from the graph along with all of its edges. Its ' +
-          'neighbours each lose an edge, which can bring them under 18 and ' +
+          'neighbours each lose an edge, which can bring them under {k} and ' +
           'make them easy too.',
       },
     ],
@@ -1662,7 +1677,7 @@ export const STEP_SLIDES: {
         // DRAFT copy, not dictated: as the slides around it.
         title: 'When None Are Easy',
         body:
-          'Sometimes every node left has 18 or more edges, and there is no ' +
+          'Sometimes every node left has {k} or more edges, and there is no ' +
           'easy node to set aside. We push one onto the stack anyway, the ' +
           'one with the most edges, and mark it as a **spill candidate**: it ' +
           'might not get a colour when it comes back off.\n\nIt might still ' +
@@ -1682,22 +1697,25 @@ export const STEP_SLIDES: {
           'starting with the last one we set aside. Each node takes the ' +
           'first colour none of its neighbours already has.\n\nBy popping ' +
           'them in this reverse order, a node only comes back to the same ' +
-          'neighbours it had when it was first set aside: fewer than 18 of ' +
+          'neighbours it had when it was first set aside: fewer than {k} of ' +
           'them, so a colour is always free. The only exception is a spill ' +
           'candidate. If one comes back and every colour is taken, it is ' +
           '**spilled**.',
       },
     ],
   },
-  // Only programs whose 18-colour attempt spills reach it.
+  // Only programs that spill reach it: at the first spill (in an 18-colour
+  // attempt about to be thrown away, or Spilling's only one).
   {
     phase: 'Registers',
-    starts: (frame) => frame.why.kind === 'reg.retry',
+    starts: (frame) =>
+      frame.why.kind === 'reg.spill' || frame.why.kind === 'reg.retry',
     slides: [
       {
         title: 'Spilling',
+        // DRAFT copy: the register pressure sentence (Stanley asked).
+        notIn: 'Spilling',
         body:
-          // DRAFT copy: the register pressure sentence (Stanley asked).
           'Spills happen when more values are live at the same moment than ' +
           'there are registers to hold them, which is called high **register ' +
           "pressure**. A spilled value doesn't get a register at all. It lives in " +
@@ -1708,6 +1726,23 @@ export const STEP_SLIDES: {
           'those loads and stores need registers to work through too! So ' +
           'when the first attempt spills, my allocator throws that colouring ' +
           'away and starts over with 16 colours, keeping `$t8` and `$t9` ' +
+          'free just for spill code.',
+      },
+      {
+        // DRAFT copy (2026-10-06): as above, for the capped palette, which
+        // never needs the second attempt.
+        title: 'Spilling',
+        onlyIn: 'Spilling',
+        body:
+          'Spills happen when more values are live at the same moment than ' +
+          'there are registers to hold them, which is called high **register ' +
+          "pressure**. A spilled value doesn't get a register at all. It lives in " +
+          'memory instead, in a 4-byte slot of the **data section** (memory ' +
+          "set aside for the program's whole run), and is loaded into a " +
+          'register right before every instruction that reads it, then ' +
+          'stored back right after every instruction that writes it.\n\nBut ' +
+          'those loads and stores need registers to work through too! That ' +
+          'is why `$t8` and `$t9` were never among the {k}: they are kept ' +
           'free just for spill code.',
       },
     ],

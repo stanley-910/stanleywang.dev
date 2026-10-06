@@ -50,6 +50,7 @@ import {
   PHASE_SLIDES,
   README_SLIDES,
   STEP_SLIDES,
+  withRegisterCount,
   type Slide,
   lexemesOf,
   lexState,
@@ -902,7 +903,9 @@ export default function AnimatedCompiler() {
     null,
   )
   const live =
-    real?.source === source ? real.trace : compiledTrace(source) || undefined
+    real?.source === source
+      ? real.trace
+      : compiledTrace(source, reference?.registers) || undefined
   // The last source the real compiler gave up on; until then the teaching
   // compiler's errors are held back, as the real trace may replace them.
   const [realFailed, setRealFailed] = useState<string | null>(null)
@@ -1305,26 +1308,26 @@ export default function AnimatedCompiler() {
   const [slide, setSlide] = useState(0)
   const decks = useMemo(() => {
     const at = new Map<number, { phase: Phase; slides: Slide[] }>()
+    // (a slide about the bars needs them: the teaching compiler, when the
+    // real one can't run, draws none)
+    const kept = (s: Slide) =>
+      (namedTrace.recorded || !s.lanes) &&
+      (!s.onlyIn || s.onlyIn === reference?.name) &&
+      s.notIn !== reference?.name
     for (const [phase, slides] of Object.entries(PHASE_SLIDES)) {
       const first = trace.frames.findIndex(
         (f) => f.phase === phase && f.why.kind !== 'ready',
       )
-      // (a slide about the bars needs them: the teaching compiler, when the
-      // real one can't run, draws none)
-      const shown = slides?.filter(
-        (s) =>
-          (namedTrace.recorded || !s.lanes) &&
-          (!s.onlyIn || s.onlyIn === reference?.name) &&
-          s.notIn !== reference?.name,
-      )
+      const shown = slides?.filter(kept)
       if (first > 0 && shown?.length)
         at.set(first - 1, { phase: phase as Phase, slides: shown })
     }
-    for (const { phase, starts, slides } of STEP_SLIDES) {
+    for (const { phase, starts, slides: all } of STEP_SLIDES) {
       const first = trace.frames.findIndex(
         (f, i) => i > 0 && f.phase === phase && starts(f, trace.frames[i - 1]),
       )
-      if (first <= 0) continue
+      const slides = all.filter(kept)
+      if (first <= 0 || !slides.length) continue
       // (a pass that now opens its phase, as colouring does in Registers,
       // follows the phase's own slides)
       const deck = at.get(first - 1)
@@ -1895,7 +1898,7 @@ export default function AnimatedCompiler() {
     return () => window.removeEventListener('pointerdown', away)
   }, [pinned])
   useEffect(() => {
-    if (compiledTrace(source)) return
+    if (compiledTrace(source, reference?.registers)) return
     const abort = new AbortController()
     // (an example at once, and with less patience for a slow load: its
     // recorded trace is the same program's)
@@ -1905,6 +1908,7 @@ export default function AnimatedCompiler() {
           source,
           abort.signal,
           reference ? PRESET_LOAD_MS : undefined,
+          reference?.registers,
         ).then(
           (trace) => {
             setReal({ source, trace })
@@ -3948,8 +3952,9 @@ export default function AnimatedCompiler() {
       ? // hello.txt, then background.txt (Stanley, 2026-10-02)
         `${(intro?.title ?? 'hello').toLowerCase()}.txt`
       : `${shownTab?.label ?? 'notes'}.txt`
+  // (a slide's register count is the allocator's: four in Spilling)
   const noteText =
-    intro?.body ??
+    (intro && withRegisterCount(intro.body, trace.backend?.k ?? 18)) ??
     (error &&
     // A type error's step says what didn't fit, and that it stops there.
     !(

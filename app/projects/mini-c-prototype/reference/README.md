@@ -37,6 +37,11 @@ the token stream and the AST's token anchors, so the tree shape is the parser's 
 
     tests/showcase/trace.sh <name>      # writes tests/showcase/out/<name>.trace.json
 
+`spilling.trace.json` is compiled with the allocator's palette capped at four
+registers (`GraphColouringRegAlloc.registerLimit`), so a five-term sum spills:
+`trace.sh spilling --registers 4`, or `trace(source, 4)` in `compiler.js`. The
+page compiles that example with the same cap (`reference.ts`, `registers`).
+
 `reference.ts` imports these directly; `source` and `ast` for each preset come
 from the JSON, so regenerating the trace regenerates the preset.
 

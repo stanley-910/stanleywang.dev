@@ -108,9 +108,13 @@ function geometry(trace, width, height, narrow) {
     boxes[trace.root].y >= lastTray + 15.99,
     'Root clears all visible tray rows',
   )
+  // A tree too deep for the stage keeps its rows a node's height and 4px
+  // apart and runs past the floor, where the canvas pans (treeRows); any
+  // other must fit.
   assert(
-    boxes.every((b) => b.y + b.h <= height - 15.99),
-    'Tree fits stage vertically',
+    boxes.every((b) => b.y + b.h <= height - 15.99) ||
+      rows.band <= tree.depth * (2 * half + 4) + 0.01,
+    `Tree fits stage vertically: ${trace.source} at ${width}x${height}`,
   )
   const edges = trace.nodes.flatMap((n) =>
     n.children.map((c) => ({

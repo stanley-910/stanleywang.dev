@@ -10,6 +10,7 @@ import missingSemicolonTrace from './reference/missing-semicolon.trace.json'
 import pointerTrace from './reference/pointer.trace.json'
 import precedenceTrace from './reference/precedence.trace.json'
 import shadowingTrace from './reference/shadowing.trace.json'
+import spillingTrace from './reference/spilling.trace.json'
 import structFieldsTrace from './reference/struct-fields.trace.json'
 import unresolvedNameTrace from './reference/unresolved-name.trace.json'
 import wrongTypeTrace from './reference/wrong-type.trace.json'
@@ -24,15 +25,24 @@ type Reference = {
   // Frames emitted by the compiler itself (util.ParseTrace); the animation
   // plays these instead of the toy recorder when the source matches.
   trace: Trace
+  /** The register allocator's palette capped at this many, to show it
+   * running out (GraphColouringRegAlloc.registerLimit); all 18 if unset. */
+  registers?: number
 }
 
 // The JSON is written by ParseTrace in exactly the Trace shape; the cast only
 // narrows the string unions (phase, kind) that JSON cannot express.
 const asTrace = (json: unknown) => json as Trace
 
-const entry = (name: string, file: string, json: unknown): Reference => {
+const entry = (
+  name: string,
+  file: string,
+  json: unknown,
+  registers?: number,
+): Reference => {
   const trace = asTrace(json)
   return {
+    registers,
     name,
     file,
     source: (trace.text ?? '').replace(/\s+$/, ''),
@@ -57,6 +67,9 @@ export const REFERENCES: Reference[] = [
   entry('Break and continue', 'break-continue', breakContinueTrace),
   entry('Pointer', 'pointer', pointerTrace),
   entry('Struct fields', 'struct-fields', structFieldsTrace),
+  // Compiled with four registers, so a five-term sum runs out (Stanley,
+  // 2026-10-06); recorded with compiler.js, trace(source, 4).
+  entry('Spilling', 'spilling', spillingTrace, 4),
   entry('Missing semicolon', 'missing-semicolon', missingSemicolonTrace),
   entry('Unresolved name', 'unresolved-name', unresolvedNameTrace),
   entry('Wrong type', 'wrong-type', wrongTypeTrace),

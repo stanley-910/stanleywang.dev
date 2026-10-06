@@ -17,8 +17,13 @@ import org.teavm.jso.JSExport;
 public final class BrowserTrace {
   public static void main(String[] args) {}
 
+  /**
+   * {@code registers}: the allocator's palette capped at that many (the
+   * spilling example's four), or 0 for all 18.
+   */
   @JSExport
-  public static String trace(String source) throws Exception {
+  public static String trace(String source, int registers) throws Exception {
+    regalloc.GraphColouringRegAlloc.registerLimit = registers;
     // Fresh numbering each time, as in a new JVM: v0, label_0, ...
     Register.Virtual.instances.clear();
     Label.instances.clear();
