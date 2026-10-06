@@ -35,7 +35,9 @@ export function Header() {
           setNowPlaying(data)
         }
       } catch (error) {
-        console.error('Error fetching now playing:', error)
+        // A missed poll (offline, the dev server restarting) keeps the last
+        // track; a warning, so Next's dev overlay doesn't call it an error.
+        console.warn('Error fetching now playing:', error)
       }
     }
 

@@ -1451,7 +1451,17 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
         'machine actually has. Our **virtual registers** work the same way, ' +
         'standing in for real ones until they are mapped. The ' +
         'work of allocating the incremental usage of registers into a finite ' +
-        'supply is left for the next pass.',
+        'supply is left for the next pass.\n\n' +
+        // DRAFT copy (2026-10-06): liveness, for the lanes emit draws
+        // (emit-lanes.tsx) and for register allocation to build on.
+        'Each virtual register is **live** from the line that writes a ' +
+        'value into it to the last line that reads it. After that last ' +
+        'read, nothing needs the value anymore. For example, in ' +
+        '`x = a + b;`, the register holding `a` is live from its load until ' +
+        "the add, and then it's done. The bars beside the assembly show each " +
+        "register's **live range**. Register allocation builds on exactly " +
+        'this: two virtual registers whose live ranges never overlap can ' +
+        'share one real register.',
     },
     {
       title: 'The Stack',
