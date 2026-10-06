@@ -884,16 +884,12 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
     case 'reg.done': {
       if (w.fn === undefined)
         return 'Every temporary now has a physical register. Reuse kept the count small.'
-      // DRAFT copy: what the rewrite turns spills into (pushRegisters and
-      // popRegisters expand in steps of their own, reg.saves).
-      const rewrite = [
-        ...(w.spills
-          ? [
-              `each spilled value is loaded through ${code('$t8')} or ${code('$t9')} before a read and stored after a write`,
-            ]
-          : []),
-      ]
-      return `${w.used} real ${w.used === 1 ? 'register covers' : 'registers cover'} every virtual one${w.spills ? `, with ${w.spills} spilled to memory` : ''}. Values that never overlap share a register.${rewrite.length ? ` In the code, ${rewrite.join(', and ')}.` : ''}`
+      // The count ("2 real registers cover every virtual one") is cut
+      // (Stanley, 2026-10-06); with spills, what the code now does with
+      // them stays. DRAFT copy.
+      return w.spills
+        ? `In the code, each spilled value is loaded through ${code('$t8')} or ${code('$t9')} before a read and stored after a write.`
+        : ''
     }
   }
 }
