@@ -1,5 +1,7 @@
 import { motion } from 'motion/react'
 
+import { EASE } from './ease'
+
 import type { Route } from './link-route'
 import type { Frame } from './trace'
 
@@ -42,7 +44,6 @@ export function NameLinks({
   current?: number
 }) {
   const all = !hoverOnly && frame.why.kind === 'check.namesDone'
-  const ease = [0.22, 1, 0.36, 1] as [number, number, number, number]
   const hold = duration * (1 + Math.max(0, links.length - 1) * 0.25) + 3
   return (
     <motion.g
@@ -71,7 +72,7 @@ export function NameLinks({
         const drawn = {
           duration: Math.max(duration * 0.35, (duration * length) / 341),
           delay,
-          ease,
+          ease: EASE,
         }
         return (
           <g key={`${use}-${decl}`} data-clean={r.clean}>
@@ -127,7 +128,7 @@ export function NameLinks({
                     duration: duration * 3,
                     delay: after,
                     times: [0, 0.45, 0.6, 1],
-                    ease,
+                    ease: EASE,
                   }}
                 />
               ))}

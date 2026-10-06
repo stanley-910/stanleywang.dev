@@ -7,6 +7,8 @@ import {
 } from 'motion/react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
+import { EASE } from './ease'
+
 import type { HTMLAttributes, ReactNode, RefObject } from 'react'
 
 // The step's explanation, in a small window of its own over the simulation,
@@ -34,7 +36,6 @@ const NUDGE = 16
 // Advance of one character of the 11px title.
 const TITLE_CH = 6.6
 // The page's easing for cards that open and close (animated.tsx).
-const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number]
 
 // The edges and corners that size it besides the grip's (bottom right):
 // which sides each one moves.

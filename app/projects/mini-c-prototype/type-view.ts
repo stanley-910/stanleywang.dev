@@ -8,12 +8,15 @@
 // off its declaration, is what the returns in its body must match.
 import type { Frame, Trace } from './trace'
 
+// The type pass's step kinds (its end, `check.typesDone`, is dropped here).
 const TYPED = new Set([
   'check.type',
   'check.expr',
   'check.fits',
   'check.typeError',
 ])
+/** Whether a frame is a step of the type pass. */
+export const isTypeStep = (f: Frame) => TYPED.has(f.why.kind)
 
 export function withTypeSteps(trace: Trace): Trace {
   // Each name's declaration, from the name pass.

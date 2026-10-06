@@ -1,6 +1,7 @@
 import { motion } from 'motion/react'
 import { Fragment, useEffect, useRef } from 'react'
 
+import { isVirtual } from './asm'
 import { wordAt } from './stack-view'
 
 import type { StackFrame, StackPointer, StackRow } from './stack-view'
@@ -162,9 +163,7 @@ export function StackColumn({
     const t = frame.touches.find(
       (t) => t.at === line && t.addr === addr && t.reg,
     )
-    return t?.reg && /^v\d+$/.test(t.reg)
-      ? { reg: t.reg, kind: t.kind }
-      : undefined
+    return t?.reg && isVirtual(t.reg) ? { reg: t.reg, kind: t.kind } : undefined
   }
   // Address registers live on this line, by the row they point at.
   const pointing = new Map<number, StackPointer[]>()

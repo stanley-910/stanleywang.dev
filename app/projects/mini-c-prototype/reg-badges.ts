@@ -4,6 +4,8 @@
 // address (an assignment's target, `addi v8,$fp,-12`), a filled one a value.
 // A register used only inside its own node's run of instructions (a name's
 // address, loaded from on the next line) never gets a badge.
+import { isVirtual } from './asm'
+
 import type { Instruction } from './trace'
 
 type RegBadge = {
@@ -19,8 +21,6 @@ type RegBadge = {
   address: boolean
 }
 
-const VIRTUAL = /^v\d+$/
-
 export function regBadges(instructions: Instruction[]): RegBadge[] {
   // Each instruction's run: the stretch of neighbours from the same node.
   const run: number[] = []
@@ -30,7 +30,7 @@ export function regBadges(instructions: Instruction[]): RegBadge[] {
   const badges: RegBadge[] = []
   instructions.forEach((ins, def) => {
     const reg = ins.dest
-    if (!reg || !VIRTUAL.test(reg) || ins.node === null) return
+    if (!reg || !isVirtual(reg) || ins.node === null) return
     const reads = instructions
       .map((other, i) => ({ other, i }))
       .filter(({ other, i }) => i > def && other.args.includes(reg))

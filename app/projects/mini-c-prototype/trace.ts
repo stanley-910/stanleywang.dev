@@ -1,3 +1,4 @@
+import { isVirtual, renameVirtuals, splitLine } from './asm'
 // Original, bounded teaching compiler. It never executes source or calls private coursework code.
 export type Span = { start: number; end: number }
 export type Token = Span & {
@@ -1100,7 +1101,7 @@ export function buildTrace(source: string): Trace {
     const lastUse: Record<string, number> = {}
     result.instructions.forEach((ins, i) => {
       if (ins.dest) lastUse[ins.dest] = i
-      ins.args.filter((a) => /^v\d+$/.test(a)).forEach((a) => (lastUse[a] = i))
+      ins.args.filter(isVirtual).forEach((a) => (lastUse[a] = i))
     })
     const occupied = new Map<string, number>()
     result.instructions.forEach((ins, i) => {
@@ -1155,8 +1156,8 @@ export function instructionText(
   if (instruction.text !== undefined) {
     // real MIPS line: "li v0,4" → "li $t0,4" once v0 has a register; a
     // machine register spelled alike (`$v0`) stays as it is
-    const [op, rest = ''] = instruction.text.split(/\s+(.*)/)
-    return `${op.padEnd(7)}${rest.replace(/(?<!\$)\bv\d+\b/g, map)}`
+    const [op, rest] = splitLine(instruction.text)
+    return `${op.padEnd(7)}${renameVirtuals(rest, map)}`
   }
   return `${instruction.op.padEnd(7)}${[...(instruction.dest ? [instruction.dest] : []), ...instruction.args].map(map).join(', ')}`
 }

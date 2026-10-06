@@ -1,3 +1,5 @@
+import { isVirtual } from './asm'
+
 import type { Instruction } from './trace'
 
 // A virtual register's live range in emit: from the line that writes it to
@@ -10,8 +12,6 @@ export type Lane = {
   reads: number[]
   column: number
 }
-
-const VIRTUAL = /^v\d+$/
 
 // Columns are packed over the whole program, so a lane keeps its column as
 // rows arrive; a column is reused only once the lane before it has ended
@@ -26,7 +26,7 @@ export function lanesOf(instructions: Instruction[]) {
         lane.reads.push(i)
       }
     }
-    if (ins.dest && VIRTUAL.test(ins.dest)) {
+    if (ins.dest && isVirtual(ins.dest)) {
       const key = `${ins.fn}:${ins.dest}`
       if (!byKey.has(key))
         byKey.set(key, {
@@ -53,7 +53,5 @@ export function lanesOf(instructions: Instruction[]) {
 // The registers a line writes or reads, for lighting their lanes.
 export function registersOf(ins: Instruction | undefined) {
   if (!ins) return []
-  return [ins.dest, ...ins.args].filter(
-    (r): r is string => !!r && VIRTUAL.test(r),
-  )
+  return [ins.dest, ...ins.args].filter((r): r is string => !!r && isVirtual(r))
 }

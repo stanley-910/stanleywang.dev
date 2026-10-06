@@ -5,18 +5,27 @@ const ts = require('typescript')
 const assert = require('node:assert/strict')
 const vm = require('node:vm')
 const path = require('node:path')
-const compiled = ts.transpileModule(
-  fs.readFileSync(path.join(__dirname, 'trace.ts'), 'utf8'),
-  {
-    compilerOptions: {
-      module: ts.ModuleKind.CommonJS,
-      target: ts.ScriptTarget.ES2020,
+// A page module, transpiled, with its own imports of the page's modules
+// (`./asm`) loaded the same way.
+const load = (file) => {
+  const compiled = ts.transpileModule(
+    fs.readFileSync(path.join(__dirname, file), 'utf8'),
+    {
+      compilerOptions: {
+        module: ts.ModuleKind.CommonJS,
+        target: ts.ScriptTarget.ES2020,
+      },
     },
-  },
-).outputText
-const sandbox = { exports: {} }
-vm.runInNewContext(compiled, sandbox)
-const { buildTrace, toSExpression } = sandbox.exports
+  ).outputText
+  const sandbox = {
+    exports: {},
+    require: (m) =>
+      m.startsWith('./') ? load(`${m.slice(2)}.ts`) : require(m),
+  }
+  vm.runInNewContext(compiled, sandbox)
+  return sandbox.exports
+}
+const { buildTrace, toSExpression } = load('trace.ts')
 const plain = (value) => JSON.parse(JSON.stringify(value))
 function run(source) {
   const t = buildTrace(source)

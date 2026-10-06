@@ -2,9 +2,11 @@
 // template is filled from trace data, so the same wording serves presets and
 // typed programs.
 // Backticks mark code spans; the page renders them as <code>.
+import { isVirtual, splitLine } from './asm'
 import { readerOf } from './detail'
 import { stackFrames, wordAt } from './stack-view'
 import { attemptOf } from './trace'
+import { isTypeStep } from './type-view'
 
 import type {
   AstNode,
@@ -126,7 +128,7 @@ function named(ins: Instruction): {
 // assignment, argument or return, line by line.
 function copyNote(ins: Instruction, t: Tag): string {
   const c = code
-  const [op, rest = ''] = (ins.text ?? ins.op).split(/\s+(.*)/)
+  const [op, rest] = splitLine(ins.text ?? ins.op)
   const a = rest.split(',').map((x) => x.trim())
   const from = placeName(t.from ?? undefined, { role: t.role })
   const to = placeName(t.to ?? undefined, { role: t.role })
@@ -155,7 +157,7 @@ function copyNote(ins: Instruction, t: Tag): string {
 
 function operandNote(ins: Instruction): string {
   const t = ins.text ?? ins.op
-  const [op, rest = ''] = t.split(/\s+(.*)/)
+  const [op, rest] = splitLine(t)
   const a = rest.split(',').map((x) => x.trim())
   const c = code
   if (ins.tag?.role.startsWith('copy.')) return copyNote(ins, ins.tag)
@@ -214,6 +216,12 @@ function operandNote(ins: Instruction): string {
     return `${c(op)} asks the system for the service numbered in ${c('$v0')}.`
   return `${c(t)}.`
 }
+
+// A line quoted as code; a declaration's label without its `=`; and the
+// line that forms a local's address (`addiu v3,$fp,-8`).
+const lineCode = (i: Instruction) => code(i.text ?? '')
+const unassigned = (label: string) => label.replace(/\s*=$/, '')
+const FP_ADDRESS = /^addiu?\s+v\d+,\$fp,-?\d+$/
 
 const text = (trace: Trace, span: Span) =>
   (trace.text ?? '').slice(span.start, span.end)
@@ -515,8 +523,6 @@ function explainBlock(
   trace: Trace,
   parts: { node: number; from: number; to: number }[],
 ): string {
-  const line = (i: Instruction) => code(i.text ?? '')
-  const name = (label: string) => label.replace(/\s*=$/, '')
   const clauses = parts.map((p, k) => {
     const n = trace.nodes[p.node]
     const run = trace.instructions.slice(p.from, p.to + 1)
@@ -524,30 +530,30 @@ function explainBlock(
       last = run[run.length - 1]
     const ops = run.map((i) => i.op)
     if (ops.includes('jal'))
-      return `${line(run.find((i) => i.op === 'jal') as Instruction)} calls ${code(trace.tokens[n.token].text)}, and ${code(last.dest ?? '')} reads its result`
+      return `${lineCode(run.find((i) => i.op === 'jal') as Instruction)} calls ${code(trace.tokens[n.token].text)}, and ${code(last.dest ?? '')} reads its result`
     switch (n.kind) {
       case 'number':
-        return `${line(first)} loads ${code(n.label)}`
+        return `${lineCode(first)} loads ${code(n.label)}`
       case 'name':
         return ops.includes('lw')
-          ? `${line(last)} loads ${code(n.label)} from its slot`
-          : `${line(first)} finds ${code(n.label)}'s slot`
+          ? `${lineCode(last)} loads ${code(n.label)} from its slot`
+          : `${lineCode(first)} finds ${code(n.label)}'s slot`
       case 'binary': {
         const op = OP_NAMES[n.label] ?? 'operation'
         if (ops.includes('mflo'))
-          return `${line(first)} and ${line(last)} do the ${op} into ${code(last.dest ?? '')}`
+          return `${lineCode(first)} and ${lineCode(last)} do the ${op} into ${code(last.dest ?? '')}`
         if (first.op === 'slt' || first.op === 'sltu')
-          return `${line(first)} compares them into ${code(first.dest ?? '')}`
-        return `${line(first)} does the ${op} into ${code(first.dest ?? '')}`
+          return `${lineCode(first)} compares them into ${code(first.dest ?? '')}`
+        return `${lineCode(first)} does the ${op} into ${code(first.dest ?? '')}`
       }
       case 'assign':
         return ops.includes('sw') && k > 0
-          ? `${line(last)} stores it in ${code(name(n.label))}`
-          : `${line(first)} finds ${code(name(n.label))}'s slot`
+          ? `${lineCode(last)} stores it in ${code(unassigned(n.label))}`
+          : `${lineCode(first)} finds ${code(unassigned(n.label))}'s slot`
       case 'return':
-        return `${line(first)} writes the return value and ${line(last)} jumps to the exit`
+        return `${lineCode(first)} writes the return value and ${lineCode(last)} jumps to the exit`
       default:
-        return `${run.map(line).join(', ')} ${run.length === 1 ? 'is' : 'are'} emitted for ${code(text(trace, n).replace(/\s+/g, ' '))}`
+        return `${run.map(lineCode).join(', ')} ${run.length === 1 ? 'is' : 'are'} emitted for ${code(text(trace, n).replace(/\s+/g, ' '))}`
     }
   })
   const listed =
@@ -607,7 +613,7 @@ function explainLine(
       // Only a local's own word has a sentence of its own.
       if (
         !(ins.op === 'lw' && /^lw\s+v\d+,0\(v\d+\)$/.test(ins.text ?? '')) &&
-        !/^addiu?\s+v\d+,\$fp,-?\d+$/.test(ins.text ?? '')
+        !FP_ADDRESS.test(ins.text ?? '')
       )
         return operandNote(ins)
       if (ins.op === 'lw') {
@@ -723,14 +729,12 @@ function explainFrameLine(
 /** Sentence for one run of real MIPS from one node. */
 function explainMips(trace: Trace, n: AstNode, run: Instruction[]): string {
   const src = code(text(trace, n).replace(/\s+/g, ' '))
-  const line = (i: Instruction) => code(i.text ?? '')
   const first = run[0],
     last = run[run.length - 1]
-  const name = (label: string) => label.replace(/\s*=$/, '')
   const ops = run.map((i) => i.op)
   if (ops.includes('jal')) {
     const jal = run.find((i) => i.op === 'jal')
-    return `The call: the arguments are pushed on the stack, ${line(jal as Instruction)} jumps into the function, and the result is read back from the stack into ${code(last.dest ?? '')} once it returns.`
+    return `The call: the arguments are pushed on the stack, ${lineCode(jal as Instruction)} jumps into the function, and the result is read back from the stack into ${code(last.dest ?? '')} once it returns.`
   }
   switch (n.kind) {
     case 'number': {
@@ -738,19 +742,17 @@ function explainMips(trace: Trace, n: AstNode, run: Instruction[]): string {
       const earlier = trace.instructions
         .slice(0, trace.instructions.indexOf(first))
         .some(
-          (i) =>
-            i.fn === first.fn && i.op === 'li' && /^v\d+$/.test(i.dest ?? ''),
+          (i) => i.fn === first.fn && i.op === 'li' && isVirtual(i.dest ?? ''),
         )
       return earlier
         ? `The literal ${code(n.label)} goes into ${code(first.dest ?? '')}.`
         : `The literal ${code(n.label)} goes into ${code(first.dest ?? '')}, a fresh virtual register. There is no limit on these yet.`
     }
     case 'name':
-      if (!/^addiu?\s+v\d+,\$fp,-?\d+$/.test(first.text ?? ''))
-        return operandNote(first)
+      if (!FP_ADDRESS.test(first.text ?? '')) return operandNote(first)
       if (ops.includes('lw'))
-        return `${code(n.label)} lives in the stack frame. ${line(first)} works out its address and ${line(last)} loads the value into ${code(last.dest ?? '')}.`
-      return `${line(first)} works out where ${code(n.label)} lives in the frame.`
+        return `${code(n.label)} lives in the stack frame. ${lineCode(first)} works out its address and ${lineCode(last)} loads the value into ${code(last.dest ?? '')}.`
+      return `${lineCode(first)} works out where ${code(n.label)} lives in the frame.`
     case 'binary': {
       const op = OP_NAMES[n.label]
       // A plain operation on two registers; anything else (address
@@ -758,7 +760,7 @@ function explainMips(trace: Trace, n: AstNode, run: Instruction[]): string {
       if (!op || !/^\w+\s+v\d+,v\d+,v\d+$/.test(first.text ?? ''))
         return operandNote(first)
       if (ops.includes('mflo'))
-        return `${line(first)} computes the ${op}. MIPS keeps the product in a special register, so ${line(last)} copies it into ${code(last.dest ?? '')}.`
+        return `${lineCode(first)} computes the ${op}. MIPS keeps the product in a special register, so ${lineCode(last)} copies it into ${code(last.dest ?? '')}.`
       if (first.op === 'slt' || first.op === 'sltu')
         return `${code(first.dest ?? '')} becomes 1 (true) if ${code(first.args[0])} < ${code(first.args[1])}, else 0 (false): the condition the loop tests next.`
       return `The ${op} of ${code(first.args[0])} and ${code(first.args[1])} goes into ${code(first.dest ?? '')}. Both sides were computed on the lines above: children come before parents.`
@@ -767,14 +769,13 @@ function explainMips(trace: Trace, n: AstNode, run: Instruction[]): string {
       if (/^sw\s+v\d+,0\(v\d+\)$/.test(last.text ?? '')) {
         const value = /^sw\s+(v\d+)/.exec(last.text ?? '')?.[1] ?? ''
         const at = /\((v\d+)\)/.exec(last.text ?? '')?.[1] ?? ''
-        return `The value in ${code(value)} is stored in ${code(name(n.label))}'s word, the one ${code(at)} points at.`
+        return `The value in ${code(value)} is stored in ${code(unassigned(n.label))}'s word, the one ${code(at)} points at.`
       }
-      if (!/^addiu?\s+v\d+,\$fp,-?\d+$/.test(first.text ?? ''))
-        return operandNote(first)
-      return `${code(first.dest ?? '')} points at ${code(name(n.label))}'s word first, so the value has somewhere to go once the right-hand side is worked out.`
+      if (!FP_ADDRESS.test(first.text ?? '')) return operandNote(first)
+      return `${code(first.dest ?? '')} points at ${code(unassigned(n.label))}'s word first, so the value has somewhere to go once the right-hand side is worked out.`
     case 'return':
       if (first.tag?.role !== 'store') return operandNote(first)
-      return `${line(first)} writes the value into the frame's return slot, and ${line(last)} skips to the function's exit code.`
+      return `${lineCode(first)} writes the value into the frame's return slot, and ${lineCode(last)} skips to the function's exit code.`
     case 'while':
       if (ops.includes('beqz'))
         return `${code('beqz')} leaves the loop when the condition is 0. Otherwise the body follows.`
@@ -782,7 +783,7 @@ function explainMips(trace: Trace, n: AstNode, run: Instruction[]): string {
     default:
       return run.length === 1
         ? operandNote(first)
-        : `${run.map(line).join(', ')} are emitted for ${src}.`
+        : `${run.map(lineCode).join(', ')} are emitted for ${src}.`
   }
 }
 
@@ -1147,6 +1148,17 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
 export const withRegisterCount = (text: string, k: number) =>
   text.replaceAll('{k-1}', String(k - 1)).replaceAll('{k}', String(k))
 
+// DRAFT copy: the Spilling slide's opening, the same whether the allocator
+// retries with 16 colours or (in the Spilling example) never needs to.
+const SPILLED =
+  'Spills happen when more values are live at the same moment than ' +
+  'there are registers to hold them, which is called high **register ' +
+  "pressure**. A spilled value doesn't get a register at all. It lives in " +
+  'memory instead, in a 4-byte slot of the **data section** (memory ' +
+  "set aside for the program's whole run), and is loaded into a " +
+  'register right before every instruction that reads it, then ' +
+  'stored back right after every instruction that writes it.\n\nBut '
+
 /**
  * Slides that open a pass partway through a phase. Each sits on the frame
  * before the first one `starts` picks, and only if there is one: a program
@@ -1160,13 +1172,7 @@ export const STEP_SLIDES: {
   {
     phase: 'Check',
     starts: (frame, previous) =>
-      [
-        'check.type',
-        'check.expr',
-        'check.fits',
-        'check.typeError',
-        'check.typesDone',
-      ].includes(frame.why.kind) && previous.why.kind === 'check.namesDone',
+      isTypeStep(frame) && previous.why.kind === 'check.namesDone',
     slides: [
       // Stanley's copy (2026-10-06); "the second example" read "the
       // second examples", and "the left side of `=` to be" read "the left
@@ -1291,34 +1297,20 @@ export const STEP_SLIDES: {
     slides: [
       {
         title: 'Spilling',
-        // DRAFT copy: the register pressure sentence (Stanley asked).
         notIn: 'Spilling',
         body:
-          'Spills happen when more values are live at the same moment than ' +
-          'there are registers to hold them, which is called high **register ' +
-          "pressure**. A spilled value doesn't get a register at all. It lives in " +
-          'memory instead, in a 4-byte slot of the **data section** (memory ' +
-          "set aside for the program's whole run), and is loaded into a " +
-          'register right before every instruction that reads it, then ' +
-          'stored back right after every instruction that writes it.\n\nBut ' +
+          SPILLED +
           'those loads and stores need registers to work through too! So ' +
           'when the first attempt spills, my allocator throws that colouring ' +
           'away and starts over with 16 colours, keeping `$t8` and `$t9` ' +
           'free just for spill code.',
       },
       {
-        // DRAFT copy (2026-10-06): as above, for the capped palette, which
-        // never needs the second attempt.
+        // (the capped palette never needs the second attempt)
         title: 'Spilling',
         onlyIn: 'Spilling',
         body:
-          'Spills happen when more values are live at the same moment than ' +
-          'there are registers to hold them, which is called high **register ' +
-          "pressure**. A spilled value doesn't get a register at all. It lives in " +
-          'memory instead, in a 4-byte slot of the **data section** (memory ' +
-          "set aside for the program's whole run), and is loaded into a " +
-          'register right before every instruction that reads it, then ' +
-          'stored back right after every instruction that writes it.\n\nBut ' +
+          SPILLED +
           'those loads and stores need registers to work through too! That ' +
           'is why `$t8` and `$t9` were never among the {k}: they are kept ' +
           'free just for spill code.',

@@ -15,6 +15,8 @@
 // the allocator turned it into. `$sp` and `$fp` move as the lines say; a
 // register holds a word's address from the line tagged as forming it, or
 // from loading it out of a word a line stored it in.
+import { isVirtual, splitLine } from './asm'
+
 import type {
   CType,
   Instruction,
@@ -245,7 +247,7 @@ const nameOfWord = (o: Obj, w: number) =>
   wordName(o.leaves.filter((l) => l.off < w + 4 && l.off + l.size > w))
 
 const parse = (text: string) => {
-  const [op, rest = ''] = text.split(/\s+(.*)/)
+  const [op, rest] = splitLine(text)
   return { op, a: rest ? rest.split(',').map((x) => x.trim()) : [] }
 }
 
@@ -492,7 +494,7 @@ function build(
     const tag = i.tag
     const { op, a } = code(k)
     if (i.dead) continue
-    const dest = i.dest && /^v\d+$/.test(i.dest) ? i.dest : null
+    const dest = i.dest && isVirtual(i.dest) ? i.dest : null
     if (dest) held.delete(dest)
     const role = tag?.role
     if (tag && role === 'addr' && dest && tag.through !== 'param') {

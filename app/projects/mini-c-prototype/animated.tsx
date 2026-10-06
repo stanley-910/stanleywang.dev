@@ -37,9 +37,11 @@ import {
   useState,
 } from 'react'
 
+import { renameVirtuals, splitLine, VIRTUAL_IN_LINE, virtualsIn } from './asm'
 import { startCanvas, type Canvas, type CanvasRest } from './canvas-zoom'
 import { derive, ProofTree } from './derivation'
 import { detailTrace } from './detail'
+import { EASE } from './ease'
 import { EmitLanes, lanesWidth } from './emit-lanes'
 import { withEmitBlocks, withEmitLines } from './emit-view'
 import {
@@ -91,7 +93,7 @@ import {
   type Trace,
   treePositions,
 } from './trace'
-import { withTypeSteps } from './type-view'
+import { isTypeStep, returnType, withTypeSteps } from './type-view'
 import '@/app/styles/markdown.css'
 import './animated.css'
 
@@ -108,15 +110,6 @@ const tabs = [
   { label: 'emit', phase: 'Emit' },
   { label: 'regs', phase: 'Registers' },
 ] as const
-const TYPE_KINDS = [
-  'check.type',
-  'check.expr',
-  'check.fits',
-  'check.typeError',
-  'check.typesDone',
-] as const
-const isTypeStep = (f: Frame) =>
-  (TYPE_KINDS as readonly string[]).includes(f.why.kind)
 const speeds = [0.5, 1, 1.5, 2]
 const KEEP_HIDDEN = ['int', '(', ')', '{', '}', ';', '=', ',']
 const HOVER_DELAY = 250
@@ -431,7 +424,6 @@ const GUIDE: GuideRule[] = [
     not: 'malloc(size);\nprintf(format, ...);',
   },
 ]
-const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number]
 // The interference graph keeps below a step's note (about four lines).
 const NOTE_BAND = 104
 // An interference node's radius, and the gap its edges stop short by.
@@ -1008,12 +1000,9 @@ export default function AnimatedCompiler() {
       Math.max(
         0,
         ...trace.instructions.map((ins) => {
-          const args = (ins.text ?? ins.op).split(/\s+(.*)/)[1] ?? ''
+          const [, args] = splitLine(ins.text ?? ins.op)
           // (as long again once registers have their real names: v8 → $t3)
-          return Math.max(
-            args.length,
-            args.replace(/(?<!\$)\bv\d+\b/g, '$t0').length,
-          )
+          return Math.max(args.length, renameVirtuals(args, () => '$t0').length)
         }),
       ),
     [trace],
@@ -1129,10 +1118,7 @@ export default function AnimatedCompiler() {
       if (fn.kind !== 'function') continue
       const name = trace.tokens[fn.token]
       const body = trace.tokens.find((t) => t.id > fn.token && t.text === '{')
-      const result = trace.tokens
-        .filter((t) => t.start >= fn.start && t.id < fn.token)
-        .map((t) => t.text)
-        .join('')
+      const result = returnType(trace, fn.id)
       const params = fn.children
         .map((c) => trace.nodes[c])
         .filter((c) => c.kind === 'declare' && (!body || c.token < body.id))
@@ -1392,7 +1378,6 @@ export default function AnimatedCompiler() {
       localStorage.removeItem(SPLIT_KEY)
     } catch {}
   }, [])
-  const saveSplit = (height: number | null) => setSourceHeight(height)
   // The editor column's width once its border with the stage has been
   // dragged; null keeps the stylesheet's width for the screen size.
   const [editorWidth, setEditorWidth] = useState<number | null>(null)
@@ -2160,7 +2145,7 @@ export default function AnimatedCompiler() {
       return 680
     const rows = trace.instructions.slice(v.from, v.to + 1)
     const reads = rows.some((ins) =>
-      (ins.text?.match(/(?<!\$)\bv\d+\b/g) ?? []).some((r) => r !== ins.dest),
+      virtualsIn(ins.text ?? '').some((r) => r !== ins.dest),
     )
     return Math.max(
       680,
@@ -2650,6 +2635,8 @@ export default function AnimatedCompiler() {
     rewrittenFns * 4 +
     (saves ? ['mark', 'push', 'pop'].indexOf(saves) + 1 : 0)
   const paletteIndex = (r: string) => backend?.palette.indexOf(r) ?? -1
+  // A physical register's colour on the page, by its place in the palette.
+  const inkOf = (r: string) => INK[paletteIndex(r) % INK.length]
   // (to a tenth, so a resize by a few pixels doesn't lay it out again)
   // (a phone's graph gets the stage less a little room below it:
   // graphPoint)
@@ -2727,7 +2714,7 @@ export default function AnimatedCompiler() {
   })
   const transition = {
     duration: reduced ? 0 : 0.42 / speed,
-    ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
+    ease: EASE,
     ...((resizing || dragging !== null || listingDragging) && {
       d: { duration: 0 },
       left: { duration: 0 },
@@ -3396,8 +3383,8 @@ export default function AnimatedCompiler() {
   const firstLit = allocIntro
     ? Math.max(
         0,
-        trace.instructions.findIndex((ins) =>
-          /(?<!\$)\bv\d+\b/.test(ins.text ?? ''),
+        trace.instructions.findIndex(
+          (ins) => virtualsIn(ins.text ?? '').length > 0,
         ),
       )
     : 0
@@ -3687,14 +3674,7 @@ export default function AnimatedCompiler() {
     return spots.reduce((a, b) => (cost(b) < cost(a) ? b : a)).side
   })()
   const naming =
-    frame.phase === 'Check' &&
-    !typing &&
-    !intro &&
-    w.kind !== 'check.type' &&
-    w.kind !== 'check.expr' &&
-    w.kind !== 'check.fits' &&
-    w.kind !== 'check.typeError' &&
-    w.kind !== 'check.typesDone'
+    frame.phase === 'Check' && !typing && !intro && !isTypeStep(frame)
   // Resolve frames are authoritative, including traces missing `links`.
   const bindings = new Map(frame.links ?? [])
   if (w.kind === 'check.resolve' || w.kind === 'check.link')
@@ -4281,7 +4261,7 @@ export default function AnimatedCompiler() {
     const move = animate(
       note,
       { height: [`${from}px`, `${to}px`] },
-      { duration: 0.35, ease: [0.22, 1, 0.36, 1] },
+      { duration: 0.35, ease: EASE },
     )
     move.then(settle)
     return () => move.stop()
@@ -5319,10 +5299,9 @@ export default function AnimatedCompiler() {
                   setSourceHeight(clampSplit(d.height + e.clientY - d.y, d.max))
               }}
               onPointerUp={() => {
-                if (drag.current) saveSplit(sourceHeight)
                 drag.current = null
               }}
-              onDoubleClick={() => saveSplit(null)}
+              onDoubleClick={() => setSourceHeight(null)}
               onKeyDown={(e) => {
                 if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
                 e.preventDefault()
@@ -5330,7 +5309,7 @@ export default function AnimatedCompiler() {
                 const range = splitRange()
                 if (!range) return
                 const step = e.key === 'ArrowUp' ? -SOURCE_ROW : SOURCE_ROW
-                saveSplit(clampSplit(range.height + step, range.max))
+                setSourceHeight(clampSplit(range.height + step, range.max))
               }}
             />
             {noteInPane ? (
@@ -6198,7 +6177,6 @@ export default function AnimatedCompiler() {
                     graphFn.interference.nodes.map((vr) => {
                       const p = graphPoint(vr)
                       const colour = coloured?.[vr]
-                      const idx = colour ? paletteIndex(colour) : -1
                       const order = pushedAs.get(vr)
                       return (
                         <motion.span
@@ -6208,7 +6186,7 @@ export default function AnimatedCompiler() {
                             {
                               x: '-50%',
                               y: '-50%',
-                              '--c': colour ? INK[idx % INK.length] : undefined,
+                              '--c': colour ? inkOf(colour) : undefined,
                             } as MotionStyle
                           }
                           initial={{
@@ -6488,10 +6466,9 @@ export default function AnimatedCompiler() {
                               (i < frame.allocationCount
                                 ? trace.registers
                                 : undefined))
-                        const [op, args = ''] = instructionText(
-                          ins,
-                          registers,
-                        ).split(/\s+(.*)/)
+                        const [op, args] = splitLine(
+                          instructionText(ins, registers),
+                        )
                         const hold =
                           ins.op === 'pushRegisters' ||
                           ins.op === 'popRegisters'
@@ -6514,7 +6491,7 @@ export default function AnimatedCompiler() {
                         const head = asmHeads.get(i)
                         const operands = (text: string) =>
                           emitStage
-                            ? text.split(/(?<!\$)\b(v\d+)\b/).map((part, j) => {
+                            ? text.split(VIRTUAL_IN_LINE).map((part, j) => {
                                 if (j % 2 === 0) return part
                                 const key = `${ins.fn}:${part}`
                                 const on = key === regFocus?.key && !!focusLane
@@ -6547,8 +6524,8 @@ export default function AnimatedCompiler() {
                                 text
                                   .split(/(\$[a-z]+\d+|\bv\d+\b)/)
                                   .map((part, j) => {
-                                    const idx = j % 2 ? paletteIndex(part) : -1
-                                    return idx < 0 ? (
+                                    return j % 2 === 0 ||
+                                      paletteIndex(part) < 0 ? (
                                       part
                                     ) : (
                                       <span
@@ -6556,7 +6533,7 @@ export default function AnimatedCompiler() {
                                         className="ac-phys"
                                         style={
                                           {
-                                            '--c': INK[idx % INK.length],
+                                            '--c': inkOf(part),
                                           } as CSSProperties
                                         }
                                       >
@@ -6571,8 +6548,8 @@ export default function AnimatedCompiler() {
                           text: string
                           added?: boolean
                         }) => {
-                          const [lineOp, lineArgs = ''] = line
-                            ? line.text.split(/\s+(.*)/)
+                          const [lineOp, lineArgs] = line
+                            ? splitLine(line.text)
                             : [op, args]
                           return (
                             <motion.div
@@ -6652,11 +6629,9 @@ export default function AnimatedCompiler() {
                                         onMouseLeave={clearHover}
                                       >
                                         <span />
-                                        <b>{line.text.split(/\s+(.*)/)[0]}</b>
+                                        <b>{splitLine(line.text)[0]}</b>
                                         <code>
-                                          {operands(
-                                            line.text.split(/\s+(.*)/)[1] ?? '',
-                                          )}
+                                          {operands(splitLine(line.text)[1])}
                                         </code>
                                       </motion.div>
                                     ),
@@ -6712,9 +6687,7 @@ export default function AnimatedCompiler() {
                             regView
                               ? (key) => {
                                   const colour = coloured?.[key.split(':')[1]]
-                                  return colour
-                                    ? INK[paletteIndex(colour) % INK.length]
-                                    : undefined
+                                  return colour ? inkOf(colour) : undefined
                                 }
                               : undefined
                           }

@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react'
 
+import { EASE } from './ease'
 import { isClassDecl, nodeKind } from './explain'
 
 import type { Scopes } from './scopes'
@@ -31,7 +32,7 @@ export function ScopeTree({
     initial: { opacity: 0, height: 0 },
     animate: { opacity: 1, height: 'auto' },
     exit: { opacity: 0, height: 0 },
-    transition: { duration, ease: [0.22, 1, 0.36, 1] as const },
+    transition: { duration, ease: EASE },
   }
   const w = frame.why
   const use =
