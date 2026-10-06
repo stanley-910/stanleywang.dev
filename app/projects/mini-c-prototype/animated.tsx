@@ -210,6 +210,50 @@ const NODE_BLURBS: Record<string, string> = {
   expression:
     'Anything that works out to a value: a number, a name, a call, or operators on other expressions.',
 }
+// DRAFT copy: each kind of node in the AST guide, an example of it in
+// Mini-C and one line on what it is.
+const NODE_NOTES: Record<string, Record<string, [string, string]>> = {
+  declaration: {
+    variable: ['int x;', 'A name for a value of its type.'],
+    field: ['struct p { int x; };', 'A variable inside a struct or class.'],
+    function: ['int f(int a) { … }', 'Parameters, a return type, and a body.'],
+    prototype: ['int f(int a);', 'A function declared without its body.'],
+    struct: ['struct p { … };', 'A type made of named fields.'],
+    class: [
+      'class C extends B { … }',
+      'A struct with methods, which can extend another class.',
+    ],
+  },
+  statement: {
+    block: ['{ … }', 'Statements in braces, run in order.'],
+    while: ['while (c) …', 'Runs its body while the condition is not 0.'],
+    if: ['if (c) … else …', 'Runs one branch or the other.'],
+    return: ['return x;', 'Leaves the function, with a value or without.'],
+    continue: ['continue;', "Skips to the loop's next pass."],
+    break: ['break;', 'Leaves the loop.'],
+    expression: [
+      'f(x);',
+      'An expression run for what it does, its value dropped.',
+    ],
+  },
+  expression: {
+    number: ['42', 'A whole number.'],
+    character: ["'a'", 'One character.'],
+    string: ['"hi"', 'Text, as an array of characters.'],
+    name: ['x', 'A variable, read for its value.'],
+    call: ['f(1, 2)', 'Calls a function with arguments.'],
+    operator: ['a + b', 'Works out a value from one or two others.'],
+    assignment: ['x = 4', 'Stores a value in a place.'],
+    index: ['a[i]', "An array's element."],
+    field: ['s.x', "A struct's field."],
+    'value at': ['*p', 'What a pointer points to.'],
+    'address of': ['&x', 'Where a variable is, as a pointer.'],
+    sizeof: ['sizeof(int)', "A type's size in bytes."],
+    cast: ['(char*) p', 'A value taken as another type.'],
+    new: ['new class C()', 'A new object of a class.'],
+    'method call': ['c.f(x)', 'Calls a method on an object.'],
+  },
+}
 // Advance of one character in the 11px token card.
 const CARD_CHAR_PX = 6.6
 // The built-in functions' signatures (SemanticUtils.builtIns): declared
@@ -270,6 +314,10 @@ const BARE_KEY = 'mini-c-no-scrollbars'
 const GUIDE_KEY = 'mini-c-no-guide'
 const GUIDE_PIN_KEY = 'mini-c-guide-pinned'
 const GUIDE_WINDOW_KEY = 'mini-c-guide-window'
+// The AST guide beside the parser: off in the options menu, and its window.
+const AST_KEY = 'mini-c-no-ast-guide'
+const AST_WINDOW_KEY = 'mini-c-ast-window'
+const AST_W = 300
 // DRAFT copy: what Mini-C takes, beside the editor while it's in use, for
 // someone who writes C the usual way. From the course's grammar and
 // SemanticUtils' built-ins; every example was run through compiler.js, the
@@ -1513,6 +1561,25 @@ export default function AnimatedCompiler() {
     try {
       if (on) localStorage.removeItem(GUIDE_KEY)
       else localStorage.setItem(GUIDE_KEY, '1')
+    } catch {}
+  }
+  // The AST guide: every kind of node the parser makes, by class, while the
+  // parser runs. Its × turns it off until the settings menu turns it back on.
+  const [astOn, setAstOn] = useState(true)
+  // The kind pointed at in it, whose note shows under its class.
+  const [astPick, setAstPick] = useState<{ cls: string; kind: string } | null>(
+    null,
+  )
+  useEffect(() => {
+    try {
+      setAstOn(localStorage.getItem(AST_KEY) !== '1')
+    } catch {}
+  }, [])
+  const saveAst = (on: boolean) => {
+    setAstOn(on)
+    try {
+      if (on) localStorage.removeItem(AST_KEY)
+      else localStorage.setItem(AST_KEY, '1')
     } catch {}
   }
   // Maximized: the tool covers the window, the site's header and all, until
@@ -4163,13 +4230,19 @@ export default function AnimatedCompiler() {
   // Emit's and the allocator's steps: their note docks in the pane under
   // the source, or floats, as the other passes' do (Stanley, 2026-10-01).
   const lateStep = !welcome && !intro && !error && late
+  // An lvalue error has a note as a step does, docked or floating: the bar
+  // says what can't be assigned to, the note why, which the stage can't show.
+  const errorNote =
+    !!error &&
+    (frame.why.kind === 'check.expr' || frame.why.kind === 'check.typeError') &&
+    !!frame.why.lvalue
   // A slide, the finished tree and a late step stand alone in the note:
   // the pass's record comes in with its first step.
-  const noteAlone = !!intro || (passStep && !classStep) || lateStep
+  const noteAlone = !!intro || (passStep && !classStep) || lateStep || errorNote
   // On a phone there is no window to undock: the record goes down to the
   // note docked at the bottom, and the pane under the source folds away
   // (Stanley, 2026-10-01).
-  const paneNote = welcome || !!intro || passStep || lateStep
+  const paneNote = welcome || !!intro || passStep || lateStep || errorNote
   const noteInPane = paneNote && noteDocked && !narrow
   const paneInWindow = paneNote && (!noteDocked || narrow)
   const noteName = classStep && paneLabel ? paneLabel : noteFile
@@ -4799,61 +4872,150 @@ export default function AnimatedCompiler() {
       </div>
     </NoteWindow>
   )
-  // The step's note: docked at the bottom of the editor on a phone, under
-  // the source it grows up into; a window over the stage elsewhere.
-  const noteWindow = !noteInPane && !pinnedError && !typeStep && (
+  // The AST guide: up through the parser's slides and steps, at the
+  // stage's top right; its − rolls it up, its × turns it off. The kind the
+  // parser is on is lit; the one pointed at (else that one) has its note.
+  const astUp = panePhase === 'Parse' && !welcome && !narrow
+  const astNow =
+    paneNode?.current !== undefined
+      ? { cls: paneNode.cls, kind: paneNode.current }
+      : null
+  const astShown = astPick ?? astNow
+  const astWindow = astOn && (
     <NoteWindow
-      docked={narrow}
-      height={flowSizes.note}
-      cap={noteCap}
-      onDock={paneInWindow && !narrow ? () => dockNote(true) : undefined}
-      title={noteName}
-      error={!!error}
-      live={!playing}
+      className="guide ast"
+      title="ast.txt"
+      label="AST guide"
+      noun="guide"
+      storeKey={AST_WINDOW_KEY}
+      openWidth={AST_W}
+      live={false}
       bounds={rootRef}
       area={workRef}
-      start={windowStart}
-      foot={
-        (intro || onReadme) &&
-        deck &&
-        slideCount > 1 && (
-          <div className="ac-note-foot">
-            <button
-              type="button"
-              className="ac-slides"
-              aria-label="Skip intro"
-              // (the readme skips to the lexer's slides, if it has any)
-              onClick={() =>
-                onReadme && deck.slides.length > readmeCount
-                  ? setSlide(readmeCount + 1)
-                  : seek(index + 1)
-              }
-            >
-              <span className="count">
-                {slideAt}/{slideCount}
-              </span>
-              <span className="skip">skip</span>
-            </button>
-          </div>
-        )
+      start={() => {
+        const root = rootRef.current
+        const stage = root?.querySelector('.ac-stage')
+        if (!root || !stage) return { x: 16, y: 16 }
+        const r = root.getBoundingClientRect()
+        const s = stage.getBoundingClientRect()
+        return { x: s.right - r.left - AST_W - 12, y: s.top - r.top + 12 }
+      }}
+      away={!astUp}
+      trail={
+        <button
+          type="button"
+          className="ac-window-box ac-window-close"
+          aria-label="Close AST guide"
+          title="Close"
+          onClick={() => saveAst(false)}
+        >
+          ×
+        </button>
       }
     >
-      {!classStep && noteBody}
-      {paneInWindow &&
-        !noteAlone &&
-        (paneFilled || classStep) &&
-        paneRecord(!classStep)}
-      {paneInWindow && classStep && paneKind === 'scopes' && (
-        <ScopeTree
-          trace={trace}
-          scopes={scopes}
-          frame={frame}
-          step={index}
-          duration={transition.duration}
-        />
-      )}
+      <div
+        className="ac-guide-text ac-ast-text"
+        onPointerLeave={() => setAstPick(null)}
+      >
+        {(['declaration', 'statement', 'expression'] as const).map((cls) => {
+          const note =
+            astShown?.cls === cls ? NODE_NOTES[cls][astShown.kind] : undefined
+          return (
+            <section key={cls}>
+              <h4>{NODE_HEADS[cls]}</h4>
+              <p>
+                <Prose text={NODE_BLURBS[cls]} />
+              </p>
+              <ul className="ac-lexemes" aria-label={`Kinds of ${cls}`}>
+                {NODE_KINDS[cls].map((kind) => (
+                  <li
+                    key={kind}
+                    tabIndex={0}
+                    className={[
+                      astNow?.cls === cls && astNow.kind === kind
+                        ? 'current'
+                        : '',
+                      astPick?.cls === cls && astPick.kind === kind
+                        ? 'picked'
+                        : '',
+                    ].join(' ')}
+                    onPointerEnter={() => setAstPick({ cls, kind })}
+                    onFocus={() => setAstPick({ cls, kind })}
+                    onBlur={() => setAstPick(null)}
+                  >
+                    {kind}
+                  </li>
+                ))}
+              </ul>
+              {note && (
+                <div className="ac-ast-note">
+                  <code>{note[0]}</code>
+                  <span>{note[1]}</span>
+                </div>
+              )}
+            </section>
+          )
+        })}
+      </div>
     </NoteWindow>
   )
+  // The step's note: docked at the bottom of the editor on a phone, under
+  // the source it grows up into; a window over the stage elsewhere.
+  const noteWindow = !noteInPane &&
+    (!pinnedError || errorNote) &&
+    !typeStep && (
+      <NoteWindow
+        docked={narrow}
+        height={flowSizes.note}
+        cap={noteCap}
+        onDock={paneInWindow && !narrow ? () => dockNote(true) : undefined}
+        title={noteName}
+        error={!!error}
+        live={!playing}
+        bounds={rootRef}
+        area={workRef}
+        start={windowStart}
+        foot={
+          (intro || onReadme) &&
+          deck &&
+          slideCount > 1 && (
+            <div className="ac-note-foot">
+              <button
+                type="button"
+                className="ac-slides"
+                aria-label="Skip intro"
+                // (the readme skips to the lexer's slides, if it has any)
+                onClick={() =>
+                  onReadme && deck.slides.length > readmeCount
+                    ? setSlide(readmeCount + 1)
+                    : seek(index + 1)
+                }
+              >
+                <span className="count">
+                  {slideAt}/{slideCount}
+                </span>
+                <span className="skip">skip</span>
+              </button>
+            </div>
+          )
+        }
+      >
+        {!classStep && noteBody}
+        {paneInWindow &&
+          !noteAlone &&
+          (paneFilled || classStep) &&
+          paneRecord(!classStep)}
+        {paneInWindow && classStep && paneKind === 'scopes' && (
+          <ScopeTree
+            trace={trace}
+            scopes={scopes}
+            frame={frame}
+            step={index}
+            duration={transition.duration}
+          />
+        )}
+      </NoteWindow>
+    )
 
   return (
     <section
@@ -6559,6 +6721,7 @@ export default function AnimatedCompiler() {
       >
         {!narrow && noteWindow}
         {guideWindow}
+        {astWindow}
 
         <footer className="ac-keys" aria-label="Controls">
           <button
@@ -6731,6 +6894,15 @@ export default function AnimatedCompiler() {
                 >
                   <span aria-hidden="true">{guideOn ? '[x]' : '[ ]'}</span>
                   syntax guide
+                </button>
+                <button
+                  type="button"
+                  role="menuitemcheckbox"
+                  aria-checked={astOn}
+                  onClick={() => saveAst(!astOn)}
+                >
+                  <span aria-hidden="true">{astOn ? '[x]' : '[ ]'}</span>
+                  AST guide
                 </button>
                 <button
                   type="button"

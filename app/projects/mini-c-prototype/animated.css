@@ -2216,7 +2216,8 @@
   color: var(--muted);
   font-size: 11px;
 }
-.ac-window.err .ac-window-head {
+.ac-window.err .ac-window-head,
+.ac-note.err .ac-window-head {
   color: var(--err);
 }
 /* Afloat, no box: the stack itself on the stage, and what labels it on
@@ -3508,4 +3509,34 @@
 .ac-stackbeside .ac-dock-slot {
   width: 200px;
   margin-top: 0;
+}
+/* The AST guide (animated.tsx astWindow): the syntax guide's window, each
+   class's kinds as the parser's pane lists them; a kind pointed at is
+   outlined, and its example and note show under the list. */
+.ac-ast-text .ac-lexemes {
+  margin-top: 6px;
+  font-size: 11px;
+}
+.ac-ast-text .ac-lexemes li {
+  cursor: default;
+}
+.ac-ast-text .ac-lexemes li.picked:not(.current) {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+.ac-ast-text .ac-lexemes li:focus-visible {
+  outline: 1px solid var(--ink);
+  outline-offset: 1px;
+}
+.ac-ast-note {
+  display: grid;
+  gap: 2px;
+  margin-top: 6px;
+  padding: 4px 8px;
+  border-left: 2px solid var(--line);
+  color: var(--muted);
+}
+.ac .ac-ast-note code {
+  justify-self: start;
+  color: var(--ink);
 }
