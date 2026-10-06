@@ -1,7 +1,9 @@
 #!/bin/sh
 # Compile the real Mini-C compiler to JavaScript with TeaVM so the page can run
 # it in the browser. Reads the compiler from its own repo (nothing is copied
-# into this one) and writes public/mini-c/compiler.js, which is gitignored.
+# into this one) and writes public/mini-c/compiler.js. Commit that file after
+# rebuilding: Vercel's build is only `next build` (no Java or TeaVM there), so
+# the committed bundle is what the live page runs.
 # Needs the TeaVM 0.12 jars in ~/.cache/teavm/lib.
 set -e
 here="$(cd "$(dirname "$0")" && pwd)"
