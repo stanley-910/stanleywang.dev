@@ -1458,8 +1458,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
         "To prepare for that, we mark each virtual register's **liveness " +
         'range** with a bar beside it. A register becomes **live** when an ' +
         'instruction puts a value in it, and stays live until the last ' +
-        'instruction that still uses that value, like the add that consumes ' +
-        'it or the store that saves it to memory. For example, in ' +
+        'instruction that still uses that value. For example, in ' +
         '`x = a + b;`, the register holding `a` is live from its load until ' +
         "the add, and then it's done.",
     },
