@@ -838,38 +838,16 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
       return ''
     case 'reg.interfere':
       return `Two registers interfere when they are live at the same time: they cannot share a real register. ${w.nodes} virtual registers, ${w.edges} ${w.edges === 1 ? 'overlap' : 'overlaps'}${w.busiest ? `; ${code(w.busiest)} overlaps the most, with ${w.degree}` : ''}.`
-    case 'reg.simplify': {
-      const f = trace.backend?.functions[w.fn]
-      const st = f && attemptOf(f, w).steps[w.step]
-      const k = f ? attemptOf(f, w).palette.length : 0
-      if (!st) return 'A register with few neighbours is set aside.'
-      const n = pushNumber(attemptOf(f, w).steps, w.step)
-      if (!st.degree)
-        return `${code(st.vr)} overlaps nothing still in the graph, so any register will do. It is set aside as ${n}.`
-      return `${code(st.vr)} overlaps ${st.degree} ${st.degree === 1 ? 'other' : 'others'} still in the graph, fewer than the ${k} registers available, so it is sure to get one. It is set aside as ${n}, and its edges come off the graph.`
-    }
+    // No note while nodes are set aside and popped one by one: the graph
+    // shows each move, and the slides before them say the rule (Stanley,
+    // 2026-10-06: the note only said again how many neighbours it had).
+    case 'reg.simplify':
+    case 'reg.select':
+      return ''
     case 'reg.spillCandidate': {
       const f = trace.backend?.functions[w.fn]
       const st = f && attemptOf(f, w).steps[w.step]
       return `Every remaining register overlaps ${f ? attemptOf(f, w).palette.length : 'k'} or more others. ${code(st?.vr ?? '')} has the most edges, so it is set aside${f ? ` as ${pushNumber(attemptOf(f, w).steps, w.step)}` : ''}, the one that may have to spill.`
-    }
-    case 'reg.select': {
-      const f = trace.backend?.functions[w.fn]
-      const st = f && attemptOf(f, w).steps[w.step]
-      if (!st) return 'A register comes off the stack and takes a colour.'
-      const forbidden = st.forbidden ?? []
-      const steps = attemptOf(f, w).steps
-      const pushed = steps.findIndex(
-        (p) =>
-          p.vr === st.vr && (p.op === 'simplify' || p.op === 'spillCandidate'),
-      )
-      const first = !steps.slice(0, w.step).some((p) => p.op === 'select')
-      const back = first
-        ? `${code(st.vr)}, set aside last, comes back first.`
-        : `${code(st.vr)}${pushed >= 0 ? ` (${pushNumber(steps, pushed)})` : ''} comes back.`
-      if (forbidden.length === 0)
-        return `${back} None of its neighbours holds a register yet, so it takes the first one, ${code(st.colour ?? '')}.`
-      return `${back} Its neighbours hold ${forbidden.map(code).join(', ')}, so it takes the next free one, ${code(st.colour ?? '')}.`
     }
     case 'reg.spill': {
       const f = trace.backend?.functions[w.fn]
