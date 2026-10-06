@@ -45,7 +45,7 @@ import { derive, ProofTree } from './derivation'
 import { detailTrace } from './detail'
 import { EASE } from './ease'
 import { EmitLanes, lanesWidth } from './emit-lanes'
-import { withEmitBlocks, withEmitLines } from './emit-view'
+import { withEmitLines } from './emit-view'
 import {
   explain,
   NODE_KINDS,
@@ -910,34 +910,24 @@ export default function AnimatedCompiler() {
   // The compiler's frames, live or recorded: the parse steps in the order
   // its parser took them, and the name and type steps its analysers
   // recorded.
-  // Emit line by line, or in blocks (emit-view.ts).
-  const [emitBlocks, setEmitBlocks] = useState(false)
+  // Emit plays line by line (emit-view.ts).
   const namedTrace = useMemo(() => {
     const recorded = live ?? reference?.trace
     return recorded
       ? { trace: recorded, recorded: true }
       : { trace: buildTrace(source), recorded: false }
   }, [source, reference, live])
-  const withEmit = useCallback(
-    (blocks: boolean) =>
+  const baseTrace = useMemo(
+    () =>
       !namedTrace.recorded
         ? namedTrace.trace
         : withTypeSteps(
-            withSaveSteps(
-              withoutLiveness(
-                blocks
-                  ? withEmitBlocks(namedTrace.trace)
-                  : withEmitLines(namedTrace.trace),
-              ),
-            ),
+            withSaveSteps(withoutLiveness(withEmitLines(namedTrace.trace))),
           ),
     [namedTrace],
   )
-  const baseTrace = useMemo(() => withEmit(emitBlocks), [withEmit, emitBlocks])
   // Detailed lexer mode reads a character per step instead of a token.
   const [detailed, setDetailed] = useState(false)
-  // Step titles over the explanation; off while Stanley reads without them.
-  const [titles, setTitles] = useState(false)
   // The footer's settings menu (its cog), which holds the view switches.
   const [moreOpen, setMoreOpen] = useState(false)
   const moreRef = useRef<HTMLDivElement>(null)
@@ -2062,8 +2052,6 @@ export default function AnimatedCompiler() {
     const sent = q.get('source')
     if (sent !== null) setSource(sent)
     if (q.get('lexer') === 'detailed') setDetailed(true)
-    if (q.get('titles') === 'on') setTitles(true)
-    if (q.get('emit') === 'blocks') setEmitBlocks(true)
     const at = Number(q.get('frame'))
     if (Number.isSafeInteger(at) && at > 0) setStep(at)
     setLinked(true)
@@ -2079,10 +2067,9 @@ export default function AnimatedCompiler() {
     // Detailed parser mode is gone; old links drop its parameter.
     url.searchParams.delete('parser')
     url.searchParams.delete('source')
-    if (titles) url.searchParams.set('titles', 'on')
-    else url.searchParams.delete('titles')
-    if (emitBlocks) url.searchParams.set('emit', 'blocks')
-    else url.searchParams.delete('emit')
+    // Step titles and emit in blocks are gone; old links drop theirs.
+    url.searchParams.delete('titles')
+    url.searchParams.delete('emit')
     url.searchParams.set('frame', String(index))
     // Only once the stage settles: WebKit throws after 100 replaceState
     // calls in 10s, which a scrub or a held step key passes in seconds,
@@ -2094,7 +2081,7 @@ export default function AnimatedCompiler() {
       } catch {}
     }, 250)
     return () => window.clearTimeout(t)
-  }, [linked, playing, reference, index, detailed, titles, emitBlocks])
+  }, [linked, playing, reference, index, detailed])
 
   // The name pass walks the tree between the names it looks at: from the
   // last one up to where their paths meet, then down to this one. Its
@@ -4009,8 +3996,8 @@ export default function AnimatedCompiler() {
       ? 'The compiler stops at its first error. Fix it in the editor and it runs again.'
       : explain(trace, frame))
   // The note's first line, over its text: what it is about, when there's
-  // a header to show (the welcome, a slide, an error, or step titles on).
-  const showTitle = titles || !!intro || index === 0 || !!error
+  // a header to show (the welcome, a slide, or an error).
+  const showTitle = !!intro || index === 0 || !!error
   const heading = showTitle && statusText && (
     <span className="ac-window-head">
       <Prose text={statusText} />
@@ -4350,23 +4337,6 @@ export default function AnimatedCompiler() {
     const next = layered(baseTrace, source, lexer)
     setStep(Math.max(0, next.toBase.indexOf(base)))
     setDetailed(lexer)
-    setPlaying(false)
-    clearHover()
-  }
-  // Switching emit views keeps the place: the first step of the other view
-  // that has emitted at least as much.
-  const switchEmit = (blocks: boolean) => {
-    const at = view.toBase.findIndex((o, i) => i >= index && o !== null)
-    const base = at >= 0 ? (view.toBase[at] ?? 0) : 0
-    const was = baseTrace.frames[base]
-    const nextBase = withEmit(blocks)
-    const match = nextBase.frames.findIndex(
-      (f) =>
-        f.phase === was.phase && f.instructionCount >= was.instructionCount,
-    )
-    const next = layered(nextBase, source, detailed)
-    setStep(Math.max(0, next.toBase.indexOf(match >= 0 ? match : base)))
-    setEmitBlocks(blocks)
     setPlaying(false)
     clearHover()
   }
@@ -5622,7 +5592,7 @@ export default function AnimatedCompiler() {
                       delay={walkTime / speed}
                       hoverOnly={!naming}
                       current={typeLink?.[0]}
-                      key={`${source}|${detailed}|${emitBlocks}|${index}|${slide}`}
+                      key={`${source}|${detailed}|${index}|${slide}`}
                       links={links}
                       routes={linkRoutes}
                       frame={frame}
@@ -6952,24 +6922,6 @@ export default function AnimatedCompiler() {
                 >
                   <span aria-hidden="true">{detailed ? '[x]' : '[ ]'}</span>
                   detailed lexer
-                </button>
-                <button
-                  type="button"
-                  role="menuitemcheckbox"
-                  aria-checked={titles}
-                  onClick={() => setTitles((t) => !t)}
-                >
-                  <span aria-hidden="true">{titles ? '[x]' : '[ ]'}</span>
-                  step titles
-                </button>
-                <button
-                  type="button"
-                  role="menuitemcheckbox"
-                  aria-checked={emitBlocks}
-                  onClick={() => switchEmit(!emitBlocks)}
-                >
-                  <span aria-hidden="true">{emitBlocks ? '[x]' : '[ ]'}</span>
-                  emit in blocks
                 </button>
                 <button
                   type="button"

@@ -415,9 +415,7 @@ export function explain(trace: Trace, frame: Frame): string {
       const dead = run.find((i) => i.dead)
       const line = w.of
         ? explainLine(trace, n, w.of, w.from)
-        : w.parts && w.parts.length > 1
-          ? explainBlock(trace, w.parts)
-          : explainMips(trace, n, run)
+        : explainMips(trace, n, run)
       return dead
         ? `${line} ${run.length === 1 ? 'It' : code(dead.text ?? dead.op)} never runs: the jump before it always leaves first, so the register allocator drops it.`
         : line
@@ -513,54 +511,6 @@ export function explain(trace: Trace, frame: Frame): string {
       return ''
     }
   }
-}
-
-/**
- * One sentence for a block of emit steps (emit-view.ts): a clause per node,
- * in the order the instructions come.
- */
-function explainBlock(
-  trace: Trace,
-  parts: { node: number; from: number; to: number }[],
-): string {
-  const clauses = parts.map((p, k) => {
-    const n = trace.nodes[p.node]
-    const run = trace.instructions.slice(p.from, p.to + 1)
-    const first = run[0],
-      last = run[run.length - 1]
-    const ops = run.map((i) => i.op)
-    if (ops.includes('jal'))
-      return `${lineCode(run.find((i) => i.op === 'jal') as Instruction)} calls ${code(trace.tokens[n.token].text)}, and ${code(last.dest ?? '')} reads its result`
-    switch (n.kind) {
-      case 'number':
-        return `${lineCode(first)} loads ${code(n.label)}`
-      case 'name':
-        return ops.includes('lw')
-          ? `${lineCode(last)} loads ${code(n.label)} from its slot`
-          : `${lineCode(first)} finds ${code(n.label)}'s slot`
-      case 'binary': {
-        const op = OP_NAMES[n.label] ?? 'operation'
-        if (ops.includes('mflo'))
-          return `${lineCode(first)} and ${lineCode(last)} do the ${op} into ${code(last.dest ?? '')}`
-        if (first.op === 'slt' || first.op === 'sltu')
-          return `${lineCode(first)} compares them into ${code(first.dest ?? '')}`
-        return `${lineCode(first)} does the ${op} into ${code(first.dest ?? '')}`
-      }
-      case 'assign':
-        return ops.includes('sw') && k > 0
-          ? `${lineCode(last)} stores it in ${code(unassigned(n.label))}`
-          : `${lineCode(first)} finds ${code(unassigned(n.label))}'s slot`
-      case 'return':
-        return `${lineCode(first)} writes the return value and ${lineCode(last)} jumps to the exit`
-      default:
-        return `${run.map(lineCode).join(', ')} ${run.length === 1 ? 'is' : 'are'} emitted for ${code(text(trace, n).replace(/\s+/g, ' '))}`
-    }
-  })
-  const listed =
-    clauses.length > 1
-      ? `${clauses.slice(0, -1).join(', ')}, and ${clauses[clauses.length - 1]}`
-      : clauses[0]
-  return `${listed[0].toUpperCase()}${listed.slice(1)}.`
 }
 
 // What the word a load reads holds, when it is an address a line stored

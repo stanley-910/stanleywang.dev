@@ -351,8 +351,6 @@ export type Why =
       node: number
       from: number
       to: number
-      // In blocks (emit-view.ts): the nodes whose steps this one covers.
-      parts?: { node: number; from: number; to: number }[]
       // Line by line (emit-view.ts): the node's whole run, this line in it.
       of?: { from: number; to: number }
     }
