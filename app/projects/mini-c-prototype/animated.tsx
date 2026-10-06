@@ -72,7 +72,7 @@ import {
 } from './real'
 import { FIRST_ERROR, findReference, REFERENCES } from './reference'
 import { badgesAt, regBadges } from './reg-badges'
-import { withSaveSteps, withoutLiveness } from './regs-view'
+import { withColouringRuns, withSaveSteps, withoutLiveness } from './regs-view'
 import { ScopeTree } from './scope-tree'
 import { scopesOf } from './scopes'
 import { StackColumn } from './stack-column'
@@ -928,10 +928,12 @@ export default function AnimatedCompiler() {
         ? namedTrace.trace
         : withTypeSteps(
             withSaveSteps(
-              withoutLiveness(
-                blocks
-                  ? withEmitBlocks(namedTrace.trace)
-                  : withEmitLines(namedTrace.trace),
+              withColouringRuns(
+                withoutLiveness(
+                  blocks
+                    ? withEmitBlocks(namedTrace.trace)
+                    : withEmitLines(namedTrace.trace),
+                ),
               ),
             ),
           ),

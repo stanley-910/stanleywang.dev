@@ -842,6 +842,12 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
       const f = trace.backend?.functions[w.fn]
       const st = f && attemptOf(f, w).steps[w.step]
       const k = f ? attemptOf(f, w).palette.length : 0
+      // DRAFT copy (2026-10-06): a run of them as one step.
+      if (f && w.from !== undefined && w.from < w.step) {
+        const steps = attemptOf(f, w).steps
+        const run = steps.slice(w.from, w.step + 1).map((p) => code(p.vr))
+        return `${list(run)} each have fewer than ${k} neighbours still in the graph, so each is sure to get a register. They're set aside one at a time, ${pushNumber(steps, w.from)} to ${pushNumber(steps, w.step)}, each taking its edges off the graph as it goes.`
+      }
       if (!st) return 'A register with few neighbours is set aside.'
       const n = pushNumber(attemptOf(f, w).steps, w.step)
       if (!st.degree)
@@ -857,6 +863,12 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
       const f = trace.backend?.functions[w.fn]
       const st = f && attemptOf(f, w).steps[w.step]
       if (!st) return 'A register comes off the stack and takes a colour.'
+      // DRAFT copy (2026-10-06): a run of them as one step.
+      if (w.from !== undefined && w.from < w.step) {
+        const run = attemptOf(f, w).steps.slice(w.from, w.step + 1)
+        const took = run.map((p) => `${code(p.vr)} → ${code(p.colour ?? '')}`)
+        return `${list(run.map((p) => code(p.vr)))} come back off the stack in reverse order, and each takes the first register none of its neighbours holds${run.length <= 8 ? `: ${took.join(', ')}` : ''}.`
+      }
       const forbidden = st.forbidden ?? []
       const steps = attemptOf(f, w).steps
       const pushed = steps.findIndex(
