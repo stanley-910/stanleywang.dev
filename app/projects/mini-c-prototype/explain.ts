@@ -324,7 +324,7 @@ export function explain(trace: Trace, frame: Frame): string {
         'in your browser and stepping through each stage of compilation in ' +
         'an intuitive and educational way, I hope to show how source code is ' +
         'actually translated into assembly, and the often beautiful, often ' +
-        'monstrous journey that is.\n\nPlease enjoy!\n\n**Stanley**'
+        'monstrous journey that it is.\n\nPlease enjoy!\n\n**Stanley**'
       )
     // Steps whose note is never shown (animated.tsx): a lexer, parser or
     // name-pass step has its class or the symbol table in the pane
@@ -868,7 +868,7 @@ export const README_SLIDES: Slide[] = [
       'instructions, registers, and memory model a processor supports.' +
       '\n\nEach ISA has its own **assembly language**, a human-"readable" ' +
       'way of writing the instructions a processor can execute. Common ' +
-      'ISAs include x86 (Intel) or ARM (Mac).\n\nMy compiler uses a ' +
+      'ISAs include x86 (Intel and AMD) and ARM (Apple silicon and most phones).\n\nMy compiler uses a ' +
       '**simplified subset** of C as its source and targets the **MIPS ISA**.',
   },
 ]
@@ -908,7 +908,8 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
         'and rejects anything out of order with a **syntax error**.',
       quote:
         "For example, try deleting the semicolon from any line. Since C's " +
-        'grammar specifies that statements must end in a semicolon, it is ' +
+        'grammar specifies that a statement like `x = 1;` must end in a ' +
+        'semicolon, it is ' +
         'caught by the parser.',
     },
     {
@@ -938,7 +939,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
       body:
         'This solves interesting problems like precedence. How do you make ' +
         "sure the code that is generated correctly PEMDAS's something like " +
-        '`2 - 4 * 2`? If you just generated code left to right, you run into ' +
+        "`2 - 4 * 2`? If you just generated code left to right, you'd run into " +
         'issues like `(2 - 4) * 2`. Continue to see how an AST fixes that.',
     },
     {
@@ -965,11 +966,11 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
       // Stanley's copy (2026-10-06).
       body:
         'The parser guarantees the structural validity of a program. ' +
-        'Statements end in semicolons, a `while` has a condition followed by ' +
+        'Simple statements end in semicolons, a `while` has a condition followed by ' +
         'a body, brackets are balanced. That form is what gets embedded into ' +
         "the AST. What the parser can't tell us is whether our code is " +
         'meaningful.\n\nCode is meaningful if it is well-declared and ' +
-        'properly typed. Validating this is delegated to Name Analysis and ' +
+        'type checks. Validating this is delegated to Name Analysis and ' +
         'Type Checking, each its own walk through the newly constructed AST.',
     },
     {
@@ -993,8 +994,8 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
         '`{…}` to the global scope. For example, a use of `n` inside a ' +
         "`while` loop's body checks the loop's block first, then the " +
         "function's, then the globals.\n\nEach " +
-        "time we link the usage to its declaration inside that node's " +
-        'metadata so that later passes (like type checking) can inspect the ' +
+        "time, we store a link from the usage to its declaration in that node's " +
+        'metadata, so that later passes (like type checking) can inspect the ' +
         'type of a variable/function/what-have-you by going straight to the ' +
         'declaration.',
     },
@@ -1014,8 +1015,8 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
       title: 'Speaking to Hardware',
       body:
         'Unlike C, assembly describes exactly what your processor does, one ' +
-        'step at a time. Each line is a single **instruction** that runs ' +
-        "directly on your hardware.\n\nProcessors don't do arithmetic on " +
+        'step at a time. Each line is roughly a single **instruction** that runs ' +
+        "directly on your hardware.\n\nMIPS processors don't do arithmetic on " +
         'variables sitting in memory. They do it in **registers**: a handful ' +
         'of storage slots built into the processor itself. Memory is large ' +
         'but slow to reach, while registers are tiny but extremely fast. So ' +
@@ -1040,7 +1041,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
         'OS quietly maps those addresses onto the physical memory the ' +
         'machine actually has. Our **virtual registers** work the same way, ' +
         'standing in for real ones until they are mapped. The ' +
-        'work of allocating the incremental usage of registers into a finite ' +
+        'work of fitting all of those virtual registers into a finite ' +
         'supply is left for the next pass.\n\n' +
         // Liveness, for the lanes emit draws (emit-lanes.tsx) and for
         // register allocation to build on: Stanley's first sentence
@@ -1114,7 +1115,8 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
       body:
         'In emit, we gave every value its own virtual register and put off ' +
         'mapping them onto real registers until now. MIPS, our target ' +
-        'architecture, gives us only 18 registers to freely hand out ' +
+        'architecture, has 32 registers, but most have fixed jobs, like the ' +
+        'stack pointer, which leaves only 18 to freely hand out ' +
         '(`$t0`–`$t9` and `$s0`–`$s7`). However, even a short program can ' +
         "use well past that many virtual ones. The **register allocator**'s " +
         'job is to map every virtual register to a real one without ' +
@@ -1190,7 +1192,7 @@ export const STEP_SLIDES: {
           'This code is not meaningful, even though we have properly defined ' +
           'variables where we use them. The issue is typing. In both examples ' +
           'we declare `x` to be an integer, but the first time around we ' +
-          'assign it to a string!\n\nContrarily, the second example ' +
+          'assign a string to it!\n\nContrarily, the second example ' +
           'technically is well-typed, since `5` and `x` are both integers. ' +
           'The problem is that the language (and by association, our ' +
           'compiler) expects the left side of `=` to be somewhere a value ' +
@@ -1262,7 +1264,9 @@ export const STEP_SLIDES: {
         title: 'When None Are Easy',
         body:
           'Sometimes every node left has {k} or more edges, and there is no ' +
-          'easy node to set aside. We push one onto the stack anyway, the ' +
+          "easy node to set aside. Chaitin's original algorithm would spill " +
+          'one right away, but mine, like most compilers today, follows ' +
+          "Briggs's optimistic variant: we push one onto the stack anyway, the " +
           'one with the most edges, and mark it as a **spill candidate**: it ' +
           'might not get a colour when it comes back off.\n\nIt might still ' +
           'get lucky, though. If its neighbours end up sharing colours among ' +
