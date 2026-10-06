@@ -119,3 +119,30 @@ html {
 .transparent-pre {
   background-color: transparent !important;
 }
+
+/* A pixel sprite strip on the projects page (Datamines' Reggie). */
+.sprite-icon {
+  image-rendering: pixelated;
+  background-position: 0 0;
+}
+
+.group:hover .sprite-icon,
+.group:focus-visible .sprite-icon {
+  animation: sprite-run 0.6s steps(var(--sprite-frames)) infinite;
+}
+
+@keyframes sprite-run {
+  from {
+    background-position: var(--sprite-from) 0;
+  }
+  to {
+    background-position: var(--sprite-to) 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .group:hover .sprite-icon,
+  .group:focus-visible .sprite-icon {
+    animation: none;
+  }
+}

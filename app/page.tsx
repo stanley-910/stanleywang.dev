@@ -1,7 +1,9 @@
 'use client'
 import { format } from 'date-fns'
+import { MapPinIcon } from 'lucide-react'
 import { motion } from 'motion/react'
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
 
 import { AnimatedBackground } from '@/components/ui/animated-background'
 import { AsciiArt } from '@/components/ui/ascii'
@@ -34,6 +36,38 @@ const TRANSITION_SECTION = {
   duration: 0.3,
 }
 
+// A click copies the address and shows "copied" under it for a moment;
+// the address itself stays put.
+function CopyEmail() {
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    if (!copied) return
+    const timer = setTimeout(() => setCopied(false), 1500)
+    return () => clearTimeout(timer)
+  }, [copied])
+
+  return (
+    <button
+      className="prose-link relative cursor-pointer font-mono text-sm underline select-text dark:text-zinc-300"
+      title="Copy to clipboard"
+      onClick={() => {
+        navigator.clipboard.writeText(EMAIL).then(() => setCopied(true))
+      }}
+    >
+      {EMAIL}
+      <span
+        aria-hidden
+        className={`pointer-events-none absolute top-full left-1/2 mt-1 -translate-x-1/2 font-mono text-xs text-zinc-500 transition-all duration-200 dark:text-zinc-400 ${
+          copied ? 'translate-y-0 opacity-100' : '-translate-y-1 opacity-0'
+        }`}
+      >
+        copied
+      </span>
+    </button>
+  )
+}
+
 export default function Personal() {
   return (
     <motion.main
@@ -57,7 +91,16 @@ export default function Personal() {
             >
               McGill University.
             </a>{' '}
-            Most recently, I wrote software with the{' '}
+            Most recently, I interned on Commerce & Identity at{' '}
+            <a
+              href="https://www.ea.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="prose-link"
+            >
+              Electronic Arts.
+            </a>{' '}
+            Before that, I wrote software with the{' '}
             <a
               href="https://www.autodesk.com/ca-en/products/flow-production-tracking/overview"
               target="_blank"
@@ -73,7 +116,7 @@ export default function Personal() {
               rel="noopener noreferrer"
               className="prose-link"
             >
-              Beta Technologies.
+              BETA Technologies.
             </a>
             <br />
             <br />I enjoy coding{' '}
@@ -114,11 +157,50 @@ export default function Personal() {
             </span>
             <br />
             <br />
-            <div className="text-right font-mono text-xs text-zinc-500 dark:text-zinc-400">
-              <b>Last Updated</b>: Oct 28, 2025
+            <div className="flex items-center justify-between font-mono text-xs text-zinc-500 dark:text-zinc-400">
+              <span className="flex items-center gap-1">
+                <MapPinIcon className="h-3 w-3" aria-hidden />
+                San Francisco
+              </span>
+              <span>
+                <b>Last Updated</b>: Oct 6, 2026
+              </span>
             </div>
           </div>
         </div>
+      </motion.section>
+      <motion.section
+        variants={VARIANTS_SECTION}
+        transition={TRANSITION_SECTION}
+        className="mt-2"
+      >
+        <p className="flex items-center justify-center gap-x-1 pb-2 whitespace-nowrap text-zinc-600 sm:gap-x-2 dark:text-zinc-400">
+          <CopyEmail />
+          <span>·</span>
+          <a
+            className="prose-link font-mono text-sm underline dark:text-zinc-300"
+            href="https://github.com/stanley-910"
+          >
+            github
+          </a>
+          <span>·</span>
+          <a
+            className="prose-link font-mono text-sm underline dark:text-zinc-300"
+            href="https://www.linkedin.com/in/notstanleywang/"
+          >
+            linkedin
+          </a>
+          <span>·</span>
+          <a
+            className="prose-link font-mono text-sm underline dark:text-zinc-300"
+            href="/pdfs/stanley-wang-resume.pdf"
+            target="_blank"
+            download="stanley-wang-resume.pdf"
+            rel="noopener noreferrer"
+          >
+            resume
+          </a>
+        </p>
       </motion.section>
       <motion.section
         variants={VARIANTS_SECTION}
@@ -200,48 +282,6 @@ export default function Personal() {
             />
           ))}
         </div>
-      </motion.section>
-
-      <motion.section
-        variants={VARIANTS_SECTION}
-        transition={TRANSITION_SECTION}
-        className="mt-8 mb-6"
-      >
-        <p className="flex items-center justify-center space-x-2 overflow-x-auto pb-2 whitespace-nowrap text-zinc-600 dark:text-zinc-400">
-          <button
-            className="prose-link cursor-pointer font-mono text-sm underline select-text dark:text-zinc-300"
-            title="Copy to clipboard"
-            onClick={() => {
-              navigator.clipboard.writeText(EMAIL)
-            }}
-          >
-            email
-          </button>
-          <span>·</span>
-          <a
-            className="prose-link font-mono text-sm underline dark:text-zinc-300"
-            href="https://github.com/stanley-910"
-          >
-            github
-          </a>
-          <span>·</span>
-          <a
-            className="prose-link font-mono text-sm underline dark:text-zinc-300"
-            href="https://www.linkedin.com/in/notstanleywang/"
-          >
-            linkedin
-          </a>
-          <span>·</span>
-          <a
-            className="prose-link font-mono text-sm underline dark:text-zinc-300"
-            href="/pdfs/stanley-wang-resume.pdf"
-            target="_blank"
-            download="stanley-wang-resume.pdf"
-            rel="noopener noreferrer"
-          >
-            resume
-          </a>
-        </p>
       </motion.section>
 
       <motion.section

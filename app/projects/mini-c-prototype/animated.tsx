@@ -2057,6 +2057,10 @@ export default function AnimatedCompiler() {
       (e) => e.name.toLowerCase() === q.get('example'),
     )
     if (example) setSource(example.source)
+    // ?source= is code someone edited on the projects page and sent here
+    // to compile; the address bar drops it once it's loaded (below).
+    const sent = q.get('source')
+    if (sent !== null) setSource(sent)
     if (q.get('lexer') === 'detailed') setDetailed(true)
     if (q.get('titles') === 'on') setTitles(true)
     if (q.get('emit') === 'blocks') setEmitBlocks(true)
@@ -2074,6 +2078,7 @@ export default function AnimatedCompiler() {
     else url.searchParams.delete('lexer')
     // Detailed parser mode is gone; old links drop its parameter.
     url.searchParams.delete('parser')
+    url.searchParams.delete('source')
     if (titles) url.searchParams.set('titles', 'on')
     else url.searchParams.delete('titles')
     if (emitBlocks) url.searchParams.set('emit', 'blocks')

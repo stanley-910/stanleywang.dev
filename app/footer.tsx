@@ -48,7 +48,7 @@ export function Footer() {
             target="_blank"
             rel="noopener noreferrer"
           >
-            <span>© 2025 Stanley Wang</span>
+            <span>© {new Date().getFullYear()} Stanley Wang</span>
           </a>
           <a
             href="https://open.spotify.com/track/5UPAsUyaojOEDhVq7wqSuz?si=57b15862c69e4cad"
