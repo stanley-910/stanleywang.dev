@@ -993,19 +993,6 @@ export default function AnimatedCompiler() {
     [baseTrace, source, detailed],
   )
   const trace = view.trace
-  // The longest-worded token step of each class, for sizing the step panel.
-  const tallestTokenSteps = useMemo(() => {
-    const best = new Map<string, { text: string; token: Token }>()
-    for (const f of trace.frames) {
-      if (f.why.kind !== 'token') continue
-      const token = trace.tokens[f.why.token]
-      const text = explain(trace, f, titles)
-      const seen = best.get(tokenKind(token))
-      if (!seen || text.length > seen.text.length)
-        best.set(tokenKind(token), { text, token })
-    }
-    return [...best.values()]
-  }, [trace, titles])
   const baseTree = useMemo(
     () => treePositions(trace, (n) => n.label.length * CHAR_PX + 2, TREE_GAP),
     [trace],
@@ -3997,7 +3984,7 @@ export default function AnimatedCompiler() {
       frame.why.kind === 'check.typeError'
     )
       ? 'The compiler stops at its first error. Fix it in the editor and it runs again.'
-      : explain(trace, frame, titles))
+      : explain(trace, frame))
   // The note's first line, over its text: what it is about, when there's
   // a header to show (the welcome, a slide, an error, or step titles on).
   const showTitle = titles || !!intro || index === 0 || !!error
@@ -4048,39 +4035,14 @@ export default function AnimatedCompiler() {
       )}
     </>
   )
-  // Hidden layers size the panel for the tallest lexer step, but only on the
-  // steps themselves: the welcome and slides keep their own height.
-  const sizing = !intro && index > 0
-  const noteBody =
-    frame.phase === 'Tokens' ? (
-      // Hidden layers hold the tallest step of each token class in the
-      // same grid cell, so the note keeps one height while stepping
-      // through tokens and only grows if even that won't fit.
-      <div className="ac-note-stack">
-        <div className="ac-note-layer">
-          {heading}
-          {intro?.codeFirst && slideCode}
-          <Prose text={noteText} onExample={openExample} />
-          {slideExtras}
-        </div>
-        {(sizing ? tallestTokenSteps : []).map((v) => (
-          <div
-            key={tokenKind(v.token)}
-            className="ac-note-layer ghost"
-            aria-hidden="true"
-          >
-            <Prose text={v.text} />
-          </div>
-        ))}
-      </div>
-    ) : (
-      <>
-        {heading}
-        {intro?.codeFirst && slideCode}
-        <Prose text={noteText} onExample={openExample} />
-        {slideExtras}
-      </>
-    )
+  const noteBody = (
+    <>
+      {heading}
+      {intro?.codeFirst && slideCode}
+      <Prose text={noteText} onExample={openExample} />
+      {slideExtras}
+    </>
+  )
   // What the pane under the source keeps: each pass's own record (Stanley,
   // 2026-09-27). The lexer shows the token's class, the parser the node's,
   // the name pass its scopes, the type pass its rule, emit the stack frame.

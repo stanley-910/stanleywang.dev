@@ -1,5 +1,6 @@
-// Sentences for the step popup and the hover cards. Every template is filled
-// from trace data, so the same wording serves presets and typed programs.
+// The notes: each step's sentence, the slides, and the error notes. Every
+// template is filled from trace data, so the same wording serves presets and
+// typed programs.
 // Backticks mark code spans; the page renders them as <code>.
 import { readerOf } from './detail'
 import { stackFrames, wordAt } from './stack-view'
@@ -33,31 +34,6 @@ const OP_NAMES: Record<string, string> = {
   '!=': 'inequality',
   '&&': 'logical and',
   '||': 'logical or',
-}
-
-const KEYWORD_ROLES: Record<string, string> = {
-  int: 'is a type: it says what kind of value follows',
-  char: 'is a type: it says what kind of value follows',
-  void: 'is a type: it says nothing is returned',
-  return: 'hands a value back and ends the function',
-  while: 'repeats its body while the condition holds',
-  if: 'picks a branch by testing a condition',
-  else: 'names the branch taken when the test fails',
-  struct: 'introduces a record type',
-  sizeof: 'asks for the size of a type',
-}
-
-const SYMBOL_ROLES: Record<string, string> = {
-  ';': 'ends this statement',
-  ',': 'separates items in a list',
-  '(': 'opens a group, a parameter list, or an argument list',
-  ')': 'closes a group or a list',
-  '{': 'opens a body',
-  '}': 'closes a body',
-  '=': 'stores the value on the right into the name on the left',
-  '&': 'takes the address of what follows',
-  // DRAFT copy: the lexer can't tell which yet; the parser decides.
-  '*': 'multiplies the values either side of it or, in front of a pointer, reads what it points at',
 }
 
 // A backtick inside (a string literal's) would end the code span early, so
@@ -242,9 +218,6 @@ function operandNote(ins: Instruction): string {
 const text = (trace: Trace, span: Span) =>
   (trace.text ?? '').slice(span.start, span.end)
 
-const line = (trace: Trace, span: Span) =>
-  (trace.text ?? '').slice(0, span.start).split('\n').length
-
 /** What a node is, in words: "multiplication", "integer literal", ... */
 function describe(node: AstNode): string {
   switch (node.kind) {
@@ -279,26 +252,6 @@ function describe(node: AstNode): string {
     default:
       return 'expression'
   }
-}
-
-/** What a token does, as a predicate: "`;` ends this statement". */
-function tokenRole(token: Token): string {
-  if (token.kind === 'keyword')
-    return KEYWORD_ROLES[token.text] ?? 'is a keyword with a fixed meaning'
-  if (token.kind === 'name') return 'is an identifier'
-  // DRAFT copy. (The compiler files every literal under one kind.)
-  if (token.kind === 'number' && token.text.startsWith('"'))
-    return 'is one string literal: everything between the quotes, spaces too, is part of it'
-  if (token.kind === 'number' && token.text.startsWith("'"))
-    return 'is one character literal'
-  if (token.kind === 'number')
-    return token.text.length > 1
-      ? `is one integer token: all ${token.text.length} digits belong to the same number`
-      : 'is an integer token'
-  if (SYMBOL_ROLES[token.text]) return SYMBOL_ROLES[token.text]
-  if (OP_NAMES[token.text])
-    return `is the ${OP_NAMES[token.text]} operator. It needs a value on each side`
-  return 'is punctuation'
 }
 
 // DRAFT copy: why the part of an lvalue error that isn't a place in memory
@@ -340,15 +293,7 @@ function lvalueNote(lv: LvalueError): string {
 }
 
 /** The sentence behind a frame: what was decided and why. */
-export function explain(trace: Trace, frame: Frame, titled = true): string {
-  const said = explainStep(trace, frame, titled)
-  // A group seals on the step that finished it.
-  return frame.sealed?.length
-    ? `${said} The ${code(')')} closes the group, so it goes on as one piece.`
-    : said
-}
-
-function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
+export function explain(trace: Trace, frame: Frame): string {
   const w: Why = frame.why
   const node = (id: number) => trace.nodes[id]
   // (an expression standing as a statement is read to its `;`; quoted as
@@ -360,19 +305,6 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
       nodeKind(n).cls === 'expression' ? said.replace(/;$/, '') : said,
     )
   }
-  // An expression where a statement goes is the statement itself (the
-  // tracer reads it to its `;`), as `print_i(x);` or `p.x = 1;` are.
-  const standsAlone = (n: AstNode) => {
-    const p = trace.nodes.find((q) => q.children.includes(n.id))
-    return (
-      nodeKind(n).cls === 'expression' &&
-      (p?.kind === 'block' ||
-        ((p?.kind === 'while' || p?.kind === 'if') &&
-          p.children.indexOf(n.id) > 0))
-    )
-  }
-  // DRAFT copy.
-  const statementToo = `Where a statement goes, an expression and its ${code(';')} make an expression statement, so this node is the statement too.`
   switch (w.kind) {
     case 'ready':
       // Stanley's copy (2026-10-02). "and" added before "stepping"; the
@@ -386,266 +318,33 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
         'actually translated into assembly, and the often beautiful, often ' +
         'monstrous journey that is.\n\nPlease enjoy!\n\n**Stanley**'
       )
-    case 'token': {
-      // With step titles the token is in the header and the body names its
-      // class above the list; without, the body names both.
-      const token = trace.tokens[w.token]
-      const kind = tokenKind(token)
-      return titled
-        ? kind[0].toUpperCase() + kind.slice(1)
-        : `${code(token.text)} is ${article(kind)}`
-    }
+    // Steps whose note is never shown (animated.tsx): a lexer, parser or
+    // name-pass step has its class or the symbol table in the pane
+    // instead (classStep), a type-pass step has no notes (typeStep), and
+    // the step a program fails on gets the general error note (noteText).
+    case 'token':
     case 'lex.char':
-      return readStep(trace, w)
-    case 'lex.error': {
-      // The tokeniser's own message, in the page's words.
-      const r = trace.tokens[w.token].reads?.[w.read]
-      const message = r && 'error' in r ? r.error : ''
-      return compilerError(message, trace.text ?? '')?.message ?? message
-    }
+    case 'lex.error':
     case 'lex.skip':
-      return w.comment
-        ? 'Comments only matter to people. The lexer skips them, along with the whitespace around them.'
-        : 'Whitespace only separates tokens, so the lexer skips it without making a token.'
-    case 'parse.read': {
-      const t = trace.tokens[w.token]
-      return `${code(t.text)} ${tokenRole(t)}. No node is built from it alone.`
-    }
-    case 'parse.node': {
-      // DRAFT, on Stanley's template: what the token started as, the one
-      // piece of structure that decides it, and what it becomes. The kind
-      // named at the end is the one lit in the list under the note.
-      const n = node(w.node)
-      const tok = trace.tokens[n.token]
-      const parent = trace.nodes.find((p) => p.children.includes(n.id))
-      switch (n.kind) {
-        case 'number':
-          // DRAFT copy for the string and character literals.
-          return n.label.startsWith('"')
-            ? `${code(n.label)} started as a string literal, and a string is already a whole value, so it becomes a string expression.`
-            : n.label.startsWith("'")
-              ? `${code(n.label)} started as a character literal, and a character is already a whole value, so it becomes a character expression.`
-              : `${code(n.label)} started as a number, and a number is already a whole value, so it becomes a number expression.`
-        case 'name':
-          return `${code(n.label)} started as an identifier, and with no ${code('(')} after it, it names a value, so it becomes a name expression.`
-        case 'declare': {
-          // DRAFT copy
-          if (parent && structOf(trace, n))
-            return `${code(n.label)} (a type, then an identifier) inside ${code(parent.label)} becomes a field declaration.`
-          const where =
-            parent?.kind === 'function'
-              ? `in ${code(parent.label)}'s parameter list`
-              : parent?.kind === 'program'
-                ? 'outside any function'
-                : 'at the top of a block'
-          return nodeKind(n).kind === 'variable'
-            ? `${code(n.label)} (a type, then an identifier) ${where} becomes a variable declaration.`
-            : `${code(n.label)} becomes a ${nodeKind(n).kind} declaration.`
-        }
-        case 'return':
-          return `${code('return')} started as a keyword, and at the start of a statement it opens a return statement.`
-        case 'assign':
-          return `${code(tok.text)} started as an identifier, but the ${code('=')} after it makes it the target of an assignment expression.`
-        case 'function':
-          // syntax_grammar.txt: `type IDENT "(" params ")"` begins fundecl or
-          // fundef; the block after `)` makes it a FunDef, a `;` a FunDecl.
-          // The type before the name slides into the node (animated.tsx
-          // `absorbed`): it is kept there as the return type.
-          const type = trace.tokens
-            .filter((t) => t.start >= n.start && t.id < n.token)
-            .map((t) => t.text)
-            .join(' ')
-          return `${code(n.label)} started as an identifier, but a type and a name followed by ${code('(')} begin a function, and the block after its ${code(')')} makes it a function definition.${type ? ` ${code(type)} goes inside it as the return type.` : ''}`
-        case 'block':
-          return parent?.kind === 'function'
-            ? `${code('{')} started as a delimiter, and after ${code(parent.label)}'s parameters it opens the body, a block statement.`
-            : `${code('{')} started as a delimiter, and where a statement goes it opens a block statement.`
-        case 'while':
-          return `${code('while')} started as a keyword, and at the start of a statement it opens a while statement.`
-        case 'if':
-          return `${code('if')} started as a keyword, and at the start of a statement it opens an if statement.`
-        case 'call':
-          return `${code(tok.text)} started as an identifier, but the ${code('(')} after it makes it a call expression.${standsAlone(n) ? ` ${statementToo}` : ''}`
-        case 'unary':
-          return `${code(n.label)} started as an operator, but with no value before it, it applies to what follows: an operator expression.`
-        case 'program':
-          return `${code('global')} holds the top-level declarations, read one after another.`
-        case 'statement':
-          // DRAFT copy. Only a statement the parser gave up on before its
-          // expression keeps a node of its own, labelled `expr`; the note
-          // quotes what there is of it.
-          if (n.label === 'expr')
-            return `${code(text(trace, n))} doesn't start with a keyword, so it's an expression statement: an expression, then ${code(';')}.`
-        // falls through
-        default: {
-          // DRAFT copy: named by its kind in the list under the note
-          // (`.` becomes a method call expression).
-          const { cls, kind } = nodeKind(n)
-          const becomes =
-            kind && (cls === 'expression' || cls === 'statement')
-              ? `${code(n.label)} becomes ${article(`${kind} ${cls}`)}.`
-              : `${code(n.label)} becomes ${article(describe(n))} node.`
-          // DRAFT copy. `&arr[1]`, `*s.p`: a postfix `[]` or field binds
-          // tighter than the prefix operator before it, so it goes under it.
-          const postfix = kind === 'index' || kind === 'field'
-          const prefix =
-            parent &&
-            parent.start < n.start &&
-            (parent.kind === 'unary' ||
-              ['value at', 'address of', 'cast'].includes(
-                nodeKind(parent).kind ?? '',
-              ))
-          return postfix && prefix && n.children.length
-            ? `${becomes} It binds tighter than ${code(parent.label)}, so it takes ${src(n.children[0])} first, and ${code(parent.label)} applies to the result.`
-            : becomes
-        }
-      }
-    }
-    case 'parse.wait': {
-      const op = node(w.node)
-      // DRAFT, on the parse.node template.
-      return `${code(op.label)} started as an operator, and with ${src(w.child)} before it, it becomes an operator expression that waits, dashed, for its right side.${standsAlone(op) ? ` ${statementToo}` : ''}`
-    }
-    case 'parse.precedence': {
-      const child = src(w.child)
-      // `a = b = c`: the second `=` wins because `=` groups right to left
-      // (its right side is read one level lower), not because it is tighter.
-      if (w.relation === 'tighter' && w.incoming === '=' && w.pending === '=')
-        return `Another ${code('=')}: assignment groups right to left, so ${child} joins the new ${code('=')} first. The earlier ${code('=')} keeps waiting for the result.`
-      if (w.relation === 'tighter')
-        return `${code(w.incoming)} binds tighter than ${code(w.pending)}, so ${child} joins ${code(w.incoming)} first. ${code(w.pending)} keeps waiting.`
-      if (w.relation === 'equal')
-        return w.pending === w.incoming
-          ? `Two ${code(w.pending)} in a row bind equally. The earlier one closes first, so grouping runs left to right.`
-          : `${code(w.incoming)} binds as tightly as ${code(w.pending)}. The earlier one closes first, so grouping runs left to right.`
-      return `${code(w.incoming)} binds less tightly than ${code(w.pending)}, so ${code(w.pending)} closes first. Its result becomes the left input of ${code(w.incoming)}.`
-    }
+    case 'parse.read':
+    case 'parse.node':
+    case 'parse.wait':
+    case 'parse.precedence':
     case 'parse.group':
-      return 'The parenthesis opens a group. Everything inside finishes before anything outside can see it.'
-    case 'parse.close': {
-      const n = node(w.node)
-      const kids = n.children.map(src)
-      switch (n.kind) {
-        case 'binary':
-          // DRAFT copy for the statement's `;`.
-          return standsAlone(n)
-            ? `${code(n.label)} now holds both inputs, ${kids[0]} and ${kids[1]}, and the ${code(';')} after them ends the statement.`
-            : `${code(n.label)} now holds both inputs, ${kids[0]} and ${kids[1]}. Its result is ${src(w.node)}.`
-        case 'unary':
-          return `${code(n.label)} now holds its operand ${kids[0]}.`
-        case 'return':
-          return kids.length
-            ? `${code('return')} takes ${kids[0]} as the value to hand back.`
-            : `${code('return')} hands nothing back.`
-        case 'assign':
-          return `The assignment takes ${kids[kids.length - 1]}. It will be stored into ${code(trace.tokens[n.token].text)}.`
-        case 'declare':
-          return `${code(text(trace, n))} is complete.`
-        case 'function':
-          return `${code(n.label)} is complete.`
-        case 'block':
-          return 'The block closes.'
-        case 'while':
-          return 'The loop closes over its condition and body.'
-        case 'if':
-          return 'The if closes over its condition and branches.'
-        case 'call': {
-          const said = kids.length
-            ? `The call to ${code(trace.tokens[n.token].text)} has its ${kids.length === 1 ? 'argument' : 'arguments'} ${kids.join(', ')}.`
-            : `The call to ${code(trace.tokens[n.token].text)} takes no arguments.`
-          // DRAFT copy.
-          return standsAlone(n)
-            ? `${said} The ${code(';')} after it ends the statement.`
-            : said
-        }
-        case 'program':
-          return 'Every declaration has been read.'
-        default:
-          return `${code(n.label)} closes.`
-      }
-    }
+    case 'parse.close':
+    case 'parse.error':
+    case 'check.declare':
+    case 'check.resolve':
+    case 'check.unresolved':
+    case 'check.builtin':
+    case 'check.link':
+    case 'check.nameError':
+    case 'check.type':
+    case 'check.typesDone':
+    case 'check.namesDone':
+      return ''
     case 'parse.done':
       return `AST is complete with ${trace.nodes.length} nodes`
-    case 'parse.error': {
-      // DRAFT copy
-      const found =
-        w.token === null
-          ? 'the end of the program'
-          : code(trace.tokens[w.token].text)
-      return w.expected.length
-        ? `The parser expected ${joinOr(w.expected.map(categoryText))} here but found ${found}, so it stops.`
-        : `The parser stops at ${found}.`
-    }
-    case 'check.declare': {
-      const decl = node(w.decl)
-      const name = trace.tokens[decl.token].text
-      // A forward declaration is a function too.
-      const fn = decl.kind === 'function' || decl.label.startsWith('FunDecl ')
-      // DRAFT copy: a definition joining its forward declaration, a
-      // declaration of a built-in, and a declaration hiding one around it.
-      if (w.builtin)
-        return `${code(name)} is already a built-in function; this declaration matches it.`
-      if (w.joins !== undefined && decl.kind !== 'function')
-        return `The declaration of ${code(name)} matches its definition on line ${line(trace, node(w.joins))}: still one function.`
-      if (w.joins !== undefined)
-        return `The definition of ${code(name)} joins its declaration on line ${line(trace, node(w.joins))}: one function, now with a body.`
-      const hidden = w.shadows === undefined ? undefined : node(w.shadows)
-      const hides = !hidden
-        ? ''
-        : ` From here on it hides ${
-            hidden.kind === 'function' || hidden.label.startsWith('FunDecl ')
-              ? `the function ${code(trace.tokens[hidden.token].text)}`
-              : code(text(trace, hidden))
-          } on line ${line(trace, hidden)}.`
-      if (fn)
-        return `The function ${code(name)} goes in ${w.scope}, so calls anywhere below it can find it.${hides}`
-      // DRAFT copy
-      if (isClassDecl(decl.label))
-        return `The class ${code(name)} goes in ${w.scope}.${hides}`
-      if (w.where === 'param')
-        return `The parameter ${code(decl.label)} goes in ${w.scope}.${hides}`
-      return `${code(text(trace, decl))} puts ${code(name)} in ${w.scope}.${hides}`
-    }
-    case 'check.resolve': {
-      const use = node(w.use),
-        decl = node(w.decl)
-      const name = trace.tokens[use.token].text
-      // DRAFT copy: a call that finds only a forward declaration.
-      if (w.deferred)
-        return `${code(name + '()')} finds the declaration of ${code(name)} on line ${line(trace, decl)}. Its definition comes later, so the call is tied to it once the whole file is read.`
-      if (use.kind === 'call')
-        return `${code(name + '()')} calls the function ${code(decl.label)} defined ${w.where}.`
-      const where =
-        w.where === 'param'
-          ? 'in the parameters'
-          : `on line ${line(trace, decl)}`
-      // An assignment's target, resolved before its value.
-      const which = use.kind === 'assign' ? 'The target' : 'This'
-      return `${which} ${code(name)} refers to ${code(text(trace, decl))} ${where}.`
-    }
-    case 'check.unresolved': {
-      const use = node(w.use)
-      const name = trace.tokens[use.token].text
-      // DRAFT copy: the name is there, but not a variable or not a function.
-      if (w.found !== undefined && use.kind === 'call')
-        return `${code(name)} here names ${code(text(trace, node(w.found)))} on line ${line(trace, node(w.found))}, which is not a function, so the compiler cannot call it. It stops here.`
-      if (w.found !== undefined && node(w.found).kind === 'function')
-        return `${code(name)} here names the function ${code(name)}, not a variable, so the compiler cannot read it. It stops here.`
-      return `No declaration is visible for ${code(name)}, so the compiler cannot say what it means. It stops here.`
-    }
-    case 'check.builtin': {
-      const use = node(w.use)
-      return `${code(trace.tokens[use.token].text + '()')} is a built-in function. No declaration in this file is needed.`
-    }
-    // DRAFT copy, the next three.
-    case 'check.link': {
-      const name = trace.tokens[node(w.use).token].text
-      return `Now that the whole file has been read, ${code(name + '()')} is tied to the definition of ${code(name)} on line ${line(trace, node(w.decl))}.`
-    }
-    case 'check.nameError':
-      return `The name pass reports: ${w.message}. Compilation stops after this pass.`
-    // What the error is about: a type, else what it spans (a name, a
-    // statement), or with nothing to point at the whole program, unquoted.
     case 'check.typeError':
       return w.lvalue
         ? lvalueNote(w.lvalue)
@@ -656,100 +355,39 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
             : w.node === trace.root
               ? `${w.message[0].toUpperCase()}${w.message.slice(1)}. The compiler stops here.`
               : `${code(text(trace, frame.span))}: ${w.message}. The compiler stops here.`
-    case 'check.type': {
-      const n = node(w.node)
-      const owner = structOf(trace, n)
-      // DRAFT copy
-      if (owner) {
-        const name = trace.tokens[n.token].text
-        const struct = owner.label.replace(/ \{ \}$/, '')
-        return `${code(struct)}'s field ${code(name)} is declared ${code(w.type)}, so any ${code(`.${name}`)} on a ${code(struct)} has that type.`
-      }
-      if (n.kind === 'declare')
-        return `${code(trace.tokens[n.token].text)} is declared with type ${code(w.type)}. Later uses must agree with it.`
-      // DRAFT copy: the steps type-view.ts adds.
-      if (n.kind === 'function')
-        return `${code(n.label)} is declared to return ${code(w.type)}, so every ${code('return')} in its body has to hand back ${/^[aeiou]/.test(w.type) ? 'an' : 'a'} ${code(w.type)}.`
-      if (w.decl !== undefined)
-        return `${src(w.node)} was declared as ${code(text(trace, node(w.decl)).replace(/;$/, ''))}, so it has type ${code(w.type)}.`
-      if (n.kind === 'number')
-        return `${src(w.node)} is a ${n.label.startsWith("'") ? 'character' : n.label.startsWith('"') ? 'string' : 'number'} literal, so it has type ${code(w.type)}.`
-      return w.expected
-        ? `The return expression has type ${code(w.type)}, matching the function's ${code(w.expected)}.`
-        : `${src(w.node)} has type ${code(w.type)}.`
-    }
     case 'check.expr': {
+      // (a step that checks out has no note: the type pass shows none)
+      if (w.ok) return ''
       const n = node(w.node)
-      if (!w.ok) {
-        const bad = w.bad == null ? undefined : node(w.bad)
-        const got = bad && w.typed.find(([id]) => id === bad.id)?.[1]
-        if (w.lvalue) return lvalueNote(w.lvalue)
-        if (w.said) return `${w.said} The compiler stops here.`
-        if (!bad || !w.expected)
-          return w.message
-            ? `${src(w.node)} doesn't type-check: ${w.message}. The compiler stops here.` // DRAFT copy
-            : `${src(w.node)} doesn't type-check, so the compiler stops here.`
-        if (n.kind === 'call')
-          return `${code(n.label)} needs ${code(w.expected)} here, but ${src(bad.id)} is ${code(got ?? '?')}. The compiler stops here.`
-        return ['==', '!='].includes(n.label)
-          ? `${code(n.label)} needs both sides to have the same type, but ${src(bad.id)} is ${code(got ?? '?')}, not ${code(w.expected)}. The compiler stops here.`
-          : `${code(n.label)} needs ${code(w.expected)} on both sides, but ${src(bad.id)} is ${code(got ?? '?')}. The compiler stops here.`
-      }
+      const bad = w.bad == null ? undefined : node(w.bad)
+      const got = bad && w.typed.find(([id]) => id === bad.id)?.[1]
+      if (w.lvalue) return lvalueNote(w.lvalue)
+      if (w.said) return `${w.said} The compiler stops here.`
+      if (!bad || !w.expected)
+        return w.message
+          ? `${src(w.node)} doesn't type-check: ${w.message}. The compiler stops here.` // DRAFT copy
+          : `${src(w.node)} doesn't type-check, so the compiler stops here.`
       if (n.kind === 'call')
-        return n.children.length
-          ? `The ${n.children.length === 1 ? 'argument matches' : 'arguments match'} the parameters, so ${src(w.node)} has the function's return type, ${code(w.type)}.`
-          : `${src(w.node)} has the function's return type, ${code(w.type)}.`
-      // DRAFT copy
-      if (n.label === '=') {
-        const [target, value] = n.children
-        return `The target ${src(target)} and the value ${src(value)} are both ${code(w.type)}, so the assignment fits, and ${src(w.node)} has type ${code(w.type)}.`
-      }
-      if (n.label.startsWith('.') && n.children.length === 1) {
-        const of =
-          w.typed.find(([id]) => id === n.children[0])?.[1] ??
-          typeOf(trace, n.children[0])
-        return `${code(n.label.slice(1))} is a field of ${code(of ?? 'the struct')}, declared ${code(w.type)}, so ${src(w.node)} has type ${code(w.type)}.`
-      }
-      if (n.kind === 'binary' || n.kind === 'unary') {
-        const sides = n.kind === 'unary' ? 'Its operand is' : 'Both sides are'
-        return ['<', '>', '<=', '>=', '==', '!=', '&&', '||'].includes(n.label)
-          ? `${sides} ${code('int')}, so ${src(w.node)} checks out. A comparison gives ${code('int')}: 1 for true, 0 for false.`
-          : `${sides} ${code('int')}, so ${src(w.node)} is ${code(w.type)} too.`
-      }
-      return `${src(w.node)} has type ${code(w.type)}.`
+        return `${code(n.label)} needs ${code(w.expected)} here, but ${src(bad.id)} is ${code(got ?? '?')}. The compiler stops here.`
+      return ['==', '!='].includes(n.label)
+        ? `${code(n.label)} needs both sides to have the same type, but ${src(bad.id)} is ${code(got ?? '?')}, not ${code(w.expected)}. The compiler stops here.`
+        : `${code(n.label)} needs ${code(w.expected)} on both sides, but ${src(bad.id)} is ${code(got ?? '?')}. The compiler stops here.`
     }
     case 'check.fits': {
+      // (only a failure is shown: the type pass has no notes otherwise)
+      if (w.ok) return ''
       const value = src(w.value)
       if (w.rule === 'assign') {
         const target = code(trace.tokens[node(w.node).token].text)
-        return w.ok
-          ? `${target} is ${code(w.expected)} and ${value} is ${code(w.type)}, so the assignment fits.`
-          : `${target} is ${code(w.expected)}, but ${value} is ${code(w.type)}. The compiler stops here.`
+        return `${target} is ${code(w.expected)}, but ${value} is ${code(w.type)}. The compiler stops here.`
       }
-      if (w.rule === 'condition') {
-        const what = code(node(w.node).label)
-        return w.ok
-          ? `The condition ${value} is ${code('int')}, as ${what} needs.`
-          : `A ${what} condition must be ${code('int')}, but ${value} is ${code(w.type)}. The compiler stops here.`
-      }
+      if (w.rule === 'condition')
+        return `A ${code(node(w.node).label)} condition must be ${code('int')}, but ${value} is ${code(w.type)}. The compiler stops here.`
       // A bare `return;` stands in for its own value.
       if (w.value === w.node)
-        return w.ok
-          ? `${code('return;')} hands back nothing, as a ${code('void')} function should.`
-          : `The function promises ${code(w.expected)}, but this ${code('return;')} hands back nothing. The compiler stops here.`
-      return w.ok
-        ? `The return value ${value} is ${code(w.type)}, matching what the function promises.`
-        : `The function promises ${code(w.expected)}, but ${value} is ${code(w.type)}. The compiler stops here.`
+        return `The function promises ${code(w.expected)}, but this ${code('return;')} hands back nothing. The compiler stops here.`
+      return `The function promises ${code(w.expected)}, but ${value} is ${code(w.type)}. The compiler stops here.`
     }
-    case 'check.typesDone':
-      return 'Every expression has a type, and each one fits where it is used. The tree is ready for code generation.'
-    case 'check.namesDone':
-      return w.unresolved === 0 && w.errors
-        ? // DRAFT copy
-          `Every name has a declaration, but the name pass found ${w.errors === 1 ? 'an error' : `${w.errors} errors`}, so compilation stops.`
-        : w.unresolved === 0
-          ? 'Every name has a declaration. Each use is now tied to the place it was declared.'
-          : `${w.unresolved} ${w.unresolved === 1 ? 'name has' : 'names have'} no declaration, so compilation stops.`
     case 'emit.instr': {
       const n = node(w.node)
       const run = trace.instructions.slice(w.from, w.to + 1)
@@ -1161,7 +799,7 @@ function instructionLine(ins: Trace['instructions'][number]): string {
  * operators. The lexer itself gives each lexeme its own category (PLUS, SC,
  * ...), so these groups are for reading, not something it outputs.
  */
-export const LEXEMES = {
+const LEXEMES = {
   type: ['int', 'void', 'char'],
   keyword: [
     'if',
@@ -1708,19 +1346,6 @@ export const STEP_SLIDES: {
   },
 ]
 
-/** The type a node was given, as the frames record it. */
-const typeOf = (trace: Trace, id: number): string | undefined => {
-  for (const f of trace.frames) {
-    const w = f.why
-    if (w.kind === 'check.type' && w.node === id) return w.type
-    if ('typed' in w) {
-      const t = w.typed.find(([n]) => n === id)
-      if (t) return t[1]
-    }
-  }
-  return undefined
-}
-
 /** A token's class as shown on the page; "name" reads as "identifier". */
 export const tokenKind = (token: Token): TokenClass => {
   if (token.kind === 'name') return 'identifier'
@@ -1808,9 +1433,9 @@ export const isClassDecl = (label: string) =>
   label.startsWith('ClassDecl ') ||
   (label.startsWith('class ') && label.endsWith(' { }'))
 
-/** A node's class and its kind within it. */
-// A struct's fields are its children (ParseTrace), declared in its scope.
-export const structOf = (trace: Trace, node: AstNode) =>
+// The struct a field belongs to: its fields are its children
+// (ParseTrace), declared in its scope.
+const structOf = (trace: Trace, node: AstNode) =>
   node.kind === 'declare'
     ? trace.nodes.find(
         (p) =>
@@ -1948,18 +1573,10 @@ export function matchTable(
   })
 }
 
-const article = (cls: string) => (/^[aeiou]/.test(cls) ? 'an ' : 'a ') + cls
 const joinOr = (items: string[]) =>
   items.length > 1
     ? `${items.slice(0, -1).join(', ')} or ${items[items.length - 1]}`
     : items[0]
-
-const NEXT_NAMES: Record<string, string> = {
-  ' ': 'a space',
-  '\n': 'a newline',
-  '\t': 'a tab',
-  '': 'the end of the file',
-}
 
 // The tokeniser's decisions that settle a token: after them it is complete.
 const SETTLES: ReadonlySet<LexDecision> = new Set([
@@ -1991,67 +1608,6 @@ export function lexState(trace: Trace, w: Extract<Why, { kind: 'lex.char' }>) {
     look,
     final: does && SETTLES.has(does) ? tokenKind(token) : undefined,
   }
-}
-
-function readStep(trace: Trace, w: Extract<Why, { kind: 'lex.char' }>) {
-  const { token, read, char, reader, does, look, final } = lexState(trace, w)
-  const next = NEXT_NAMES[char] ?? code(char)
-  const literal = reader === 'char' ? 'character' : 'string'
-  // DRAFT copy: every sentence here but the `end` case's and the two at the
-  // bottom, which the span-replayed steps already had.
-  switch (does) {
-    case 'end': {
-      let text = `The next character, ${next}, can't extend ${code(read)}, so the token ends here as ${article(final ?? 'token')}.`
-      if (reader === 'word' && final !== 'identifier')
-        text += ` Words on the ${final} list win over identifiers.`
-      return text
-    }
-    case 'single':
-    case 'second':
-      return `Nothing longer starts with ${code(read)}, so the token ends here as ${article(final ?? 'token')}${does === 'single' ? ', without a look at the next character' : ''}.`
-    case 'string':
-    case 'char':
-      return `${code(char)} opens a ${literal}: everything up to the closing ${code(char)} belongs to it.`
-    case 'escape':
-      return 'A backslash starts an escape: the character after it says which one.'
-    case 'escaped':
-      return `${code('\\' + char)} is an escape Mini-C knows, and stands for one character.`
-    case 'bad escape':
-      return `${code('\\' + char)} is not an escape Mini-C knows.`
-    case 'bad char':
-      return `This character can't appear inside a ${literal}.`
-    case 'close':
-      return `The closing ${code(char)} ends the ${literal}.`
-    case 'unterminated':
-      // DRAFT copy (the file's end)
-      return `The ${trace.text !== undefined && token.end >= trace.text.length ? 'file' : 'line'} ends before the closing ${code(token.text[0])}, so the ${literal} is never closed.`
-    case 'invalid': {
-      if (!look) return `${code(char)} can't begin any Mini-C token.`
-      const longer = Object.values(LEXEMES)
-        .flat()
-        .filter((l: string) => l !== read && l.startsWith(read))
-      return `${code(read)} only begins ${joinOr(longer.map(code))}, and the next character, ${next}, doesn't finish it.`
-    }
-  }
-  if (does === 'continue' && (reader === 'string' || reader === 'char'))
-    return `${code(char)} is inside the ${literal}, so it is taken as it is.`
-  const fits = matchTable(read, reader)
-    .filter((r) => r.match !== 'none')
-    .map((r) =>
-      r.rule
-        ? article(r.cls)
-        : `${r.cls} ${r.lexemes
-            .filter((l) => l.match !== 'none')
-            .map((l) => code(l.text))
-            .join(', ')}`,
-    )
-  const text =
-    fits.length > 0
-      ? `${code(read)} could still become ${joinOr(fits)}.`
-      : `${code(read)} is not in any table yet; it is part of ${article(tokenKind(token))}.`
-  return does === 'slash'
-    ? `${text} A second \`/\` or a \`*\` would start a comment instead.` // DRAFT copy
-    : text
 }
 
 // The real lexer and parser print their errors rather than record them

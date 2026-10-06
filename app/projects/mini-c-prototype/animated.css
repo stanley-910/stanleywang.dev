@@ -822,15 +822,6 @@
   padding: 0;
   background: none;
 }
-.ac-note-stack {
-  display: grid;
-}
-.ac-note-layer {
-  grid-area: 1 / 1;
-}
-.ac-note-layer.ghost {
-  visibility: hidden;
-}
 .ac-lexemes {
   display: flex;
   flex-wrap: wrap;
