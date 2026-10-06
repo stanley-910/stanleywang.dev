@@ -61,26 +61,6 @@ export function withEmitBlocks(trace: Trace): Trace {
   return { ...trace, frames: out }
 }
 
-// Emit leaves out pushRegisters and popRegisters: which registers a
-// function saves isn't known until register allocation, which adds them
-// (Stanley, 2026-10-01). Their own steps go; a step whose run includes one
-// (a whole prologue, in blocks) keeps it, and the listing hides its row.
-export const isPlaceholder = (op: string) =>
-  op === 'pushRegisters' || op === 'popRegisters'
-export function withoutPlaceholders(trace: Trace): Trace {
-  const frames = trace.frames.filter((frame) => {
-    const w = frame.why
-    return !(
-      (w.kind === 'emit.instr' ||
-        w.kind === 'emit.prologue' ||
-        w.kind === 'emit.epilogue') &&
-      w.from === w.to &&
-      isPlaceholder(trace.instructions[w.from]?.op ?? '')
-    )
-  })
-  return { ...trace, frames }
-}
-
 // Line by line (the default): a step per instruction. A node's run of
 // several lines, and a function's prologue and epilogue, split into one
 // step per line; each keeps the whole run in `of`, so the note can say

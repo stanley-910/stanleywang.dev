@@ -41,12 +41,7 @@ import { startCanvas, type Canvas, type CanvasRest } from './canvas-zoom'
 import { derive, ProofTree } from './derivation'
 import { detailTrace } from './detail'
 import { EmitLanes, lanesWidth } from './emit-lanes'
-import {
-  isPlaceholder,
-  withEmitBlocks,
-  withEmitLines,
-  withoutPlaceholders,
-} from './emit-view'
+import { withEmitBlocks, withEmitLines } from './emit-view'
 import {
   explain,
   NODE_KINDS,
@@ -929,11 +924,9 @@ export default function AnimatedCompiler() {
         ? namedTrace.trace
         : withTypeSteps(
             withoutLiveness(
-              withoutPlaceholders(
-                blocks
-                  ? withEmitBlocks(namedTrace.trace)
-                  : withEmitLines(namedTrace.trace),
-              ),
+              blocks
+                ? withEmitBlocks(namedTrace.trace)
+                : withEmitLines(namedTrace.trace),
             ),
           ),
     [namedTrace],
@@ -3783,15 +3776,6 @@ export default function AnimatedCompiler() {
       })),
   ]
   const shownInstructions = trace.instructions.slice(0, frame.instructionCount)
-  // Emit's listing leaves out pushRegisters and popRegisters (their labels
-  // stay); the allocator's adds them. Lines are numbered as shown.
-  const hideHolds = frame.phase === 'Emit'
-  const rowNumbers = useMemo(() => {
-    let n = 0
-    return trace.instructions.map((ins) =>
-      hideHolds && isPlaceholder(ins.op) ? 0 : ++n,
-    )
-  }, [trace, hideHolds])
   const rowStagger = back ? 0 : transition.duration * 0.35
   const functionNames = functions
   const tray = trace.tokens.filter(
@@ -6550,7 +6534,7 @@ export default function AnimatedCompiler() {
                               }
                               onMouseLeave={clearHover}
                             >
-                              <span>{rowNumbers[i]}</span>
+                              <span>{i + 1}</span>
                               {hold && !line ? (
                                 <code className="ac-hold">{op}</code>
                               ) : (
@@ -6624,9 +6608,7 @@ export default function AnimatedCompiler() {
                                       </motion.div>
                                     ),
                                   )
-                                : hideHolds && hold
-                                  ? []
-                                  : [row()]),
+                                : [row()]),
                             ]}
                           </Fragment>
                         )

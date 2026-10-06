@@ -109,6 +109,70 @@ export type StackFrame = {
   saved: string[]
   /** At each call, the callee's frame as it will sit under `$sp`. */
   calls: Map<number, { callee: string; words: (Word & { addr: number })[] }>
+  /** The calling convention's step each line takes, by instruction. */
+  steps: Map<number, ConventionStep>
+}
+
+/** One step of the calling convention, numbered as the Caller and Callee
+ * slide lists them: the caller sets up the call (1), the callee's prologue
+ * (2), its result and epilogue (3), the caller after it returns (4).
+ * `main` has no caller here, so its prologue and epilogue name no side. */
+export type ConventionStep = {
+  n: 1 | 2 | 3 | 4
+  who?: 'caller' | 'callee'
+  what: string
+}
+
+/** The step a line takes, from what codegen said it is for (its tag). */
+export function conventionStep(
+  tag: Tag | undefined,
+  main: boolean,
+): ConventionStep | undefined {
+  if (!tag) return undefined
+  const callee = main ? undefined : ('callee' as const)
+  switch (tag.role) {
+    case 'reserve':
+      if (tag.for === 'arg')
+        return { n: 1, who: 'caller', what: `argument for ${tag.call}` }
+      if (tag.for === 'result')
+        return { n: 1, who: 'caller', what: `room for ${tag.call}'s result` }
+      return { n: 2, who: callee, what: 'prologue' }
+    case 'store':
+      if (tag.call)
+        return { n: 1, who: 'caller', what: `argument for ${tag.call}` }
+      if (tag.into === 'return') return { n: 3, who: callee, what: 'result' }
+      return undefined
+    case 'call':
+      return { n: 1, who: 'caller', what: `jump to ${tag.call}` }
+    case 'save':
+    case 'set-fp':
+    case 'push-registers':
+      return { n: 2, who: callee, what: 'prologue' }
+    case 'jump.epilogue':
+      return { n: 3, who: callee, what: 'return' }
+    case 'pop-registers':
+    case 'restore':
+    case 'return':
+      return { n: 3, who: callee, what: 'epilogue' }
+    case 'syscall.code':
+    case 'syscall':
+      // main's exit, after its epilogue (print_i's and the like are body)
+      return tag.call === 'exit'
+        ? { n: 3, who: callee, what: 'exit' }
+        : undefined
+    case 'release':
+      return tag.for === 'call'
+        ? { n: 4, who: 'caller', what: 'clear arguments' }
+        : { n: 3, who: callee, what: 'epilogue' }
+    case 'load':
+    case 'addr':
+      if (tag.of === 'result')
+        return { n: 4, who: 'caller', what: `read ${tag.call}'s result` }
+      if (tag.of === 'return') return { n: 3, who: callee, what: 'result' }
+      return undefined
+    default:
+      return undefined
+  }
 }
 
 // Globals sit far below the stack, in the order declared.
@@ -613,6 +677,12 @@ function build(
     })
   }
 
+  const steps: StackFrame['steps'] = new Map()
+  for (let k = 0; k < n; k++) {
+    const step = conventionStep(at(k).tag, main)
+    if (step) steps.set(first + k, step)
+  }
+
   // ---- words released but still read ----------------------------------
   // The epilogue's restores, and a struct a call returned, copied out
   // after the call's words come off the stack. They stay, through the line
@@ -645,7 +715,7 @@ function build(
   const rows: StackRow[] = []
   const rowOf = new Map<number, number>()
   const addRange = (hi: number, lo: number, data: boolean) => {
-    for (let w = hi; w >= lo; ) {
+    for (let w = hi; w >= lo;) {
       const o = objectAt(w)
       const big =
         o && o.hi - o.lo > 24 && /\[\d+\]/.test(words.get(w)?.label ?? '')
@@ -714,6 +784,7 @@ function build(
     top,
     saved,
     calls,
+    steps,
   }
 }
 

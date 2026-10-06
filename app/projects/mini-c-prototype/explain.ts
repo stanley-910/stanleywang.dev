@@ -813,17 +813,16 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
           ? Number(room.text?.split(',').pop()) * -1
           : 0
       const saveRa = run.some((i) => i.text?.startsWith('sw $ra'))
-      // (pushRegisters isn't shown in emit: register allocation adds it,
-      // Stanley, 2026-10-01; emit-view.ts withoutPlaceholders)
-      return `Before its body, ${code(n.label)} builds a stack frame: it saves the caller's frame pointer, points ${code('$fp')} at this frame${saveRa ? ', keeps the return address' : ''}${bytes ? `, and reserves ${bytes} bytes for the variables it declares` : ''}. None of these lines is written in your code.`
+      // DRAFT copy: the placeholder clause.
+      return `Before its body, ${code(n.label)} builds a stack frame: it saves the caller's frame pointer, points ${code('$fp')} at this frame${saveRa ? ', keeps the return address' : ''}${bytes ? `, reserves ${bytes} bytes for the variables it declares` : ''}, and leaves ${code('pushRegisters')} as a placeholder for the registers it will save. None of these lines is written in your code.`
     }
     case 'emit.epilogue': {
       const n = node(w.node)
       if (w.of) return explainFrameLine(trace, n, w.of, w.from)
       const run = trace.instructions.slice(w.from, w.to + 1)
       const exits = run.some((i) => i.op === 'syscall')
-      // (nor popRegisters: see the prologue)
-      const back = `puts ${code('$sp')} and ${code('$fp')} back the way the caller left them`
+      // DRAFT copy: the placeholder clause.
+      const back = `restores its saved registers (${code('popRegisters')}, a placeholder for now), puts ${code('$sp')} and ${code('$fp')} back the way the caller left them`
       return `${code(n.label)} is done. It ${back}, and ${exits ? 'exits with a system call' : `jumps back to the caller with ${code('jr $ra')}`}.`
     }
     case 'emit.value':
@@ -1401,7 +1400,16 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
         'node in the AST. At each usage, we check declarations stored for the ' +
         'current scope, typically defined with `{…}`, and if we cannot find a ' +
         'declaration, we walk up scopes and their declarations using a ' +
-        'symbol table until we either find it or throw an error.\n\nEach ' +
+        'symbol table until we either find it or throw an error.\n\nA ' +
+        // DRAFT copy (2026-10-06): what a symbol table is (sem/Scope.java:
+        // a map of names to declarations, and the scope around it).
+        '**symbol table** is where the compiler keeps every name declared ' +
+        'so far. Each scope gets its own table, matching each name to its ' +
+        'declaration, and points to the scope around it. Walking up scopes ' +
+        'is just following those pointers outward, from the innermost ' +
+        '`{…}` to the global scope. For example, a use of `n` inside a ' +
+        "`while` loop's body checks the loop's block first, then the " +
+        "function's, then the globals.\n\nEach " +
         "time we link the usage to its declaration inside that node's " +
         'metadata so that later passes (like typechecking) can inspect the ' +
         'type of a variable/function/what-have-you by going straight to the ' +
@@ -1433,8 +1441,15 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
         'becomes:\n1. load `a` from memory into a register\n2. load `b` into ' +
         'another register\n3. add them into a third\n4. store that result ' +
         'back into `x`\n\nWe assume for this phase that we have an infinite ' +
-        'amount of registers to work with. Similar to how in virtualization ' +
-        'we assume an infinite amount of address space to work with. The ' +
+        'amount of registers to work with. ' +
+        // DRAFT copy (2026-10-06): the OS analogy, explained, in place of
+        // "Similar to how in virtualization we assume an infinite amount of
+        // address space to work with."
+        'This is similar to **virtual memory** in an operating system: each ' +
+        'program is written as if it had all of memory to itself, and the ' +
+        'OS quietly maps those addresses onto the physical memory the ' +
+        'machine actually has. Our **virtual registers** work the same way, ' +
+        'standing in for real ones until they are mapped. The ' +
         'work of allocating the incremental usage of registers into a finite ' +
         'supply is left for the next pass.',
     },

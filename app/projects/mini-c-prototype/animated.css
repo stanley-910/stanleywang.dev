@@ -2428,6 +2428,32 @@
   font-style: normal;
   color: var(--faint);
 }
+/* The calling convention's step over the column (stack-view.ts
+   conventionStep): its number from the Caller and Callee slide, the side
+   taking it, and what it does. One line, kept when empty, so the column
+   doesn't jump. */
+.ac-stack-step {
+  height: 18px;
+  margin-bottom: 4px;
+  overflow: hidden;
+  font-size: 10px;
+  line-height: 18px;
+  color: var(--muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.ac-stack-step b {
+  margin-right: 6px;
+  padding: 0 4px;
+  border: 1px solid var(--faint);
+  font-weight: 400;
+  color: var(--ink);
+}
+.ac-stack-step i {
+  margin-right: 6px;
+  font-style: normal;
+  color: var(--ink);
+}
 .ac-stack-gap {
   position: absolute;
   left: 5px;
