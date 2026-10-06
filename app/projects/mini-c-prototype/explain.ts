@@ -1527,31 +1527,29 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
         'placeholder with the actual saves and restores.',
     },
   ],
-  // DRAFT copy (2026-10-06), for Stanley to rewrite: written to his
-  // emit slides' voice, every term introduced where it first appears. The
-  // colouring slides open their steps (STEP_SLIDES).
+  // Stanley's dictation (2026-10-06), tidied: the opening two. The rest
+  // open the steps they describe (STEP_SLIDES).
   Registers: [
     {
       title: 'Register Allocation',
       body:
-        'In emit, we gave every value its own virtual register and left ' +
-        "fitting them onto real ones for later. Now it's later.\n\nMIPS " +
-        'gives us 18 registers we can freely hand out (`$t0`–`$t9` and ' +
-        '`$s0`–`$s7`), but even a short program can use dozens of virtual ' +
-        "ones. The **register allocator**'s job is to give every virtual " +
-        'register a real one, reusing the same real register wherever it ' +
-        'safely can.',
+        'In emit, we gave every value its own virtual register and put off ' +
+        'mapping them onto real registers until now. MIPS, our target ' +
+        'architecture, gives us only 18 registers to freely hand out ' +
+        '(`$t0`–`$t9` and `$s0`–`$s7`). However, even a short program can ' +
+        'use well past that many virtual ones. The **register allocator**’s ' +
+        'job is to map every virtual register to a real one without ' +
+        "exceeding the processor's finite supply.",
     },
     {
-      title: 'Sharing Registers',
+      title: 'Liveness',
       lanes: true,
       body:
-        'Remember the bars beside the assembly? Two virtual registers can ' +
-        'share a real register as long as their bars never overlap, since ' +
-        'one value is done before the other one starts.\n\nFor example, in ' +
-        '`x = a + b; y = c + d;`, the registers holding `a` and `b` are ' +
-        'both done by the time `c` is loaded, so `c` and `d` can reuse ' +
-        'their registers.',
+        'The liveness ranges beside the assembly are the foundation of how ' +
+        'we keep down the number of real registers we use. The gist of it ' +
+        'is that any two virtual registers may share a real register as ' +
+        'long as they are never live at the same time, that is, their bars ' +
+        'never overlap.',
     },
   ],
 }
@@ -1602,7 +1600,8 @@ export const STEP_SLIDES: {
       },
     ],
   },
-  // DRAFT copy (2026-10-06), as the phase slides above.
+  // Stanley's dictation (2026-10-06), tidied; each slide opens the step
+  // it describes. The interference graph's sits just before it appears.
   {
     phase: 'Registers',
     // The first interference graph: Registers opens on it (the liveness
@@ -1610,21 +1609,17 @@ export const STEP_SLIDES: {
     starts: (frame) => frame.why.kind === 'reg.interfere',
     slides: [
       {
-        title: 'Graph Colouring',
+        title: 'Interference Graph',
         body:
-          'To find out which registers can share, we draw an **interference ' +
-          'graph**. Each virtual register is a dot (a **node**), and we draw ' +
-          'a line (an **edge**) between two nodes if their live ranges ' +
-          "overlap, meaning they **interfere** and can't share a register." +
-          '\n\nNow picture each real register as a colour. Giving out ' +
-          'registers becomes colouring the graph: give every node one of 18 ' +
-          'colours, so that no two nodes joined by an edge get the same one.' +
-          '\n\nFinding the best colouring is famously hard (no one knows a ' +
-          'fast way to do it for every graph), so compilers use a shortcut ' +
-          'that works well in practice.',
+          "You'll now see these liveness ranges mapped onto an " +
+          '**interference graph**. Each virtual register is a dot (a ' +
+          '**node**), and two nodes are joined by a line (an **edge**), ' +
+          'making them **adjacent**, if their live ranges overlap. That ' +
+          'means they **interfere**, and therefore cannot share a register.',
       },
     ],
   },
+  // Once the graph is up, before the first node is set aside.
   {
     phase: 'Registers',
     starts: (frame, previous) =>
@@ -1632,16 +1627,30 @@ export const STEP_SLIDES: {
       previous.why.kind === 'reg.interfere',
     slides: [
       {
-        title: 'Set Aside the Easy Ones',
+        title: 'Graph Colouring',
         body:
-          "The shortcut my compiler uses is **Chaitin's algorithm**. It " +
-          'starts by looking for easy nodes: any node with fewer than 18 ' +
-          'edges. No matter which colours its neighbours end up with, they ' +
-          "can use at most 17 of the 18, so there's always one left over for " +
-          'it.\n\nSo we set the easy node aside, taking it and its edges out ' +
-          "of the graph. That lowers its neighbours' edge counts, which can " +
-          'make them easy too. Each node set aside is numbered in the order ' +
-          'it was taken out, so we can bring them back in reverse later.',
+          'Fitting our virtual registers into 18 real ones now becomes a ' +
+          '**graph colouring** problem: give every node one of 18 colours, ' +
+          'one per real register, such that no two adjacent nodes share a ' +
+          'colour.\n\nThere is no known fast way to find the best colouring ' +
+          'for every graph, so compilers today use **heuristics**: rules of ' +
+          "thumb that work well in practice, but don't guarantee the best " +
+          'answer.',
+      },
+      {
+        title: "Chaitin's Algorithm",
+        body:
+          "**Chaitin's algorithm** is one such heuristic, used by compilers " +
+          'to colour the interference graph and so allocate registers. It ' +
+          'works by first finding nodes with fewer edges than the number of ' +
+          'real registers we have available: 18. Even if such a node has the ' +
+          'most neighbours it can, 17, and they all take different colours, ' +
+          'there is still one colour left over for it.\n\nSo we take this ' +
+          'easy-to-colour node and set it aside, pushing it onto a **stack** ' +
+          '(a pile where the last thing in is the first thing out), and ' +
+          'remove it from the graph along with all of its edges. Its ' +
+          'neighbours each lose an edge, which can bring them under 18 and ' +
+          'make them easy too.',
       },
     ],
   },
@@ -1650,13 +1659,14 @@ export const STEP_SLIDES: {
     starts: (frame) => frame.why.kind === 'reg.spillCandidate',
     slides: [
       {
+        // DRAFT copy, not dictated: as the slides around it.
         title: 'When None Are Easy',
         body:
           'Sometimes every node left has 18 or more edges, and there is no ' +
-          'easy node to set aside. We set one aside anyway, the one with the ' +
-          'most edges, and mark it as a **spill candidate**: it might not get ' +
-          'a colour when we come back to it.\n\nIt might still get lucky, ' +
-          'though. If its neighbours end up sharing colours among ' +
+          'easy node to set aside. We push one onto the stack anyway, the ' +
+          'one with the most edges, and mark it as a **spill candidate**: it ' +
+          'might not get a colour when it comes back off.\n\nIt might still ' +
+          'get lucky, though. If its neighbours end up sharing colours among ' +
           'themselves, there can be one left over for it.',
       },
     ],
@@ -1668,13 +1678,14 @@ export const STEP_SLIDES: {
       {
         title: 'Colour in Reverse',
         body:
-          'Once every node is set aside, we bring them back in reverse ' +
-          'order, last one out first. Each node takes the first colour none ' +
-          'of its neighbours already has.\n\nGoing in reverse is what makes ' +
-          'this work: a node comes back to the same neighbours it had when ' +
-          'it was set aside, fewer than 18 of them, so a colour is always ' +
-          'free. The only exception is a spill candidate. If one comes back ' +
-          'and every colour is taken, it is **spilled**.',
+          'Once every node has been set aside on the stack, we pop them off, ' +
+          'starting with the last one we set aside. Each node takes the ' +
+          'first colour none of its neighbours already has.\n\nBy popping ' +
+          'them in this reverse order, a node only comes back to the same ' +
+          'neighbours it had when it was first set aside: fewer than 18 of ' +
+          'them, so a colour is always free. The only exception is a spill ' +
+          'candidate. If one comes back and every colour is taken, it is ' +
+          '**spilled**.',
       },
     ],
   },
@@ -1686,7 +1697,10 @@ export const STEP_SLIDES: {
       {
         title: 'Spilling',
         body:
-          "A spilled value doesn't get a register at all. It lives in " +
+          // DRAFT copy: the register pressure sentence (Stanley asked).
+          'Spills happen when more values are live at the same moment than ' +
+          'there are registers to hold them, which is called high **register ' +
+          "pressure**. A spilled value doesn't get a register at all. It lives in " +
           'memory instead, in a 4-byte slot of the **data section** (memory ' +
           "set aside for the program's whole run), and is loaded into a " +
           'register right before every instruction that reads it, then ' +
@@ -1695,21 +1709,6 @@ export const STEP_SLIDES: {
           'when the first attempt spills, my allocator throws that colouring ' +
           'away and starts over with 16 colours, keeping `$t8` and `$t9` ' +
           'free just for spill code.',
-      },
-    ],
-  },
-  {
-    phase: 'Registers',
-    starts: (frame) => frame.why.kind === 'reg.done',
-    slides: [
-      {
-        title: 'Why It Pays Off',
-        body:
-          'Registers are the fastest storage the processor has, and memory ' +
-          'is many times slower. By letting values that are never live at ' +
-          'the same time share a register, dozens of virtual registers fit ' +
-          'into a handful of real ones, and every value the program is ' +
-          'working with stays in a register instead of memory.',
       },
     ],
   },
