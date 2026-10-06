@@ -808,6 +808,10 @@
   stroke-width: 1.75;
 }
 /* (not the inline code's chip, which the note's code takes) */
+/* Code over the body (codeFirst) sits under the heading, apart from the text. */
+.ac .ac-window-head + .ac-slide-code {
+  margin: 0 0 10px;
+}
 .ac .ac-slide-code code {
   padding: 0;
   background: none;

@@ -3981,10 +3981,20 @@ export default function AnimatedCompiler() {
       </tbody>
     </table>
   )
+  // A slide's code blocks, one per example.
+  const slideCode = intro?.code && (
+    <>
+      {[intro.code].flat().map((code) => (
+        <pre key={code} className="ac-slide-code">
+          <code>{code}</code>
+        </pre>
+      ))}
+    </>
+  )
   // A slide's small two-column table, under its body, and its hint last.
   const slideTable = (intro?.table ||
     intro?.hint ||
-    intro?.code ||
+    (intro?.code && !intro.codeFirst) ||
     intro?.quote) && (
     <>
       {intro.quote && (
@@ -3992,11 +4002,7 @@ export default function AnimatedCompiler() {
           <Prose text={intro.quote} />
         </blockquote>
       )}
-      {intro.code && (
-        <pre className="ac-slide-code">
-          <code>{intro.code}</code>
-        </pre>
-      )}
+      {!intro.codeFirst && slideCode}
       {intro.table && slideRows(intro.table, intro.head)}
       {intro.hint === 'detailedLexer' && (
         // Stanley's copy (2026-10-02): the setting it names flips here, and
@@ -4030,6 +4036,7 @@ export default function AnimatedCompiler() {
       <div className="ac-note-stack">
         <div className="ac-note-layer">
           {heading}
+          {intro?.codeFirst && slideCode}
           <Prose text={noteText} onExample={openExample} />
           {slideTable}
         </div>
@@ -4046,6 +4053,7 @@ export default function AnimatedCompiler() {
     ) : (
       <>
         {heading}
+        {intro?.codeFirst && slideCode}
         <Prose text={noteText} onExample={openExample} />
         {slideTable}
       </>

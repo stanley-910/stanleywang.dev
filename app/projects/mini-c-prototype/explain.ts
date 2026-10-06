@@ -1244,8 +1244,10 @@ export type Slide = {
   lanes?: true
   /** Part of the welcome (readme.txt), not of a phase. */
   readme?: true
-  /** A code block under the body (before any table). */
-  code?: string
+  /** Code blocks under the body (before any table), one block each. */
+  code?: string | string[]
+  /** The code goes over the body instead, for a body that points at it. */
+  codeFirst?: true
   /** A muted line last: a setting the slide points to, which the line
    * turns on (and the settings menu opens on). */
   hint?: 'detailedLexer'
@@ -1362,7 +1364,7 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
     },
   ],
   // The real SemanticAnalyzer runs NameAnalyzer, then TypeAnalyzer; the type
-  // slide opens the second pass (STEP_SLIDES).
+  // slides open the second pass (STEP_SLIDES).
   Check: [
     {
       title: 'Correct Grammar, Wrong Program',
@@ -1378,45 +1380,116 @@ export const PHASE_SLIDES: Partial<Record<Frame['phase'], Slide[]>> = {
     },
     {
       title: 'Semantic Analysis',
+      // Stanley's copy (2026-10-06).
       body:
-        "Semantic analysis finds everything the grammar can't express, and " +
-        'it enriches the AST with the information later phases need.',
+        'The parser guarantees the structural validity of a program. ' +
+        'Statements end in semicolons, a `while` has a condition followed by ' +
+        'a body, brackets are balanced. That form is what gets embedded into ' +
+        "the AST. What the parser can't tell us is whether our code is " +
+        'meaningful.\n\nCode is meaningful if it is well-declared and ' +
+        'properly typed. Validating this is delegated to Name Analysis and ' +
+        'Type Checking, each its own walk through the newly constructed AST.',
     },
     {
-      title: 'Name Resolution and Scoping',
+      title: 'Name Analysis',
+      // Stanley's copy (2026-10-06); "your code is properly declared" read
+      // "your code that is properly declared", "going straight" read "going
+      // to straight", and a comma after `{…}`.
       body:
-        'First pass: the compiler walks the tree with a **symbol table**, ' +
-        'opening a new scope for each function and block. Each declaration ' +
-        'goes into the current scope, and each use of a name is linked to the ' +
-        'nearest declaration it can see. A name with no declaration, or one ' +
-        'declared twice in the same scope, is an error.',
+        'When it comes to validating that your code is properly declared, ' +
+        'we want to link each variable and function usage to its declaration ' +
+        'node in the AST. At each usage, we check declarations stored for the ' +
+        'current scope, typically defined with `{…}`, and if we cannot find a ' +
+        'declaration, we walk up scopes and their declarations using a ' +
+        'symbol table until we either find it or throw an error.\n\nEach ' +
+        "time we link the usage to its declaration inside that node's " +
+        'metadata so that later passes (like typechecking) can inspect the ' +
+        'type of a variable/function/what-have-you by going straight to the ' +
+        'declaration.',
     },
   ],
-  // Draft copy, for Stanley to rewrite.
   Emit: [
+    // Stanley's copy (2026-10-06), from a draft he cut down; "The work"
+    // read "the work".
     {
-      title: 'Code Generation',
+      title: 'From Tree to Instructions',
       body:
-        'The tree is checked, so the compiler can finally write code. It ' +
-        'walks the tree one last time and emits **MIPS assembly** for each ' +
-        'node: an expression leaves its value in a register, and a statement ' +
-        'strings those together with loads, stores and jumps.',
+        'Now that our AST is well-declared and well-typed, we can finally ' +
+        'use it for what it was built for: generating **assembly**.\n\nCode ' +
+        'generation walks the tree and, for each kind of node, follows a ' +
+        'rule for which MIPS instructions it becomes.',
     },
     {
-      title: 'Skipping the Fine Print',
+      title: 'Speaking to Hardware',
       body:
-        'Real assembly carries a lot of bookkeeping, so we sweep over it for ' +
-        'now. Every value gets a fresh **virtual register**, as if the ' +
-        'machine had as many as we like, and saving and restoring registers ' +
-        "around a function is left as two placeholders. We'll add the " +
-        'details back a block at a time as we go, and the register allocator ' +
-        'fills in the rest next.',
-      head: ['written', 'stands for'],
-      table: [
-        ['v0, v1, …', 'a virtual register'],
-        ['pushRegisters', 'save registers in use'],
-        ['popRegisters', 'restore them'],
-      ],
+        'Unlike C, assembly describes exactly what your processor does, one ' +
+        'step at a time. Each line is a single **instruction** that runs ' +
+        "directly on your hardware.\n\nProcessors don't do arithmetic on " +
+        'variables sitting in memory. They do it in **registers**: a handful ' +
+        'of storage slots built into the processor itself. Memory is large ' +
+        'but slow to reach, while registers are tiny but extremely fast. So ' +
+        'most of the work is moving values into registers, operating on ' +
+        'them, and moving the results back out.\n\nFor example, `x = a + b;` ' +
+        'becomes:\n1. load `a` from memory into a register\n2. load `b` into ' +
+        'another register\n3. add them into a third\n4. store that result ' +
+        'back into `x`\n\nWe assume for this phase that we have an infinite ' +
+        'amount of registers to work with. Similar to how in virtualization ' +
+        'we assume an infinite amount of address space to work with. The ' +
+        'work of allocating the incremental usage of registers into a finite ' +
+        'supply is left for the next pass.',
+    },
+    {
+      title: 'The Stack',
+      body:
+        'Each time a function is called, it needs room for its own ' +
+        'parameters and local variables. That room comes from the ' +
+        '**stack**, a region of memory that grows each time a function is ' +
+        'called and shrinks each time one returns.\n\nEach call gets its own ' +
+        'slice of the stack, called a **stack frame**. Two registers keep ' +
+        'track of it:\n- the **stack pointer** (`$sp`) marks the current end ' +
+        'of the stack\n- the **frame pointer** (`$fp`) marks where the ' +
+        'current frame begins, so every local can be found at a fixed ' +
+        'distance from it (e.g. `x` at `$fp - 8`)\n\nWhen `main` calls ' +
+        "`square`, `square`'s frame is placed just past `main`'s, so nothing " +
+        "`square` stores can land on `main`'s variables. When `square` " +
+        "returns, its frame is thrown away, and `main`'s is exactly as it " +
+        'was left.',
+    },
+    {
+      title: 'Caller and Callee',
+      code:
+        'int square(int n) {   // callee\n  return n * n;\n}\n\n' +
+        'void main() {         // caller\n  int y;\n  y = square(4);\n}',
+      codeFirst: true,
+      body:
+        'When one function calls another, the one making the call is the ' +
+        '**caller**, and the one being called is the **callee**. They need ' +
+        "to agree on who does what, or they'd overwrite each other's data. " +
+        'That agreement is called a **calling convention**. In mine:\n\n' +
+        '1. **Caller:** pushes each argument onto the stack, reserves space ' +
+        'for the return value, and jumps to the callee, saving where to come ' +
+        'back to in the **return address** register (`$ra`).\n' +
+        "2. **Callee:** first saves the caller's `$fp` and `$ra`, makes room " +
+        "for its locals, and saves any registers it's about to use. This " +
+        'setup is the **prologue**.\n' +
+        '3. **Callee:** runs its body, writes its result into the reserved ' +
+        'space, then puts everything back the way it found it and jumps to ' +
+        '`$ra`. This cleanup is the **epilogue**.\n' +
+        '4. **Caller:** reads the result off the stack and clears away the ' +
+        "arguments.\n\nYou'll see each of these steps labeled in the stack " +
+        'as it happens.',
+    },
+    {
+      title: 'Saving Registers, Later',
+      body:
+        'Back in step 2, the callee "saves any registers it\'s about to ' +
+        'use." But with infinite virtual registers, we don\'t yet know which ' +
+        "real registers a function will end up using, so there's nothing " +
+        'concrete to save.\n\nInstead, we leave two placeholders: ' +
+        '`pushRegisters` at the end of the prologue, and `popRegisters` at ' +
+        'the start of the epilogue. Once register allocation has decided ' +
+        'which real registers each function uses, it replaces each ' +
+        'placeholder with the actual saves and restores.',
     },
   ],
   // Draft copy, for Stanley to rewrite. The graph colouring and Chaitin
@@ -1468,15 +1541,28 @@ export const STEP_SLIDES: {
         'check.typesDone',
       ].includes(frame.why.kind) && previous.why.kind === 'check.namesDone',
     slides: [
+      // Stanley's copy (2026-10-06); "the second example" read "the
+      // second examples", and "the left side of `=` to be" read "the left
+      // side of `=` has to be".
       {
-        title: 'Type Analysis',
+        title: 'Type Checking',
         body:
-          'Second pass: with every name linked to its declaration, the ' +
-          "compiler works out each expression's type from the bottom up and " +
-          "checks it fits where it's used: `*` needs `int` operands, a call's " +
-          "arguments must match the function's parameters, and `return` must " +
-          "match the function's return type. It also catches `break` and " +
-          '`continue` outside a loop.',
+          "Now let's take a look at well-typed code. Would these examples " +
+          'count?',
+        code: ['int x;\nx = "hello";', 'int x;\n5 = x;'],
+      },
+      {
+        title: 'Type Checking',
+        body:
+          'This code is not meaningful, even though we have properly defined ' +
+          'variables where we use them. The issue is typing. In both examples ' +
+          'we declare `x` to be an integer, but the first time around we ' +
+          'assign it to a string!\n\nContrarily, the second example ' +
+          'technically is well-typed, since `5` and `x` are both integers. ' +
+          'The problem is that the language (and by association, our ' +
+          'compiler) expects the left side of `=` to be somewhere a value ' +
+          'can be stored, and `5` is just a value. Checking for proper ' +
+          '"lvalues" is also a responsibility of type checking.',
       },
     ],
   },
