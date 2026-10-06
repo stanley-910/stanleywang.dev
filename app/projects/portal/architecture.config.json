@@ -1,0 +1,17 @@
+{
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Menlo, monospace",
+    "fontSize": "14px",
+    "primaryColor": "#111111",
+    "primaryBorderColor": "#222222",
+    "primaryTextColor": "#333333",
+    "lineColor": "#444444",
+    "clusterBkg": "#555555",
+    "clusterBorder": "#666666",
+    "titleColor": "#777777",
+    "edgeLabelBackground": "#888888",
+    "tertiaryColor": "#555555"
+  },
+  "flowchart": { "curve": "basis", "padding": 14, "nodeSpacing": 34, "rankSpacing": 46, "htmlLabels": false }
+}

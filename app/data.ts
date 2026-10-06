@@ -42,6 +42,23 @@ export type ExperiencePost = Post
 
 export const PROJECTS: Project[] = [
   {
+    name: 'Portal',
+    slug: 'portal',
+    description:
+      'A multiplayer globe for getting between places in Asia. Draw a trip with friends, and Portal finds the trains, flights and buses to get everyone there, with a shared agent in the group chat.',
+    link: '/projects/portal',
+    media: {
+      type: 'images',
+      sources: [
+        '/images/projects/portal-party-light.jpg',
+        '/images/projects/portal-party-dark.jpg',
+      ],
+      alt: 'Four friends planning a trip across Asia with live cursors on Portal’s shared globe.',
+    },
+    id: 'portal',
+    category: 'Web',
+  },
+  {
     name: 'Eastwatch',
     slug: 'eastwatch',
     description:
