@@ -2604,9 +2604,6 @@ export default function AnimatedCompiler() {
     (saves === 'mark'
       ? ins.op === 'pushRegisters' || ins.op === 'popRegisters'
       : ins.op === (saves === 'push' ? 'pushRegisters' : 'popRegisters'))
-  // (rows move when a placeholder expands: the lanes measure them again)
-  const listingLayout =
-    rewrittenFns * 4 + (saves ? ['mark', 'push', 'pop'].indexOf(saves) + 1 : 0)
   const graphFn = regView ? backend.functions[fnIndex] : undefined
   const graphSteps = graphFn ? attemptOf(graphFn, w).steps : []
   const graphShown = regView
@@ -2628,6 +2625,43 @@ export default function AnimatedCompiler() {
   }
   const onStack = new Set(pushedAs.keys())
   const stepVr = graphFn && 'step' in w ? graphSteps[w.step]?.vr : undefined
+  // Spill slots in `.data`, as the allocator writes them
+  // (GraphColouringRegAlloc: a label and `.space 4` per spilled register):
+  // each from the step its register spills on, the attempt the code uses
+  // only (an abandoned attempt's spills get no slot).
+  const dataSlots = regView
+    ? backend.functions.flatMap((f, i) =>
+        Object.entries(f.colouring.labels ?? {})
+          .filter(
+            ([vr]) =>
+              i < fnIndex ||
+              (i === fnIndex &&
+                (finished ||
+                  (!('abandoned' in w && w.abandoned) && spilled.has(vr)))),
+          )
+          .map(([vr, label]) => ({ vr, label })),
+      )
+    : []
+  // The data section's lines: code generation's from emit on (comments
+  // left out), then the spill slots.
+  const dataLines: { text: string; vr?: string }[] =
+    frame.phase === 'Emit' || frame.phase === 'Registers'
+      ? [
+          ...(trace.data ?? [])
+            .filter((t) => t && !t.startsWith('#'))
+            .map((text) => ({ text })),
+          ...dataSlots.flatMap(({ vr, label }) => [
+            { text: `${label}:`, vr },
+            { text: '.space 4', vr },
+          ]),
+        ]
+      : []
+  // (rows move when a placeholder expands or a slot arrives: the lanes
+  // measure them again)
+  const listingLayout =
+    dataLines.length * 64 +
+    rewrittenFns * 4 +
+    (saves ? ['mark', 'push', 'pop'].indexOf(saves) + 1 : 0)
   const paletteIndex = (r: string) => backend?.palette.indexOf(r) ?? -1
   // (to a tenth, so a resize by a few pixels doesn't lay it out again)
   // (a phone's graph gets the stage less a little room below it:
@@ -6441,6 +6475,47 @@ export default function AnimatedCompiler() {
                       // (the lanes are drawn over it, so it keeps their room)
                       style={lanesShown ? { minWidth: listingMin } : undefined}
                     >
+                      {dataLines.length > 0 && (
+                        // The data section over the code, as the compiler
+                        // prints it: code generation's (strings, globals)
+                        // from emit on, then the allocator's spill slots.
+                        <>
+                          <div className="ac-asm-label">.data</div>
+                          {dataLines.map((line, j) => {
+                            const now =
+                              line.vr !== undefined &&
+                              w.kind === 'reg.spill' &&
+                              !w.abandoned &&
+                              line.vr === stepVr
+                            return line.text.endsWith(':') ? (
+                              <motion.div
+                                key={`data-${j}-${line.text}`}
+                                className="ac-asm-label"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={transition}
+                              >
+                                {line.text}
+                              </motion.div>
+                            ) : (
+                              <motion.div
+                                key={`data-${j}-${line.text}`}
+                                className={`ac-ins data ${now ? 'current' : ''}`}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={transition}
+                                title={
+                                  line.vr ? `${line.vr}'s slot` : undefined
+                                }
+                              >
+                                <span />
+                                <code className="ac-data">{line.text}</code>
+                              </motion.div>
+                            )
+                          })}
+                          <div className="ac-asm-label">.text</div>
+                        </>
+                      )}
                       {shownInstructions.map((ins, i) => {
                         const current = saves
                           ? savesLit(ins)

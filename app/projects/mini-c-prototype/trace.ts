@@ -453,6 +453,10 @@ export type Trace = {
   ast?: string
   backend?: Backend
   layout?: Layout
+  /** The data section as code generation wrote it (globals, strings), a
+   * line each as the compiler prints them; spill slots come later
+   * (Colouring.labels). */
+  data?: string[]
   scopes?: RecordedScope[]
 }
 // A scope NameAnalyzer opened (ParseTrace.scopesJson): the global scope,

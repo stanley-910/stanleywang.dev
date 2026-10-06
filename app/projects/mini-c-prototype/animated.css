@@ -1742,6 +1742,12 @@
 .ac-asm-label.fn {
   font-weight: 600;
 }
+/* A data section line (`.asciiz "…"`, `.space 4`): wider than an
+   instruction's name, so it spans the name's column and its operands'. */
+.ac-asm .ac-data {
+  grid-column: 2 / 4;
+  white-space: pre;
+}
 /* pushRegisters/popRegisters: placeholders, dashed like everything else
    on the page that isn't settled yet. */
 .ac-asm .ac-hold {
