@@ -10,8 +10,6 @@ import {
   ZoomIn,
   ZoomOut,
 } from 'lucide-react'
-import Link from 'next/link'
-import { useTheme } from 'next-themes'
 import {
   AnimatePresence,
   animate,
@@ -22,6 +20,8 @@ import {
   type MotionStyle,
   type ValueAnimationTransition,
 } from 'motion/react'
+import Link from 'next/link'
+import { useTheme } from 'next-themes'
 import {
   type ComponentProps,
   type CSSProperties,
@@ -4006,26 +4006,6 @@ export default function AnimatedCompiler() {
       <Prose text={statusText} />
     </span>
   )
-  const slideRows = (rows: [string, string][], head?: [string, string]) => (
-    <table className="ac-slide-table">
-      <thead>
-        <tr>
-          <th>{head?.[0] ?? 'lexeme'}</th>
-          <th>{head?.[1] ?? 'category'}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map(([lexeme, category]) => (
-          <tr key={lexeme}>
-            <td>
-              <code>{lexeme}</code>
-            </td>
-            <td>{category}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  )
   // A slide's code blocks, one per example.
   const slideCode = intro?.code && (
     <>
@@ -4036,9 +4016,8 @@ export default function AnimatedCompiler() {
       ))}
     </>
   )
-  // A slide's small two-column table, under its body, and its hint last.
-  const slideTable = (intro?.table ||
-    intro?.hint ||
+  // What goes under a slide's body: its quote, its code, and its hint last.
+  const slideExtras = (intro?.hint ||
     (intro?.code && !intro.codeFirst) ||
     intro?.quote) && (
     <>
@@ -4048,7 +4027,6 @@ export default function AnimatedCompiler() {
         </blockquote>
       )}
       {!intro.codeFirst && slideCode}
-      {intro.table && slideRows(intro.table, intro.head)}
       {intro.hint === 'detailedLexer' && (
         // Stanley's copy (2026-10-02): the setting it names flips here, and
         // the settings menu opens to show it.
@@ -4083,7 +4061,7 @@ export default function AnimatedCompiler() {
           {heading}
           {intro?.codeFirst && slideCode}
           <Prose text={noteText} onExample={openExample} />
-          {slideTable}
+          {slideExtras}
         </div>
         {(sizing ? tallestTokenSteps : []).map((v) => (
           <div
@@ -4100,7 +4078,7 @@ export default function AnimatedCompiler() {
         {heading}
         {intro?.codeFirst && slideCode}
         <Prose text={noteText} onExample={openExample} />
-        {slideTable}
+        {slideExtras}
       </>
     )
   // What the pane under the source keeps: each pass's own record (Stanley,

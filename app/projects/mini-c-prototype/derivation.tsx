@@ -5,21 +5,12 @@
 // A rule's premises are its children's conclusions, so a statement's
 // proof is its subtree upside down, leaves on top. Parts not yet joined
 // under a parent sit side by side, waiting for the bar that joins them.
-// The stage draws every statement's proof under the tree (proof-stage.tsx);
-// a node's hover, the rule that typed it (animated.tsx).
+// A node's hover shows the rule that typed it (animated.tsx).
 import { returnType } from './type-view'
 
 import type { Trace } from './trace'
 
-// Nodes that get a type, and statements that check one.
-export const EXPRESSIONS = new Set([
-  'binary',
-  'unary',
-  'expr',
-  'call',
-  'name',
-  'number',
-])
+// Statements that check a type.
 const CHECKS = new Set(['return', 'if', 'while', 'assign'])
 
 // Something above a line: a proven part, or a fact the rule reads off the
@@ -90,10 +81,6 @@ export function derive(trace: Trace, source: string, index: number) {
   }
   const parent = new Map<number, number>()
   for (const n of trace.nodes) for (const c of n.children) parent.set(c, n.id)
-  // An assignment checks its value too, whether it is its own kind of node
-  // or a binary `=`.
-  const checks = (id: number) =>
-    CHECKS.has(trace.nodes[id].kind) || trace.nodes[id].label === '='
   // A statement is proven once it is checked, an expression once typed.
   const proven = (id: number) =>
     CHECKS.has(trace.nodes[id].kind) ? checked.has(id) : known.has(id)
@@ -262,99 +249,33 @@ export function derive(trace: Trace, source: string, index: number) {
     }
   }
 
-  // The statement a node is in: up through the expressions around it, to
-  // the statement that checks them, if any. A declaration or a function
-  // is its own.
-  const rootOf = (id: number) => {
-    let root = id
-    for (
-      let p = parent.get(root);
-      p !== undefined &&
-      (EXPRESSIONS.has(trace.nodes[p].kind) || CHECKS.has(trace.nodes[p].kind));
-      p = parent.get(p)
-    )
-      root = p
-    return root
-  }
-  // A statement's parts proven so far that nothing has joined yet, in
-  // source order.
-  const loose = (root: number) => {
-    const out: number[] = []
-    const gather = (id: number) => {
-      const n = trace.nodes[id]
-      if (!EXPRESSIONS.has(n.kind) && !CHECKS.has(n.kind) && id !== root) return
-      if (proven(id)) out.push(id)
-      else n.children.forEach(gather)
-    }
-    gather(root)
-    return out
-  }
-
-  return { focus, known, parent, checks, proven, rule, rootOf, loose, text }
-}
-
-// The statements the type pass proves, in the order it gets to them, each
-// with its first step; and the pass's last step, where every proof is whole.
-export function proofRoots(trace: Trace, source: string) {
-  let last = -1
-  const first = new Map<number, number>()
-  const d = derive(trace, source, 0)
-  trace.frames.forEach((f, i) => {
-    const w = f.why
-    if (
-      w.kind !== 'check.type' &&
-      w.kind !== 'check.expr' &&
-      w.kind !== 'check.fits'
-    )
-      return
-    last = i
-    const root = d.rootOf(w.node)
-    if (!first.has(root)) first.set(root, i)
-  })
-  return { first, last }
+  return { focus, proven, rule }
 }
 
 // One part: its rule, its premises' own parts drawn above it, down to
-// `limit` rules; past that, or folded by hand, only its conclusion.
+// `limit` rules; past that, only its conclusion.
 export function ProofTree({
   d,
   id,
   level = 0,
   limit = Infinity,
-  open,
-  onToggle,
   badFor,
 }: {
   d: Derivation
   id: number
   level?: number
   limit?: number
-  open?: Map<number, boolean>
-  onToggle?: (id: number, open: boolean) => void
   badFor?: string
 }) {
   const r = d.rule(id)
-  const drawn = open?.get(id) ?? level < limit
-  const foldable = r.premises.some((p) => p.kind === 'part')
   const conclusion = (
     <code className={badFor ? 'bad' : ''}>
       {r.conclusion}
       {badFor && <small> needs {badFor}</small>}
     </code>
   )
-  if (!drawn)
-    return onToggle ? (
-      <button
-        type="button"
-        className="ac-proof folded"
-        title="Show how"
-        onClick={() => onToggle(id, true)}
-      >
-        {conclusion}
-      </button>
-    ) : (
-      <span className="ac-proof folded">{conclusion}</span>
-    )
+  if (level >= limit)
+    return <span className="ac-proof folded">{conclusion}</span>
   return (
     <div
       className={['ac-proof', id === d.focus && 'current', !r.ok && 'bad']
@@ -370,8 +291,6 @@ export function ProofTree({
               id={p.id}
               level={level + 1}
               limit={limit}
-              open={open}
-              onToggle={onToggle}
               badFor={r.bad?.id === p.id ? r.bad.expected : undefined}
             />
           ) : (
@@ -382,18 +301,7 @@ export function ProofTree({
         )}
       </div>
       <div className="ac-proof-line" />
-      {onToggle && foldable && level > 0 ? (
-        <button
-          type="button"
-          className="ac-proof-name"
-          title="Fold"
-          onClick={() => onToggle(id, false)}
-        >
-          {r.name}
-        </button>
-      ) : (
-        <span className="ac-proof-name">{r.name}</span>
-      )}
+      <span className="ac-proof-name">{r.name}</span>
       <div className="ac-proof-conclusion">{conclusion}</div>
     </div>
   )

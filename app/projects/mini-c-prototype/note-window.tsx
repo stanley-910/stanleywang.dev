@@ -332,10 +332,8 @@ export function NoteWindow({
     body.style.height = was
     setFitDock(need)
   }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useLayoutEffect(measureDock)
   // (and as what's in it grows in: a record's cards open after the step)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const body = bodyRef.current
     if (!body || !docked || height !== null) return

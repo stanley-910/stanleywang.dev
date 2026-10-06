@@ -301,17 +301,6 @@ function tokenRole(token: Token): string {
   return 'is punctuation'
 }
 
-const roleWord: Record<string, string> = {
-  left: 'left input',
-  right: 'right input',
-  operand: 'operand',
-  condition: 'condition',
-  body: 'body',
-  argument: 'argument',
-  statement: 'statement',
-  value: 'value',
-}
-
 // DRAFT copy: why the part of an lvalue error that isn't a place in memory
 // isn't one, by what kind of expression it is.
 const NOT_A_PLACE: Record<string, string> = {
@@ -512,8 +501,6 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
         }
       }
     }
-    case 'parse.take':
-      return `${src(w.child)} becomes the ${roleWord[w.role] ?? w.role} of ${code(node(w.parent).label)}.`
     case 'parse.wait': {
       const op = node(w.node)
       // DRAFT, on the parse.node template.
@@ -785,12 +772,9 @@ function explainStep(trace: Trace, frame: Frame, titled: boolean): string {
         : w.parts && w.parts.length > 1
           ? explainBlock(trace, w.parts)
           : explainMips(trace, n, run)
-      // (the first virtual register's lanes: the Infinite Registers slide
-      // says what they are)
-      const said = line
       return dead
-        ? `${said} ${run.length === 1 ? 'It' : code(dead.text ?? dead.op)} never runs: the jump before it always leaves first, so the register allocator drops it.`
-        : said
+        ? `${line} ${run.length === 1 ? 'It' : code(dead.text ?? dead.op)} never runs: the jump before it always leaves first, so the register allocator drops it.`
+        : line
     }
     case 'emit.prologue': {
       const n = node(w.node)
@@ -1211,10 +1195,6 @@ export type TokenClass = keyof typeof LEXEMES
 export type Slide = {
   title: string
   body: string
-  /** Pairs shown as a small table under the body. */
-  table?: [string, string][]
-  /** The table's column headings; lexeme and category by default. */
-  head?: [string, string]
   /** About the live-range bars, which only the real compiler's traces draw. */
   lanes?: true
   /** Part of the welcome (readme.txt), not of a phase. */
@@ -1741,12 +1721,6 @@ const typeOf = (trace: Trace, id: number): string | undefined => {
   return undefined
 }
 
-/** A register's place on the allocator's stack: pushes up to its step. */
-const pushNumber = (steps: readonly { op: string }[], step: number): number =>
-  steps
-    .slice(0, step + 1)
-    .filter((s) => s.op === 'simplify' || s.op === 'spillCandidate').length
-
 /** A token's class as shown on the page; "name" reads as "identifier". */
 export const tokenKind = (token: Token): TokenClass => {
   if (token.kind === 'name') return 'identifier'
@@ -1758,7 +1732,6 @@ export const tokenKind = (token: Token): TokenClass => {
         : 'number'
   if (token.kind === 'keyword')
     return LEXEMES.type.includes(token.text) ? 'type' : 'keyword'
-  if (token.kind !== 'symbol') return token.kind
   const group = (Object.keys(LEXEMES) as TokenClass[]).find((c) =>
     LEXEMES[c].includes(token.text),
   )

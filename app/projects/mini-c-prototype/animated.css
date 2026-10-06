@@ -233,12 +233,6 @@
   border: 0;
   padding: 0;
 }
-.ac-label {
-  display: block;
-  color: var(--muted);
-  font-size: 10px;
-  letter-spacing: 0.04em;
-}
 
 /* A phone's way back to the projects (the phone block below). */
 .ac-home {
@@ -827,21 +821,6 @@
 .ac .ac-slide-code code {
   padding: 0;
   background: none;
-}
-/* Lexeme-to-category pairs on an intro slide. */
-.ac-slide-table {
-  margin-top: 10px;
-  border-collapse: collapse;
-}
-.ac-slide-table th {
-  padding: 0 18px 4px 0;
-  color: var(--muted);
-  font-weight: 400;
-  text-align: left;
-}
-.ac-slide-table td {
-  padding: 3px 18px 3px 0;
-  border-top: 1px solid var(--line);
 }
 .ac-note-stack {
   display: grid;
@@ -1678,9 +1657,6 @@
   position: relative;
   line-height: var(--row);
 }
-.ac-asm .ac-label {
-  margin-bottom: 4px;
-}
 /* Emit in blocks, and the Registers listing: the assembly as columns
    (number, op, operands) at the editor's size and row, on its own ground so
    the stage's 22px rules don't run through its 19px rows. */
@@ -1920,39 +1896,6 @@
   /* (in the middle of its pane) */
   margin: 0 auto;
 }
-/* The type pass's panel (type-panel.tsx): the statement's derivation,
-   each rule its premises over a line, its name at the line's end, and the
-   conclusion under it; a rule's parts stand on its line, so the proof
-   stacks up the way the slides draw it. Words in the notes' Prose face,
-   code in the page's own, no chips, all in ink. */
-.ac-types {
-  display: grid;
-  /* (its parts held to the panel's width: a long one wraps or scrolls) */
-  grid-template-columns: minmax(0, 1fr);
-  gap: 16px;
-  font-family: 'Notes Prose', var(--font-mono);
-  font-size: 11px;
-}
-.ac .ac-types code {
-  padding: 0;
-  background: none;
-  font-family: var(--font-mono);
-  white-space: nowrap;
-}
-/* Wider than the panel only once the deepest parts are folded, then it
-   scrolls sideways. */
-.ac-proofs {
-  overflow-x: auto;
-  scrollbar-width: thin;
-}
-.ac-proof-forest {
-  display: flex;
-  justify-content: center;
-  align-items: flex-end;
-  gap: 18px;
-  width: max-content;
-  min-width: 100%;
-}
 .ac-proof {
   display: inline-grid;
   grid-template-columns: auto auto;
@@ -1983,9 +1926,6 @@
   font-size: 10px;
   line-height: 12px;
 }
-.ac button.ac-proof-name {
-  cursor: pointer;
-}
 .ac-proof-conclusion {
   grid-column: 1;
   padding-top: 2px;
@@ -2013,16 +1953,11 @@
     transform: translateY(4px);
   }
 }
-/* A part folded to its conclusion: open it to see how. */
+/* A part folded to its conclusion, past the depth drawn. */
 .ac-proof.folded {
   display: inline-block;
   padding: 0 4px 2px;
-  border: 0;
   border-bottom: 1px dashed var(--line);
-  background: none;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
 }
 .ac-proof .bad,
 .ac-proof.bad > .ac-proof-conclusion {
@@ -2081,33 +2016,6 @@
 .ac-hover-proof .ac-proof .ac-proof-conclusion,
 .ac-hover-proof .ac-proof .ac-proof-fact {
   opacity: 1;
-}
-/* The same proofs on the stage, under the tree (proof-stage.tsx): one
-   per statement, each in the place kept for it finished. */
-.ac-proof-stage {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 0;
-  height: 0;
-  color: var(--ink);
-  font-family: 'Notes Prose', var(--font-mono);
-  font-size: 11px;
-  pointer-events: none;
-}
-.ac .ac-proof-stage code {
-  padding: 0;
-  background: none;
-  font-family: var(--font-mono);
-  white-space: nowrap;
-}
-.ac-proof-slot {
-  position: absolute;
-  top: 0;
-  left: 0;
-}
-.ac-proof-measure {
-  visibility: hidden;
 }
 .ac-type-done {
   margin: 0;
@@ -2258,21 +2166,6 @@
 }
 .ac-stack:active {
   cursor: grabbing;
-}
-/* `--room`: characters kept free right of the words for the registers
-   that point at them (set per line). */
-.ac-stack .ac-label {
-  display: flex;
-  justify-content: space-between;
-  padding: 0 calc(var(--room, 5) * 1ch + 3px) 4px calc(5ch + 3px);
-  font-size: inherit;
-  transition: padding 0.3s ease-out;
-  white-space: nowrap;
-}
-/* What the right column counts: bytes above (+) or below (−) `$fp`. */
-.ac-stack .ac-label :is(span, small) {
-  font-size: 10px;
-  color: var(--faint);
 }
 /* What a word holds: the register stored in it, then its value. */
 /* What a line moves through the word: `← v2` stored into it, `→ v3`

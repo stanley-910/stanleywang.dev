@@ -222,7 +222,6 @@ export type Why =
   | { kind: 'lex.skip'; start: number; end: number; comment: boolean }
   | { kind: 'parse.read'; token: number }
   | { kind: 'parse.node'; node: number }
-  | { kind: 'parse.take'; parent: number; role: string; child: number }
   // an operator read its left input and now needs the right one
   | { kind: 'parse.wait'; node: number; child: number }
   | {
