@@ -233,9 +233,6 @@ function ProjectMedia({ media, name }: ProjectMediaProps) {
               src={slideKey(media.sources[0])}
               className="w-full cursor-zoom-in"
               style={{ aspectRatio: aspect }}
-              onClick={(e) => {
-                e.preventDefault()
-              }}
             />
           </div>
         </MorphingDialogTrigger>
