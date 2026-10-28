@@ -146,3 +146,16 @@ html {
     animation: none;
   }
 }
+
+/* Circadian Meadow: every page is plain `page` with `ink` text. */
+body {
+  background: var(--page);
+  color: var(--ink);
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+}
+
+:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: 3px;
+}

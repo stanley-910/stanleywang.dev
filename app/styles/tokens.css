@@ -1,0 +1,76 @@
+/*
+  Circadian Meadow page tokens, from design/circadian-meadow/tokens.json.
+  Every page but home styles through these. The theme follows the hour
+  (see app/theme-script.ts): `.dark` / [data-theme="dark"] from about 18:30
+  to 05:30, light otherwise. Light is the default before any script runs.
+*/
+
+:root {
+  /* Type: one sans, one mono. The families come from next/font in
+     app/layout.tsx; these names are what the rest of the site uses. */
+  --font-sans: var(--font-geist), system-ui, -apple-system, 'Segoe UI',
+    sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, 'SF Mono', Menlo,
+    monospace;
+
+  --text-body: 15px;
+  --leading-body: 1.6;
+  --text-small: 13px;
+  --text-meta: 12px;
+  --leading-meta: 16px;
+  --text-nav: 14px;
+  --weight-body: 400;
+  --weight-strong: 500;
+  --weight-hover: 600;
+
+  /* Page colour, light (day). */
+  --page-light: #ebeae6;
+  --page-dark: #1b1b19;
+  --page: var(--page-light);
+  --ink: #252522;
+  --ink-muted: #63625e;
+  --hairline: #8f8e89;
+  --surface: #f3f2ee;
+  --shadow-card: 0 1px 2px #25252214, 0 8px 24px #2525221f;
+  --focus: var(--ink);
+
+  /* Over photos, whatever the theme. */
+  --caption-fill: #1b1b19cc;
+  --caption-ink: #e4e2da;
+  --caption-ink-muted: #9d9b94;
+
+  /* Space and shape. */
+  --space-1: 8px;
+  --space-2: 14px;
+  --space-3: 18px;
+  --space-4: 32px;
+  --space-5: 64px;
+  --gutter: 24px;
+  --measure: 54rem;
+  --measure-read: 40rem;
+  --radius-none: 0;
+  --radius-hair: 2px;
+  --radius-card: 6px;
+  --radius-pill: 999px;
+
+  /* Motion: quick and calm. */
+  --ease-calm: cubic-bezier(0.2, 0, 0, 1);
+  --duration-quick: 120ms;
+  --duration-card: 160ms;
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --gutter: 20vw;
+  }
+}
+
+:root.dark,
+:root[data-theme='dark'] {
+  --page: var(--page-dark);
+  --ink: #e4e2da;
+  --ink-muted: #9d9b94;
+  --hairline: #6a6964;
+  --surface: #242422;
+  --shadow-card: 0 1px 2px #0000004d, 0 10px 28px #00000066;
+}

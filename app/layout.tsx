@@ -1,27 +1,34 @@
-// Font styles
-import '@fontsource/dm-mono'
+import './styles/tokens.css'
 import './styles/fonts.css'
 import './styles/prose.css'
 import './styles/toc.css'
 import './styles/globals.css'
 import { Analytics } from '@vercel/analytics/react'
+import { Geist, Geist_Mono } from 'next/font/google'
 import { ThemeProvider } from 'next-themes'
 
-import { BackgroundArt } from '@/components/art/BackgroundArt'
 import { ScrollToTop } from '@/components/ScrollToTop'
 import { ProgressBar } from '@/components/ui/progress-bar'
+import { THEME_SCRIPT } from '@/lib/circadian'
 
 import { Footer } from './footer'
 import { Header } from './header'
 
 import type { Metadata, Viewport } from 'next'
 
+// tokens.css names these --font-sans and --font-mono.
+const geist = Geist({ subsets: ['latin'], variable: '--font-geist' })
+const geistMono = Geist_Mono({
+  subsets: ['latin'],
+  variable: '--font-geist-mono',
+})
+
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   themeColor: [
-    { media: '(prefers-color-scheme: dark)', color: '#09090b' }, // Dark mode - zinc-950
-    { media: '(prefers-color-scheme: light)', color: '#fafafa' }, // Light mode - zinc-50
+    { media: '(prefers-color-scheme: dark)', color: '#1b1b19' }, // page-dark
+    { media: '(prefers-color-scheme: light)', color: '#ebeae6' }, // page-light
   ],
 }
 
@@ -44,18 +51,25 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className="bg-white antialiased dark:bg-zinc-950">
+    <html
+      lang="en"
+      className={`${geist.variable} ${geistMono.variable}`}
+      suppressHydrationWarning
+    >
+      <head>
+        {/* Picks the hour's theme before next-themes applies it. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
+      <body className="antialiased">
         <ProgressBar />
         <ThemeProvider
-          enableSystem={true}
-          attribute="class"
+          enableSystem={false}
+          attribute={['class', 'data-theme']}
           storageKey="theme"
-          defaultTheme="system"
+          defaultTheme="light"
         >
           <div className="flex min-h-screen w-full flex-col">
             <div className="relative mx-auto flex w-full max-w-[45ch] flex-1 flex-col px-4 pt-20 sm:max-w-[65ch]">
-              <BackgroundArt type="random" />
               <Header />
               <main className="flex-1">
                 {children}
