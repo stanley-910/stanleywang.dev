@@ -37,6 +37,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from 'react'
 
 import { renameVirtuals, splitLine, VIRTUAL_IN_LINE, virtualsIn } from './asm'
@@ -75,7 +76,16 @@ import {
   compilerLoaded,
   REAL_MAX_CHARS,
 } from './real'
-import { FIRST_ERROR, findReference, REFERENCES } from './reference'
+import {
+  FIRST_ERROR,
+  findPreset,
+  loadTrace,
+  onTraceLoaded,
+  prefetchTraces,
+  PRESETS,
+  presetTrace,
+  tracesLoaded,
+} from './reference'
 import { badgesAt, regBadges } from './reg-badges'
 import { withSaveSteps, withoutLiveness } from './regs-view'
 import { ScopeTree } from './scope-tree'
@@ -100,7 +110,7 @@ import { isTypeStep, returnType, withTypeSteps } from './type-view'
 import '@/app/styles/markdown.css'
 import './animated.css'
 
-const examples = REFERENCES.map((r) => ({ name: r.name, source: r.source }))
+const examples = PRESETS.map((r) => ({ name: r.name, source: r.source }))
 type Phase = Frame['phase']
 
 // The notes window's name on a step, by phase (Check's two passes apart).
@@ -817,6 +827,9 @@ function Picker({
         aria-label={label}
         aria-haspopup="listbox"
         aria-expanded={open}
+        // (the examples' traces start loading at the first sign of a pick)
+        onPointerEnter={prefetchTraces}
+        onFocus={prefetchTraces}
         onClick={() => (open ? setOpen(false) : show())}
         onKeyDown={(event) => {
           if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
@@ -890,7 +903,16 @@ function Picker({
 
 export default function AnimatedCompiler() {
   const [source, setSource] = useState(examples[0].source)
-  const reference = useMemo(() => findReference(source), [source])
+  const reference = useMemo(() => findPreset(source), [source])
+  // An example's recorded trace, once its chunk is in (reference.ts).
+  useSyncExternalStore(onTraceLoaded, tracesLoaded, tracesLoaded)
+  const recordedTrace = reference && presetTrace(reference)
+  useEffect(() => {
+    if (!reference || recordedTrace) return
+    loadTrace(reference.file).catch((error: Error) =>
+      console.warn('example trace:', error.message),
+    )
+  }, [reference, recordedTrace])
   // Every program goes through the real compiler in a worker (real.ts),
   // the examples too (Stanley, 2026-10-02). While it loads, and if it
   // fails, an example shows the trace recorded from it ahead of time and a
@@ -912,11 +934,11 @@ export default function AnimatedCompiler() {
   // recorded.
   // Emit plays line by line (emit-view.ts).
   const namedTrace = useMemo(() => {
-    const recorded = live ?? reference?.trace
+    const recorded = live ?? recordedTrace
     return recorded
       ? { trace: recorded, recorded: true }
       : { trace: buildTrace(source), recorded: false }
-  }, [source, reference, live])
+  }, [source, recordedTrace, live])
   const baseTrace = useMemo(
     () =>
       !namedTrace.recorded
@@ -1874,9 +1896,9 @@ export default function AnimatedCompiler() {
   useEffect(() => {
     if (!pinned) return
     const away = (event: PointerEvent) => {
-      if (!(
-        event.target instanceof Element && event.target.closest('[data-vr]')
-      ))
+      if (
+        !(event.target instanceof Element && event.target.closest('[data-vr]'))
+      )
         setRegFocus(null)
     }
     window.addEventListener('pointerdown', away)
@@ -2317,7 +2339,9 @@ export default function AnimatedCompiler() {
       if (x < pane.scrollLeft || x + width > pane.scrollLeft + seen - 16)
         pane.scrollLeft = x < seen * 0.8 ? 0 : x - seen * 0.3
     }
-    scroll()
+    // (by the observer's first report, which comes once the step is laid
+    // out: scrolling here, straight after the render, cost a forced layout
+    // on every step)
     const observer = new ResizeObserver(scroll)
     observer.observe(pane)
     return () => observer.disconnect()

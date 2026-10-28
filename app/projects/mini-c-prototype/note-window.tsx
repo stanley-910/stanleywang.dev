@@ -308,12 +308,19 @@ export function NoteWindow({
   // doesn't wrap (the symbol table's rows), measured at the width it opens
   // at so it narrows again for a note that needs less.
   const [fitW, setFitW] = useState(openWidth)
-  // Every render: the note's content is what changes it. (Measured at the
-  // opening width, the same content gives the same width: it settles.)
+  // The note's content is what changes it, so it's checked every render,
+  // but measured only when the text or the opening width has changed: a
+  // measure costs the page a layout, and most renders change neither.
+  // (Measured at the opening width, the same content gives the same
+  // width: it settles.)
+  const fitSeen = useRef('')
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useLayoutEffect(() => {
     const body = bodyRef.current
     if (!body || docked || place?.w !== undefined) return
+    const seen = `${openWidth}|${body.childElementCount}|${body.textContent}`
+    if (seen === fitSeen.current) return
+    fitSeen.current = seen
     const was = body.style.width
     body.style.width = `${openWidth - 2}px`
     const need = Math.min(MAX_W, Math.max(openWidth, body.scrollWidth + 2))
@@ -333,15 +340,42 @@ export function NoteWindow({
     body.style.height = was
     setFitDock(need)
   }
-  useLayoutEffect(measureDock)
-  // (and as what's in it grows in: a record's cards open after the step)
-  useEffect(() => {
+  // (again only when what it's measured from has changed; growth inside
+  // it is the observer's, below)
+  const dockSeen = useRef('')
+  useLayoutEffect(() => {
     const body = bodyRef.current
     if (!body || !docked || height !== null) return
-    const observer = new ResizeObserver(measureDock)
-    for (const child of Array.from(body.children)) observer.observe(child)
-    return () => observer.disconnect()
+    const seen = `${cap}|${body.childElementCount}|${body.textContent}`
+    if (seen === dockSeen.current) return
+    dockSeen.current = seen
+    measureDock()
   })
+  // (and as what's in it grows in: a record's cards open after the step)
+  // One observer while it fits, watching whichever children are there now;
+  // only a new child gets the first report that measures it.
+  const measureNow = useRef(measureDock)
+  useLayoutEffect(() => {
+    measureNow.current = measureDock
+  })
+  const watched = useRef<{ observer: ResizeObserver; els: Set<Element> }>(null)
+  useEffect(() => {
+    const body = bodyRef.current
+    if (!body || !docked || height !== null) {
+      watched.current?.observer.disconnect()
+      watched.current = null
+      return
+    }
+    const w = (watched.current ??= {
+      observer: new ResizeObserver(() => measureNow.current()),
+      els: new Set(),
+    })
+    const now = new Set(Array.from(body.children))
+    for (const el of w.els) if (!now.has(el)) w.observer.unobserve(el)
+    for (const el of now) if (!w.els.has(el)) w.observer.observe(el)
+    w.els = now
+  })
+  useEffect(() => () => watched.current?.observer.disconnect(), [])
   const dockH = height ?? fitDock
   // Glided by an effect rather than `animate`: a StrictMode reattach stops
   // Motion's own animation midway (as animated.tsx's GlidingPath), where an

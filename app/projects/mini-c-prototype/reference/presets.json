@@ -1,0 +1,87 @@
+[
+  {
+    "name": "Hello world",
+    "file": "hello-world",
+    "source": "void main() {\n  print_s((char*)\"Hello, world!\\n\");\n}",
+    "error": false
+  },
+  {
+    "name": "Precedence",
+    "file": "precedence",
+    "source": "int main() {\n  int a;\n  int b;\n  int c;\n  print_i(a == b + c);  // a == (b + c)\n  print_i(a || b && c); // a || (b && c)\n  return 4 + 2 * 3;     // 4 + (2 * 3)\n}",
+    "error": false
+  },
+  {
+    "name": "Function call",
+    "file": "function-call",
+    "source": "int twice(int n) {\n  return n + n;\n}\n\nint main() {\n  return twice(6);\n}",
+    "error": false
+  },
+  {
+    "name": "Loop",
+    "file": "loop",
+    "source": "int main() {\n  int i; int sum;\n  i = 0; sum = 0;\n  while (i < 3) {\n    sum = sum + i * 2;\n    i = i + 1;\n  }\n  return sum;\n}",
+    "error": false
+  },
+  {
+    "name": "Shadowing",
+    "file": "shadowing",
+    "source": "void main() {\n  int x;\n  x = 1;\n  {\n    int x;\n    x = 2;\n    print_i(x);\n  }\n  print_i(x);\n}",
+    "error": false
+  },
+  {
+    "name": "Fibonacci",
+    "file": "fibonacci",
+    "source": "void main() {\n  int first;\n  int second;\n  int next;\n  int i;\n  first = 0;\n  second = 1;\n  i = 0;\n  while (i < 10) {\n    print_i(first);\n    print_s((char*)\" \");\n    next = first + second;\n    first = second;\n    second = next;\n    i = i + 1;\n  }\n}",
+    "error": false
+  },
+  {
+    "name": "Break and continue",
+    "file": "break-continue",
+    "source": "void main() {\n  int i;\n  i = 0;\n  while (i < 10) {\n    i = i + 1;\n    if (i == 5) {\n      continue;\n    }\n    if (i == 8) {\n      break;\n    }\n    print_i(i);\n  }\n}",
+    "error": false
+  },
+  {
+    "name": "Pointer",
+    "file": "pointer",
+    "source": "void main() {\n  int x;\n  int* p;\n  x = 42;\n  p = &x;\n  *p = *p + 1;\n  print_i(x);\n}",
+    "error": false
+  },
+  {
+    "name": "Struct fields",
+    "file": "struct-fields",
+    "source": "struct Point {\n  int x;\n  int y;\n};\n\nint main() {\n  struct Point p;\n  p.x = 10;\n  p.y = 20;\n  return p.x + p.y;\n}",
+    "error": false
+  },
+  {
+    "name": "Spilling",
+    "file": "spilling",
+    "source": "int main() {\n  return 1 + (2 + (3 + (4 + 5)));\n}",
+    "registers": 4,
+    "error": false
+  },
+  {
+    "name": "Missing semicolon",
+    "file": "missing-semicolon",
+    "source": "int main() {\n  int x;\n  x = 5\n  return x;\n}",
+    "error": true
+  },
+  {
+    "name": "Unresolved name",
+    "file": "unresolved-name",
+    "source": "int main() {\n  return missing + 1;\n}",
+    "error": true
+  },
+  {
+    "name": "Wrong type",
+    "file": "wrong-type",
+    "source": "int main() {\n  int x;\n  x = \"hello\";\n  return x;\n}",
+    "error": true
+  },
+  {
+    "name": "Classes",
+    "file": "classes",
+    "source": "class Base {\n  int val;\n  void speak() {\n    print_s((char*)\"base\\n\");\n  }\n}\nclass Child extends Base {\n  void speak() {\n    print_s((char*)\"child\\n\");\n  }\n}\nint main() {\n  class Base b;\n  class Base c;\n  b = new class Base();\n  c = (class Base) new class Child();\n  b.speak();\n  c.speak();\n  return 0;\n}",
+    "error": true
+  }
+]
