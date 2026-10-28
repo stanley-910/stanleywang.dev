@@ -193,9 +193,8 @@ export default function Personal() {
           <span>·</span>
           <a
             className="prose-link font-mono text-sm underline dark:text-zinc-300"
-            href="/pdfs/stanley-wang-resume.pdf"
+            href="/resume"
             target="_blank"
-            download="stanley-wang-resume.pdf"
             rel="noopener noreferrer"
           >
             resume

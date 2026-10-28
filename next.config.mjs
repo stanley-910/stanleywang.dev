@@ -71,6 +71,13 @@ const nextConfig = {
         destination: 'https://sh.stanleywang.dev/:path*',
         permanent: true,
       },
+      // The resume's stable address. The PDF is published from the resume
+      // repo (scripts/publish-resume.sh); temporary, so it's never cached.
+      {
+        source: '/resume',
+        destination: '/pdfs/stanley-wang-resume.pdf',
+        permanent: false,
+      },
       // Temporary redirects keep these slugs available for future project pages.
       ...[
         ['eastwatch', 'https://github.com/stanley-910/eastwatch'],
