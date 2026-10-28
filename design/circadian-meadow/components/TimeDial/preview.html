@@ -1,0 +1,15 @@
+<!-- @dsCard group="Controls" height=110 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>TimeDial</title></head>
+<body>
+<div id="root"></div>
+<script>
+  var M = window.Meadow, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(
+    h('div', { className: 'cm-row' },
+      h('div', { style: { width: 260 } }, h(M.TimeDial, { defaultValue: 19, onLiveChange: function () {} })),
+      h('div', { style: { width: 260 } }, h(M.TimeDial, { defaultValue: 15 }))))
+</script>
+</body>
+</html>

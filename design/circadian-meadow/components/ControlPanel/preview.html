@@ -1,0 +1,17 @@
+<!-- @dsCard group="Controls" height=340 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>ControlPanel</title></head>
+<body>
+<div id="root"></div>
+<script>
+  var M = window.Meadow, h = React.createElement;
+  // Follows this viewer's clock until the time is moved; past sunset the page goes dark, as the whole site does.
+  var d = new Date()
+  document.documentElement.setAttribute('data-theme', M.pageFor(d.getHours() + d.getMinutes() / 60))
+  ReactDOM.createRoot(document.getElementById('root')).render(
+    h('div', { className: 'cm-row' },
+      h(M.ControlPanel, { onPage: function (t) { document.documentElement.setAttribute('data-theme', t) } })))
+</script>
+</body>
+</html>

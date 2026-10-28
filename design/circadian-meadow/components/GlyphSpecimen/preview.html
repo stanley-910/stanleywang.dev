@@ -1,0 +1,19 @@
+<!-- @dsCard group="Garden" height=340 subtitle="One flower at specimen scale, day and night" -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>GlyphSpecimen</title></head>
+<body>
+<div id="root"></div>
+<script>
+  var M = window.Meadow, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(
+    h('div', { className: 'cm-row' },
+      h(M.GlyphSpecimen, { species: 'poppy', label: 'Corn poppy, afternoon', height: 300 }),
+      h(M.GlyphSpecimen, { species: 'poppy', stage: 'bud', label: 'Poppy bud, nodding', height: 300 }),
+      h(M.GlyphSpecimen, { species: 'cosmos', hour: 11, label: 'Cosmos, late morning', height: 300 }),
+      h(M.GlyphSpecimen, { species: 'lace', hour: 17.6, label: 'Wild carrot, golden hour', height: 300 }),
+      h(M.GlyphSpecimen, { species: 'dandelion', hour: 8, label: 'Dandelion clock, morning', height: 300 }),
+      h(M.GlyphSpecimen, { species: 'poppy', hour: 23, label: 'Poppy, night', height: 300 })))
+</script>
+</body>
+</html>

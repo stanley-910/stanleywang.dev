@@ -1,0 +1,63 @@
+<!-- @dsCard height=300 -->
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Cover</title>
+<style>
+  html, body { margin: 0; background: var(--page); }
+  .cover { position: relative; width: 960px; height: 300px; overflow: hidden; }
+  .cover svg { position: absolute; inset: 0; }
+  .top { fill: var(--sunset-sky-top); }
+  .horizon { fill: var(--sunset-sky-horizon); }
+  .slate { fill: var(--day-sky-top); }
+  .poppy { fill: var(--day-poppy); }
+  .dot { fill: var(--day-cloud); }
+  .band { rx: var(--radius-none); }
+  .words { position: absolute; left: 48px; bottom: 36px; width: 400px; }
+  .name {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 80px;
+    line-height: 0.95;
+    color: var(--ink);
+  }
+  .tagline { margin: 18px 0 0; font-family: var(--font-body); font-size: 14px; color: var(--ink-muted); }
+</style>
+</head>
+<body>
+<div class="cover">
+  <svg width="960" height="300" viewBox="0 0 960 300" aria-hidden="true">
+    <!--
+      blocks: sunset-sky-top 480×120, sunset-sky-horizon 432×72, day-sky-top 384×48, day-poppy 144×60
+      arrangement: a strip of unequal bands stepping in from the right, the sky's strata from top to ground, bleeding off the top and right
+      pattern: dot grid, a halftone screen growing toward the horizon; the poster's halftone is how this system draws sky and land
+      steps and radii: gutter (24) × 2 = 48 pitch, gutter multiples for band sides, radius-none on bands, radius-dot on dots
+    -->
+    <rect class="top band" x="480" y="0" width="480" height="120" />
+    <rect class="horizon band" x="528" y="120" width="432" height="72" />
+    <rect class="slate band" x="576" y="192" width="384" height="48" />
+    <rect class="poppy band" x="816" y="240" width="144" height="60" />
+    <g id="dots"></g>
+  </svg>
+  <div class="words">
+    <h1 class="name">Circadian<br>Meadow</h1>
+    <p class="tagline">A meadow printed in type, coloured by the hour.</p>
+  </div>
+</div>
+<script>
+  // Forty dots at a 48px pitch over the two sky bands, larger toward the horizon.
+  var g = document.getElementById('dots')
+  for (var r = 0; r < 4; r++)
+    for (var c = 0; c < 10; c++) {
+      var d = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+      d.setAttribute('class', 'dot')
+      d.setAttribute('cx', 504 + c * 48)
+      d.setAttribute('cy', 24 + r * 48)
+      d.setAttribute('r', 2 + r * 1.5)
+      g.appendChild(d)
+    }
+</script>
+</body>
+</html>

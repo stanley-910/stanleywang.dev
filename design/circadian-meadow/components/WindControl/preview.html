@@ -1,0 +1,15 @@
+<!-- @dsCard group="Controls" height=110 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>WindControl</title></head>
+<body>
+<div id="root"></div>
+<script>
+  var M = window.Meadow, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(
+    h('div', { className: 'cm-row' },
+      h('div', { style: { width: 260 } }, h(M.WindControl, { defaultValue: 0.4 })),
+      h('div', { style: { width: 260 } }, h(M.WindControl, { defaultValue: 1.8, hour: 19.1 }))))
+</script>
+</body>
+</html>

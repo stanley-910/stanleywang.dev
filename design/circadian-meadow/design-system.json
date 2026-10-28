@@ -1,0 +1,189 @@
+{
+ "v": 3,
+ "layout": "files",
+ "createdOnFiles": {
+  "v": 1,
+  "at": "2026-10-28T13:54:09Z"
+ },
+ "title": "Circadian Meadow",
+ "namespace": "Meadow",
+ "libraries": [
+  {
+   "name": "react",
+   "version": "18"
+  },
+  {
+   "name": "react-dom",
+   "version": "18"
+  }
+ ],
+ "sections": {},
+ "groups": [
+  "References",
+  "Plant studies",
+  "Prototype"
+ ],
+ "assetGroups": {
+  "References": {
+   "name": "References",
+   "tile": "l",
+   "order": [
+    "circadian-rhythm.webp",
+    "night-grass.webp",
+    "dithered-clouds.png",
+    "dotted-lily.webp",
+    "ascii-figure.png",
+    "word-flower.webp",
+    "poppy-motion.mp4",
+    "poppy-motion-1-5s.jpg",
+    "poppy-motion-3-5s.jpg",
+    "poppy-motion-5-5s.jpg",
+    "poppy-motion-7-5s.jpg"
+   ],
+   "files": {
+    "circadian-rhythm.webp": {
+     "name": "circadian-rhythm.webp",
+     "blob": "641236ae8c7b5a79dbff3ce05f6859b1",
+     "size": 299986,
+     "type": "image/webp"
+    },
+    "night-grass.webp": {
+     "name": "night-grass.webp",
+     "blob": "128155088dd5b495c7b7222ea083e8ea",
+     "size": 114006,
+     "type": "image/webp"
+    },
+    "dithered-clouds.png": {
+     "name": "dithered-clouds.png",
+     "blob": "dca13ac172a1272a0a12917ff83f2d4b",
+     "size": 238797,
+     "type": "image/png"
+    },
+    "dotted-lily.webp": {
+     "name": "dotted-lily.webp",
+     "blob": "930d9cacba1f582a98d594ffc84ef70e",
+     "size": 208842,
+     "type": "image/webp"
+    },
+    "ascii-figure.png": {
+     "name": "ascii-figure.png",
+     "blob": "647bbfa82b4d661a5b19187d91008ab5",
+     "size": 432623,
+     "type": "image/png"
+    },
+    "word-flower.webp": {
+     "name": "word-flower.webp",
+     "blob": "95f3356dc22691cffb2e100425401815",
+     "size": 159586,
+     "type": "image/webp"
+    },
+    "poppy-motion.mp4": {
+     "name": "poppy-motion.mp4",
+     "blob": "e7cd46a9642bd49487cfa4af57a462a4",
+     "size": 2668329,
+     "type": "video/mp4"
+    },
+    "poppy-motion-1-5s.jpg": {
+     "name": "poppy-motion-1-5s.jpg",
+     "blob": "8e9700353f328714ad50f9fc1d06404b",
+     "size": 91896,
+     "type": "image/jpeg"
+    },
+    "poppy-motion-3-5s.jpg": {
+     "name": "poppy-motion-3-5s.jpg",
+     "blob": "3bf5ea723ec0522fc7c27834cfe37618",
+     "size": 96957,
+     "type": "image/jpeg"
+    },
+    "poppy-motion-5-5s.jpg": {
+     "name": "poppy-motion-5-5s.jpg",
+     "blob": "72734588de0f1f1a51e7ed18e31e0f48",
+     "size": 86629,
+     "type": "image/jpeg"
+    },
+    "poppy-motion-7-5s.jpg": {
+     "name": "poppy-motion-7-5s.jpg",
+     "blob": "ec2874588c80ca97efa2682ffc58790f",
+     "size": 84662,
+     "type": "image/jpeg"
+    }
+   }
+  },
+  "Plant studies": {
+   "name": "Plant studies",
+   "tile": "m",
+   "order": [
+    "ref-poppy-stages.jpg",
+    "ref-poppy-meadow-aveyron.jpg",
+    "ref-poppies-field-edge.jpg",
+    "ref-cosmos.jpg",
+    "ref-dandelion-clock.jpg"
+   ],
+   "files": {
+    "ref-poppy-stages.jpg": {
+     "name": "ref-poppy-stages.jpg",
+     "blob": "5dab9fa5d87df27d0672499fb205b5c9",
+     "size": 24687,
+     "type": "image/jpeg"
+    },
+    "ref-poppy-meadow-aveyron.jpg": {
+     "name": "ref-poppy-meadow-aveyron.jpg",
+     "blob": "bf5f6659186cbb62a6137ace538e627b",
+     "size": 77961,
+     "type": "image/jpeg"
+    },
+    "ref-poppies-field-edge.jpg": {
+     "name": "ref-poppies-field-edge.jpg",
+     "blob": "fd306d34e78104b1fbb0cdd466c39aa4",
+     "size": 121940,
+     "type": "image/jpeg"
+    },
+    "ref-cosmos.jpg": {
+     "name": "ref-cosmos.jpg",
+     "blob": "ce7b7021192c987fdc064b2e8784647f",
+     "size": 42570,
+     "type": "image/jpeg"
+    },
+    "ref-dandelion-clock.jpg": {
+     "name": "ref-dandelion-clock.jpg",
+     "blob": "ccf482239677856d2552483bfe85c7cc",
+     "size": 74784,
+     "type": "image/jpeg"
+    }
+   }
+  },
+  "Prototype": {
+   "name": "Prototype",
+   "tile": "l",
+   "order": [
+    "prototype-afternoon.png",
+    "prototype-dusk.png"
+   ],
+   "files": {
+    "prototype-afternoon.png": {
+     "name": "prototype-afternoon.png",
+     "blob": "45ca512722346463a752788cd178d6dd",
+     "size": 736825,
+     "type": "image/png"
+    },
+    "prototype-dusk.png": {
+     "name": "prototype-dusk.png",
+     "blob": "e6a5fc2e93c318b66d76da97251e8112",
+     "size": 701034,
+     "type": "image/png"
+    }
+   }
+  }
+ },
+ "blobs": {},
+ "docs": {
+  "readme": "project/README.md",
+  "sections": []
+ },
+ "lastChange": {
+  "by": "Stanley",
+  "at": "2026-10-28T14:48:08Z",
+  "via": "Claude Code",
+  "note": "Home is full bleed; a veil closes page colour in from the edges when leaving. Follows the clock by default; lighter night poppies with paler outlines."
+ }
+}
