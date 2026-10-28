@@ -2,7 +2,7 @@
 
 `/projects` as one ledger: each project is a row with what it is on the left and a glimpse of it working on the right. The compiler leads. Every row is ProjectCard.
 
-Built: `app/projects/page.tsx`, `app/projects/projects.css`. Data: `PROJECTS` in `app/data.ts`, copy verbatim.
+Built: `app/projects/page.tsx` (server-rendered), `app/projects/project-media.tsx` (the only client part: gallery, dialog, video), `app/projects/projects.css`. Data: `PROJECTS` in `app/data.ts`, copy verbatim.
 
 ## The one idea
 

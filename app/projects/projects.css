@@ -132,9 +132,7 @@
   height: 6px;
   border-radius: var(--radius-dot, 50%);
   background: color-mix(in srgb, var(--hairline) 55%, transparent);
-  transition:
-    width var(--duration-quick) var(--ease-calm),
-    background var(--duration-quick) var(--ease-calm);
+  transition: background var(--duration-quick) var(--ease-calm);
 }
 
 .plate-dots button[aria-current] {

@@ -8,7 +8,23 @@ export type PageTheme = 'light' | 'dark'
 export const LIGHT_FROM = 5.5
 export const DARK_FROM = 18.5
 export const OVERRIDE_KEY = 'theme-override'
+// page-light / page-dark, for the browser's own chrome (meta theme-color).
+export const CHROME: Record<PageTheme, string> = {
+  light: '#ebeae6',
+  dark: '#1b1b19',
+}
 export const THEME_KEY = 'theme'
+
+// Sets <meta name="theme-color"> to the page colour of `theme`.
+export function setChrome(theme: PageTheme) {
+  let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
+  if (!meta) {
+    meta = document.createElement('meta')
+    meta.name = 'theme-color'
+    document.head.appendChild(meta)
+  }
+  meta.content = CHROME[theme]
+}
 
 export function themeAt(date: Date): PageTheme {
   const h = date.getHours() + date.getMinutes() / 60
@@ -37,4 +53,6 @@ var o=JSON.parse(localStorage.getItem('${OVERRIDE_KEY}')||'null');
 if(o&&o.until>n.getTime()&&(o.theme==='light'||o.theme==='dark'))t=o.theme;
 else localStorage.removeItem('${OVERRIDE_KEY}');
 localStorage.setItem('${THEME_KEY}',t);
+var m=document.createElement('meta');m.name='theme-color';
+m.content=t==='light'?'${CHROME.light}':'${CHROME.dark}';document.head.appendChild(m);
 }catch(e){}})()`

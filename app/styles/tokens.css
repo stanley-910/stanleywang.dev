@@ -1,7 +1,7 @@
 /*
   Circadian Meadow page tokens, from design/circadian-meadow/tokens.json.
   Every page but home styles through these. The theme follows the hour
-  (see app/theme-script.ts): `.dark` / [data-theme="dark"] from about 18:30
+  (see lib/circadian.ts): `.dark` / [data-theme="dark"] from about 18:30
   to 05:30, light otherwise. Light is the default before any script runs.
 */
 

@@ -4,7 +4,7 @@ One project's row on ProjectsPage: meta on the left, the glimpse and words on th
 
 Preview: ProjectsPage's card shows every variant.
 
-Built: `ProjectRow` in `app/projects/page.tsx`, styles in `app/projects/projects.css`.
+Built: `ProjectRow` in `app/projects/page.tsx`, plate in `project-media.tsx`, styles in `app/projects/projects.css`.
 
 ## Anatomy
 
@@ -23,7 +23,7 @@ Web                 │            glimpse (plate)         │
 | Kind | `category`, `meta` mono, `ink-muted` |
 | Links | Stanley's existing marks (Pip, Reggie's sprite, globe, YouTube, GitHub), 16px, `ink-muted` → `ink` on hover, `space-2` apart |
 | Plate | the media at its own aspect ratio, 1px `hairline` at 45%, `surface` behind letterboxed images, no radius or shadow. Opens fullscreen on click |
-| Slide dots | 6px `hairline` at 55%; the current one 16px wide, `ink-muted` |
+| Slide dots | 6px `hairline` at 55%; the current one 16px wide, `ink-muted`. Colour transitions only, never width |
 | Fullscreen | the plate on `page` with a hairline; the counter, arrows and close are `caption-fill` pills with `caption-ink` |
 | Snippet | `surface`, hairline border, mono 12px; the compile button is `ink` on `page` |
 

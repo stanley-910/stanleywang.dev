@@ -47,52 +47,50 @@ export function Photo({ photo }: { photo: PhotoData }) {
   const known = details.filter((d): d is [string, string] => Boolean(d[1]))
 
   return (
-    <figure className="photo">
-      <div
-        className="photo-frame"
-        style={{ aspectRatio: `${photo.width} / ${photo.height}` }}
-      >
-        {photo.src ? (
-          <Image
-            src={photo.src}
-            alt={photo.alt}
-            width={photo.width}
-            height={photo.height}
-            sizes="(min-width: 1024px) 27rem, 100vw"
-          />
-        ) : (
-          <div className="photo-pending" role="img" aria-label={photo.alt} />
-        )}
-        {(name || brief.length > 0) && (
-          <figcaption className="photo-caption" data-open={open || undefined}>
-            {known.length > 0 && (
-              <dl id={id} className="photo-details" hidden={!open}>
-                {known.map(([label, value]) => (
-                  <div key={label}>
-                    <dt>{label}</dt>
-                    <dd>{value}</dd>
-                  </div>
-                ))}
-              </dl>
-            )}
-            <button
-              type="button"
-              className="photo-pill"
-              aria-expanded={known.length > 0 ? open : undefined}
-              aria-controls={known.length > 0 ? id : undefined}
-              disabled={known.length === 0}
-              onClick={() => setOpen((o) => !o)}
-            >
-              {name && <span className="photo-name">{name}</span>}
-              {brief.map((b) => (
-                <span key={b} className="photo-brief">
-                  {b}
-                </span>
+    <figure
+      className="photo"
+      style={{ aspectRatio: `${photo.width} / ${photo.height}` }}
+    >
+      {photo.src ? (
+        <Image
+          src={photo.src}
+          alt={photo.alt}
+          width={photo.width}
+          height={photo.height}
+          sizes="(min-width: 1024px) 27rem, 100vw"
+        />
+      ) : (
+        <div className="photo-pending" role="img" aria-label={photo.alt} />
+      )}
+      {(name || brief.length > 0) && (
+        <figcaption className="photo-caption" data-open={open || undefined}>
+          {known.length > 0 && (
+            <dl id={id} className="photo-details" hidden={!open}>
+              {known.map(([label, value]) => (
+                <div key={label}>
+                  <dt>{label}</dt>
+                  <dd>{value}</dd>
+                </div>
               ))}
-            </button>
-          </figcaption>
-        )}
-      </div>
+            </dl>
+          )}
+          <button
+            type="button"
+            className="photo-pill"
+            aria-expanded={known.length > 0 ? open : undefined}
+            aria-controls={known.length > 0 ? id : undefined}
+            disabled={known.length === 0}
+            onClick={() => setOpen((o) => !o)}
+          >
+            {name && <span className="photo-name">{name}</span>}
+            {brief.map((b) => (
+              <span key={b} className="photo-brief">
+                {b}
+              </span>
+            ))}
+          </button>
+        </figcaption>
+      )}
     </figure>
   )
 }

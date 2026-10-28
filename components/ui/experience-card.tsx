@@ -105,7 +105,7 @@ export function ExperienceLink({
         target="_blank"
         rel="noopener noreferrer"
         className="link"
-        aria-describedby={id}
+        aria-describedby={open ? id : undefined}
         onPointerDown={(e) => {
           // Read before the tap's focus opens the card.
           tapToOpen.current = e.pointerType !== 'mouse' && !open

@@ -27,10 +27,8 @@ const geistMono = Geist_Mono({
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  themeColor: [
-    { media: '(prefers-color-scheme: dark)', color: '#1b1b19' }, // page-dark
-    { media: '(prefers-color-scheme: light)', color: '#ebeae6' }, // page-light
-  ],
+  // theme-color follows the hour, not the OS: THEME_SCRIPT and
+  // ThemeSwitch set it (lib/circadian.ts).
 }
 
 export const metadata: Metadata = {

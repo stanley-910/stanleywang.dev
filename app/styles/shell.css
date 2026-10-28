@@ -57,11 +57,19 @@
 
 /* ── Links ───────────────────────────────────────────────────── */
 
+/* The older prose styles (markdown.css) colour text with --fg, a grey of
+   their own; on `page` it's `ink`. :root outranks their `html.dark`. */
+:root .prose,
+:root.dark .prose {
+  --fg: var(--ink);
+}
+
 /* In prose: ink, with a hairline underline that darkens on hover. The
    doubled selectors outrank the older `.prose a` border underline. */
 .link,
 .prose .link {
   border-bottom: 0;
+  font-weight: inherit;
   color: var(--ink);
   text-decoration: underline;
   text-decoration-color: var(--hairline);

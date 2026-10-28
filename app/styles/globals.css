@@ -155,7 +155,10 @@ body {
   line-height: var(--leading-body);
 }
 
-:focus-visible {
-  outline: 1px solid var(--focus);
-  outline-offset: 3px;
+/* Layered, so a component's own outline utilities still win. */
+@layer base {
+  :focus-visible {
+    outline: 1px solid var(--focus);
+    outline-offset: 3px;
+  }
 }

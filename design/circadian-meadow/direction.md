@@ -91,3 +91,11 @@ Made without Stanley, so each can be overruled. Branch `site-shell-f8ae5a`, work
 37. The home page beyond the bio (the writing list, experience list, stars and ASCII art) is untouched: the garden port replaces it. The footer only moved to tokens; it still re-renders every second for its clock.
 38. Mocks are the `preview.html` cards in each component folder, plus screenshots of the built pages checked in a browser tab, not Claude Design artifacts. The folder is ready for `/design-sync` when you want it.
 39. Friction: this worktree was cut from `02aff63`, before the design system landed, and `origin/main` doesn't have it yet (local `main` does), so the app's "sync with base" saw nothing to merge. I fast-forwarded the branch to local `main` (71975f2).
+
+### Review (Fable, high effort, on the final diff)
+
+40. Fixed: the global focus ring was unlayered and beat Tailwind's `outline-none` (the code snippet's textarea drew a ring while typing). It's in `@layer base` now.
+41. Fixed: `/projects` was a client component. The page renders on the server now, and only the media is client (`project-media.tsx`). First-load JS went from 175 kB to 169 kB.
+42. Fixed: the browser chrome colour (`theme-color`) followed the OS while the page follows the hour. The head script and the sun/moon set it now.
+43. Fixed: `figcaption` now sits directly in `figure`. The card's `aria-describedby` applies only while it's open. In-prose links inherit their weight, and the bio's old prose grey is `ink`. The slide dots no longer animate width.
+44. Checked fine: no hydration mismatch or flash from the head script, no timer or listener leaks, touch and focus order work, one layout read per card open, and the fonts no longer block rendering.

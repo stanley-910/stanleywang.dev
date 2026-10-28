@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import {
   nextSwitch,
   OVERRIDE_KEY,
+  setChrome,
   themeAt,
   type PageTheme,
 } from '@/lib/circadian'
@@ -35,6 +36,11 @@ export function ThemeSwitch({ className }: { className?: string }) {
     schedule()
     return () => clearTimeout(timer)
   }, [setTheme])
+
+  useEffect(() => {
+    if (resolvedTheme === 'light' || resolvedTheme === 'dark')
+      setChrome(resolvedTheme)
+  }, [resolvedTheme])
 
   const pick = (theme: PageTheme) => {
     const now = new Date()
