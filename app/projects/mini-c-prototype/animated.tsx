@@ -2057,18 +2057,47 @@ export default function AnimatedCompiler() {
   const [linked, setLinked] = useState(false)
   useEffect(() => {
     const q = new URLSearchParams(window.location.search)
-    const example = examples.find(
+    const example = PRESETS.find(
       (e) => e.name.toLowerCase() === q.get('example'),
     )
-    if (example) setSource(example.source)
-    // ?source= is code someone edited on the projects page and sent here
-    // to compile; the address bar drops it once it's loaded (below).
-    const sent = q.get('source')
-    if (sent !== null) setSource(sent)
-    if (q.get('lexer') === 'detailed') setDetailed(true)
-    const at = Number(q.get('frame'))
-    if (Number.isSafeInteger(at) && at > 0) setStep(at)
-    setLinked(true)
+    let gone = false
+    const open = () => {
+      if (gone) return
+      if (example) setSource(example.source)
+      // ?source= is code someone edited on the projects page and sent here
+      // to compile; the address bar drops it once it's loaded (below).
+      const sent = q.get('source')
+      if (sent !== null) setSource(sent)
+      if (q.get('lexer') === 'detailed') setDetailed(true)
+      const at = Number(q.get('frame'))
+      if (Number.isSafeInteger(at) && at > 0) setStep(at)
+      setLinked(true)
+    }
+    // A linked example opens once its trace is in, so the stage goes
+    // straight to its frame rather than through the teaching compiler's.
+    if (example)
+      loadTrace(example.file).then(open, (error: Error) => {
+        console.warn('example trace:', error.message)
+        open()
+      })
+    else open()
+    return () => {
+      gone = true
+    }
+  }, [])
+  // The other examples' traces load once the page is idle, so a pick (a
+  // tap on a phone, a slide's link) finds its trace already here.
+  useEffect(() => {
+    let idle = 0
+    const timer = window.setTimeout(() => {
+      if ('requestIdleCallback' in window)
+        idle = window.requestIdleCallback(prefetchTraces, { timeout: 5000 })
+      else prefetchTraces()
+    }, 3000)
+    return () => {
+      window.clearTimeout(timer)
+      if (idle) window.cancelIdleCallback(idle)
+    }
   }, [])
   useEffect(() => {
     if (!linked || playing) return

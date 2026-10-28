@@ -375,7 +375,13 @@ export function NoteWindow({
     for (const el of now) if (!w.els.has(el)) w.observer.observe(el)
     w.els = now
   })
-  useEffect(() => () => watched.current?.observer.disconnect(), [])
+  useEffect(
+    () => () => {
+      watched.current?.observer.disconnect()
+      watched.current = null
+    },
+    [],
+  )
   const dockH = height ?? fitDock
   // Glided by an effect rather than `animate`: a StrictMode reattach stops
   // Motion's own animation midway (as animated.tsx's GlidingPath), where an

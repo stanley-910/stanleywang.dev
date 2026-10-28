@@ -3,7 +3,9 @@
    site's, following the hour; nothing here picks one. */
 
 /* The page tokens, until the site shell defines them (tokens.json). Layered,
-   so any unlayered definition of the site's wins over these. */
+   so any unlayered definition of the site's wins over these; the site's
+   must stay unlayered (app/styles/tokens.css on site-shell is), or a
+   layer of its own declared before this one. */
 @layer ac-tokens {
   :root {
     --page: #ebeae6;
@@ -2071,10 +2073,10 @@
   max-width: calc(100% - 16px);
   overflow: hidden;
   border: 1px solid var(--hairline);
-  /* Over the stage as the meadow's settings panel is over the scene. */
-  background: var(--control);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+  /* Nearly the page, without the popovers' blur: it stays open over a
+     stage that repaints every frame, and a backdrop blur there costs a
+     readback and a blur per frame (WebKit most). */
+  background: color-mix(in srgb, var(--page) 94%, transparent);
   font: 12px/1.45 var(--font-sans);
 }
 .ac-window-bar {
