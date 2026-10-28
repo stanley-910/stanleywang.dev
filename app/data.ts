@@ -75,7 +75,7 @@ export const PROJECTS: Project[] = [
     name: 'Portal',
     slug: 'portal',
     description:
-      'A multiplayer canvas for trip planning with your friends, with the power of an alien travel agent at your disposal. Developed in a single weekend for HKU Hackathon 2026 at the University of Hong Kong.',
+      'A multiplayer canvas for trip planning with your friends, with the power of an alien travel agent at your disposal. Developed in a single weekend at a hackathon.',
     media: {
       type: 'images',
       aspect: 2000 / 1192,
