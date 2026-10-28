@@ -111,4 +111,4 @@ Every page other than home is plain `page` with `ink` text. The meadow is never 
 - **Images:** full measure, no radius, no shadow. Captions in `hint`.
 - **Glyph accents:** a page may borrow one small piece of the garden (a single specimen, a divider of ramp glyphs), never a full scene.
 
-Components still to design: SiteHeader, ProjectPage, PostLayout, ProseBlock, CodeBlock, Figure, Divider. The `designer` agent owns them; see `design/AGENTS.md`.
+Components still to design: SiteHeader, ProjectPage, PostLayout, ProseBlock, CodeBlock, Figure, Divider. The `designer` agent owns them; see `design/README.md`.
