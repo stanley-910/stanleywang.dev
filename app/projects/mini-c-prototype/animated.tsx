@@ -442,17 +442,9 @@ const GUIDE: GuideRule[] = [
 const NOTE_BAND = 104
 // An interference node's radius, and the gap its edges stop short by.
 const VR_RIM = 19 + 4
-// Colours for the interference graph, one per physical register in use.
-const INK = [
-  '#2563eb',
-  '#d97706',
-  '#059669',
-  '#dc2626',
-  '#7c3aed',
-  '#0891b2',
-  '#db2777',
-  '#65a30d',
-]
+// Colours for the interference graph, one per physical register in use
+// (--ac-reg-*, animated.css), neighbours far apart in hue.
+const INK = Array.from({ length: 8 }, (_, i) => `var(--ac-reg-${i})`)
 
 // Outside code: [text](url) links, **bold**, and *italic* (letters on both
 // inner edges, so a lone `*` operator in prose stays literal).
