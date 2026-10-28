@@ -1,0 +1,104 @@
+/* PhotoCaption: design/circadian-meadow/components/PhotoCaption. */
+
+.photo {
+  margin: 0;
+}
+
+.photo-frame {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.photo-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Until a photo is approved and exported, a block of its shape. */
+.photo-pending {
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+      135deg,
+      transparent 0 11px,
+      color-mix(in srgb, var(--hairline) 22%, transparent) 11px 12px
+    ),
+    var(--surface);
+}
+
+.photo-caption {
+  position: absolute;
+  left: var(--space-1);
+  bottom: var(--space-1);
+  right: var(--space-1);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.photo-pill,
+.photo-details {
+  pointer-events: auto;
+  background: var(--caption-fill);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: var(--caption-ink);
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  line-height: var(--leading-meta);
+}
+
+.photo-pill {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0 0.75em;
+  max-width: 100%;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  text-align: left;
+  cursor: pointer;
+}
+
+.photo-pill:disabled {
+  cursor: default;
+}
+
+.photo-brief {
+  color: var(--caption-ink-muted);
+}
+
+.photo-pill:focus-visible {
+  outline: 1px solid var(--caption-ink);
+  outline-offset: 2px;
+}
+
+.photo-details {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px var(--space-2);
+  margin: 0;
+  padding: var(--space-1) 10px;
+  border-radius: var(--radius-card);
+}
+
+.photo-details[hidden] {
+  display: none;
+}
+
+.photo-details > div {
+  display: contents;
+}
+
+.photo-details dt {
+  color: var(--caption-ink-muted);
+}
+
+.photo-details dd {
+  margin: 0;
+}

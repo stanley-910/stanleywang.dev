@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 
 import { AnimatedBackground } from '@/components/ui/animated-background'
 import { AsciiArt } from '@/components/ui/ascii'
+import { ExperienceLink } from '@/components/ui/experience-card'
 import { JobCard } from '@/components/ui/job-card'
 import { Stars } from '@/components/ui/stars'
 
@@ -36,6 +37,14 @@ const TRANSITION_SECTION = {
   duration: 0.3,
 }
 
+// A role from data.ts for a company name in the bio, linked where the bio
+// links it.
+const job = (company: string, link: string) => {
+  const found = WORK_EXPERIENCE.find((j) => j.company === company)
+  if (!found) throw new Error(`No experience for ${company}`)
+  return { ...found, link }
+}
+
 // A click copies the address and shows "copied" under it for a moment;
 // the address itself stays put.
 function CopyEmail() {
@@ -49,7 +58,7 @@ function CopyEmail() {
 
   return (
     <button
-      className="prose-link relative cursor-pointer font-mono text-sm underline select-text dark:text-zinc-300"
+      className="link-quiet relative cursor-pointer select-text"
       title="Copy to clipboard"
       onClick={() => {
         navigator.clipboard.writeText(EMAIL).then(() => setCopied(true))
@@ -58,7 +67,7 @@ function CopyEmail() {
       {EMAIL}
       <span
         aria-hidden
-        className={`pointer-events-none absolute top-full left-1/2 mt-1 -translate-x-1/2 font-mono text-xs text-zinc-500 transition-all duration-200 dark:text-zinc-400 ${
+        className={`pointer-events-none absolute top-full left-1/2 mt-1 -translate-x-1/2 font-mono text-xs font-normal text-[color:var(--ink-muted)] transition-all duration-200 ${
           copied ? 'translate-y-0 opacity-100' : '-translate-y-1 opacity-0'
         }`}
       >
@@ -87,37 +96,29 @@ export default function Personal() {
               href="https://www.mcgill.ca"
               target="_blank"
               rel="noopener noreferrer"
-              className="prose-link"
+              className="link"
             >
               McGill University.
             </a>{' '}
             Most recently, I interned on Commerce & Identity at{' '}
-            <a
-              href="https://www.ea.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="prose-link"
-            >
+            <ExperienceLink job={job('Electronic Arts', 'https://www.ea.com')}>
               Electronic Arts.
-            </a>{' '}
+            </ExperienceLink>{' '}
             Before that, I wrote software with the{' '}
-            <a
-              href="https://www.autodesk.com/ca-en/products/flow-production-tracking/overview"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="prose-link"
+            <ExperienceLink
+              job={job(
+                'Autodesk',
+                'https://www.autodesk.com/ca-en/products/flow-production-tracking/overview',
+              )}
             >
               Flow PT team
-            </a>{' '}
+            </ExperienceLink>{' '}
             at Autodesk and engineered structural tooling for{' '}
-            <a
-              href="https://beta.team/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="prose-link"
+            <ExperienceLink
+              job={job('BETA Technologies', 'https://beta.team/')}
             >
               BETA Technologies.
-            </a>
+            </ExperienceLink>
             <br />
             <br />I enjoy coding{' '}
             <span className="font-mono text-sm text-zinc-500 dark:text-zinc-500">
@@ -128,7 +129,7 @@ export default function Personal() {
               href="/images/personal/dogs.jpeg"
               target="_blank"
               rel="noopener noreferrer"
-              className="prose-link"
+              className="link"
             >
               dogs
             </a>
@@ -141,7 +142,7 @@ export default function Personal() {
                 href="https://pages.cs.wisc.edu/~remzi/OSTEP/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="prose-link"
+                className="link"
               >
                 Operating Systems: Three Easy Pieces
               </a>
@@ -150,7 +151,7 @@ export default function Personal() {
                 href="https://www.goodreads.com/book/show/30962053-the-idiot"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="prose-link"
+                className="link"
               >
                 The Idiot
               </a>
@@ -174,25 +175,22 @@ export default function Personal() {
         transition={TRANSITION_SECTION}
         className="mt-2"
       >
-        <p className="flex items-center justify-center gap-x-1 pb-2 whitespace-nowrap text-zinc-600 sm:gap-x-2 dark:text-zinc-400">
+        <p className="link-row pb-2">
           <CopyEmail />
-          <span>·</span>
-          <a
-            className="prose-link font-mono text-sm underline dark:text-zinc-300"
-            href="https://github.com/stanley-910"
-          >
+          <span className="sep">/</span>
+          <a className="link-quiet" href="https://github.com/stanley-910">
             github
           </a>
-          <span>·</span>
+          <span className="sep">/</span>
           <a
-            className="prose-link font-mono text-sm underline dark:text-zinc-300"
+            className="link-quiet"
             href="https://www.linkedin.com/in/notstanleywang/"
           >
             linkedin
           </a>
-          <span>·</span>
+          <span className="sep">/</span>
           <a
-            className="prose-link font-mono text-sm underline dark:text-zinc-300"
+            className="link-quiet"
             href="/resume"
             target="_blank"
             rel="noopener noreferrer"

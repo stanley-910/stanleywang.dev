@@ -3,6 +3,7 @@ import './styles/fonts.css'
 import './styles/prose.css'
 import './styles/toc.css'
 import './styles/globals.css'
+import './styles/shell.css'
 import { Analytics } from '@vercel/analytics/react'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { ThemeProvider } from 'next-themes'
@@ -69,7 +70,7 @@ export default function RootLayout({
           defaultTheme="light"
         >
           <div className="flex min-h-screen w-full flex-col">
-            <div className="relative mx-auto flex w-full max-w-[45ch] flex-1 flex-col px-4 pt-20 sm:max-w-[65ch]">
+            <div className="site-shell relative flex w-full flex-1 flex-col">
               <Header />
               <main className="flex-1">
                 {children}

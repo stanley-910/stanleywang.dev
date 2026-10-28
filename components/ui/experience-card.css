@@ -1,0 +1,123 @@
+/* ExperienceCard: design/circadian-meadow/components/ExperienceCard. */
+
+.xp {
+  position: relative;
+}
+
+.xp-card {
+  position: absolute;
+  z-index: 30;
+  left: 0;
+  bottom: calc(100% + var(--space-1));
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: min(22rem, calc(100vw - 24px));
+  padding: var(--space-2);
+  border: 1px solid color-mix(in srgb, var(--hairline) 45%, transparent);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-small);
+  font-weight: var(--weight-body);
+  line-height: 1.45;
+  text-align: left;
+  white-space: normal;
+  visibility: hidden;
+  opacity: 0;
+  transform: translate(var(--shift-x, 0px), 4px);
+  transition:
+    opacity var(--duration-card) var(--ease-calm),
+    transform var(--duration-card) var(--ease-calm),
+    visibility 0s linear var(--duration-card);
+}
+
+.xp-card[data-below] {
+  top: calc(100% + var(--space-1));
+  bottom: auto;
+  transform: translate(var(--shift-x, 0px), -4px);
+}
+
+.xp-card[data-open] {
+  visibility: visible;
+  opacity: 1;
+  transform: translate(var(--shift-x, 0px), 0);
+  transition:
+    opacity var(--duration-card) var(--ease-calm),
+    transform var(--duration-card) var(--ease-calm),
+    visibility 0s;
+}
+
+.xp-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.xp-who {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  font-weight: var(--weight-strong);
+}
+
+.xp-logo {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-hair);
+}
+
+.xp-mono {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--hairline);
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1;
+}
+
+.xp-company {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.xp-when {
+  flex: none;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+}
+
+.xp-role {
+  margin-top: 6px;
+  color: var(--ink);
+}
+
+.xp-desc {
+  color: var(--ink-muted);
+}
+
+.xp-foot {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-1);
+  padding-top: var(--space-1);
+  border-top: 1px solid color-mix(in srgb, var(--hairline) 45%, transparent);
+  font-size: var(--text-meta);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xp-card,
+  .xp-card[data-below],
+  .xp-card[data-open] {
+    transform: translate(var(--shift-x, 0px), 0);
+    transition: none;
+  }
+}

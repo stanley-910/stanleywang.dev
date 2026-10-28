@@ -36,10 +36,10 @@ function Clock() {
 
 export function Footer() {
   return (
-    <footer className="mt-24 border-t border-zinc-300 px-0 py-4 dark:border-zinc-800">
+    <footer className="mt-24 border-t border-[color:var(--hairline)] px-0 py-4 font-mono">
       <div className="flex items-center justify-between">
         <TextLoop
-          className="text-xs text-zinc-500"
+          className="text-xs text-[color:var(--ink-muted)]"
           interval={10}
           transition={{ duration: 0.5 }}
         >
@@ -58,7 +58,7 @@ export function Footer() {
             <span>song rec of the week</span>
           </a>
         </TextLoop>
-        <div className="text-xs text-zinc-500">
+        <div className="text-xs text-[color:var(--ink-muted)]">
           <Clock />
         </div>
       </div>
