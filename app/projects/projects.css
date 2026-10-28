@@ -1,0 +1,220 @@
+/* ProjectsPage and ProjectCard: design/circadian-meadow/components. */
+
+.projects {
+  display: flex;
+  flex-direction: column;
+  max-width: var(--measure);
+}
+
+/* A row: what it is on the left, the glimpse and words on the right. */
+.project {
+  display: grid;
+  grid-template-columns: 10rem minmax(0, 1fr);
+  gap: var(--space-2) var(--space-4);
+  padding-block: var(--space-4) var(--space-5);
+  border-top: 1px solid color-mix(in srgb, var(--hairline) 45%, transparent);
+}
+
+/* The first row (after the hidden heading) has no rule above it. */
+.projects > .project:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+
+/* The flagship's glimpse spans the measure; its words sit under it. */
+.project[data-flagship] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.project[data-flagship] .project-meta {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+}
+
+.project[data-flagship] .project-links {
+  margin-left: auto;
+  margin-top: 0;
+}
+
+.project[data-flagship] .project-name {
+  font-size: 18px;
+}
+
+.projects-plain .project {
+  padding-block: var(--space-3);
+}
+
+.projects-plain .project:first-child {
+  border-top: 1px solid color-mix(in srgb, var(--hairline) 45%, transparent);
+  padding-top: var(--space-3);
+}
+
+.project-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.project-name {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-body);
+  font-weight: var(--weight-strong);
+  line-height: 22px;
+}
+
+.project-kind {
+  margin: 0;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  line-height: var(--leading-meta);
+}
+
+.project-links {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.project-icon {
+  color: var(--ink-muted);
+  transition: color var(--duration-quick) var(--ease-calm);
+}
+
+.project-icon:hover {
+  color: var(--ink);
+}
+
+.project-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.project-desc {
+  max-width: var(--measure-read);
+  margin: 0;
+  color: var(--ink);
+}
+
+.project-tracks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* ── The glimpse ─────────────────────────────────────────────── */
+
+/* Flat on the page: a hairline edge, no radius or shadow. */
+.plate {
+  display: block;
+  width: 100%;
+  border: 1px solid color-mix(in srgb, var(--hairline) 45%, transparent);
+  background: var(--surface);
+  cursor: zoom-in;
+}
+
+.plate-dots {
+  display: flex;
+  justify-content: flex-start;
+  gap: 6px;
+  margin-top: calc(var(--space-1) - var(--space-2));
+}
+
+.plate-dots button {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-dot, 50%);
+  background: color-mix(in srgb, var(--hairline) 55%, transparent);
+  transition:
+    width var(--duration-quick) var(--ease-calm),
+    background var(--duration-quick) var(--ease-calm);
+}
+
+.plate-dots button[aria-current] {
+  width: 16px;
+  border-radius: var(--radius-pill);
+  background: var(--ink-muted);
+}
+
+.plate-open {
+  border: 1px solid color-mix(in srgb, var(--hairline) 45%, transparent);
+  background: var(--page);
+}
+
+.plate-count {
+  position: absolute;
+  bottom: var(--space-1);
+  left: 50%;
+  translate: -50% 0;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--caption-fill);
+  color: var(--caption-ink);
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+}
+
+.plate-arrow {
+  position: absolute;
+  top: 50%;
+  translate: 0 -50%;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-pill);
+  background: var(--caption-fill);
+  color: var(--caption-ink);
+}
+
+.plate-arrow svg {
+  width: 16px;
+  height: 16px;
+}
+
+.plate-close {
+  position: fixed;
+  top: var(--space-3);
+  right: var(--space-3);
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-pill);
+  background: var(--caption-fill);
+  color: var(--caption-ink);
+}
+
+/* ── Phone ───────────────────────────────────────────────────── */
+
+@media (max-width: 720px) {
+  .project {
+    grid-template-columns: minmax(0, 1fr);
+    padding-block: var(--space-3) var(--space-4);
+  }
+  .project-meta {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 var(--space-2);
+  }
+  .project-links {
+    margin-left: auto;
+    margin-top: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .project-icon,
+  .plate-dots button {
+    transition: none;
+  }
+}

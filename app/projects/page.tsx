@@ -1,12 +1,10 @@
 'use client'
 import { GitHubLogoIcon } from '@radix-ui/react-icons'
 import { GlobeIcon, XIcon, YoutubeIcon } from 'lucide-react'
-import { motion } from 'motion/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 // UI Components
 import { PROJECTS, type MediaItem, type Project } from '@/app/data'
-import CdOut from '@/components/ui/cd-out'
 import { CodeSnippet } from '@/components/ui/code-snippet'
 import {
   MorphingDialog,
@@ -18,26 +16,11 @@ import {
 import { PipIcon } from '@/components/ui/pip-icon'
 import { TrackPlayer } from '@/components/ui/track-player'
 
-// Data
+import './projects.css'
 
-const VARIANTS_CONTAINER = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.15,
-    },
-  },
-}
-
-const VARIANTS_SECTION = {
-  hidden: { opacity: 0, y: 10, filter: 'blur(8px)' },
-  visible: { opacity: 1, y: 0, filter: 'blur(0px)' },
-}
-
-const TRANSITION_SECTION = {
-  duration: 0.3,
-}
+// The flagship leads the page and its glimpse spans the full measure
+// (design/circadian-meadow/components/ProjectsPage).
+const FLAGSHIP = 'mini-compiler'
 
 type ProjectMediaProps = {
   media: NonNullable<Project['media']>
@@ -45,8 +28,7 @@ type ProjectMediaProps = {
 }
 
 // The frame around a project's image or video, not its dots.
-const MEDIA_FRAME_CLASS =
-  'rounded-2xl bg-zinc-50/40 p-1 ring-1 ring-zinc-200/50 ring-inset dark:bg-zinc-950/40 dark:ring-zinc-800/50'
+const MEDIA_FRAME_CLASS = 'plate'
 
 const STRIP_CLASS =
   'flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
@@ -83,6 +65,8 @@ function Slide({
         src={src}
         alt={alt}
         className={`${className} ${fit}`}
+        loading="lazy"
+        decoding="async"
         draggable={false}
       />
     )
@@ -92,12 +76,16 @@ function Slide({
         src={src.light}
         alt={alt}
         className={`h-full w-full dark:hidden ${fit}`}
+        loading="lazy"
+        decoding="async"
         draggable={false}
       />
       <img
         src={src.dark}
         alt={alt}
         className={`hidden h-full w-full dark:block ${fit}`}
+        loading="lazy"
+        decoding="async"
         draggable={false}
       />
     </div>
@@ -158,7 +146,7 @@ function FullscreenGallery({
     <>
       <div
         ref={stripRef}
-        className={`${STRIP_CLASS} h-full w-full rounded-xl`}
+        className={`${STRIP_CLASS} h-full w-full`}
         onScroll={(e) => onIndexChange(stripIndex(e.currentTarget))}
       >
         {media.sources.map((src, i) => (
@@ -175,7 +163,7 @@ function FullscreenGallery({
         <>
           <GalleryArrow side="left" onClick={() => step(-1)} />
           <GalleryArrow side="right" onClick={() => step(1)} />
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/50 px-3 py-1 text-sm text-white">
+          <div className="plate-count">
             {index + 1} / {count}
           </div>
         </>
@@ -194,7 +182,7 @@ function GalleryArrow({
   return (
     <button
       onClick={onClick}
-      className={`absolute top-1/2 ${side === 'left' ? 'left-3' : 'right-3'} -translate-y-1/2 rounded-full bg-white/90 p-2 shadow-lg transition-all hover:bg-white dark:bg-zinc-800/90 dark:hover:bg-zinc-800`}
+      className={`plate-arrow ${side === 'left' ? 'left-3' : 'right-3'}`}
       aria-label={side === 'left' ? 'Previous image' : 'Next image'}
     >
       <svg
@@ -207,7 +195,6 @@ function GalleryArrow({
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
-        className="text-zinc-700 dark:text-zinc-300"
       >
         <polyline
           points={side === 'left' ? '15 18 9 12 15 6' : '9 18 15 12 9 6'}
@@ -242,13 +229,9 @@ function ProjectMedia({ media, name }: ProjectMediaProps) {
       >
         <MorphingDialogTrigger className={MEDIA_FRAME_CLASS}>
           <div className="relative w-full">
-            <video
+            <InViewVideo
               src={slideKey(media.sources[0])}
-              autoPlay
-              loop
-              muted
-              playsInline
-              className="w-full cursor-zoom-in rounded-xl"
+              className="w-full cursor-zoom-in"
               style={{ aspectRatio: aspect }}
               onClick={(e) => {
                 e.preventDefault()
@@ -257,18 +240,18 @@ function ProjectMedia({ media, name }: ProjectMediaProps) {
           </div>
         </MorphingDialogTrigger>
         <MorphingDialogContainer>
-          <MorphingDialogContent className="relative aspect-video rounded-2xl bg-zinc-50 p-1 ring-1 ring-zinc-200/50 ring-inset dark:bg-zinc-950 dark:ring-zinc-800/50">
+          <MorphingDialogContent className="plate-open relative aspect-video">
             <video
               src={slideKey(media.sources[0])}
               autoPlay
               loop
               muted
               playsInline
-              className="aspect-video h-[50vh] w-full rounded-xl md:h-[70vh]"
+              className="aspect-video h-[50vh] w-full md:h-[70vh]"
             />
           </MorphingDialogContent>
           <MorphingDialogClose
-            className="fixed top-6 right-6 h-fit w-fit rounded-full bg-white p-1"
+            className="plate-close"
             variants={{
               initial: { opacity: 0 },
               animate: {
@@ -278,7 +261,7 @@ function ProjectMedia({ media, name }: ProjectMediaProps) {
               exit: { opacity: 0, transition: { duration: 0 } },
             }}
           >
-            <XIcon className="h-5 w-5 text-zinc-500" />
+            <XIcon className="h-4 w-4" strokeWidth={1.5} />
           </MorphingDialogClose>
         </MorphingDialogContainer>
       </MorphingDialog>
@@ -296,7 +279,7 @@ function ProjectMedia({ media, name }: ProjectMediaProps) {
       <MorphingDialogTrigger className={MEDIA_FRAME_CLASS}>
         <div
           ref={stripRef}
-          className={`${STRIP_CLASS} w-full rounded-xl`}
+          className={`${STRIP_CLASS} w-full`}
           style={{ aspectRatio: aspect }}
           onScroll={(e) => setIndex(stripIndex(e.currentTarget))}
         >
@@ -312,12 +295,12 @@ function ProjectMedia({ media, name }: ProjectMediaProps) {
         </div>
       </MorphingDialogTrigger>
       {count > 1 && (
-        <div className="flex justify-center gap-1.5 pt-2 pb-1">
+        <div className="plate-dots">
           {media.sources.map((src, i) => (
             <button
               key={slideKey(src)}
               onClick={() => scrollStripTo(stripRef.current, i)}
-              className={`h-1.5 rounded-full transition-all ${i === index ? 'w-4 bg-zinc-500 dark:bg-zinc-400' : 'w-1.5 bg-zinc-300 dark:bg-zinc-700'}`}
+              aria-current={i === index || undefined}
               aria-label={`Show image ${i + 1}`}
             />
           ))}
@@ -329,7 +312,7 @@ function ProjectMedia({ media, name }: ProjectMediaProps) {
             aspectRatio: aspect,
             width: `min(92vw, calc(80vh * ${aspect}))`,
           }}
-          className="relative rounded-2xl bg-zinc-50 p-1 ring-1 ring-zinc-200/50 ring-inset dark:bg-zinc-950 dark:ring-zinc-800/50"
+          className="plate-open relative"
         >
           <FullscreenGallery
             media={media}
@@ -339,7 +322,7 @@ function ProjectMedia({ media, name }: ProjectMediaProps) {
           />
         </MorphingDialogContent>
         <MorphingDialogClose
-          className="fixed top-6 right-6 z-20 h-fit w-fit rounded-full bg-white p-1"
+          className="plate-close"
           variants={{
             initial: { opacity: 0 },
             animate: {
@@ -349,15 +332,14 @@ function ProjectMedia({ media, name }: ProjectMediaProps) {
             exit: { opacity: 0, transition: { duration: 0 } },
           }}
         >
-          <XIcon className="h-5 w-5 text-zinc-500" />
+          <XIcon className="h-4 w-4" strokeWidth={1.5} />
         </MorphingDialogClose>
       </MorphingDialogContainer>
     </MorphingDialog>
   )
 }
 
-const ICON_LINK_CLASS =
-  'text-zinc-500 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
+const ICON_LINK_CLASS = 'project-icon'
 
 // Stands on the strip's first frame and runs through the rest on hover.
 function SpriteIcon({
@@ -387,7 +369,7 @@ function SpriteIcon({
 function ProjectLinks({ project }: { project: Project }) {
   if (!project.demo && !project.github) return null
   return (
-    <div className="flex shrink-0 items-center gap-3">
+    <div className="project-links">
       {project.demo && (
         <a
           className={`group ${ICON_LINK_CLASS}`}
@@ -427,110 +409,105 @@ function ProjectLinks({ project }: { project: Project }) {
   )
 }
 
-const TITLE_CLASS = 'font-mono tracking-tight text-zinc-900 dark:text-zinc-50'
-
-export default function ProjectsPage() {
-  const isFeatured = (project: Project) =>
-    (project.media?.sources.length ?? 0) > 0
-  const featured = PROJECTS.filter(isFeatured)
-  const rest = PROJECTS.filter((project) => !isFeatured(project))
-
+// One project: what it is on the left (name, kind, links), and on the right
+// a glimpse of it working, Stanley's description, and anything to try.
+function ProjectRow({
+  project,
+  flagship,
+}: {
+  project: Project
+  flagship?: boolean
+}) {
+  const hasMedia = (project.media?.sources.length ?? 0) > 0
   return (
-    <motion.main
-      className="space-y-4"
-      variants={VARIANTS_CONTAINER}
-      initial="hidden"
-      animate="visible"
+    <article
+      id={project.slug}
+      className="project"
+      data-flagship={flagship || undefined}
+      data-plain={!hasMedia || undefined}
     >
-      <motion.div className="prose prose-gray dark:prose-invert mt-10 space-y-8">
-        <motion.section
-          variants={VARIANTS_SECTION}
-          initial="hidden"
-          animate="visible"
-          transition={TRANSITION_SECTION}
-        >
-          <p className="mb-4 font-serif text-lg text-gray-900 dark:text-gray-100">
-            Showcase
-          </p>
-        </motion.section>
-      </motion.div>
-      <motion.section
-        variants={VARIANTS_SECTION}
-        initial="hidden"
-        animate="visible"
-        transition={TRANSITION_SECTION}
-        className="divide-y divide-zinc-200/70 dark:divide-zinc-800/70"
-      >
-        {featured.map((project) => (
-          <article
-            key={project.id}
-            id={project.slug}
-            className="space-y-3 py-10 first:pt-4"
-          >
-            <h2 className={`px-1 text-[15px] ${TITLE_CLASS}`}>
-              {project.name}
-            </h2>
-            {project.media && project.media.sources.length > 0 && (
-              <ProjectMedia media={project.media} name={project.name} />
-            )}
-            <div className="flex items-end justify-between gap-6 px-1">
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                {project.description}
-              </p>
-              <ProjectLinks project={project} />
-            </div>
-            {project.snippet && <CodeSnippet snippet={project.snippet} />}
-            {project.tracks && (
-              <div className="space-y-3 pt-1">
-                {project.tracks.map((track) => (
-                  <TrackPlayer key={track.src} track={track} />
-                ))}
-              </div>
-            )}
-          </article>
-        ))}
-      </motion.section>
-      {rest.length > 0 && (
-        <motion.section
-          variants={VARIANTS_SECTION}
-          initial="hidden"
-          animate="visible"
-          transition={TRANSITION_SECTION}
-          className="border-t border-zinc-200/70 pt-10 dark:border-zinc-800/70"
-        >
-          <h3 className="mb-3 font-serif text-lg text-zinc-900 dark:text-zinc-100">
-            More
-          </h3>
-          <div className="flex flex-col gap-6">
-            {rest.map((project) => (
-              <div
-                key={project.id}
-                id={project.slug}
-                className="flex items-end justify-between gap-6"
-              >
-                <div>
-                  <h2 className={`mb-1 text-sm ${TITLE_CLASS}`}>
-                    {project.name}
-                  </h2>
-                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                    {project.description}
-                  </p>
-                </div>
-                <ProjectLinks project={project} />
-              </div>
+      <header className="project-meta">
+        <h2 className="project-name">{project.name}</h2>
+        {project.category && <p className="project-kind">{project.category}</p>}
+        <ProjectLinks project={project} />
+      </header>
+      <div className="project-body">
+        {hasMedia && project.media && (
+          <ProjectMedia media={project.media} name={project.name} />
+        )}
+        <p className="project-desc">{project.description}</p>
+        {project.snippet && <CodeSnippet snippet={project.snippet} />}
+        {project.tracks && (
+          <div className="project-tracks">
+            {project.tracks.map((track) => (
+              <TrackPlayer key={track.src} track={track} />
             ))}
           </div>
-        </motion.section>
+        )}
+      </div>
+    </article>
+  )
+}
+
+// Plays only while on screen, so a page of projects isn't decoding video
+// out of sight.
+function InViewVideo({
+  src,
+  className,
+  style,
+}: {
+  src: string
+  className: string
+  style: React.CSSProperties
+}) {
+  const ref = useRef<HTMLVideoElement>(null)
+  useEffect(() => {
+    const video = ref.current
+    if (!video) return
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && !reduce.matches) video.play().catch(() => {})
+      else video.pause()
+    })
+    observer.observe(video)
+    return () => observer.disconnect()
+  }, [])
+  return (
+    <video
+      ref={ref}
+      src={src}
+      loop
+      muted
+      playsInline
+      preload="metadata"
+      className={className}
+      style={style}
+      onClick={(e) => e.preventDefault()}
+    />
+  )
+}
+
+export default function ProjectsPage() {
+  const flagship = PROJECTS.find((p) => p.slug === FLAGSHIP)
+  const hasMedia = (p: Project) => (p.media?.sources.length ?? 0) > 0
+  const others = PROJECTS.filter((p) => p !== flagship)
+  const shown = others.filter(hasMedia)
+  const plain = others.filter((p) => !hasMedia(p))
+
+  return (
+    <div className="projects">
+      <h1 className="sr-only">Projects</h1>
+      {flagship && <ProjectRow project={flagship} flagship />}
+      {shown.map((project) => (
+        <ProjectRow key={project.id} project={project} />
+      ))}
+      {plain.length > 0 && (
+        <section className="projects-plain" aria-label="Smaller projects">
+          {plain.map((project) => (
+            <ProjectRow key={project.id} project={project} />
+          ))}
+        </section>
       )}
-      <motion.section
-        variants={VARIANTS_SECTION}
-        initial="hidden"
-        animate="visible"
-        transition={TRANSITION_SECTION}
-        className="pt-6"
-      >
-        <CdOut link="/" title="Home" home />
-      </motion.section>
-    </motion.main>
+    </div>
   )
 }

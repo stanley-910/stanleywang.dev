@@ -98,7 +98,7 @@ export function TrackPlayer({ track }: { track: Track }) {
       <button
         type="button"
         onClick={toggle}
-        className="flex h-7 w-4 shrink-0 items-center justify-center text-zinc-400 transition-colors hover:text-zinc-900 dark:text-zinc-500 dark:hover:text-zinc-100"
+        className="flex h-7 w-4 shrink-0 items-center justify-center text-[color:var(--ink-muted)] transition-colors hover:text-[color:var(--ink)]"
         aria-label={`${playing ? 'Pause' : 'Play'} ${track.title}`}
       >
         {playing ? (
@@ -108,7 +108,7 @@ export function TrackPlayer({ track }: { track: Track }) {
         )}
       </button>
       <div className="min-w-0 flex-1">
-        <div className="mb-1 flex justify-between font-mono text-xs text-zinc-600 dark:text-zinc-400">
+        <div className="mb-1 flex justify-between font-mono text-xs text-[color:var(--ink-muted)]">
           <span className="truncate">{track.title}</span>
           <span className="tabular-nums">
             {formatTime(time)} / {formatTime(duration)}
@@ -123,7 +123,7 @@ export function TrackPlayer({ track }: { track: Track }) {
           aria-valuemax={Math.round(duration)}
           aria-valuenow={Math.round(time)}
           aria-valuetext={formatTime(time)}
-          className="flex h-7 cursor-pointer touch-none items-center gap-[2px] text-zinc-900 outline-none focus-visible:ring-1 focus-visible:ring-zinc-400 dark:text-zinc-100"
+          className="flex h-7 cursor-pointer touch-none items-center gap-[2px] text-[color:var(--ink)] outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus)]"
           onPointerDown={(e) => {
             e.currentTarget.setPointerCapture(e.pointerId)
             seekToPointer(e.clientX)
