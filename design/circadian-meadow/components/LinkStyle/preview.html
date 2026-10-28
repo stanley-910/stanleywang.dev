@@ -1,0 +1,32 @@
+<!-- @dsCard group="Site" height=300 subtitle="In-prose links and the quiet socials row, day and night" -->
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>LinkStyle</title>
+<style>
+  body { margin: 0; }
+  .row { display: flex; flex-wrap: wrap; gap: 1px; background: var(--hairline); }
+  .frame { flex: 1 1 360px; background: var(--page); color: var(--ink); padding: var(--space-4) var(--gutter); font: 15px/24px var(--font-sans); }
+  .frame p { margin: 0 0 var(--space-3); max-width: var(--measure-read); }
+  .link { color: var(--ink); text-decoration: underline 1px var(--hairline); text-underline-offset: 3px; transition: text-decoration-color var(--duration-quick) var(--ease-calm); }
+  .link:hover { text-decoration-color: var(--ink); }
+  .links { display: flex; flex-wrap: wrap; gap: 0 var(--space-1); font: 13px/20px var(--font-mono); }
+  .links .sep { color: var(--hairline); }
+  .quiet { color: var(--ink-muted); text-decoration: none; font-weight: 400; transition: color var(--duration-quick) var(--ease-calm), font-weight var(--duration-quick) var(--ease-calm); }
+  .quiet:hover, .quiet.is-hover { color: var(--ink); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="row">
+  <div class="frame" data-theme="light">
+    <p>Currently studying Computer Science at <a class="link" href="#">McGill University.</a> Most recently, I interned on Commerce &amp; Identity at <a class="link" href="#">Electronic Arts.</a></p>
+    <div class="links"><a class="quiet" href="#">hi@stanleywang.cc</a><span class="sep">/</span><a class="quiet is-hover" href="#">github</a><span class="sep">/</span><a class="quiet" href="#">linkedin</a><span class="sep">/</span><a class="quiet" href="#">resume</a></div>
+  </div>
+  <div class="frame" data-theme="dark">
+    <p>Currently studying Computer Science at <a class="link" href="#">McGill University.</a> Most recently, I interned on Commerce &amp; Identity at <a class="link" href="#">Electronic Arts.</a></p>
+    <div class="links"><a class="quiet" href="#">hi@stanleywang.cc</a><span class="sep">/</span><a class="quiet" href="#">github</a><span class="sep">/</span><a class="quiet is-hover" href="#">linkedin</a><span class="sep">/</span><a class="quiet" href="#">resume</a></div>
+  </div>
+</div>
+</body>
+</html>

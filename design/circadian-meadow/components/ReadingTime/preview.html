@@ -1,0 +1,41 @@
+<!-- @dsCard group="Site" height=520 subtitle="Spec: the slider under the sun/moon, and reading colours by hour" -->
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>ReadingTime</title>
+<style>
+  body { margin: 0; background: var(--page); }
+  .bar-frame { position: relative; height: 170px; padding: var(--space-4) var(--gutter); background: var(--page); color: var(--ink); }
+  .bar { display: flex; align-items: center; gap: var(--space-4); font: 14px/20px var(--font-mono); }
+  .bar span { color: var(--ink-muted); } .bar .cur { color: var(--ink); }
+  .pop { position: absolute; left: calc(var(--gutter) + 330px); top: 64px; width: 16rem; padding: var(--space-2); box-sizing: border-box; border: 1px solid color-mix(in srgb, var(--hairline) 45%, transparent); border-radius: var(--radius-card); background: var(--surface); box-shadow: var(--shadow-card); }
+  .track { position: relative; height: 6px; background: linear-gradient(90deg, var(--night-sky-top), var(--dawn-sky-horizon) 27%, var(--day-sky-top) 45%, var(--golden-sky-horizon) 74%, var(--sunset-sky-horizon) 79%, var(--twilight-sky-horizon) 84%, var(--night-sky-top)); }
+  .thumb { position: absolute; top: -5px; left: 90%; width: 6px; height: 16px; border-radius: var(--radius-hair); background: var(--ink); }
+  .read { display: flex; gap: var(--space-1); margin-top: var(--space-2); font: 12px/16px var(--font-mono); }
+  .read .muted { color: var(--ink-muted); } .read .now { margin-left: auto; color: var(--ink-muted); }
+  .strip { display: grid; grid-template-columns: repeat(6, 1fr); }
+  .key { padding: var(--space-2); font: 13px/19px var(--font-sans); min-height: 150px; }
+  .key b { display: block; font: 500 12px/16px var(--font-mono); }
+  .key .m { font: 12px/16px var(--font-mono); }
+  .key hr { border: 0; border-top: 1px solid; margin: var(--space-1) 0; }
+  @media (max-width: 720px) { .strip { grid-template-columns: repeat(3, 1fr); } .pop { left: var(--gutter); right: var(--gutter); width: auto; } }
+</style>
+</head>
+<body>
+<!-- The strip writes the proposed reading colours inline: they become tokens when ReadingTime is built. -->
+<div class="bar-frame" data-theme="dark">
+  <div class="bar"><span>stanley</span><span>projects</span><span>film</span><span class="cur">writing</span><span>music</span>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg></div>
+  <div class="pop"><div class="track"><div class="thumb"></div></div><div class="read"><span>21:40</span><span class="muted">night</span><span class="now">now</span></div></div>
+</div>
+<div class="strip">
+  <div class="key" style="background:#e7e5e3;color:#26262a"><b>06:30 dawn</b><span class="m" style="color:#615f63">ink 12.0  muted 5.0</span><hr style="border-color:#838184">Try out a compiler I coded from scratch.</div>
+  <div class="key" style="background:#ebeae6;color:#252522"><b>09–16 day</b><span class="m" style="color:#63625e">ink 12.8  muted 5.1</span><hr style="border-color:#868580">Try out a compiler I coded from scratch.</div>
+  <div class="key" style="background:#ece5da;color:#2a251f"><b>17:45 golden</b><span class="m" style="color:#665e55">ink 12.1  muted 5.1</span><hr style="border-color:#888077">Try out a compiler I coded from scratch.</div>
+  <div class="key" style="background:#1c1619;color:#ebe1da"><b>19:00 sunset</b><span class="m" style="color:#a1958f">ink 13.9  muted 6.1</span><hr style="border-color:#6d6361">Try out a compiler I coded from scratch.</div>
+  <div class="key" style="background:#15131c;color:#e5e0ea"><b>20:09 twilight</b><span class="m" style="color:#9a94a3">ink 14.2  muted 6.3</span><hr style="border-color:#66616e">Try out a compiler I coded from scratch.</div>
+  <div class="key" style="background:#10151d;color:#dde2ea"><b>21:24 night</b><span class="m" style="color:#8f97a3">ink 14.1  muted 6.2</span><hr style="border-color:#5d646f">Try out a compiler I coded from scratch.</div>
+</div>
+</body>
+</html>

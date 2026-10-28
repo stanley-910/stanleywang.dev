@@ -7,6 +7,11 @@
   --hairline: #6a6964;
   --control: #1b1b19c7;
   --focus: var(--ink);
+  --surface: #242422;
+  --shadow-card: 0 1px 2px #0000004d, 0 10px 28px #00000066;
+  --caption-fill: #1b1b19cc;
+  --caption-ink: #e4e2da;
+  --caption-ink-muted: #9d9b94;
   --scene-ink: #e4e2da;
   --scene-ink-muted: #9d9b94;
   --scene-hairline: #6a6964;
@@ -125,28 +130,46 @@
   --ink-muted: #63625e;
   --hairline: #8f8e89;
   --control: #ebeae6cc;
+  --surface: #f3f2ee;
+  --shadow-card: 0 1px 2px #25252214, 0 8px 24px #2525221f;
 }
 :root {
   --space-1: 8px;
   --space-2: 14px;
   --space-3: 18px;
+  --space-4: 32px;
+  --space-5: 64px;
   --gutter: 24px;
   --hero-bottom: 128px;
   --measure: 54rem;
+  --measure-read: 40rem;
   --radius-none: 0;
   --radius-hair: 2px;
   --radius-dot: 50%;
+  --radius-card: 6px;
+  --radius-pill: 999px;
+  --ease-calm: cubic-bezier(0.2, 0, 0, 1);
+  --duration-quick: 120ms;
+  --duration-card: 160ms;
+  --duration-leave: 150ms;
   --cell-width: 6px;
   --cell-aspect: 1.32;
   --specimen-head: 14;
   --frame-side: 26%;
   --frame-bottom: 50%;
-  --font-display: "Bodoni Moda", Didot, "Bodoni 72", serif;
-  --font-body: "Instrument Sans", system-ui, sans-serif;
-  --font-glyph: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --font-sans: Geist, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  /* Old names, kept so the garden components render until they're ported. */
+  --font-body: var(--font-sans);
+  --font-display: var(--font-mono);
+  --font-glyph: var(--font-mono);
 }
-.body { font-family: var(--font-body); font-size: 15px; line-height: 24px; font-weight: 400; }
-.link { font-family: var(--font-body); font-size: 14px; line-height: 20px; font-weight: 400; }
-.control { font-family: var(--font-body); font-size: 12px; line-height: 16px; font-weight: 400; }
-.hint { font-family: var(--font-display); font-size: 13px; line-height: 18px; font-weight: 400; }
-.glyph { font-family: var(--font-glyph); font-size: 10px; line-height: 13px; font-weight: 500; }
+.body { font-family: var(--font-sans); font-size: 15px; line-height: 24px; font-weight: 400; }
+.title { font-family: var(--font-sans); font-size: 18px; line-height: 24px; font-weight: 500; }
+.small { font-family: var(--font-sans); font-size: 13px; line-height: 19px; font-weight: 400; }
+.control { font-family: var(--font-sans); font-size: 12px; line-height: 16px; font-weight: 400; }
+.nav { font-family: var(--font-mono); font-size: 14px; line-height: 20px; font-weight: 400; }
+.link { font-family: var(--font-mono); font-size: 13px; line-height: 20px; font-weight: 400; }
+.meta { font-family: var(--font-mono); font-size: 12px; line-height: 16px; font-weight: 400; }
+.hint { font-family: var(--font-mono); font-size: 12px; line-height: 16px; font-weight: 400; }
+.glyph { font-family: var(--font-mono); font-size: 10px; line-height: 13px; font-weight: 500; }
