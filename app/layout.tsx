@@ -7,8 +7,10 @@ import { Analytics } from '@vercel/analytics/react'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { ThemeProvider } from 'next-themes'
 
+import { INTRO_SCRIPT } from '@/components/garden/intro'
 import { ProgressBar } from '@/components/ui/progress-bar'
 import { THEME_SCRIPT } from '@/lib/circadian'
+import { WEBSITE_URL } from '@/lib/constants'
 
 import { Header } from './header'
 
@@ -29,6 +31,8 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
+  // Makes the link-preview image's URL absolute (app/opengraph-image.tsx).
+  metadataBase: new URL(WEBSITE_URL),
   title: 'stanleywang.dev',
   description: 'By Stanley Wang',
   icons: {
@@ -55,6 +59,8 @@ export default function RootLayout({
       <head>
         {/* Picks the hour's theme before next-themes applies it. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        {/* Holds home's text back for its opening, on a fresh load only. */}
+        <script dangerouslySetInnerHTML={{ __html: INTRO_SCRIPT }} />
       </head>
       <body className="antialiased">
         <ProgressBar />

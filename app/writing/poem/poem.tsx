@@ -55,7 +55,8 @@ type Sky = { sunrise: number; sunset: number; moonset: number }
 
 const fromB64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0))
 
-async function decrypt(password: string): Promise<string> {
+/** The key a password stretches into; extractable, so the session can keep it. */
+async function keyFrom(password: string): Promise<CryptoKey> {
   const base = await crypto.subtle.importKey(
     'raw',
     new TextEncoder().encode(password.normalize('NFC')),
@@ -63,7 +64,7 @@ async function decrypt(password: string): Promise<string> {
     false,
     ['deriveKey'],
   )
-  const key = await crypto.subtle.deriveKey(
+  return crypto.subtle.deriveKey(
     {
       name: 'PBKDF2',
       hash: 'SHA-256',
@@ -72,9 +73,12 @@ async function decrypt(password: string): Promise<string> {
     },
     base,
     { name: 'AES-GCM', length: 256 },
-    false,
+    true,
     ['decrypt'],
   )
+}
+
+async function decrypt(key: CryptoKey): Promise<string> {
   // A wrong password fails GCM's tag check and throws.
   const plain = await crypto.subtle.decrypt(
     { name: 'AES-GCM', iv: fromB64(cipher.iv) },
@@ -82,6 +86,41 @@ async function decrypt(password: string): Promise<string> {
     fromB64(cipher.ct),
   )
   return new TextDecoder().decode(plain)
+}
+
+// The key, not the password, is kept for the tab's session, so a reload
+// doesn't ask again. It's filed under the ciphertext's salt: re-encrypting
+// the poem leaves it unused, and the page asks afresh.
+const KEY_CACHE = 'poem-key'
+
+async function remember(key: CryptoKey) {
+  const raw = new Uint8Array(await crypto.subtle.exportKey('raw', key))
+  try {
+    sessionStorage.setItem(
+      KEY_CACHE,
+      JSON.stringify({
+        salt: cipher.salt,
+        key: btoa(String.fromCharCode(...raw)),
+      }),
+    )
+  } catch {}
+}
+
+async function recall(): Promise<CryptoKey | null> {
+  let saved: { salt?: string; key?: string } | null = null
+  try {
+    saved = JSON.parse(sessionStorage.getItem(KEY_CACHE) ?? 'null')
+  } catch {}
+  if (!saved?.key || saved.salt !== cipher.salt) return null
+  return crypto.subtle.importKey('raw', fromB64(saved.key), 'AES-GCM', true, [
+    'decrypt',
+  ])
+}
+
+function forget() {
+  try {
+    sessionStorage.removeItem(KEY_CACHE)
+  } catch {}
 }
 
 const MARK = /^@\s*(\S+)(?:\s+(\S+))?\s*$/
@@ -286,6 +325,10 @@ export function Poem({ className, preview }: PoemProps) {
   )
   const [busy, setBusy] = useState(false)
   const [wrong, setWrong] = useState(false)
+  // Whether the session's key has been tried, so the lock doesn't flash up
+  // before a poem the tab already opened.
+  const [checked, setChecked] = useState(preview !== undefined)
+  const inputRef = useRef<HTMLInputElement>(null)
   // When the sun meets the ridges on this screen (mount.ts), and the poem's
   // re-measure, which needs it.
   const skyRef = useRef<Sky>({ sunrise: 6.5, sunset: 18, moonset: 5.5 })
@@ -370,6 +413,26 @@ export function Poem({ className, preview }: PoemProps) {
     }
   }, [poem])
 
+  // Opened earlier in this tab: open it again without asking.
+  useEffect(() => {
+    if (checked) return
+    let live = true
+    recall()
+      .then((key) => (key ? decrypt(key) : null))
+      .then((text) => {
+        if (live && text !== null) setPoem(parse(text))
+      })
+      .catch(forget)
+      .finally(() => live && setChecked(true))
+    return () => {
+      live = false
+    }
+  }, [checked])
+
+  useEffect(() => {
+    if (checked && !poem) inputRef.current?.focus()
+  }, [checked, poem])
+
   const unlock = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const input = e.currentTarget.elements.namedItem(
@@ -379,7 +442,9 @@ export function Poem({ className, preview }: PoemProps) {
     setBusy(true)
     setWrong(false)
     try {
-      const text = await decrypt(input.value)
+      const key = await keyFrom(input.value)
+      const text = await decrypt(key)
+      await remember(key)
       window.scrollTo(0, 0)
       setPoem(parse(text))
     } catch {
@@ -425,8 +490,9 @@ export function Poem({ className, preview }: PoemProps) {
             )}
           </article>
         ) : (
-          <form className="poem-lock" onSubmit={unlock}>
+          <form className="poem-lock" onSubmit={unlock} hidden={!checked}>
             <input
+              ref={inputRef}
               name="password"
               type="password"
               className="poem-password"
@@ -434,7 +500,6 @@ export function Poem({ className, preview }: PoemProps) {
               aria-label="Password"
               aria-invalid={wrong || undefined}
               autoComplete="off"
-              autoFocus
               readOnly={busy}
               onChange={() => setWrong(false)}
             />
