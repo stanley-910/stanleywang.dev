@@ -137,7 +137,11 @@ export function ThemeSwitch({ className }: { className?: string }) {
       e.preventDefault()
       const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
       // Line-mode wheels report lines; count each as 40px.
-      carry += e.deltaMode === 1 ? d * 40 : d
+      const px = e.deltaMode === 1 ? d * 40 : d
+      // A turn the other way starts fresh: what was left over from the last
+      // direction, momentum included, mustn't step once more that way.
+      if (Math.sign(px) !== Math.sign(carry)) carry = 0
+      carry += px
       const steps = Math.trunc(carry / WHEEL_STEP)
       if (!steps) return
       carry -= steps * WHEEL_STEP

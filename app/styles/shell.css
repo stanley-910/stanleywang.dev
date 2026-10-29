@@ -63,6 +63,14 @@
 :root .prose,
 :root.dark .prose {
   --fg: var(--ink);
+  --fg-deep: var(--ink);
+  --fg-deeper: var(--ink);
+}
+
+/* A post's column, centred between the gutters at every width. */
+.post {
+  max-width: 44rem;
+  margin-inline: auto;
 }
 
 /* In prose: ink, with a hairline underline that darkens on hover. The

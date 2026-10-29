@@ -141,7 +141,7 @@ export default function LayoutBlogPost({
       />
 
       <motion.main
-        className="prose prose-gray dark:prose-invert prose-pre:bg-transparent prose-pre:p-0 mt-10 space-y-12"
+        className="post prose prose-gray dark:prose-invert prose-pre:bg-transparent prose-pre:p-0 mt-10 space-y-12"
         variants={VARIANTS_CONTAINER}
         initial="hidden"
         animate="visible"
