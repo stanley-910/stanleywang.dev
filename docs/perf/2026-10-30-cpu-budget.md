@@ -80,6 +80,6 @@ repeat on an idle machine, and a real mid-range laptop, are still to do.
 
 - **Cell sampling in the worker** (7–8 ms a frame) could take a fast path for cells whose four
   subsamples are all one kind.
-- **The poem's finer grid** costs about 52 ms a plant frame against 27 on home; it could
-  draw at a lower cap.
+- **The poem's finer grid** cost about 52 ms a plant frame against 27 on home. The poem now uses
+  home's grid ([2026-10-30-rose-inset.md](2026-10-30-rose-inset.md)).
 - **Fill canvases at one sample per cell** would quarter the fills, at the cost of thin stems.

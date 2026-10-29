@@ -47,8 +47,6 @@ const DEFAULT_START = 5
 const END_AT = 0.7
 /** How fast the scene catches up with the scroll, per second. */
 const EASE = 5
-/** The meadow's zoom here (mount.ts; home's is 0.64): finer, for the rose. */
-const ZOOM = 0.5
 const WHERE: Record<string, number> = { top: 0.1, middle: 0.5, bottom: 0.9 }
 
 type Pin = { when: string; at: number }
@@ -383,15 +381,13 @@ export function Poem({ className, preview }: PoemProps) {
       font: mono || 'ui-monospace, Menlo, monospace',
       scrub: false,
       visitors: 'friends',
-      // A stiller air than home's: the poem's grid is finer, so the same sway reads larger.
+      // A stiller air than home's.
       wind: 0.22,
       onSky: (sky) => {
         skyRef.current = sky
         remeasureRef.current?.()
       },
       onReady: ({ rose }) => (roseRef.current = rose),
-      // A finer grid than home's, so the rose prints with its petals and leaf teeth.
-      zoom: ZOOM,
     })
     const restore = () => setHour(before === null ? null : Number(before))
     // A reload or a closed tab skips React's cleanup.

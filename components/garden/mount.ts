@@ -81,7 +81,7 @@ type GardenOptions = {
   /** Called once the scene is up, with a way to grow the poem's rose, rooted `x` (a share of
    * the screen's width) across, to `grown` (0 to 1, full flower). */
   onReady?: (scene: { rose: (x: number, grown: number) => void }) => void
-  /** The scene's zoom in place of SCENE_ZOOM: lower is a finer grid (the poem, for its rose). */
+  /** The scene's zoom in place of SCENE_ZOOM: lower is a finer grid. */
   zoom?: number
   /** How hard the wind blows, 1 a full breeze. */
   wind?: number

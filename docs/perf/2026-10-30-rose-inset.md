@@ -1,6 +1,28 @@
 # The rose on a finer grid, the poem on home's
 
-Draft, 2026-10-30. Not built.
+Draft, 2026-10-30. Not built: step 0 put the poem at the edge of the rule, and Stanley judged
+the rose on home's grid good enough, so the poem now uses home's 0.64 and the inset is shelved.
+
+## Step 0, measured
+
+2026-10-30, production build with a `?zoom=` and `?rose=` override (not committed), 1440×900 at
+2×, the rose grown, 8 s windows, fresh profile per run, two runs each, interleaved. Includes the
+plant cap from `2026-10-30-cpu-budget.md`. The machine had other agents on it (load 4–8).
+
+| | 0.5, M4 | 0.64, M4 | 0.5, 4× CPU | 0.64, 4× CPU |
+|---|---|---|---|---|
+| Page fps | 120, 120 | 120, 120 | 105, 100 | 117, 119 |
+| Plant frames/s | 39, 40 | 40, 40 | 26, 33 | 39, 40 |
+| Main thread, ms per s | 190, 197 | 130, 145 | 534, 652 | 529, 496 |
+| Raster round trip | 50, 43 ms | 24, 26 ms | 48, 41 ms | 34, 30 ms |
+| Cores busy, all of Chrome | 2.5, 2.5 | 1.8, 1.9 | 2.3, 2.6 | 2.8, 2.5 |
+
+At 4× CPU, 0.5 kept its page fps but its plants fell to 26 a second in one run, under the rule's
+30, and that run stepped quality down a level. 0.64 held both in every run. Its raster round trip
+is about half of 0.5's, and on the M4 it costs about 0.6 cores less. That's a narrow fail under
+the rule, so the inset was in scope. Stanley looked at the rose at 0.64 and judged it fine, which
+makes the cheaper fix the whole fix.
+
 
 ## Problem
 
