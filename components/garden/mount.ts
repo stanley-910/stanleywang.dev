@@ -72,6 +72,9 @@ type GardenOptions = {
   onSky?: (sky: { sunrise: number; sunset: number; moonset: number }) => void
   /** Whether the wheel scrubs the hour; off where the page sets it (the poem's scroll). */
   scrub?: boolean
+  /** Called once the scene is up, with a way to grow the poem's rose, rooted `x` (a share of
+   * the screen's width) across. */
+  onReady?: (scene: { rose: (x: number) => void }) => void
 }
 
 function localHour() {
@@ -87,6 +90,7 @@ export function mountGarden({
   onHour,
   onSky,
   scrub = true,
+  onReady,
 }: GardenOptions) {
   const html = document.documentElement
   const quality = new Quality()
@@ -595,6 +599,15 @@ export function mountGarden({
   showHour()
   resize()
   start()
+  onReady?.({
+    rose: (x) => {
+      const rose = garden.rose(width * x)
+      // With reduced motion it's there, grown, rather than growing.
+      if (!rose || !reduced.matches) return
+      rose.age = rose.bloomAge()
+      draw(true)
+    },
+  })
   // Redraw once the glyph font arrives, since canvas text doesn't reflow.
   let disposed = false
   document.fonts.load(`500 12px ${font}`).then(() => {

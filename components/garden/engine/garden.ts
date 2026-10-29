@@ -279,6 +279,17 @@ export class Garden {
     return best
   }
 
+  /** Grows the one rose up front at x (the poem's), unless it's already up; the new plant, or null. */
+  rose(x: number) {
+    if (this.plants.some((p) => p.species === 'rose')) return null
+    const rose = this.add('rose', x, 1)
+    // Whatever flowers near it fades back into the grass, to leave it alone.
+    const room = this.width * 0.22
+    for (const p of this.plants)
+      if (p !== rose && Math.abs(p.x - x) < room) p.leaving = true
+    return rose
+  }
+
   /** Calls a butterfly to the flower under the click. */
   visit(head: Head) {
     if (head.owner)
@@ -490,7 +501,8 @@ export class Garden {
       plant.update(dt, this.env)
       if (plant.leaving && plant.fade <= 0) {
         this.plants.splice(i, 1)
-        this.sown.splice(this.sown.indexOf(plant), 1)
+        const s = this.sown.indexOf(plant)
+        if (s >= 0) this.sown.splice(s, 1)
         i--
         continue
       }
@@ -587,6 +599,8 @@ export class Garden {
         hero = plant
     }
     if (hero) hero.dim = 0
+    // The rose is the poem's subject, never stepped back.
+    for (const plant of this.plants) if (plant.species === 'rose') plant.dim = 0
     let blade = 0
     for (const plant of this.plants) {
       blade = this.meadow.draw(r, p, blade, plant.z, haze)
