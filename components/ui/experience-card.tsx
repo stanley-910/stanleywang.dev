@@ -129,16 +129,20 @@ export function ExperienceLink({
         data-below={shift.below || undefined}
         style={{ '--shift-x': `${shift.x}px` } as React.CSSProperties}
       >
-        {job.logo && (
-          <span
-            className="xp-logo"
-            aria-hidden="true"
-            style={{ '--logo': `url(${job.logo})` } as React.CSSProperties}
-          />
-        )}
         <span className="xp-body">
           <span className="xp-top">
-            <span className="xp-company">{job.company}</span>
+            <span className="xp-company">
+              {job.logo && (
+                <span
+                  className="xp-logo"
+                  aria-hidden="true"
+                  style={
+                    { '--logo': `url(${job.logo})` } as React.CSSProperties
+                  }
+                />
+              )}
+              {job.company}
+            </span>
             <span className="xp-when">
               {job.end ? `${job.start}–${job.end}` : job.start}
             </span>

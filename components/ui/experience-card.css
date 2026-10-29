@@ -50,13 +50,12 @@
     visibility 0s;
 }
 
-/* The company's mark as a mask, filled with the card's ink, so every logo
-   is one colour and follows the hour. */
+/* The company's mark beside its name, at the name's size: a mask filled
+   with the card's ink, so every logo is one colour and follows the hour. */
 .xp-logo {
   flex: none;
-  width: 24px;
-  height: 24px;
-  margin-top: 2px;
+  width: 1.25em;
+  height: 1.25em;
   background: var(--ink);
   -webkit-mask: var(--logo) center / contain no-repeat;
   mask: var(--logo) center / contain no-repeat;
@@ -78,6 +77,9 @@
 }
 
 .xp-company {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   min-width: 0;
   font-weight: var(--weight-strong);
   overflow: hidden;

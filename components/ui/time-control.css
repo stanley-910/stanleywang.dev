@@ -127,13 +127,14 @@
 }
 
 /* Across the light/dark switch the text fades out, the colours swap, and
-   it fades back (ReadingTime, Timing). */
-.site-shell > main,
+   it fades back (ReadingTime, Timing). The garden never fades: its scene
+   runs on through the switch, and its text keeps one colour anyway. */
+.site-shell > main > :not(.garden-home),
 .site-header nav {
   transition: opacity 120ms var(--ease-calm);
 }
 
-.time-dip .site-shell > main,
+.time-dip .site-shell > main > :not(.garden-home),
 .time-dip .site-header nav {
   opacity: 0;
   transition-duration: 90ms;

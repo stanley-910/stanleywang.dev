@@ -95,7 +95,7 @@ export const PROJECTS: Project[] = [
     slug: 'mini-compiler',
     description:
       'Try out a compiler I coded from scratch. In the process, visualize and learn how source to assembly compilers actually work.',
-    demo: '/projects/mini-compiler',
+    // No demo icon: the snippet's compile button opens it.
     snippet: {
       file: 'main.c',
       label: 'loop',
