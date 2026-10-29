@@ -755,8 +755,8 @@ export class Garden {
     const clear = this.keepClear
     for (const [j, [at, n]] of SPRUCE_STANDS.entries()) {
       const gx = at * W
-      const span = n * 3.4 * CW * 0.6 + 30
-      const tall = 13 * CH
+      const span = n * 2.9 * CW * 0.6 + 30
+      const tall = 10 * CH
       if (
         clear &&
         gx + span > clear.left &&
@@ -770,10 +770,10 @@ export class Garden {
         const x =
           gx +
           (k - (n - 1) / 2) *
-            3.4 *
+            2.9 *
             CW *
             (0.75 + 0.5 * hash(k, j * 13 + 1, seed))
-        const H = (5 + 8 * hash(k, j * 13 + 2, seed)) * CH * mid
+        const H = (4.5 + 5.5 * hash(k, j * 13 + 2, seed)) * CH * mid
         const hw = H * 0.26
         const tiers = 3 + Math.floor(H / CH / 2.2)
         const base = nearAt(x) + CH * 0.8
