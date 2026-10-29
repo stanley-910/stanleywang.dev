@@ -161,10 +161,12 @@ export class Particles {
             0,
             TAU,
           )
+          // A loose petal prints as bare glyphs in its own colour, like fluff. As petal material it
+          // had no outline or seams, so it read as a flat tile and blotted out flowers it crossed.
           r.fill(
             path,
             p.color,
-            p.type === 'petal' ? Kind.Petal : Kind.Foliage,
+            p.type === 'petal' ? Kind.Fluff : Kind.Foliage,
             fade,
           )
           break
