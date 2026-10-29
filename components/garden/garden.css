@@ -40,11 +40,13 @@
 :root[data-sky='dark'] .site-header {
   --ink: #e4e2da;
   --ink-muted: #b4b2aa;
+  --glass: #10141c;
 }
 
 :root[data-sky='light'] .site-header {
   --ink: #1b1b19;
   --ink-muted: #3b3a37;
+  --glass: #ebeae6;
 }
 
 /* The home text sits on the scene's dark ground at every hour, so it keeps

@@ -10,15 +10,14 @@
   left: 0;
   bottom: calc(100% + var(--space-1));
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  width: min(21rem, calc(100vw - 24px));
-  padding: var(--space-2) var(--space-2) 12px;
-  /* A square of page colour: hairline edge, no shadow, the scene faint
-     behind it. */
-  border: 1px solid color-mix(in srgb, var(--hairline) 70%, transparent);
-  border-radius: var(--radius-hair);
-  background: color-mix(in srgb, var(--page) 94%, transparent);
+  align-items: flex-start;
+  gap: 12px;
+  width: min(23rem, calc(100vw - 24px));
+  padding: var(--space-2);
+  border: 1px solid color-mix(in srgb, var(--hairline) 55%, transparent);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
   color: var(--ink);
   font-family: var(--font-sans);
   font-size: var(--text-small);
@@ -49,6 +48,23 @@
     opacity var(--duration-card) var(--ease-calm),
     transform var(--duration-card) var(--ease-calm),
     visibility 0s;
+}
+
+.xp-logo {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  margin-top: 1px;
+  border-radius: var(--radius-hair);
+  object-fit: contain;
+}
+
+.xp-body {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .xp-top {

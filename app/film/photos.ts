@@ -1,6 +1,6 @@
 // Photos on /film. Every field but the size is optional: a caption shows
-// only what's known. `src` stays unset until Stanley picks the export
-// (strip GPS first); the page draws a placeholder of the right shape.
+// only what's known. Files live in public/images/film, with their metadata
+// (GPS included) stripped; without `src` the page draws a placeholder.
 export type Photo = {
   id: string
   src?: string
@@ -32,6 +32,7 @@ const PEN_EE3 = {
 export const PHOTOS: Photo[] = [
   {
     id: '000032100048',
+    src: '/images/film/tokyo-000032100048.jpg',
     width: 1463,
     height: 2075,
     alt: 'Tokyo, on Portra 400.',
@@ -40,6 +41,7 @@ export const PHOTOS: Photo[] = [
   },
   {
     id: '000032100062',
+    src: '/images/film/tokyo-000032100062.jpg',
     width: 1463,
     height: 2075,
     alt: 'Tokyo, on Portra 400.',

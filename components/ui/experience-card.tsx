@@ -129,23 +129,26 @@ export function ExperienceLink({
         data-below={shift.below || undefined}
         style={{ '--shift-x': `${shift.x}px` } as React.CSSProperties}
       >
-        <span className="xp-top">
-          <span className="xp-company">{job.company}</span>
-          <span className="xp-when">
-            {job.end ? `${job.start}–${job.end}` : job.start}
+        {job.logo && <img className="xp-logo" src={job.logo} alt="" />}
+        <span className="xp-body">
+          <span className="xp-top">
+            <span className="xp-company">{job.company}</span>
+            <span className="xp-when">
+              {job.end ? `${job.start}–${job.end}` : job.start}
+            </span>
           </span>
+          <span className="xp-role">{job.title}</span>
+          <span className="xp-desc">{job.desc}</span>
+          {job.caseStudy && (
+            <Link
+              href={job.caseStudy}
+              className="link-quiet xp-more"
+              tabIndex={open ? 0 : -1}
+            >
+              case study
+            </Link>
+          )}
         </span>
-        <span className="xp-role">{job.title}</span>
-        <span className="xp-desc">{job.desc}</span>
-        {job.caseStudy && (
-          <Link
-            href={job.caseStudy}
-            className="link-quiet xp-more"
-            tabIndex={open ? 0 : -1}
-          >
-            case study
-          </Link>
-        )}
       </span>
     </span>
   )
