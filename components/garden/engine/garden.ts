@@ -273,7 +273,8 @@ export class Garden {
       y < this.horizon ? FARTHEST_Z : Math.max(FARTHEST_Z, this.depthAt(y))
     const plant = this.add(this.pickSpecies(), x, z)
     plant.hurry()
-    this.butterflies.later(plant, RUSH + 1)
+    // Now and then a sown flower draws a visitor once it opens; a click on a flower always does.
+    if (this.rng() < 0.2) this.butterflies.later(plant, RUSH + 1)
     // After dark a few fireflies gather where the seed went in.
     const night = this.env.palette?.night ?? 0
     for (let i = 0; i < Math.round(6 * smoothstep(0.4, 0.9, night)); i++) {
@@ -479,16 +480,6 @@ export class Garden {
   }
 
   private spawnAmbient(dt: number, p: Palette) {
-    // Now and then by day a butterfly drops in on its own.
-    if (
-      p.night < 0.4 &&
-      this.butterflies.list.length === 0 &&
-      this.rng() < dt / 30
-    ) {
-      const open = this.heads.filter((h) => h.alpha > 0.5 && h.owner)
-      const h = open[Math.floor(this.rng() * open.length)]
-      if (h?.owner) this.butterflies.summon(h.owner, this.heads, p)
-    }
     let fireflies = 0
     let motes = 0
     for (const q of this.particles.list) {
