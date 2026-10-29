@@ -859,8 +859,18 @@ export class AsciiRenderer {
               // After dark cream ink glows against the dim petals; pull it back toward the petal's own colour.
               const reach = darkInk ? 1 : 1 - 0.5 * p.night
               // Mostly opaque, so what's behind (a hill's edge, the sky) doesn't show through
-              // the head as a line across it.
-              const body = darkInk ? 0.6 + 0.25 * lit : 0.55 + 0.3 * lit
+              // the head as a line across it. The light is in the tile's colour instead: lit
+              // folds brighter, shaded and back-facing ones darker, so the petals read apart.
+              const body = darkInk ? 0.75 + 0.1 * lit : 0.7 + 0.15 * lit
+              // Shallower after dark, where the flowers are the brightest thing in the scene.
+              const shadeBy =
+                0.62 +
+                0.25 * p.night +
+                (0.55 - 0.2 * p.night) * lit -
+                0.12 * this.back[i]
+              tileCol[i * 3] = Math.min(255, tileCol[i * 3] * shadeBy)
+              tileCol[i * 3 + 1] = Math.min(255, tileCol[i * 3 + 1] * shadeBy)
+              tileCol[i * 3 + 2] = Math.min(255, tileCol[i * 3 + 2] * shadeBy)
               // Lines carry the drawing: the head's outline and the seams between its petals, in ink
               // that contrasts with what's behind.
               // On a head only a few cells across nearly every cell touches the edge; keep lines for
