@@ -1,0 +1,1380 @@
+import {
+  basis,
+  disc,
+  drawPetals,
+  flush,
+  headAxis,
+  project,
+  type Vec3,
+} from './bloom'
+import {
+  clamp,
+  easeOut,
+  lerp,
+  mulberry32,
+  noise1,
+  smoothstep,
+  TAU,
+} from './math'
+import { mix, shade, type Palette, type Rgb } from './palette'
+import { particle, type Particles } from './particles'
+import { FLOWER_FLUFF, Kind, type Raster, Shape } from './raster'
+import { Stem } from './stem'
+
+import type { Wind } from './wind'
+
+export type Species = 'poppy' | 'cosmos' | 'lace' | 'dandelion'
+
+export interface Env {
+  wind: Wind
+  particles: Particles
+  palette: Palette
+  /** Viewport height: the unit plant sizes are given in. */
+  unit: number
+  /** Ground line for a depth. */
+  floor: (z: number) => number
+  /** True while the garden grows in, so it doesn't shed a season's petals in four seconds. */
+  quiet: boolean
+}
+
+const hazeOf = (z: number) => 0.68 * (1 - z) ** 1.6
+
+type Leaf = {
+  joint: number
+  side: number
+  angle: number
+  length: number
+  seed: number
+}
+
+/** Flower heads print larger than life so each one spans enough cells to read as a flower. */
+const HEAD = 1.6
+
+/** Seconds a sown plant takes to reach full flower. */
+export const RUSH = 2.5
+
+/**
+ * One plant and its life: a stalk that grows, a bud, a flower, seed, and a fade back into the
+ * grass. The garden replaces it with a seedling of the same kind when its cycle ends.
+ */
+export abstract class Plant {
+  abstract readonly species: Species
+  age = 0
+  /** Seconds from seed to gone. */
+  cycle = 200
+  readonly rng: () => number
+  readonly scale: number
+  stems: Stem[] = []
+  leaves: Leaf[] = []
+  /** Which way the bud nods: -1 left, 1 right. */
+  readonly side: number
+  readonly facing: number
+  readonly haze: number
+  /** Set each frame after dark: every flower but the nearest steps back a little. */
+  dim = 0
+  /** 1 while alive; a plant made to leave fades to 0 and is removed. */
+  fade = 1
+  leaving = false
+  private rush: { from: number; to: number; t: number } | null = null
+
+  constructor(
+    readonly x: number,
+    readonly z: number,
+    readonly seed: number,
+  ) {
+    this.rng = mulberry32(seed)
+    this.scale = lerp(0.26, 1.18, z ** 1.15)
+    this.side = this.rng() < 0.5 ? -1 : 1
+    this.facing = lerp(0.15, 0.95, this.rng())
+    this.haze = hazeOf(z)
+  }
+
+  get done() {
+    return this.age >= this.cycle
+  }
+
+  /** Age at which the plant is in full flower, to start the garden mostly blooming. */
+  abstract bloomAge(): number
+
+  protected makeStem(n: number, length: number, env: Env) {
+    const s = new Stem(n)
+    s.length = length
+    s.baseX = this.x
+    s.baseY = env.floor(this.z)
+    s.depth = this.z
+    s.baseAngle = (this.rng() - 0.5) * 0.12
+    return s
+  }
+
+  /** After a resize: roots move to the new ground line; branches follow their parent. */
+  reanchor(env: Env) {
+    for (const s of this.stems) if (!s.parent) s.baseY = env.floor(this.z)
+  }
+
+  /** Sown by a click: grow straight to full flower over RUSH seconds instead of half a minute. */
+  hurry() {
+    this.rush = { from: this.age, to: this.bloomAge(), t: 0 }
+  }
+
+  update(dt: number, env: Env) {
+    if (this.rush) {
+      const q = this.rush
+      q.t = Math.min(1, q.t + dt / RUSH)
+      this.age = lerp(q.from, q.to, easeOut(q.t))
+      if (q.t >= 1) this.rush = null
+    } else this.age += dt
+    if (this.leaving) this.fade = Math.max(0, this.fade - dt / 1.5)
+    this.live(env, dt)
+    const sub = 2
+    for (let i = 0; i < sub; i++)
+      for (const s of this.stems) s.step(dt / sub, env.wind)
+  }
+
+  protected abstract live(env: Env, dt: number): void
+  abstract draw(r: Raster, env: Env): void
+
+  protected hazed(c: Rgb, p: Palette): Rgb {
+    return mix(c, p.haze, this.haze)
+  }
+
+  /** Flower heads take only a little of the distance haze, so far blooms keep their colour. */
+  protected bloomed(c: Rgb, p: Palette): Rgb {
+    return mix(mix(c, p.haze, this.haze * 0.35), p.ground, this.dim)
+  }
+
+  protected withered(c: Rgb, w: number, p: Palette): Rgb {
+    return mix(c, mix(p.grassDark, p.haze, 0.5), w)
+  }
+
+  protected drawStem(r: Raster, s: Stem, color: Rgb, width: number) {
+    if (s.growth < 0.01) return
+    // Far stalks are thinner than a cell; widen them to one so far heads don't float.
+    r.stroke(s.path(), color, Kind.Stem, Math.max(width, r.minLine))
+  }
+
+  /** Lobed basal leaves, arching out and down from the base. */
+  protected drawLeaf(
+    r: Raster,
+    s: Stem,
+    leaf: Leaf,
+    color: Rgb,
+    env: Env,
+    style: 'lobed' | 'thread' | 'fern' | 'toothed',
+    grow: number,
+  ) {
+    const j = Math.min(leaf.joint, s.n)
+    const bx = s.pts[j * 2]
+    const by = s.pts[j * 2 + 1]
+    const sway =
+      env.wind.at(bx, by, this.z) * 0.07 + env.wind.push(bx, by) * 0.25
+    const L = leaf.length * grow
+    if (L < 2) return
+    const a0 = s.abs[Math.min(j, s.n - 1)] + leaf.side * leaf.angle + sway
+    // Midrib as a curve that arches out and droops at the end.
+    const N = 6
+    const mid: number[] = []
+    let x = bx
+    let y = by
+    let a = a0
+    for (let i = 0; i <= N; i++) {
+      mid.push(x, y)
+      a += leaf.side * 0.09 * (style === 'toothed' ? 0.3 : 1)
+      x += (Math.sin(a) * L) / N
+      y -= (Math.cos(a) * L) / N
+    }
+    if (style === 'thread' || style === 'fern') {
+      const p = new Shape()
+      p.moveTo(mid[0], mid[1])
+      for (let i = 1; i <= N; i++) p.lineTo(mid[i * 2], mid[i * 2 + 1])
+      // Fine leaflets off the midrib, like cosmos foliage or the fern-cut leaves of wild carrot.
+      const count = style === 'fern' ? 9 : 5
+      for (let i = 1; i <= count; i++) {
+        const t = i / (count + 1)
+        const k = Math.floor(t * N)
+        const px = mid[k * 2]
+        const py = mid[k * 2 + 1]
+        const ang = a0 + leaf.side * 0.09 * k
+        const ll = L * (style === 'fern' ? 0.32 : 0.45) * (1 - t * 0.6)
+        for (const sd of [-1, 1]) {
+          const la = ang + sd * (style === 'fern' ? 0.95 : 0.6)
+          p.moveTo(px, py)
+          p.quadraticCurveTo(
+            px + Math.sin(la) * ll * 0.6,
+            py - Math.cos(la) * ll * 0.6,
+            px + Math.sin(la + sd * 0.3) * ll,
+            py - Math.cos(la + sd * 0.3) * ll + ll * 0.15,
+          )
+        }
+      }
+      r.stroke(p, color, Kind.Foliage, Math.max(0.7, 1.3 * this.scale))
+      return
+    }
+    // Filled blade with lobes (poppy) or backward teeth (dandelion).
+    const left: number[] = []
+    const right: number[] = []
+    for (let i = 0; i <= N; i++) {
+      const t = i / N
+      const ang = a0 + leaf.side * 0.09 * i
+      const nx = Math.cos(ang)
+      const ny = Math.sin(ang)
+      const env0 =
+        Math.sin(Math.PI * Math.min(1, t * 1.1)) *
+        L *
+        (style === 'toothed' ? 0.2 : 0.17)
+      const lobe =
+        style === 'lobed'
+          ? 0.55 + 0.45 * Math.abs(Math.sin(t * 9 + leaf.seed))
+          : 0.5 + 0.5 * (i % 2 ^ 1)
+      const w = env0 * lobe
+      left.push(mid[i * 2] - nx * w, mid[i * 2 + 1] - ny * w)
+      right.push(mid[i * 2] + nx * w, mid[i * 2 + 1] + ny * w)
+    }
+    const p = new Shape()
+    p.moveTo(left[0], left[1])
+    for (let i = 2; i < left.length; i += 2) p.lineTo(left[i], left[i + 1])
+    for (let i = right.length - 2; i >= 0; i -= 2)
+      p.lineTo(right[i], right[i + 1])
+    p.closePath()
+    r.fill(p, color, Kind.Foliage)
+  }
+
+  /** Short bristles on a bud or stalk, as on a corn poppy. */
+  protected hairs(
+    r: Raster,
+    cx: number,
+    cy: number,
+    rx: number,
+    ry: number,
+    angle: number,
+    color: Rgb,
+    n: number,
+  ) {
+    const p = new Shape()
+    const ca = Math.cos(angle)
+    const sa = Math.sin(angle)
+    for (let i = 0; i < n; i++) {
+      const t = (i / n) * TAU + this.seed
+      const ex = Math.cos(t) * rx
+      const ey = Math.sin(t) * ry
+      const x = cx + ex * ca - ey * sa
+      const y = cy + ex * sa + ey * ca
+      const len = 1 + 0.7 * Math.abs(noise1(i * 2.3, this.seed))
+      p.moveTo(x, y)
+      p.lineTo(
+        cx + (x - cx) * (1 + 0.35 * len),
+        cy + (y - cy) * (1 + 0.35 * len),
+      )
+    }
+    r.stroke(p, color, Kind.Fluff, Math.max(0.5, 0.8 * this.scale))
+  }
+}
+
+// ── Corn poppy ──────────────────────────────────────────────────────────────
+// Bristly wiry stalk; the bud hangs on a hooked neck, straightens as it swells, sheds its two
+// sepals and unfurls four crumpled petals (two broad outer, two smaller inner) around a ribbed
+// stigma disc. After a day or two the petals drop and the pepper-pot capsule shakes out seed.
+
+export class Poppy extends Plant {
+  readonly species = 'poppy'
+  private G: number
+  private B: number
+  private P: number
+  private stem: Stem
+  private sepalsDropped = false
+  private shed = 0
+  private head = 0
+
+  constructor(x: number, z: number, seed: number, env: Env) {
+    super(x, z, seed)
+    const r = this.rng
+    this.G = lerp(8, 12, r())
+    this.B = lerp(70, 140, r())
+    this.P = lerp(30, 50, r())
+    this.cycle = this.G + 20 + this.B + 6 + this.P + 6
+    const length = env.unit * lerp(0.24, 0.46, r()) * this.scale
+    this.stem = this.makeStem(10, length, env)
+    this.stem.stiffness = lerp(0.8, 1.1, r())
+    this.head = length * lerp(0.12, 0.15, r()) * HEAD
+    this.stems.push(this.stem)
+    const leaves = 2 + Math.floor(r() * 3)
+    for (let i = 0; i < leaves; i++) {
+      this.leaves.push({
+        joint: 0,
+        side: i % 2 ? 1 : -1,
+        angle: lerp(0.55, 1.25, r()),
+        length: length * lerp(0.16, 0.26, r()),
+        seed: r() * 10,
+      })
+    }
+    this.leaves.push({
+      joint: 3,
+      side: r() < 0.5 ? -1 : 1,
+      angle: 0.6,
+      length: length * 0.09,
+      seed: r() * 10,
+    })
+  }
+
+  bloomAge() {
+    return this.G + 20 + this.rng() * this.B * 0.8
+  }
+
+  private phase() {
+    const t = this.age
+    const G = this.G
+    const bloomEnd = G + 20 + this.B
+    return {
+      growth: 0.12 + 0.88 * easeOut(t / G),
+      nod: 1 - smoothstep(G + 8, G + 14, t),
+      bud: lerp(0.35, 1, smoothstep(0, G + 10, t)),
+      open: smoothstep(G + 14, G + 20, t),
+      shed: clamp((t - bloomEnd) / 6, 0, 1),
+      pod: smoothstep(bloomEnd - 2, bloomEnd + 6, t),
+      wither: smoothstep(this.cycle - 8, this.cycle, t),
+    }
+  }
+
+  protected live(env: Env, dt: number) {
+    const ph = this.phase()
+    const s = this.stem
+    s.growth = ph.growth * (1 - 0.25 * ph.wither)
+    s.setCurve(
+      this.side * (2.75 * ph.nod + 0.3 * ph.wither),
+      0.55,
+      this.side * 0.04,
+    )
+    s.headMass = 0.05 + 0.07 * ph.bud * (1 - ph.pod * 0.4)
+    s.headDrag = 0.15 + 0.5 * ph.open * (1 - ph.shed)
+
+    const tx = s.tipX()
+    const ty = s.tipY()
+    if (!this.sepalsDropped && ph.open > 0.15) {
+      this.sepalsDropped = true
+      if (!env.quiet) {
+        for (const sd of [-1, 1]) {
+          env.particles.add(
+            particle({
+              type: 'sepal',
+              x: tx + sd * this.head * 0.2,
+              y: ty,
+              vx: sd * 20,
+              size: this.head * 0.28,
+              color: this.hazed(env.palette.stem, env.palette),
+              floor: env.floor(this.z),
+              depth: this.z,
+              life: 30,
+            }),
+          )
+        }
+      }
+    }
+    const fallen = Math.floor(ph.shed * 4.999)
+    while (this.shed < fallen) {
+      this.shed++
+      if (env.quiet) continue
+      const a = this.rng() * TAU
+      env.particles.add(
+        particle({
+          type: 'petal',
+          x: tx + Math.cos(a) * this.head * 0.5,
+          y: ty - this.head * 0.3,
+          vx: env.wind.at(tx, ty) * 40,
+          size: this.head * 0.55,
+          color: this.bloomed(env.palette.poppy, env.palette),
+          floor: env.floor(this.z) - this.rng() * 6,
+          depth: this.z,
+          life: 60,
+        }),
+      )
+    }
+    // Censer dispersal: a ripe capsule only lets seed out through its pores when tossed hard.
+    if (
+      !env.quiet &&
+      ph.pod > 0.9 &&
+      ph.wither < 0.5 &&
+      s.tipSpeed() > 1.6 &&
+      this.rng() < dt * 6
+    ) {
+      env.particles.add(
+        particle({
+          type: 'seed',
+          x: tx,
+          y: ty - this.head * 0.3,
+          vx: env.wind.at(tx, ty) * 30,
+          vy: -20,
+          size: Math.max(0.6, this.head * 0.04),
+          color: env.palette.disc,
+          floor: env.floor(this.z),
+          depth: this.z,
+          life: 6,
+        }),
+      )
+    }
+  }
+
+  draw(r: Raster, env: Env) {
+    const p = env.palette
+    const ph = this.phase()
+    const s = this.stem
+    const wither = ph.wither
+    const stemColor = this.hazed(this.withered(p.stem, wither, p), p)
+    const leafColor = this.hazed(
+      this.withered(mix(p.grassDark, p.stem, 0.45), wither, p),
+      p,
+    )
+    for (const leaf of this.leaves)
+      this.drawLeaf(r, s, leaf, leafColor, env, 'lobed', ph.growth)
+    this.drawStem(r, s, stemColor, Math.max(1.6, 2.8 * this.scale))
+
+    const tx = s.tipX()
+    const ty = s.tipY()
+    const tip = s.tipAngle()
+    const H = this.head
+
+    if (ph.pod > 0.5) {
+      this.drawCapsule(
+        r,
+        tx,
+        ty,
+        tip,
+        H * lerp(0.7, 1, ph.pod),
+        stemColor,
+        p,
+        wither,
+      )
+      if (ph.shed >= 1) return
+    }
+
+    // Poppies fold their petals in at night.
+    const open = ph.open * (1 - 0.8 * p.night)
+    if (ph.open < 0.02) {
+      this.drawBud(r, tx, ty, tip, H * ph.bud, stemColor, p, 0)
+      return
+    }
+    const axis = headAxis(tip, this.facing * ph.open)
+    const list: { depth: number; draw: () => void }[] = []
+    const poppy = this.bloomed(p.poppy, p)
+    drawPetals(
+      r,
+      tx,
+      ty,
+      axis,
+      {
+        count: 4,
+        length: H * lerp(0.55, 1, open),
+        width: (u) =>
+          H *
+          0.66 *
+          (0.22 + 0.78 * Math.sin(Math.min(1, u * 1.08) * Math.PI * 0.5)),
+        cup: (u) => lerp(1.42, 0.42, open) + 0.32 * u * open,
+        crinkle: lerp(0.55, 0.16, open),
+        size: (k) => (k % 2 ? 0.84 : 1),
+        rotation: this.seed,
+        seed: this.seed,
+        front: poppy,
+        back: mix(poppy, this.bloomed(p.poppyDeep, p), 0.55),
+        blotch: shade(p.disc, 0.9),
+        haze: p.haze,
+        hazeAmount: 0,
+        attached: (k) => k >= this.shed,
+      },
+      list,
+    )
+    r.heads.push({
+      x: tx,
+      y: ty,
+      r: H * lerp(0.55, 1, open),
+      species: 'poppy',
+      petal: poppy,
+      disc: this.bloomed(p.disc, p),
+      alpha: r.opacity * smoothstep(0.2, 0.5, ph.open),
+      owner: this,
+      depth: this.z,
+    })
+    // Stigma disc and the ring of dark stamens, sorted in among the petals; never under two cells.
+    const centerDepth = axis[2] * H * 0.1
+    list.push({
+      depth: centerDepth,
+      draw: () => {
+        const ring = disc(
+          tx,
+          ty,
+          axis,
+          Math.max(H * 0.27, 1.6 * r.minLine),
+          H * 0.06,
+        )
+        r.fill(ring, this.bloomed(shade(p.disc, 1.1), p), Kind.Disc, 0.95)
+        const top = disc(tx, ty, axis, H * 0.14, H * 0.16)
+        r.fill(top, this.hazed(mix(p.stem, p.haze, 0.3), p), Kind.Disc)
+        const [u, v] = basis(axis)
+        const rays = new Shape()
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * TAU
+          const [x0, y0] = project(tx, ty, axis, [u, v], 0, 0, H * 0.17)
+          const [x1, y1] = project(
+            tx,
+            ty,
+            axis,
+            [u, v],
+            Math.cos(a) * H * 0.14,
+            Math.sin(a) * H * 0.14,
+            H * 0.16,
+          )
+          rays.moveTo(x0, y0)
+          rays.lineTo(x1, y1)
+        }
+        r.stroke(
+          rays,
+          this.bloomed(p.disc, p),
+          Kind.Disc,
+          Math.max(0.5, H * 0.03),
+        )
+      },
+    })
+    flush(list)
+    if (ph.open < 0.35)
+      this.drawBud(
+        r,
+        tx,
+        ty,
+        tip,
+        H * ph.bud,
+        stemColor,
+        p,
+        smoothstep(0, 0.35, ph.open),
+      )
+  }
+
+  /** A hairy, hanging, egg-shaped bud; `split` 0..1 parts the two sepals as the petals push out. */
+  private drawBud(
+    r: Raster,
+    tx: number,
+    ty: number,
+    tip: number,
+    size: number,
+    color: Rgb,
+    p: Palette,
+    split: number,
+  ) {
+    const len = size * 0.72
+    const wid = size * 0.42
+    const cx = tx + Math.sin(tip) * len * 0.45
+    const cy = ty - Math.cos(tip) * len * 0.45
+    const rot = tip
+    const fade = 1 - split
+    for (const sd of [-1, 1]) {
+      const path = new Shape()
+      const off = sd * split * wid * 1.2
+      path.ellipse(
+        cx + Math.cos(rot) * off,
+        cy + Math.sin(rot) * off,
+        wid * (0.55 + 0.45 * fade) * 0.55,
+        len * 0.55,
+        rot + sd * split * 0.6,
+        0,
+        TAU,
+      )
+      r.fill(path, color, Kind.Foliage, Math.max(0.15, fade))
+    }
+    if (split === 0) {
+      // Red showing through the seam just before it opens.
+      if (this.age > this.G + 11) {
+        const seam = new Shape()
+        seam.ellipse(cx, cy, wid * 0.12, len * 0.42, rot, 0, TAU)
+        r.fill(
+          seam,
+          this.bloomed(p.poppy, p),
+          Kind.Petal,
+          smoothstep(this.G + 11, this.G + 14, this.age),
+        )
+      }
+      this.hairs(
+        r,
+        cx,
+        cy,
+        wid * 0.55,
+        len * 0.55,
+        rot,
+        mix(color, p.fluff, 0.35),
+        14,
+      )
+    }
+  }
+
+  /** Pepper-pot seed capsule with its flat, ribbed crown. */
+  private drawCapsule(
+    r: Raster,
+    tx: number,
+    ty: number,
+    tip: number,
+    H: number,
+    stem: Rgb,
+    p: Palette,
+    wither: number,
+  ) {
+    const len = H * 0.5
+    const wid = H * 0.36
+    const cx = tx + Math.sin(tip) * len * 0.45
+    const cy = ty - Math.cos(tip) * len * 0.45
+    const urn = new Shape()
+    urn.ellipse(cx, cy, wid * 0.5, len * 0.55, tip, 0, TAU)
+    const c = mix(mix(stem, p.haze, 0.25), [140, 120, 90], wither * 0.5)
+    r.fill(urn, c, Kind.Disc)
+    const axis = headAxis(tip, 0.35)
+    const crownX = tx + Math.sin(tip) * len
+    const crownY = ty - Math.cos(tip) * len
+    r.fill(
+      disc(crownX, crownY, axis, wid * 0.62, 0),
+      this.bloomed(shade(p.disc, 1.4), p),
+      Kind.Disc,
+    )
+    const [u, v] = basis(axis)
+    const rays = new Shape()
+    for (let i = 0; i < 9; i++) {
+      const a = (i / 9) * TAU
+      const [x1, y1] = project(
+        crownX,
+        crownY,
+        axis,
+        [u, v],
+        Math.cos(a) * wid * 0.6,
+        Math.sin(a) * wid * 0.6,
+        0,
+      )
+      rays.moveTo(crownX, crownY)
+      rays.lineTo(x1, y1)
+    }
+    r.stroke(rays, mix(c, p.fluff, 0.35), Kind.Fluff, Math.max(0.5, H * 0.03))
+  }
+}
+
+// ── Cosmos ──────────────────────────────────────────────────────────────────
+// Tall, airy and branched, with thread-fine leaves. Eight broad ray petals, each with three
+// notches at the tip and fine veins, around a small yellow disc. Heads open at different times.
+
+type CosmosHead = {
+  stem: Stem
+  offset: number
+  facing: number
+  rot: number
+  size: number
+  shed: number
+}
+
+export class Cosmos extends Plant {
+  readonly species = 'cosmos'
+  private G: number
+  private B: number
+  private heads: CosmosHead[] = []
+  private main: Stem
+
+  constructor(x: number, z: number, seed: number, env: Env) {
+    super(x, z, seed)
+    const r = this.rng
+    this.G = lerp(10, 14, r())
+    this.B = lerp(80, 140, r())
+    const length = env.unit * lerp(0.3, 0.55, r()) * this.scale
+    this.main = this.makeStem(10, length, env)
+    this.main.stiffness = lerp(0.55, 0.75, r())
+    this.main.drag = 1.2
+    this.stems.push(this.main)
+    const head = length * lerp(0.1, 0.13, r()) * HEAD
+    this.heads.push({
+      stem: this.main,
+      offset: 0,
+      facing: lerp(0.5, 1.2, r()),
+      rot: r() * TAU,
+      size: head,
+      shed: 0,
+    })
+    const branches = 1 + Math.floor(r() * 2.4)
+    for (let i = 0; i < branches; i++) {
+      const b = new Stem(6)
+      b.parent = this.main
+      b.parentJoint = 4 + Math.floor(r() * 4)
+      b.branchAngle = (i % 2 ? 1 : -1) * lerp(0.3, 0.6, r())
+      b.length = length * lerp(0.3, 0.5, r())
+      b.stiffness = 0.6
+      b.depth = z
+      b.setCurve(-b.branchAngle * 0.6, 0.3)
+      this.stems.push(b)
+      this.heads.push({
+        stem: b,
+        offset: lerp(4, 18, r()),
+        facing: lerp(0.4, 1.2, r()),
+        rot: r() * TAU,
+        size: head * lerp(0.75, 0.95, r()),
+        shed: 0,
+      })
+    }
+    this.cycle = this.G + 24 + this.B + 18 + 5 + 30 + 6
+    for (const j of [2, 4, 6, 8]) {
+      this.leaves.push({
+        joint: j,
+        side: j % 4 ? 1 : -1,
+        angle: lerp(0.7, 1.1, r()),
+        length: length * lerp(0.1, 0.16, r()),
+        seed: r(),
+      })
+    }
+  }
+
+  bloomAge() {
+    return this.G + 24 + this.rng() * this.B * 0.8
+  }
+
+  private phase(offset: number) {
+    const t = this.age - offset
+    const G = this.G
+    const bloomEnd = G + 24 + this.B
+    return {
+      bud: smoothstep(G - 2, G + 18, t),
+      open: smoothstep(G + 18, G + 24, t),
+      shed: clamp((t - bloomEnd) / 5, 0, 1),
+      seed: smoothstep(bloomEnd + 2, bloomEnd + 8, t),
+    }
+  }
+
+  protected live(env: Env) {
+    const t = this.age
+    const wither = smoothstep(this.cycle - 8, this.cycle, t)
+    this.main.growth = (0.1 + 0.9 * easeOut(t / this.G)) * (1 - 0.2 * wither)
+    this.main.setCurve(
+      this.side * 0.25 * (1 - smoothstep(this.G, this.G + 18, t)) +
+        wither * this.side * 0.6,
+      0.6,
+      0.02 * this.side,
+    )
+    for (const h of this.heads) {
+      const ph = this.phase(h.offset)
+      if (h.stem !== this.main)
+        h.stem.growth = easeOut((t - h.offset * 0.5) / (this.G * 0.8))
+      h.stem.headDrag = 0.1 + 0.45 * ph.open * (1 - ph.shed)
+      h.stem.headMass = 0.03 + 0.02 * ph.bud
+      const fallen = Math.floor(ph.shed * 8.999)
+      while (h.shed < fallen) {
+        h.shed++
+        if (env.quiet) continue
+        const tx = h.stem.tipX()
+        const ty = h.stem.tipY()
+        env.particles.add(
+          particle({
+            type: 'petal',
+            x: tx + (this.rng() - 0.5) * h.size,
+            y: ty,
+            vx: env.wind.at(tx, ty) * 40,
+            size: h.size * 0.5,
+            color: this.bloomed(env.palette.cosmos, env.palette),
+            floor: env.floor(this.z) - this.rng() * 6,
+            depth: this.z,
+            life: 60,
+          }),
+        )
+      }
+    }
+  }
+
+  draw(r: Raster, env: Env) {
+    const p = env.palette
+    const wither = smoothstep(this.cycle - 8, this.cycle, this.age)
+    const stemColor = this.hazed(
+      this.withered(mix(p.stem, p.grassDark, 0.2), wither, p),
+      p,
+    )
+    const grow = this.main.growth
+    for (const leaf of this.leaves)
+      this.drawLeaf(r, this.main, leaf, stemColor, env, 'thread', grow)
+    for (const s of this.stems)
+      this.drawStem(
+        r,
+        s,
+        stemColor,
+        Math.max(1.4, (s === this.main ? 2.4 : 1.8) * this.scale),
+      )
+
+    const list: { depth: number; draw: () => void }[] = []
+    for (const h of this.heads) {
+      const ph = this.phase(h.offset)
+      const s = h.stem
+      if (s.growth < 0.2) continue
+      const tx = s.tipX()
+      const ty = s.tipY()
+      const H = h.size
+      const tip = s.tipAngle()
+      if (ph.seed > 0) {
+        // Seed head: a loose spray of slender achenes.
+        const axis = headAxis(tip, 0.3)
+        const [u, v] = basis(axis)
+        const needles = new Shape()
+        for (let i = 0; i < 14; i++) {
+          const a = (i / 14) * TAU + h.rot
+          const spread = 0.55 * (0.5 + 0.5 * Math.sin(i * 2.1))
+          const len = H * 0.55 * ph.seed
+          const [x1, y1] = project(
+            tx,
+            ty,
+            axis,
+            [u, v],
+            Math.cos(a) * Math.sin(spread) * len,
+            Math.sin(a) * Math.sin(spread) * len,
+            Math.cos(spread) * len,
+          )
+          needles.moveTo(tx, ty)
+          needles.lineTo(x1, y1)
+        }
+        r.stroke(
+          needles,
+          mix(stemColor, p.disc, 0.4 + 0.4 * wither),
+          Kind.Stem,
+          Math.max(0.5, H * 0.04),
+        )
+        continue
+      }
+      if (ph.open < 0.02) {
+        if (ph.bud > 0.05) {
+          const bud = new Shape()
+          const rad = H * 0.22 * ph.bud
+          bud.ellipse(
+            tx + Math.sin(tip) * rad * 0.7,
+            ty - Math.cos(tip) * rad * 0.7,
+            rad * 0.8,
+            rad,
+            tip,
+            0,
+            TAU,
+          )
+          r.fill(
+            bud,
+            mix(stemColor, this.hazed(p.cosmosVein, p), 0.25),
+            Kind.Foliage,
+          )
+        }
+        continue
+      }
+      // Cosmos petals droop back after dark.
+      const open = ph.open
+      const night = p.night
+      const axis = headAxis(tip, h.facing * open)
+      const cosmos = this.bloomed(p.cosmos, p)
+      r.heads.push({
+        x: tx,
+        y: ty,
+        r: H * lerp(0.35, 1, open),
+        species: 'cosmos',
+        petal: cosmos,
+        disc: this.bloomed(p.dandelion, p),
+        alpha: r.opacity * smoothstep(0.2, 0.5, open),
+        owner: this,
+        depth: this.z,
+      })
+      drawPetals(
+        r,
+        tx,
+        ty,
+        axis,
+        {
+          count: 8,
+          length: H * lerp(0.35, 1, open),
+          width: (u) => H * 0.21 * (0.25 + 0.75 * smoothstep(0, 0.7, u)),
+          cup: (u) => lerp(1.3, 0.1, open) - night * 0.55 * u,
+          crinkle: 0.06,
+          rotation: h.rot,
+          seed: this.seed + h.offset,
+          front: cosmos,
+          back: mix(cosmos, this.bloomed(p.cosmosVein, p), 0.5),
+          notch: 0.07,
+          veins: mix(p.cosmosVein, cosmos, 0.2),
+          haze: p.haze,
+          hazeAmount: 0,
+          attached: (k) => k >= h.shed,
+        },
+        list,
+      )
+      list.push({
+        depth: axis[2] * H * 0.08,
+        draw: () => {
+          r.fill(
+            disc(tx, ty, axis, Math.max(H * 0.2, 1.6 * r.minLine), H * 0.05),
+            this.bloomed(p.dandelion, p),
+            Kind.Disc,
+          )
+          r.fill(
+            disc(tx, ty, axis, H * 0.1, H * 0.09),
+            this.bloomed(shade(p.dandelion, 0.75), p),
+            Kind.Disc,
+          )
+        },
+      })
+      flush(list)
+    }
+  }
+}
+
+// ── Wild carrot (Queen Anne's lace) ────────────────────────────────────────
+// A flat-topped compound umbel: rays from one point, each ending in a small cluster of florets,
+// often with a single dark floret in the middle. It opens from a nodding bundle and, going to
+// seed, curls its rays inward into a "bird's nest".
+
+export class Lace extends Plant {
+  readonly species = 'lace'
+  private G: number
+  private B: number
+  private stem: Stem
+  private rays: { a: number; tilt: number; len: number; florets: number }[] = []
+  private head: number
+  private darkFloret: boolean
+
+  constructor(x: number, z: number, seed: number, env: Env) {
+    super(x, z, seed)
+    const r = this.rng
+    this.G = lerp(12, 16, r())
+    this.B = lerp(110, 170, r())
+    this.cycle = this.G + 30 + this.B + 30 + 6
+    const length = env.unit * lerp(0.32, 0.58, r()) * this.scale
+    this.stem = this.makeStem(9, length, env)
+    this.stem.stiffness = lerp(1, 1.3, r())
+    this.stems.push(this.stem)
+    this.head = length * lerp(0.13, 0.17, r())
+    const n = 16 + Math.floor(r() * 8)
+    for (let i = 0; i < n; i++) {
+      this.rays.push({
+        a: (i / n) * TAU + (r() - 0.5) * 0.3,
+        tilt: lerp(0.55, 1, r()),
+        len: lerp(0.75, 1, r()),
+        florets: 5 + Math.floor(r() * 4),
+      })
+    }
+    this.darkFloret = r() < 0.6
+    for (let i = 0; i < 3; i++) {
+      this.leaves.push({
+        joint: 0,
+        side: i % 2 ? 1 : -1,
+        angle: lerp(0.4, 1, r()),
+        length: length * lerp(0.2, 0.3, r()),
+        seed: r(),
+      })
+    }
+    this.leaves.push({
+      joint: 4,
+      side: r() < 0.5 ? 1 : -1,
+      angle: 0.7,
+      length: length * 0.12,
+      seed: r(),
+    })
+  }
+
+  bloomAge() {
+    return this.G + 30 + this.rng() * this.B * 0.8
+  }
+
+  private phase() {
+    const t = this.age
+    const G = this.G
+    const bloomEnd = G + 30 + this.B
+    return {
+      growth: 0.1 + 0.9 * easeOut(t / G),
+      umbel: smoothstep(G - 4, G + 22, t),
+      // -1 a curled nest, 0 a closed bundle, 1 fully open.
+      spread:
+        lerp(0.18, 1, smoothstep(G + 22, G + 30, t)) -
+        1.3 * smoothstep(bloomEnd, bloomEnd + 14, t),
+      nest: smoothstep(bloomEnd, bloomEnd + 14, t),
+      wither: smoothstep(this.cycle - 8, this.cycle, t),
+    }
+  }
+
+  protected live() {
+    const ph = this.phase()
+    const s = this.stem
+    s.growth = ph.growth * (1 - 0.2 * ph.wither)
+    const nod = 1 - smoothstep(this.G + 18, this.G + 28, this.age)
+    s.setCurve(
+      this.side * (0.7 * nod + 0.35 * ph.wither),
+      0.65,
+      0.03 * this.side,
+    )
+    s.headDrag = 0.2 + 0.4 * Math.max(0, ph.spread)
+    s.headMass = 0.05
+  }
+
+  draw(r: Raster, env: Env) {
+    const p = env.palette
+    const ph = this.phase()
+    const s = this.stem
+    const stemColor = this.hazed(
+      this.withered(mix(p.stem, p.grassDark, 0.15), ph.wither, p),
+      p,
+    )
+    for (const leaf of this.leaves)
+      this.drawLeaf(r, s, leaf, stemColor, env, 'fern', ph.growth)
+    this.drawStem(r, s, stemColor, Math.max(1.5, 2.6 * this.scale))
+    if (ph.umbel < 0.02) return
+
+    const tx = s.tipX()
+    const ty = s.tipY()
+    const H = this.head * ph.umbel
+    const axis: Vec3 = headAxis(s.tipAngle(), lerp(0.2, 0.75, this.facing))
+    const [u, v] = basis(axis)
+    const lace = this.bloomed(mix(p.lace, [150, 120, 90], ph.nest * 0.55), p)
+    const rayColor = mix(stemColor, lace, 0.25)
+    const rays = new Shape()
+    const florets: [number, number, number, number][] = []
+    for (const ray of this.rays) {
+      const len = H * ray.len
+      const ca = Math.cos(ray.a)
+      const sa = Math.sin(ray.a)
+      let ex: number
+      let ey: number
+      let ez: number
+      let cx: number
+      let cy: number
+      if (ph.spread >= 0) {
+        const phi = ph.spread * 1.25 * ray.tilt
+        ;[ex, ey, ez] = project(
+          tx,
+          ty,
+          axis,
+          [u, v],
+          ca * Math.sin(phi) * len,
+          sa * Math.sin(phi) * len,
+          Math.cos(phi) * len,
+        )
+        ;[cx, cy] = project(
+          tx,
+          ty,
+          axis,
+          [u, v],
+          ca * Math.sin(phi) * len * 0.5,
+          sa * Math.sin(phi) * len * 0.5,
+          Math.cos(phi) * len * 0.55,
+        )
+      } else {
+        // Bird's nest: rays bow outward and their tips curl back in over the middle.
+        const k = -ph.spread
+        const out = len * (0.55 - 0.25 * k) * ray.tilt
+        ;[cx, cy] = project(
+          tx,
+          ty,
+          axis,
+          [u, v],
+          ca * out * 1.1,
+          sa * out * 1.1,
+          len * 0.4,
+        )
+        ;[ex, ey, ez] = project(
+          tx,
+          ty,
+          axis,
+          [u, v],
+          ca * out * (1 - 0.7 * k),
+          sa * out * (1 - 0.7 * k),
+          len * (0.75 + 0.15 * k),
+        )
+      }
+      rays.moveTo(tx, ty)
+      rays.quadraticCurveTo(cx, cy, ex, ey)
+      florets.push([ex, ey, ez, ray.florets])
+    }
+    // Faint: the rays only print where they bunch near the stalk, not as a fan of lines.
+    r.stroke(rays, rayColor, Kind.Stem, Math.max(0.5, H * 0.025), 0.4)
+    florets.sort((a, b) => a[2] - b[2])
+    const fr = Math.max(0.6, H * 0.045)
+    for (const [ex, ey, , n] of florets) {
+      // A tiny umbellet: a ring of florets around one.
+      const cluster = new Shape()
+      const rr = H * 0.11
+      // The umbellet as a whole: a dome of florets too fine to print one by one, so the head
+      // reads as a lace of small clusters rather than loose specks.
+      const dome = new Shape()
+      const dr = Math.max(rr * 1.35, r.minLine * 1.2)
+      dome.ellipse(ex, ey, dr, dr * 0.8, 0, 0, TAU)
+      r.fill(dome, lace, Kind.Fluff, 0.85, FLOWER_FLUFF)
+      r.touchMeta(ex - dr - rr, ey - dr - rr)
+      r.touchMeta(ex + dr + rr, ey + dr + rr)
+      cluster.ellipse(ex, ey, fr, fr, 0, 0, TAU)
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * TAU
+        const [x, y] = project(
+          ex,
+          ey,
+          axis,
+          [u, v],
+          Math.cos(a) * rr,
+          Math.sin(a) * rr,
+          0,
+        )
+        cluster.moveTo(x + fr, y)
+        cluster.ellipse(x, y, fr, fr, 0, 0, TAU)
+      }
+      r.fill(cluster, lace, Kind.Fluff, 1, FLOWER_FLUFF)
+    }
+    if (this.darkFloret && ph.spread > 0.6 && ph.nest < 0.1) {
+      const [cx, cy] = project(tx, ty, axis, [u, v], 0, 0, H * 0.85)
+      r.dot(
+        cx,
+        cy,
+        Math.max(0.8, H * 0.06),
+        this.bloomed(p.poppyDeep, p),
+        Kind.Disc,
+      )
+    }
+  }
+}
+
+// ── Dandelion ──────────────────────────────────────────────────────────────
+// Low rosette of backward-toothed leaves. The flower closes at night and for good after a few
+// days; then the stalk lengthens, and it reopens as a clock of pappus seeds for the wind.
+
+export class Dandelion extends Plant {
+  readonly species = 'dandelion'
+  private G: number
+  private B: number
+  private stem: Stem
+  private head: number
+  private seeds: Vec3[] = []
+  private attached: boolean[] = []
+  private remaining = 0
+  private clockStart: number
+  private bareAt = -1
+
+  constructor(x: number, z: number, seed: number, env: Env) {
+    super(x, z, seed)
+    const r = this.rng
+    this.G = lerp(5, 8, r())
+    this.B = lerp(40, 70, r())
+    this.clockStart = this.G + 14 + this.B + 4 + 15
+    this.cycle = this.clockStart + 90 + 10
+    const length = env.unit * lerp(0.09, 0.15, r()) * this.scale
+    this.stem = this.makeStem(6, length, env)
+    this.stem.stiffness = lerp(0.9, 1.2, r())
+    this.stems.push(this.stem)
+    this.head = length * lerp(0.36, 0.42, r()) * HEAD
+    // Fibonacci sphere of seeds.
+    const n = 64
+    for (let i = 0; i < n; i++) {
+      const y = 1 - (i / (n - 1)) * 2
+      const rad = Math.sqrt(1 - y * y)
+      const th = i * 2.39996
+      this.seeds.push([Math.cos(th) * rad, y, Math.sin(th) * rad])
+      this.attached.push(true)
+    }
+    this.remaining = n
+    const leaves = 4 + Math.floor(r() * 3)
+    for (let i = 0; i < leaves; i++) {
+      this.leaves.push({
+        joint: 0,
+        side: i % 2 ? 1 : -1,
+        angle: lerp(1.05, 1.45, r()),
+        length: length * lerp(0.55, 0.85, r()),
+        seed: r(),
+      })
+    }
+  }
+
+  bloomAge() {
+    return this.rng() < 0.55
+      ? this.G + 14 + this.rng() * this.B * 0.8
+      : this.clockStart + 6 + this.rng() * 30
+  }
+
+  private phase() {
+    const t = this.age
+    const G = this.G
+    const closeAt = G + 14 + this.B
+    return {
+      growth:
+        0.15 +
+        0.85 * easeOut(t / G) +
+        0.75 * smoothstep(closeAt + 4, this.clockStart, t),
+      bud: smoothstep(G * 0.5, G + 10, t),
+      open:
+        smoothstep(G + 10, G + 14, t) *
+        (1 - smoothstep(closeAt, closeAt + 4, t)),
+      clock: smoothstep(this.clockStart, this.clockStart + 4, t),
+      wither: smoothstep(this.cycle - 6, this.cycle, t),
+    }
+  }
+
+  protected live(env: Env, dt: number) {
+    const ph = this.phase()
+    const s = this.stem
+    s.growth = ph.growth * (1 - 0.3 * ph.wither)
+    s.setCurve(this.side * (0.25 + 0.4 * ph.wither), 0.5, 0.05 * this.side)
+    s.headDrag = 0.15 + 0.25 * ph.clock * (this.remaining / this.seeds.length)
+    s.headMass = 0.04
+    if (ph.clock < 0.98) return
+
+    const tx = s.tipX()
+    const ty = s.tipY()
+    const w = Math.abs(env.wind.at(tx, ty, this.z))
+    const push = Math.abs(env.wind.push(tx, ty - this.head))
+    // Gusts and a passing cursor pull seeds off; once ripe long enough it lets them all go.
+    let rate = Math.max(0, w - 1.05) * 10 + push * 70
+    if (this.age > this.clockStart + 80) rate += 14
+    let release = 0
+    if (this.remaining > 0 && !env.quiet) {
+      const expect = rate * dt
+      release = Math.floor(expect) + (this.rng() < expect % 1 ? 1 : 0)
+    }
+    for (let k = 0; k < release && this.remaining > 0; k++) {
+      let i = Math.floor(this.rng() * this.seeds.length)
+      while (!this.attached[i]) i = (i + 1) % this.seeds.length
+      this.attached[i] = false
+      this.remaining--
+      const [sx, sy] = this.seeds[i]
+      const R = this.head * 0.55
+      env.particles.add(
+        particle({
+          type: 'pappus',
+          x: tx + sx * R,
+          y: ty - this.head * 0.5 + sy * R,
+          vx: env.wind.at(tx, ty) * 60 + sx * 30,
+          vy: -15 - this.rng() * 25,
+          size: Math.max(1.2, this.head * 0.13),
+          color: this.bloomed(env.palette.fluff, env.palette),
+          floor: env.floor(this.z + (this.rng() - 0.3) * 0.25),
+          depth: this.z,
+          life: 40,
+        }),
+      )
+    }
+    if (this.remaining === 0 && this.bareAt < 0) this.bareAt = this.age
+    // Bare head: skip ahead to the end of the cycle.
+    if (this.bareAt > 0 && this.age < this.cycle - 8)
+      this.age = Math.max(this.age, this.cycle - 8)
+  }
+
+  draw(r: Raster, env: Env) {
+    const p = env.palette
+    const ph = this.phase()
+    const s = this.stem
+    const stemColor = this.hazed(
+      this.withered(mix(p.stem, p.grassLight, 0.15), ph.wither, p),
+      p,
+    )
+    const leafColor = this.hazed(mix(p.grassDark, p.stem, 0.5), p)
+    for (const leaf of this.leaves)
+      this.drawLeaf(
+        r,
+        s,
+        leaf,
+        leafColor,
+        env,
+        'toothed',
+        Math.min(1, ph.growth),
+      )
+    this.drawStem(r, s, stemColor, Math.max(1.4, 2.2 * this.scale))
+    const tx = s.tipX()
+    const ty = s.tipY()
+    const tip = s.tipAngle()
+    const H = this.head
+
+    if (ph.clock > 0) {
+      const R = H * 0.55 * ph.clock
+      const cx = tx + Math.sin(tip) * R
+      const cy = ty - Math.cos(tip) * R
+      const fluff = this.bloomed(p.fluff, p)
+      const spokes = new Shape()
+      const tufts = new Shape()
+      const tr = Math.max(0.55, H * 0.045)
+      for (let i = 0; i < this.seeds.length; i++) {
+        if (!this.attached[i]) continue
+        const [sx, sy, sz] = this.seeds[i]
+        const x = cx + sx * R
+        const y = cy + sy * R
+        spokes.moveTo(cx, cy)
+        spokes.lineTo(x, y)
+        tufts.moveTo(x + tr * (1 + sz * 0.3), y)
+        tufts.ellipse(x, y, tr * (1 + sz * 0.3), tr * (1 + sz * 0.3), 0, 0, TAU)
+      }
+      r.stroke(spokes, fluff, Kind.Fluff, Math.max(0.4, H * 0.015), 0.45)
+      r.fill(tufts, fluff, Kind.Fluff, 0.95, FLOWER_FLUFF)
+      r.touchMeta(cx - R - tr * 2, cy - R - tr * 2)
+      r.touchMeta(cx + R + tr * 2, cy + R + tr * 2)
+      r.dot(
+        cx,
+        cy,
+        Math.max(0.8, H * 0.08),
+        mix(stemColor, p.disc, 0.4),
+        Kind.Disc,
+      )
+      return
+    }
+    if (ph.bud < 0.05) return
+    const open = ph.open * (1 - 0.85 * p.night)
+    const yellow = this.bloomed(p.dandelion, p)
+    if (open < 0.05) {
+      const bud = new Shape()
+      const len = H * 0.45 * ph.bud
+      bud.ellipse(
+        tx + Math.sin(tip) * len * 0.5,
+        ty - Math.cos(tip) * len * 0.5,
+        len * 0.32,
+        len * 0.55,
+        tip,
+        0,
+        TAU,
+      )
+      r.fill(bud, mix(stemColor, p.grassDark, 0.2), Kind.Foliage)
+      if (ph.open > 0) {
+        const t = new Shape()
+        t.ellipse(
+          tx + Math.sin(tip) * len * 0.95,
+          ty - Math.cos(tip) * len * 0.95,
+          len * 0.14,
+          len * 0.12,
+          tip,
+          0,
+          TAU,
+        )
+        r.fill(t, yellow, Kind.Petal)
+      }
+      return
+    }
+    // Turned well toward the viewer, so the flower reads as a disc rather than an edge-on sliver.
+    const axis = headAxis(tip, lerp(0.5, 0.85, this.facing))
+    const list: { depth: number; draw: () => void }[] = []
+    for (const layer of [0, 1]) {
+      drawPetals(
+        r,
+        tx,
+        ty,
+        axis,
+        {
+          count: layer ? 18 : 26,
+          length: H * (layer ? 0.32 : 0.5) * lerp(0.6, 1, open),
+          width: () => H * 0.065,
+          cup: (u) => lerp(1.35, layer ? 0.75 : 0.2, open) + 0.3 * u,
+          crinkle: 0.05,
+          rotation: this.seed + layer,
+          seed: this.seed + layer * 3,
+          front: layer ? shade(yellow, 1.08) : yellow,
+          back: shade(yellow, 0.75),
+          haze: p.haze,
+          hazeAmount: 0,
+        },
+        list,
+      )
+    }
+    flush(list)
+  }
+}
+
+export function createPlant(
+  species: Species,
+  x: number,
+  z: number,
+  seed: number,
+  env: Env,
+): Plant {
+  switch (species) {
+    case 'poppy':
+      return new Poppy(x, z, seed, env)
+    case 'cosmos':
+      return new Cosmos(x, z, seed, env)
+    case 'lace':
+      return new Lace(x, z, seed, env)
+    case 'dandelion':
+      return new Dandelion(x, z, seed, env)
+  }
+}
