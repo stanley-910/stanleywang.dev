@@ -191,9 +191,9 @@ export class Garden {
       const rng = mulberry32(this.seed * 7919 + this.strips * 104729 + 17)
       // Large flowers up front carry the scene, a middle band fills in, and small far ones are texture.
       const tiers: [number, number, number][] = [
-        [STRIP / 150, 0.55, 0.95],
-        [STRIP / 160, 0.38, 0.6],
-        [STRIP / 130, FARTHEST_Z, 0.42],
+        [STRIP / 260, 0.55, 0.95],
+        [STRIP / 250, 0.38, 0.6],
+        [STRIP / 190, FARTHEST_Z, 0.42],
       ]
       for (const [rate, z0, z1] of tiers) {
         const n = Math.floor(rate + rng())
