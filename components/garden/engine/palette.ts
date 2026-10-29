@@ -34,6 +34,8 @@ export interface Palette {
   night: number
   /** How much glyphs stand out from what is behind them. */
   ink: number
+  /** How much the moon shows and lights the land: dimmer in the dead of night. */
+  moonlight: number
 }
 
 const hex = (h: string): Rgb => [
@@ -68,6 +70,7 @@ const DAY: Palette = {
   panelInk: hex('#ded9bf'),
   night: 0,
   ink: 1,
+  moonlight: 1,
 }
 
 // Golden hour: the light goes amber and long before the sun touches the ridge.
@@ -173,6 +176,36 @@ const NIGHT: Palette = {
   panelInk: hex('#cfd6ee'),
   night: 1,
   ink: 1.1,
+  moonlight: 1,
+}
+
+// The dead of night: the land, hills and sky sink to near-black with only a trace of blue,
+// the moon dims, and the flowers keep their colour, so they're the brightest thing out.
+const MIDNIGHT: Palette = {
+  skyTop: hex('#020306'),
+  skyHorizon: hex('#070b14'),
+  ground: hex('#020203'),
+  cloud: hex('#1a2030'),
+  haze: hex('#0a0f17'),
+  hillFar: hex('#0b111b'),
+  hillNear: hex('#05080c'),
+  grassDark: hex('#090b0b'),
+  grassLight: hex('#26302b'),
+  stem: hex('#2c3a31'),
+  poppy: hex('#ff5470'),
+  poppyDeep: hex('#7a1834'),
+  cosmos: hex('#d6c2ff'),
+  cosmosVein: hex('#8a5cff'),
+  lace: hex('#eef1ff'),
+  dandelion: hex('#ffd36a'),
+  disc: hex('#05070a'),
+  fluff: hex('#eef3ff'),
+  globe: hex('#a9b1c4'),
+  panelBg: hex('#07090d'),
+  panelInk: hex('#d8dce8'),
+  night: 1,
+  ink: 1.25,
+  moonlight: 0.45,
 }
 
 const DAWN: Palette = {
@@ -195,7 +228,8 @@ const DAWN: Palette = {
 
 // Hour of day → palette keyframe.
 const KEYS: [number, Palette][] = [
-  [0, NIGHT],
+  [0, MIDNIGHT],
+  [1.5, NIGHT],
   [4.5, NIGHT],
   [6.5, DAWN],
   [9, DAY],
@@ -204,7 +238,9 @@ const KEYS: [number, Palette][] = [
   [19, DUSK],
   [20.15, TWILIGHT],
   [21.4, NIGHT],
-  [24, NIGHT],
+  [22.5, NIGHT],
+  [23.75, MIDNIGHT],
+  [24, MIDNIGHT],
 ]
 
 const mixRgb = (a: Rgb, b: Rgb, t: number): Rgb => [

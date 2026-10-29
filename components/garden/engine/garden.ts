@@ -724,7 +724,8 @@ export class Garden {
   /** How much of the sun and the moon shows: the sun by day, the moon once the night is deep. */
   private lights(p: Palette) {
     const day = this.hour >= 6 && this.hour < 18.5
-    return { sun: day ? 1 : 0, moon: day ? 0 : smoothstep(0.5, 0.9, p.night) }
+    const moon = day ? 0 : smoothstep(0.5, 0.9, p.night) * p.moonlight
+    return { sun: day ? 1 : 0, moon }
   }
 
   /** The sun's look by height: pale and round overhead; low, it swells, flattens and reddens. */
