@@ -11,13 +11,14 @@
   bottom: calc(100% + var(--space-1));
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  width: min(22rem, calc(100vw - 24px));
-  padding: var(--space-2);
-  border: 1px solid color-mix(in srgb, var(--hairline) 45%, transparent);
-  border-radius: var(--radius-card);
-  background: var(--surface);
-  box-shadow: var(--shadow-card);
+  gap: 6px;
+  width: min(21rem, calc(100vw - 24px));
+  padding: var(--space-2) var(--space-2) 12px;
+  /* A square of page colour: hairline edge, no shadow, the scene faint
+     behind it. */
+  border: 1px solid color-mix(in srgb, var(--hairline) 70%, transparent);
+  border-radius: var(--radius-hair);
+  background: color-mix(in srgb, var(--page) 94%, transparent);
   color: var(--ink);
   font-family: var(--font-sans);
   font-size: var(--text-small);
@@ -52,37 +53,14 @@
 
 .xp-top {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   gap: var(--space-2);
 }
 
-.xp-who {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
+.xp-company {
   min-width: 0;
   font-weight: var(--weight-strong);
-}
-
-.xp-logo {
-  flex: none;
-  width: 16px;
-  height: 16px;
-  border-radius: var(--radius-hair);
-}
-
-.xp-mono {
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--hairline);
-  color: var(--ink-muted);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  line-height: 1;
-}
-
-.xp-company {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -96,20 +74,19 @@
 }
 
 .xp-role {
-  margin-top: 6px;
-  color: var(--ink);
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  line-height: var(--leading-meta);
 }
 
 .xp-desc {
-  color: var(--ink-muted);
+  margin-top: 2px;
+  color: var(--ink);
 }
 
-.xp-foot {
-  display: flex;
-  gap: var(--space-3);
-  margin-top: var(--space-1);
-  padding-top: var(--space-1);
-  border-top: 1px solid color-mix(in srgb, var(--hairline) 45%, transparent);
+.xp-more {
+  font-family: var(--font-mono);
   font-size: var(--text-meta);
 }
 

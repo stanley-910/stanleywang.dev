@@ -33,7 +33,7 @@ const GAP = 8
 // A company name in the bio. Hovering or focusing it opens a small card
 // above the line: who, when, the role and what the work was
 // (design/circadian-meadow/components/ExperienceCard). On a touch screen the
-// first tap opens the card and the card's link opens the site.
+// first tap opens the card and a second opens the site.
 export function ExperienceLink({
   job,
   children,
@@ -130,42 +130,22 @@ export function ExperienceLink({
         style={{ '--shift-x': `${shift.x}px` } as React.CSSProperties}
       >
         <span className="xp-top">
-          <span className="xp-who">
-            {job.logo ? (
-              <img className="xp-logo" src={job.logo} alt="" />
-            ) : (
-              <span className="xp-logo xp-mono" aria-hidden>
-                {job.company[0]}
-              </span>
-            )}
-            <span className="xp-company">{job.company}</span>
-          </span>
+          <span className="xp-company">{job.company}</span>
           <span className="xp-when">
             {job.end ? `${job.start}–${job.end}` : job.start}
           </span>
         </span>
         <span className="xp-role">{job.title}</span>
         <span className="xp-desc">{job.desc}</span>
-        <span className="xp-foot">
-          <a
-            href={job.link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="link-quiet"
+        {job.caseStudy && (
+          <Link
+            href={job.caseStudy}
+            className="link-quiet xp-more"
             tabIndex={open ? 0 : -1}
           >
-            open site ↗
-          </a>
-          {job.caseStudy && (
-            <Link
-              href={job.caseStudy}
-              className="link-quiet"
-              tabIndex={open ? 0 : -1}
-            >
-              case study
-            </Link>
-          )}
-        </span>
+            case study
+          </Link>
+        )}
       </span>
     </span>
   )

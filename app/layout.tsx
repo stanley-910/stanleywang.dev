@@ -12,7 +12,6 @@ import { ScrollToTop } from '@/components/ScrollToTop'
 import { ProgressBar } from '@/components/ui/progress-bar'
 import { THEME_SCRIPT } from '@/lib/circadian'
 
-import { Footer } from './footer'
 import { Header } from './header'
 
 import type { Metadata, Viewport } from 'next'
@@ -74,7 +73,6 @@ export default function RootLayout({
                 {children}
                 <Analytics />
               </main>
-              <Footer />
               <ScrollToTop />
             </div>
           </div>

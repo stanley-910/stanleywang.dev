@@ -1,0 +1,143 @@
+/* The time slider under the top bar's sun/moon:
+   design/circadian-meadow/components/ReadingTime. */
+
+.time-control {
+  position: relative;
+  display: inline-flex;
+}
+
+.time-control-icon {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: color var(--duration-quick) var(--ease-calm);
+}
+
+.time-control-icon:hover,
+.time-control-icon[aria-expanded='true'] {
+  color: var(--ink);
+}
+
+.time-control-pop {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: calc(-1 * var(--space-2));
+  z-index: 20;
+  width: 16rem;
+  padding: var(--space-2);
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--hairline) 45%, transparent);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  animation: time-control-in var(--duration-card) var(--ease-calm);
+}
+
+@keyframes time-control-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.time-control-range {
+  display: block;
+  width: 100%;
+  height: 20px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  appearance: none;
+}
+
+.time-control-range::-webkit-slider-runnable-track {
+  height: 6px;
+  background: var(--track);
+  border-radius: var(--radius-hair);
+}
+
+.time-control-range::-moz-range-track {
+  height: 6px;
+  background: var(--track);
+  border-radius: var(--radius-hair);
+}
+
+.time-control-range::-webkit-slider-thumb {
+  width: 6px;
+  height: 18px;
+  margin-top: -6px;
+  background: var(--ink);
+  border: 1px solid var(--surface);
+  border-radius: var(--radius-hair);
+  appearance: none;
+}
+
+.time-control-range::-moz-range-thumb {
+  width: 6px;
+  height: 18px;
+  background: var(--ink);
+  border: 1px solid var(--surface);
+  border-radius: var(--radius-hair);
+}
+
+.time-control-range:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.time-control-readout {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-meta);
+  line-height: var(--leading-meta);
+}
+
+.time-control-hour {
+  font-variant-numeric: tabular-nums;
+}
+
+.time-control-phase {
+  color: var(--ink-muted);
+}
+
+.time-control-now {
+  margin-left: auto;
+  font: inherit;
+  cursor: pointer;
+}
+
+@media (max-width: 480px) {
+  .time-control-pop {
+    position: fixed;
+    top: 52px;
+    right: var(--gutter);
+    left: var(--gutter);
+    width: auto;
+  }
+}
+
+/* Across the light/dark switch the text fades out, the colours swap, and
+   it fades back (ReadingTime, Timing). */
+.site-shell > main,
+.site-header nav {
+  transition: opacity 120ms var(--ease-calm);
+}
+
+.time-dip .site-shell > main,
+.time-dip .site-header nav {
+  opacity: 0;
+  transition-duration: 90ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .time-control-pop {
+    animation: none;
+  }
+}

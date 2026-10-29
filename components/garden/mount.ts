@@ -1,7 +1,7 @@
 // Runs the meadow on the home page: the engine in ./engine, ported from the
 // ascii-garden prototype (its main.ts, minus the dev control panel).
 
-import { THEME_KEY } from '@/lib/circadian'
+import { currentHour, HOUR_EVENT, setHour } from '@/lib/circadian'
 
 import { AsciiRenderer, type Rect } from './engine/ascii'
 import { Garden } from './engine/garden'
@@ -57,9 +57,11 @@ export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
   wind.strength = 0.92
   const raster = new Raster()
   const ascii = new AsciiRenderer(canvas, font)
-  let hour = localHour()
-  // Following the clock until a sideways scroll scrubs the hour.
-  let live = true
+  // The page's hour (lib/circadian.ts): the clock's, or one set on the time
+  // slider or by scrubbing here.
+  const start0 = currentHour()
+  let hour = start0.hour
+  let live = !start0.set
   const garden = new Garden(wind, paletteAt(hour))
 
   let width = 0
@@ -79,24 +81,11 @@ export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
     if (label !== hourLabel) onHour?.((hourLabel = label), live)
   }
 
-  const setTheme = (theme: 'dark' | 'light') => {
-    if (html.dataset.theme === theme) return
-    html.classList.toggle('dark', theme === 'dark')
-    html.classList.toggle('light', theme === 'light')
-    html.dataset.theme = theme
-  }
-
-  /**
-   * The page colour under the scene's edges. Once the hour is scrubbed the
-   * page goes dark with the sky, so the top bar stays readable over it;
-   * following the clock, the site's own theme (lib/circadian.ts) holds.
-   */
+  /** The page colour the scene's edges fade toward: dark with the sky. */
   const pageFor = (p: Palette): Rgb => {
     const [r, g, b] = p.skyTop
     const sky = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
-    const t = smoothstep(0.21, 0.26, sky)
-    if (!live) setTheme(t > 0.5 ? 'light' : 'dark')
-    return mix(PAGE.dark, PAGE.light, t)
+    return mix(PAGE.dark, PAGE.light, smoothstep(0.21, 0.26, sky))
   }
 
   /**
@@ -213,7 +202,18 @@ export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
   const setScrubHour = (h: number) => {
     live = false
     hour = ((h % 24) + 24) % 24
+    // The rest of the page (its colours, the time slider) follows.
+    setHour(hour)
     showHour()
+  }
+
+  // The hour set elsewhere: the time slider, or its `now`.
+  const onHourChange = () => {
+    const now = currentHour()
+    hour = now.hour
+    live = !now.set
+    showHour()
+    if (reduced.matches) draw(true)
   }
 
   const onWheel = (e: WheelEvent) => {
@@ -358,6 +358,7 @@ export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
   root.addEventListener('click', onClick)
   reduced.addEventListener('change', start)
   document.addEventListener('visibilitychange', onVisibility)
+  window.addEventListener(HOUR_EVENT, onHourChange)
 
   showHour()
   resize()
@@ -388,14 +389,7 @@ export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
     reduced.removeEventListener('change', start)
     document.removeEventListener('visibilitychange', onVisibility)
     raster.dispose()
-    // Hand the page back its own theme, which next-themes keeps in storage.
-    if (!live) {
-      let stored: string | null = null
-      try {
-        stored = localStorage.getItem(THEME_KEY)
-      } catch {}
-      setTheme(stored === 'dark' ? 'dark' : 'light')
-    }
+    window.removeEventListener(HOUR_EVENT, onHourChange)
     delete html.dataset.sky
   }
 }
