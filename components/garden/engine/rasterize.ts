@@ -348,140 +348,193 @@ function sampleCells(
   const kg = new Float32Array(8)
   const kb = new Float32Array(8)
   const ids = new Int32Array(n)
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const i = r * cols + c
-      // Most of the sky is bare: nothing drawn in any subsample.
-      let any = 0
-      for (let sy = 0; sy < SS; sy++) {
-        let o = ((r * SS + sy) * W + c * SS) * 4 + 3
-        for (let sx = 0; sx < SS; sx++, o += 4) any |= cd[o] | kd[o]
-      }
-      if (!any) {
-        lit[i] = 0.5
-        continue
-      }
-      // Kinds present in this cell, one bit each; a kind's sums are cleared when it first shows.
-      let seen = 0
-      let a = 0
-      let nIds = 0
-      let li = 0
-      let bk = 0
-      let pn = 0
-      // Hills carry slope light in the same layer: 0.5 neutral, up toward the light, down in shade.
-      let ll = 0
-      let ln = 0
-      mats.fill(0)
-      // Fluff marked as a loose petal (LOOSE_PETAL) carries the back flag.
-      let lb = 0
-      for (let sy = 0; sy < SS; sy++) {
-        const py = r * SS + sy
-        let o = (py * W + c * SS) * 4
-        for (let sx = 0; sx < SS; sx++, o += 4) {
-          const al = cd[o + 3]
-          a += al
-          const kal = kd[o + 3]
-          if (kal === 0) continue
-          const k =
-            (kd[o] > 127 ? 4 : 0) |
-            (kd[o + 1] > 127 ? 2 : 0) |
-            (kd[o + 2] > 127 ? 1 : 0)
-          if (!((seen >> k) & 1)) {
-            seen |= 1 << k
-            weight[k] = 0
-            kr[k] = 0
-            kg[k] = 0
-            kb[k] = 0
-          }
-          weight[k] += kal
-          // The meta pixel, if this subsample is inside the box that was read back.
-          if (md && (k === Kind.Petal || k === Kind.Land || k === Kind.Fluff)) {
-            const px = c * SS + sx
-            if (px >= bx0 && px < bx1 && py >= by0 && py < by1) {
-              const m = ((py - by0) * bw + (px - bx0)) * 4
-              if (md[m + 3] > 0) {
-                if (k === Kind.Petal) {
-                  // Petal identity by vote, since antialiased seams blend two ids; light and facing averaged.
-                  if (kal > 200) ids[nIds++] = Math.round(md[m] / 24)
-                  li += md[m + 1]
-                  bk += md[m + 2]
-                  pn++
-                } else if (k === Kind.Land || md[m] === 0) {
-                  if (k === Kind.Land)
-                    mats[Math.min(7, Math.round(md[m] / 24))]++
-                  // Fluff reads only fluff's own marks (id 0): a seed head, firefly or the moon
-                  // in front of a petal or leaf would otherwise take its back flag and print as
-                  // a loose petal.
-                  ll += md[m + 1]
-                  lb += md[m + 2]
-                  ln++
-                }
+  const cells = { cov, kinds, rgb, pid, lit, back }
+  const at: Sampling = {
+    cd,
+    kd,
+    md,
+    bx0,
+    by0,
+    bx1,
+    by1,
+    bw,
+    W,
+    cols,
+    n,
+    floor,
+    weight,
+    mats,
+    kr,
+    kg,
+    kb,
+    ids,
+    ...cells,
+  }
+  for (let r = 0; r < rows; r++) sampleRow(at, r)
+  return cells
+}
+
+/** What sampleRow reads and writes: sampleCells's inputs, scratch and output. */
+type Sampling = {
+  cd: Uint8ClampedArray
+  kd: Uint8ClampedArray
+  md: Uint8ClampedArray | null
+  bx0: number
+  by0: number
+  bx1: number
+  by1: number
+  bw: number
+  W: number
+  cols: number
+  n: number
+  floor: number
+  weight: Float32Array
+  mats: Uint8Array
+  kr: Float32Array
+  kg: Float32Array
+  kb: Float32Array
+  ids: Int32Array
+} & Cells
+
+/**
+ * One row of sampleCells. A function of its own, called once a row, so V8 compiles it whole
+ * within the first frame: as one long loop nest, run a few times a second, it was compiled again
+ * partway through each run and dropped when the inner loop ended, many times a frame.
+ */
+function sampleRow(at: Sampling, r: number) {
+  const { cd, kd, md, bx0, by0, bx1, by1, bw, W, cols, n, floor } = at
+  const { weight, mats, kr, kg, kb, ids } = at
+  const { cov, kinds, rgb, pid, lit, back } = at
+  for (let c = 0; c < cols; c++) {
+    const i = r * cols + c
+    // Most of the sky is bare: nothing drawn in any subsample.
+    let any = 0
+    for (let sy = 0; sy < SS; sy++) {
+      let o = ((r * SS + sy) * W + c * SS) * 4 + 3
+      for (let sx = 0; sx < SS; sx++, o += 4) any |= cd[o] | kd[o]
+    }
+    if (!any) {
+      lit[i] = 0.5
+      continue
+    }
+    // Kinds present in this cell, one bit each; a kind's sums are cleared when it first shows.
+    let seen = 0
+    let a = 0
+    let nIds = 0
+    let li = 0
+    let bk = 0
+    let pn = 0
+    // Hills carry slope light in the same layer: 0.5 neutral, up toward the light, down in shade.
+    let ll = 0
+    let ln = 0
+    mats.fill(0)
+    // Fluff marked as a loose petal (LOOSE_PETAL) carries the back flag.
+    let lb = 0
+    for (let sy = 0; sy < SS; sy++) {
+      const py = r * SS + sy
+      let o = (py * W + c * SS) * 4
+      for (let sx = 0; sx < SS; sx++, o += 4) {
+        const al = cd[o + 3]
+        a += al
+        const kal = kd[o + 3]
+        if (kal === 0) continue
+        const k =
+          (kd[o] > 127 ? 4 : 0) |
+          (kd[o + 1] > 127 ? 2 : 0) |
+          (kd[o + 2] > 127 ? 1 : 0)
+        if (!((seen >> k) & 1)) {
+          seen |= 1 << k
+          weight[k] = 0
+          kr[k] = 0
+          kg[k] = 0
+          kb[k] = 0
+        }
+        weight[k] += kal
+        // The meta pixel, if this subsample is inside the box that was read back.
+        if (md && (k === Kind.Petal || k === Kind.Land || k === Kind.Fluff)) {
+          const px = c * SS + sx
+          if (px >= bx0 && px < bx1 && py >= by0 && py < by1) {
+            const m = ((py - by0) * bw + (px - bx0)) * 4
+            if (md[m + 3] > 0) {
+              if (k === Kind.Petal) {
+                // Petal identity by vote, since antialiased seams blend two ids; light and facing averaged.
+                if (kal > 200) ids[nIds++] = Math.round(md[m] / 24)
+                li += md[m + 1]
+                bk += md[m + 2]
+                pn++
+              } else if (k === Kind.Land || md[m] === 0) {
+                if (k === Kind.Land) mats[Math.min(7, Math.round(md[m] / 24))]++
+                // Fluff reads only fluff's own marks (id 0): a seed head, firefly or the moon
+                // in front of a petal or leaf would otherwise take its back flag and print as
+                // a loose petal.
+                ll += md[m + 1]
+                lb += md[m + 2]
+                ln++
               }
             }
           }
-          kr[k] += cd[o] * al
-          kg[k] += cd[o + 1] * al
-          kb[k] += cd[o + 2] * al
         }
+        kr[k] += cd[o] * al
+        kg[k] += cd[o + 1] * al
+        kb[k] += cd[o + 2] * al
       }
-      let best = Kind.Empty as number
-      let bw0 = (seen & 1) === 1 ? weight[0] : 0
-      for (const k of PLANT_KINDS) {
+    }
+    let best = Kind.Empty as number
+    let bw0 = (seen & 1) === 1 ? weight[0] : 0
+    for (const k of PLANT_KINDS) {
+      if ((seen >> k) & 1 && weight[k] > bw0) {
+        best = k
+        bw0 = weight[k]
+      }
+    }
+    if (bw0 < floor) {
+      best = Kind.Empty
+      bw0 = (seen & 1) === 1 ? weight[0] : 0
+      for (let k = 1; k < 8; k++) {
         if ((seen >> k) & 1 && weight[k] > bw0) {
           best = k
           bw0 = weight[k]
         }
       }
-      if (bw0 < floor) {
-        best = Kind.Empty
-        bw0 = (seen & 1) === 1 ? weight[0] : 0
-        for (let k = 1; k < 8; k++) {
-          if ((seen >> k) & 1 && weight[k] > bw0) {
-            best = k
-            bw0 = weight[k]
-          }
-        }
-      }
-      kinds[i] = best
-      let id = 0
-      let votes = 0
-      for (let x = 0; x < nIds; x++) {
-        let m = 0
-        for (let y = 0; y < nIds; y++) if (ids[x] === ids[y]) m++
-        if (m > votes) {
-          votes = m
-          id = ids[x]
-        }
-      }
-      // A cell split between petals goes to the one with more of it, so folds stay unbroken.
-      pid[i] = id
-      // A land cell's pid is its material instead: rock, snow or forest.
-      if (best === Kind.Land) {
-        let mv = 0
-        for (let x = 1; x < 8; x++) if (mats[x] > mats[mv]) mv = x
-        pid[i] = mv
-      }
-      lit[i] = pn ? li / (pn * 255) : ln ? ll / (ln * 255) : 0.5
-      back[i] = pn ? +(bk / pn > 127) : ln ? +(lb / ln > 127) : 0
-      const plant = (PLANT_MASK >> best) & 1
-      cov[i] = (plant ? bw0 : a) / (255 * n)
-      let cr = 0
-      let cg = 0
-      let cb = 0
-      for (let k = 0; k < 8; k++) {
-        if (!((seen >> k) & 1) || (plant && k !== best)) continue
-        cr += kr[k]
-        cg += kg[k]
-        cb += kb[k]
-      }
-      // Colour sums are weighted by alpha, so divide by the alpha they were drawn with.
-      const norm = plant ? bw0 : a
-      if (norm > 0) {
-        rgb[i * 3] = cr / norm
-        rgb[i * 3 + 1] = cg / norm
-        rgb[i * 3 + 2] = cb / norm
+    }
+    kinds[i] = best
+    let id = 0
+    let votes = 0
+    for (let x = 0; x < nIds; x++) {
+      let m = 0
+      for (let y = 0; y < nIds; y++) if (ids[x] === ids[y]) m++
+      if (m > votes) {
+        votes = m
+        id = ids[x]
       }
     }
+    // A cell split between petals goes to the one with more of it, so folds stay unbroken.
+    pid[i] = id
+    // A land cell's pid is its material instead: rock, snow or forest.
+    if (best === Kind.Land) {
+      let mv = 0
+      for (let x = 1; x < 8; x++) if (mats[x] > mats[mv]) mv = x
+      pid[i] = mv
+    }
+    lit[i] = pn ? li / (pn * 255) : ln ? ll / (ln * 255) : 0.5
+    back[i] = pn ? +(bk / pn > 127) : ln ? +(lb / ln > 127) : 0
+    const plant = (PLANT_MASK >> best) & 1
+    cov[i] = (plant ? bw0 : a) / (255 * n)
+    let cr = 0
+    let cg = 0
+    let cb = 0
+    for (let k = 0; k < 8; k++) {
+      if (!((seen >> k) & 1) || (plant && k !== best)) continue
+      cr += kr[k]
+      cg += kg[k]
+      cb += kb[k]
+    }
+    // Colour sums are weighted by alpha, so divide by the alpha they were drawn with.
+    const norm = plant ? bw0 : a
+    if (norm > 0) {
+      rgb[i * 3] = cr / norm
+      rgb[i * 3 + 1] = cg / norm
+      rgb[i * 3 + 2] = cb / norm
+    }
   }
-  return { cov, kinds, rgb, pid, lit, back }
 }
