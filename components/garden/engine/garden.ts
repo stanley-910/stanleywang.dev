@@ -31,11 +31,11 @@ import type { Wind } from './wind'
 const SOWN_MAX = 8
 
 const SPECIES: [Species, number][] = [
-  ['poppy', 0.5],
-  ['cosmos', 0.27],
+  ['poppy', 0.56],
+  ['cosmos', 0.31],
   // Umbels print as a block at a distance, so they stay rare.
   ['lace', 0.05],
-  ['dandelion', 0.18],
+  ['dandelion', 0.08],
 ]
 
 /** Where the poem's rose roots: the near meadow, well up from the screen's foot. */
@@ -98,7 +98,7 @@ export class Garden {
       // Now and then a pappus that lands takes root.
       if (
         p.type === 'pappus' &&
-        this.rng() < 0.12 &&
+        this.rng() < 0.04 &&
         this.plants.length < this.maxPlants()
       ) {
         this.add(
