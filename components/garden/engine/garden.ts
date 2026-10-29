@@ -475,7 +475,10 @@ export class Garden {
     if (this.intro < INTRO) {
       this.intro += dt
       const k = easeInOut(Math.min(1, this.intro / INTRO))
-      for (const [plant, age] of this.targetAge) plant.age = age * k - dt
+      for (const [plant, age] of this.targetAge) {
+        plant.age = age * k - dt
+        plant.calm = 1
+      }
       this.meadow.grow = Math.min(1, this.intro / (INTRO * 0.7))
       if (this.intro >= INTRO) {
         this.targetAge.clear()

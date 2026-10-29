@@ -30,6 +30,11 @@ export class Stem {
   parentJoint = 0
   branchAngle = 0
   stiffness = 1
+  /**
+   * Each hinge's damping ratio: at 0.35 it sways and rings on in the wind, and near 1 (critical)
+   * a bend settles without swinging past.
+   */
+  damping = 0.35
   drag = 1
   headDrag = 0
   headMass = 0.1
@@ -109,7 +114,7 @@ export class Stem {
       const rem = (n - i) / n
       const inertia = 0.012 + rem * rem * (0.22 * rem + this.headMass)
       const k = this.stiffness * 6 * (1 - 0.5 * (i / n))
-      const c = 0.7 * Math.sqrt(k * inertia)
+      const c = 2 * this.damping * Math.sqrt(k * inertia)
       const acc = (k * (rest[i] - ang[i]) + torque - c * vel[i]) / inertia
       vel[i] += acc * dt
       ang[i] += vel[i] * dt

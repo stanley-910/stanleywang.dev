@@ -52,6 +52,14 @@ const HEAD = 1.6
 
 /** Seconds a sown plant takes to reach full flower. */
 export const RUSH = 2.5
+/** Stem damping in the wind (Stem.damping). */
+const SWAY = 0.35
+/** Stem damping while the opening grows a plant in: its bud straightens without a bounce. */
+const SETTLED = 0.9
+/** Stem damping while a sown flower rushes up, so it springs into place. */
+const LIVELY = 0.2
+/** Seconds after the opening for the stems to loosen back to SWAY. */
+const LOOSEN = 2
 
 /**
  * One plant and its life: a stalk that grows, a bud, a flower, seed, and a fade back into the
@@ -75,6 +83,11 @@ export abstract class Plant {
   /** 1 while alive; a plant made to leave fades to 0 and is removed. */
   fade = 1
   leaving = false
+  /**
+   * 1 while the opening grows this plant in, falling to 0 over LOOSEN seconds after: the stems
+   * damp toward SETTLED, since a whole life passes in seconds and the buds straighten fast.
+   */
+  calm = 0
   private rush: { from: number; to: number; t: number } | null = null
 
   constructor(
@@ -132,6 +145,9 @@ export abstract class Plant {
       this.age = lerp(q.from, q.to, easeOut(q.t))
       if (q.t >= 1) this.rush = null
     } else this.age += dt
+    const damping = this.rush ? LIVELY : lerp(SWAY, SETTLED, this.calm)
+    for (const s of this.stems) s.damping = damping
+    this.calm = Math.max(0, this.calm - dt / LOOSEN)
     if (this.leaving) this.fade = Math.max(0, this.fade - dt / 1.5)
     this.live(env, dt)
     const sub = 2
