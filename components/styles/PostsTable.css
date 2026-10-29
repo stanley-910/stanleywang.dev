@@ -29,6 +29,15 @@
   border-bottom: 1px solid var(--hairline);
 }
 
+/* /writing: one flat list, a hairline above and below. */
+.posts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
 .year-column {
   padding-top: 0.25rem;
   color: var(--ink-muted);
