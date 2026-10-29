@@ -20,18 +20,20 @@ The three ridges (`buildRidges`) were bare halftone silhouettes. They differed b
 
 **Where trees grow.**
 
-- **Middle ridge (layer 1):** a low, rough foothill (rolling noise plus ridged knolls), forested to the crest, so its outline is a line of treetops. The old smooth cliff-and-shelf profile read as a giant hump between the peaks.
-- **Near ridge (layer 2):** two or three stands of tall spruce across a wide screen, five to thirteen cells tall, tallest in the middle of each stand, never over the text's column. Each tree is a narrow tiered silhouette (three or more branch tiers, each flaring out then stepping in). Only stands, never a continuous row, so the flowers keep open sky behind most of them.
+- **Middle ridge (layer 1):** a low, gently rolling band, forested along its crest, so its outline is a line of treetops. The old cliff-and-shelf profile read as a giant hump between the peaks; ridged knolls made the rows pile up on each one into a dark spiked pyramid.
+- **Near ridge (layer 2):** five stands of tall spruce, at 5%, 31%, 55%, 66% and 90% of the screen width, of 4, 3, 5, 3 and 5 trees, five to thirteen cells tall, tallest in the middle of each stand. A stand is left out only where it would stand over the text itself; keeping them out of the text's whole column left none at all. Each tree is a narrow tiered silhouette (three or more branch tiers, each flaring out then stepping in). Only stands, never a continuous row, so the flowers keep open sky behind most of them.
 - **Far range (layer 0):** no forest. A thin band was tried; in the gaps between clearings it printed as flat-topped dark slabs standing on the middle ridge.
+
+**Placed, not generated.** Where each row grows and where each stand stands are set by hand, as shares of the screen width (`FOREST_ROWS`, `SPRUCE_STANDS`). Noise-driven gaps put clumps in odd places.
 
 **How it prints.** Forests are a painted silhouette like the ridges, with sparse glyphs over it. A first try with glyphs alone (one `^` per tree) was nearly invisible: a 7px caret in a colour close to the ridge's. Trees size to about one glyph cell per 1.25% of the screen height.
 
 | Where | Painted | Glyphs |
 |---|---|---|
 | Near stands | each tree's tiered outline in `*-pine` mixed 35% toward `*-ground`, the darkest mark on the land | `/` and `\` down the flanks, sparse `:` inside |
-| Middle ridge | three staggered rows of low canopy, back to front, each starting lower on the slope than the one behind (0, 12% and 30% of the ridge's height), with its own gaps and one narrow spire per 2.6-cell slot (0.6–1.6, 0.8–2.1 and 1.0–2.6 cells tall). The back row is `*-pine` mixed 38% toward the ridge colour and 12% toward `*-haze`; the middle row 16% toward the ridge colour; the front row 14% toward `*-ground`. | sparse `^` and `|` inside, none on the top row |
+| Middle ridge | three staggered rows of low canopy, back to front, each starting lower on the slope than the one behind (0, 12% and 30% of the ridge's height). The back row runs the full width; the second covers 0–18%, 27–60% and 74–100% of it; the front 10–20%, 42–56% and 82–95% and one narrow spire per 2.6-cell slot (0.8–2, 0.9–2.3 and 1–2.6 cells tall). The back row is `*-pine` mixed 38% toward the ridge colour and 12% toward `*-haze`; the middle row 16% toward the ridge colour; the front row 14% toward `*-ground`. | sparse `^` and `|` inside, none on the top row |
 
-Toward the end of a stretch, the spires drop out one by one and the canopy sinks into the ridge, so a stand thins to single trees. Don't round the band off: an earlier version lowered the whole band's top toward the ends and every short stretch read as a hedge-shaped mound. Stretches are long (the mask runs at 170px) so there are no small isolated clumps.
+Toward the end of a stretch, the spires drop out one by one and the canopy sinks into the ridge, so a stand thins to single trees. Don't round the band off: an earlier version lowered the whole band's top toward the ends and every short stretch read as a hedge-shaped mound. 
 
 No glyphs on the top edges: the painted silhouettes draw the serration. (Tried `^` tips along the top; they doubled the edge.)
 

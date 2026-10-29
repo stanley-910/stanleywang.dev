@@ -53,11 +53,40 @@ const FACE_STEP = 5
 /** How far the lit face of a hidden ridgeline reaches, and its narrower shadow, in px. */
 const FACE_LIT = 80
 const FACE_SHADE = 36
-/** The middle ridge's forest, three rows back to front: how far down the slope each starts, and how often it gaps. */
+/**
+ * The middle ridge's forest, three rows back to front: how far down the slope each starts, how
+ * tall its spires stand, and where across the screen it grows, placed by hand.
+ */
 const FOREST_ROWS = [
-  { drop: 0, gate: 0.44, hMin: 0.6, hVar: 1.0 },
-  { drop: 0.12, gate: 0.42, hMin: 0.8, hVar: 1.3 },
-  { drop: 0.3, gate: 0.48, hMin: 1.0, hVar: 1.6 },
+  { drop: 0, hMin: 0.8, hVar: 1.2, at: [[0, 1]] },
+  {
+    drop: 0.12,
+    hMin: 0.9,
+    hVar: 1.4,
+    at: [
+      [0, 0.18],
+      [0.27, 0.6],
+      [0.74, 1],
+    ],
+  },
+  {
+    drop: 0.3,
+    hMin: 1,
+    hVar: 1.6,
+    at: [
+      [0.1, 0.2],
+      [0.42, 0.56],
+      [0.82, 0.95],
+    ],
+  },
+]
+/** Spruce stands on the near ridge, placed by hand: where across the screen, and how many trees. */
+const SPRUCE_STANDS = [
+  [0.05, 4],
+  [0.31, 3],
+  [0.55, 5],
+  [0.66, 3],
+  [0.9, 5],
 ]
 const FOREST_STEP = 2
 /** Depth of the farthest planting: a field away, short of the hills, so nothing roots on them. */
@@ -428,18 +457,10 @@ export class Garden {
       }
       return x - best
     }
-    // The middle ridge is a low, rough foothill: rolling, with ridged knolls, forested to its crest.
-    const midAt = (x: number) => {
-      const knolls =
-        Math.max(0, 1 - Math.abs(fbm1(x / 120, seed + 111, 3) - 0.5) * 2) ** 1.4
-      return (
-        this.horizon -
-        H *
-          (0.03 +
-            0.055 * (0.5 + (fbm1(x / 300, seed + 101, 4) - 0.5) * 1.6) +
-            0.025 * knolls)
-      )
-    }
+    // The middle ridge is a low, gently rolling band, forested along its crest. With knolls, the
+    // tree rows piled up on each one into a dark spiked pyramid.
+    const midAt = (x: number) =>
+      this.horizon - H * (0.042 + 0.036 * (fbm1(x / 420, seed + 101, 3) - 0.5))
     const nearAt = (x: number) =>
       this.horizon - H * 0.035 * (0.55 + fbm1(x / 680, seed + 202, 3) * 0.9)
     const far = new Float32Array(n)
@@ -654,10 +675,11 @@ export class Garden {
   }
 
   /**
-   * Forest. The middle ridge is forested to its crest in three staggered rows, each lower on the
-   * slope, with its own gaps; the near ridge carries a few stands of tall, tiered spruce. Each row is
-   * a low canopy with one narrow spire per slot; toward the end of a stretch the spires drop out and
-   * the canopy sinks, so a stand thins to single trees instead of rounding off into a mound.
+   * Forest, placed by hand as shares of the screen width rather than by noise. The middle ridge is
+   * forested along its crest, with two staggered rows lower on the slope in front; the near ridge
+   * carries a few stands of tall, tiered spruce. Each row is a low canopy with one narrow spire per
+   * slot; toward the end of a stretch the spires drop out and the canopy sinks, so a stand thins
+   * to single trees instead of rounding off into a mound.
    */
   private buildForest(
     midAt: (x: number) => number,
@@ -671,7 +693,7 @@ export class Garden {
     const CW = CH / 1.32
     const tw = 2.6 * CW
     const on = (k: number, x: number) =>
-      k === 0 || fbm1(x / 170, seed + 707 + k * 41, 3) > FOREST_ROWS[k].gate
+      FOREST_ROWS[k].at.some(([a, b]) => x >= a * W && x <= b * W)
     const taper = (k: number, x: number) => {
       let n = 0
       for (let j = 1; j <= 6; j++) n += +on(k, x - j * 12) + +on(k, x + j * 12)
@@ -727,16 +749,22 @@ export class Garden {
       }
       return shape
     })
-    // Two or three stands across a screen, never over the text, so the flowers keep open sky
-    // behind most of them.
+    // A few stands, placed by hand, so the flowers keep open sky behind most of them. A stand is
+    // left out only where it would stand over the text itself.
     this.spruce = []
     const clear = this.keepClear
-    for (let j = 0; j * 520 < W + 200; j++) {
-      if (hash(j, 62, seed) > 0.6) continue
-      const n = 5 + Math.floor(hash(j, 63, seed) * 5)
-      const gx = 120 + j * 520 + (hash(j, 61, seed) - 0.5) * 200
+    for (const [j, [at, n]] of SPRUCE_STANDS.entries()) {
+      const gx = at * W
       const span = n * 3.4 * CW * 0.6 + 30
-      if (clear && gx + span > clear.left && gx - span < clear.right) continue
+      const tall = 13 * CH
+      if (
+        clear &&
+        gx + span > clear.left &&
+        gx - span < clear.right &&
+        nearAt(gx) - tall < clear.bottom &&
+        nearAt(gx) > clear.top
+      )
+        continue
       for (let k = 0; k < n; k++) {
         const mid = 1 - (0.55 * Math.abs(k - (n - 1) / 2)) / n
         const x =

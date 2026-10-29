@@ -336,8 +336,7 @@ export type Style = {
   hill: Float32Array
   /**
    * The far range's faces per cell (Garden.relief): > 0 toward the light, < 0 in shadow. Rock there
-   * takes a faint tile, the light's colour at `reliefLit` or the ground's at 8%, and its slope
-   * glyphs thicken or thin a little.
+   * takes a faint tile, the light's colour at `reliefLit` or the ground's at 8%.
    */
   relief: Float32Array
   reliefLight: Rgb
@@ -764,7 +763,8 @@ export class Typesetter {
               cg = lc[1]
               cb = lc[2]
               alpha = skyRow ? 0.6 : 0.45
-              // The far range's faces: a faint tile, lit or shaded, and a nudge to the slope glyphs.
+              // The far range's faces: a faint tile, lit or shaded. Tile only: nudging the dithered slope
+              // glyphs as well printed them in vertical streaks.
               const face = relief.length === kinds.length ? relief[i] : 0
               if (face) {
                 const fc = face > 0 ? reliefLight : p.ground
@@ -775,7 +775,7 @@ export class Typesetter {
               }
               // Slope light, in glyphs alone: the sunward side thickens toward the crest and the far
               // side goes bare, so the contrast is all in the lit flank.
-              const sl = (this.lit[i] - 0.5) * 2 + 0.3 * face
+              const sl = (this.lit[i] - 0.5) * 2
               if (sl > 0.05) {
                 if (sl > bayer(c, r) * 0.9)
                   g = code(
