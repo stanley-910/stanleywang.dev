@@ -1,4 +1,5 @@
 import { Butterflies } from './butterflies'
+import { Friends } from './friends'
 import {
   clamp,
   easeInOut,
@@ -16,6 +17,7 @@ import { createPlant, RUSH, type Env, type Plant, type Species } from './plants'
 import { type Head, Kind, type Raster, Shape } from './raster'
 
 import type { Rect } from './ascii'
+import type { Visitors } from './visitors'
 import type { Wind } from './wind'
 
 /** How many clicked-in flowers stay at once. */
@@ -43,7 +45,8 @@ export class Garden {
   plants: Plant[] = []
   meadow = new Meadow()
   particles = new Particles()
-  butterflies = new Butterflies()
+  /** Who answers a click on a flower: butterflies, or on the poem the ladybug and bumblebee. */
+  visitors: Visitors = new Butterflies()
   /** Flower heads as last drawn, for clicks and butterflies to find. */
   heads: Head[] = []
   private rng = mulberry32(1)
@@ -146,7 +149,7 @@ export class Garden {
     this.plants = []
     this.targetAge.clear()
     this.particles.list = []
-    this.butterflies.clear()
+    this.visitors.clear()
     this.strips = 0
     this.grownFor = this.height
     this.intro = 0
@@ -279,10 +282,30 @@ export class Garden {
     return best
   }
 
-  /** Calls a butterfly to the flower under the click. */
+  /** Has the ladybug and bumblebee answer clicks instead of butterflies. */
+  useFriends() {
+    this.visitors = new Friends()
+  }
+
+  /** Under reduced motion the visitors that can, keep still. */
+  holdStill(still: boolean) {
+    this.visitors.still?.(still)
+  }
+
+  /** Ends what a tap on a visitor set off. */
+  calmVisitors() {
+    this.visitors.calm?.()
+  }
+
+  /** A click on a visitor, before it can reach a flower; true when one took it. */
+  tapVisitor(x: number, y: number, reach: number) {
+    return this.visitors.tap?.(x, y, reach) ?? false
+  }
+
+  /** Calls a visitor to the flower under the click. */
   visit(head: Head) {
     if (head.owner)
-      this.butterflies.summon(head.owner, this.heads, this.env.palette)
+      this.visitors.summon(head.owner, this.heads, this.env.palette)
   }
 
   /** Sow where the user clicked, cycling through the species. */
@@ -293,7 +316,7 @@ export class Garden {
     const plant = this.add(this.pickSpecies(), x, z)
     plant.hurry()
     // Now and then a sown flower draws a visitor once it opens; a click on a flower always does.
-    if (this.rng() < 0.2) this.butterflies.later(plant, RUSH + 1)
+    if (this.rng() < 0.2) this.visitors.later(plant, RUSH + 1)
     // After dark a few fireflies gather where the seed went in.
     const night = this.env.palette?.night ?? 0
     for (let i = 0; i < Math.round(6 * smoothstep(0.4, 0.9, night)); i++) {
@@ -514,7 +537,7 @@ export class Garden {
     this.meadow.step(dt, this.wind)
     this.spawnAmbient(dt, palette)
     this.particles.step(dt, this.wind, this.width, this.height)
-    this.butterflies.step(
+    this.visitors.step(
       dt,
       this.heads,
       this.wind,
@@ -597,7 +620,7 @@ export class Garden {
     this.meadow.draw(r, p, blade, 2, haze)
     this.particles.draw(r, p.night)
     this.heads = r.heads.slice()
-    this.butterflies.draw(r)
+    this.visitors.draw(r, p)
   }
 
   /** The highest painted ridge at x. */

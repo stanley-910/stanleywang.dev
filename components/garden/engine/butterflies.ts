@@ -571,7 +571,7 @@ export class Butterflies {
         y: b.y,
         pose,
         look: b.look,
-        moth: b.moth,
+        kind: b.moth ? 'moth' : 'butterfly',
         span: b.span,
       })
     }
