@@ -1,546 +1,149 @@
-/* Table of Contents Styles */
-:root {
-  --border-color: rgba(229, 231, 235, 0.3);
-  --border-color-dark: rgba(55, 65, 81, 0.3);
-  --active-glow: rgba(0, 0, 0, 0.8);
-  --active-glow-dark: rgba(255, 255, 255, 0.8);
-  --hover-underline-light: rgba(0, 0, 0, 1);
-  --hover-underline-dark: rgba(255, 255, 255, 1);
-  --inactive-underline: rgba(115, 115, 115, 0.4);
-  --inactive-underline-dark: rgba(125, 125, 125, 0.7);
-}
+/*
+  A post's table of contents: design/circadian-meadow/components/
+  TableOfContents. One look for every post, on the page tokens, so it
+  follows the hour. A rail in the left gutter from 1280px; below that a
+  closed "contents" disclosure in the reading column.
+*/
 
-.toc-variant-classic {
-  position: fixed;
-  bottom: 0;
-  font-size: 1.1em;
-  font-family: var(--font-serif);
-  /* left: 20px; */
-  /* left: 1rem; */
-  left: 20px;
-  /* right: 20px; Changed from left to right */
-  top: 120px;
-  z-index: 200;
-  overflow: hidden;
-  display: none; /* Hidden by default on mobile */
-  opacity: 0; /* Start hidden for fade in */
-  visibility: hidden; /* Hide until mounted */
-  transform: translateY(10px);
-  /* border-top: 1.2px solid var(--border-color-dark) !important; */
-}
-
-/* Add pseudo-element for animated border */
-.toc-variant-classic::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 1.2px;
-  width: 3.5ch; /* Initial width to match title */
-  opacity: 0.8;
-  background-color: var(--border-color-dark);
-  transition:
-    width 0.7s cubic-bezier(0.25, 0.1, 0.25, 1),
-    opacity 0.7s cubic-bezier(0.25, 0.1, 0.25, 1); /* easeOutQuart alternative */
-}
-
-.toc-variant-classic span {
-  color: var(--fg-deep);
-  opacity: 0.5;
-  transition: opacity 700ms 300ms; /* Match the TOC content's delayed fade-out */
-}
-
-.dark .toc-variant-classic::before {
-  background-color: var(--border-color);
-}
-
-/* Sync border animation with TOC visibility */
-*:hover > .toc-variant-classic::before {
-  opacity: 1;
-  width: 75%;
-  transition:
-    width 700ms 0ms,
-    opacity 700ms 0ms;
-}
-
-*:hover > .toc-variant-classic span {
-  opacity: 0.8;
-  transition: opacity 700ms 0ms; /* Immediate fade-in on hover */
-}
-
-.toc-variant-classic span:hover {
-  opacity: 1; /* Full opacity on hover */
-  transition: opacity 200 ease; /* Immediate fade-in on hover */
-}
-
-.toc-variant-classic::before {
-  transition:
-    width 700ms 300ms,
-    opacity 700ms 300ms;
-  width: 3.5ch;
-}
-
-/* Keep border expanded when TOC is always on */
-.toc-always-on .toc-variant-classic::before {
-  opacity: 1;
-  width: 75%;
-}
-
-/* Initial fade in animation when mounted */
-.toc-variant-classic.mounted {
-  animation: tocFadeIn 0.7s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
-  visibility: visible;
-}
-
-/* Initial fade in animation */
-@keyframes tocFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@media (min-width: 1024px) {
-  .toc-variant-classic {
-    display: flex;
-    flex-direction: column;
-    width: 17ch;
-  }
-}
-
-@media (min-width: 1280px) {
-  .toc-variant-classic {
-    width: 25ch;
-  }
-}
-
-.table-of-contents-anchor {
-  margin: 0 0.5rem;
-  width: 1.75rem;
-  height: 1.75rem;
-  font-size: 1.125rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: var(--bg-base);
-  border-radius: 0.25rem;
-  color: #888777;
-  border: 1px solid var(--bg-base);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  transition: all 400ms;
-}
-
-@media (min-width: 768px) {
-  .table-of-contents-anchor {
-    border-color: transparent;
-    box-shadow: none;
-  }
-}
-
-.toc-variant-classic > ul {
-  text-overflow: ellipsis;
-  height: 100%;
-  overflow-y: auto;
-  border-radius: 0.25rem;
-  opacity: 0;
-  margin-top: 0.25rem;
-  padding-bottom: 1.25rem;
-  transition: opacity 700ms; /* Base transition without delay */
-  list-style: none;
-  padding-left: 0;
-  /* Hide scrollbar for different browsers while maintaining functionality */
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE and Edge */
-}
-
-/* Hide scrollbar for Chrome, Safari and Opera */
-.toc-variant-classic > ul::-webkit-scrollbar {
-  display: none;
-}
-
-/* Immediate fade in on hover */
-*:hover > .toc-variant-classic > ul {
-  opacity: 0.75;
-  transition: opacity 700ms 0ms; /* Explicit 0ms delay for hover */
-}
-
-/* Delayed fade out when hover is removed */
-.toc-variant-classic > ul {
-  transition: opacity 700ms 300ms; /* 5s delay before fade out */
-}
-
-*:hover > .toc-variant-classic > .table-of-contents-anchor,
-.toc-always-on .toc-variant-classic > .table-of-contents-anchor {
-  color: inherit;
-}
-
-.toc-always-on .toc-variant-classic > ul {
-  opacity: 0.6;
-}
-
-.toc-variant-classic ul > li::before {
-  display: none;
-}
-
-.toc-variant-classic ul > li {
-  padding-left: 0;
-  line-height: 1.4em; /* Increased line height for better readability */
-  margin-top: 0.4em;
-  font-size: 0.8em;
-  /* Removed white-space: nowrap to allow text wrapping */
-  overflow-wrap: break-word; /* Allow long words to break */
-  word-wrap: break-word; /* Legacy support */
-  width: 100%; /* Ensure the li takes full width of parent */
-  text-overflow: ellipsis;
-}
-
-.toc-variant-classic ul > li > a {
-  opacity: 0.75;
-  transition: all 200ms ease;
-  text-decoration: underline;
-  text-decoration-color: var(--inactive-underline);
-  text-underline-offset: 4px;
-  text-decoration-thickness: 1px;
-  display: inline-block;
-  border-bottom: none !important;
-  padding-left: 0;
-  max-width: 100%;
-}
-
-/* Active state styles */
-.toc-variant-classic ul > li > a.active {
-  opacity: 1;
-  font-weight: 400;
-  text-decoration-color: var(--active-glow);
-  text-decoration-thickness: 1px;
-  transform: translateX(3px);
-  text-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
-}
-
-/* Dark mode active state */
-.dark .toc-variant-classic ul > li > a.active {
-  text-decoration-color: var(--active-glow-dark);
-  text-shadow: 0 0 8px rgba(255, 255, 255, 0.1);
-}
-
-/* Hover state for active items */
-.toc-variant-classic ul > li > a.active:hover {
-  opacity: 1;
-  text-decoration-color: var(--active-glow);
-}
-
-.dark .toc-variant-classic ul > li > a.active:hover {
-  text-decoration-color: var(--active-glow-dark);
-}
-
-/* Dark mode styles */
-@media (prefers-color-scheme: dark) {
-  .toc-variant-classic ul > li > a {
-    text-decoration-color: rgba(
-      125,
-      125,
-      125,
-      0.7
-    ); /* Lighter underline for dark mode */
-  }
-}
-
-/* Support for class-based dark mode */
-.dark .toc-variant-classic ul > li > a {
-  text-decoration-color: var(--inactive-underline-dark);
-}
-
-/* Hover state for all links */
-.toc-variant-classic ul > li > a:hover {
-  opacity: 1;
-  text-decoration-color: var(--hover-underline-light);
-  text-decoration-thickness: 1px;
-}
-
-/* Dark mode hover state */
-.dark .toc-variant-classic ul > li > a:hover {
-  text-decoration-color: var(--hover-underline-dark);
-}
-
-/* Dynamic indentation levels */
-.toc-variant-classic ul > li.toc-level-0 > a {
-  margin-left: 0rem;
-}
-
-.toc-variant-classic ul > li.toc-level-1 > a {
-  margin-left: 0.75rem;
-}
-
-.toc-variant-classic ul > li.toc-level-2 > a {
-  margin-left: 1.5rem;
-}
-
-.toc-variant-classic ul > li.toc-level-3 > a {
-  margin-left: 2.25rem;
-}
-
-/* Title hover transition */
-.toc-variant-classic span {
-  transition: opacity 700ms 300ms; /* Include opacity transition with delay */
-}
-
-/* Hide Footnotes from TOC */
-.toc a[href^='#footnotes'] {
-  display: none;
-}
-
-/* ──────────────────────────────────────────────────────────────
-   Shared sidebar positioning for new variants (staffline + vim)
-   ────────────────────────────────────────────────────────────── */
-.toc-variant-staffline,
-.toc-variant-vim {
-  position: fixed;
-  left: 20px;
-  top: 120px;
-  max-height: calc(100vh - 160px);
-  z-index: 200;
-  display: none;
+nav.toc {
   font-family: var(--font-mono);
-  color: var(--fg-deep);
+  font-size: var(--text-meta);
+  line-height: 20px;
 }
 
-.toc-variant-staffline.mounted,
-.toc-variant-vim.mounted {
-  animation: tocFadeIn 0.7s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
-}
-
-@media (min-width: 1024px) {
-  .toc-variant-staffline,
-  .toc-variant-vim {
-    display: flex;
-    flex-direction: column;
-    width: 17ch;
-  }
-}
-
-@media (min-width: 1280px) {
-  .toc-variant-staffline,
-  .toc-variant-vim {
-    width: 25ch;
-  }
-}
-
-.toc-variant-staffline .toc-title,
-.toc-variant-vim .toc-title {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--fg-light);
-  margin-bottom: 14px;
-  font-weight: 500;
-}
-
-/* ──────────────────────────────────────────────────────────────
-   Staffline variant — jazz score
-   ────────────────────────────────────────────────────────────── */
-.toc-variant-staffline {
-  font-size: 12.5px;
-}
-
-.toc-variant-staffline ul {
-  list-style: none;
-  margin: 0;
-  padding: 0 0 0 14px;
-  position: relative;
-  overflow-y: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.toc-variant-staffline ul::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: linear-gradient(
-    to bottom,
-    transparent 0,
-    var(--border-color-dark) 8px,
-    var(--border-color-dark) calc(100% - 8px),
-    transparent 100%
-  );
-}
-
-.toc-variant-staffline ul::-webkit-scrollbar {
-  display: none;
-}
-
-.toc-variant-staffline ul > li {
-  position: relative;
-  padding: 4px 0 4px 14px;
-  line-height: 1.4;
-}
-
-.toc-variant-staffline ul > li::before {
-  content: '─';
-  position: absolute;
-  left: -4px;
-  top: 4px;
-  color: var(--border-color-dark);
-  font-family: var(--font-mono);
-  line-height: 1;
-}
-
-.toc-variant-staffline ul > li > a {
-  color: var(--fg-deep);
-  opacity: 0.65;
-  font-size: 12.5px;
-  text-decoration: none;
-  border: none;
-  transition:
-    opacity 200ms ease,
-    color 200ms ease;
-}
-
-.toc-variant-staffline ul > li > a:hover {
-  opacity: 1;
-  color: var(--fg-deeper);
-  text-decoration: none;
-  border: none;
-}
-
-.toc-variant-staffline ul > li.toc-level-1 > a {
-  padding-left: 0.75rem;
-  opacity: 0.55;
-}
-
-.toc-variant-staffline ul > li.toc-level-2 > a {
-  padding-left: 1.5rem;
-  opacity: 0.45;
-  font-size: 11.5px;
-}
-
-.toc-variant-staffline ul > li.toc-level-3 > a {
-  padding-left: 2.25rem;
-  opacity: 0.4;
-  font-size: 11.5px;
-}
-
-.toc-variant-staffline ul > li > a.active {
-  color: var(--amber);
-  opacity: 1;
-}
-
-.toc-variant-staffline ul > li:has(a.active)::before {
-  content: '●';
-  color: var(--amber);
-  font-size: 10px;
-  left: -5px;
-  top: 7px;
-  line-height: 1;
-}
-
-/* ──────────────────────────────────────────────────────────────
-   Vim buffer variant — line numbers & status
-   ────────────────────────────────────────────────────────────── */
-.toc-variant-vim ol {
-  list-style: none;
+nav.toc ol {
   margin: 0;
   padding: 0;
-  counter-reset: ln;
-  font-family: var(--font-mono);
-  font-size: 12.5px;
-  overflow-y: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  list-style: none;
 }
 
-.toc-variant-vim ol::-webkit-scrollbar {
+nav.toc li {
+  margin: 0;
+  padding: 0;
+}
+
+nav.toc .toc-label {
+  margin: 0 0 var(--space-1);
+  color: var(--ink-muted);
+  font: inherit;
+}
+
+/* A row: inset from the rail, 14px more per level, wrapping with a hanging
+   indent. Its own piece of the rail sits at the list's left edge, so the
+   pieces join into one line and the current one turns ink. */
+nav.toc a {
+  position: relative;
+  display: block;
+  padding: 2px 0 2px calc(var(--space-2) * (1 + var(--depth, 0)));
+  border: 0;
+  color: var(--ink-muted);
+  font-weight: var(--weight-body);
+  text-decoration: none;
+  transition: color var(--duration-quick) var(--ease-calm);
+}
+
+nav.toc a::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 1px;
+  background: var(--hairline);
+}
+
+nav.toc a:hover {
+  color: var(--ink);
+}
+
+nav.toc a[aria-current] {
+  color: var(--ink);
+  font-weight: var(--weight-strong);
+}
+
+nav.toc a[aria-current]::before {
+  background: var(--ink);
+}
+
+nav.toc a:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: 3px;
+}
+
+/* ── From 1280px: the rail in the gutter, level with the title ──── */
+
+.toc-rail {
+  position: fixed;
+  top: 116px;
+  left: var(--space-4);
+  z-index: 10;
+  width: calc(var(--gutter) - 2 * var(--space-4));
+  max-height: calc(100vh - 116px - var(--space-5));
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.toc-inline {
   display: none;
 }
 
-.toc-variant-vim ol > li {
-  counter-increment: ln;
-  display: flex;
-  gap: 10px;
-  padding: 1px 0;
-  line-height: 1.3;
+@media (max-width: 1279px) {
+  .toc-rail {
+    display: none;
+  }
+
+  .toc-inline {
+    display: block;
+    margin: var(--space-3) 0 0;
+  }
+
+  .toc-inline[open] {
+    margin-bottom: var(--space-4);
+  }
+
+  .toc-inline summary {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    min-height: 44px;
+    margin: 0;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .toc-inline summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .toc-inline summary::after {
+    content: '+';
+  }
+
+  .toc-inline[open] summary {
+    color: var(--ink);
+  }
+
+  .toc-inline[open] summary::after {
+    content: '−';
+    color: var(--ink-muted);
+  }
+
+  .toc-inline summary:focus-visible {
+    outline: 1px solid var(--focus);
+    outline-offset: 3px;
+  }
+
+  /* Touch-sized rows. */
+  nav.toc .toc-inline a {
+    padding-block: 6px;
+  }
 }
 
-.toc-variant-vim ol > li::before {
-  content: counter(ln, decimal-leading-zero);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--fg-light);
-  opacity: 0.5;
-  min-width: 24px;
-  text-align: right;
-  flex-shrink: 0;
+/* Headings stop a little below the window's top when jumped to. */
+main.post :is(h1, h2, h3, h4)[id] {
+  scroll-margin-top: var(--space-4);
 }
 
-.toc-variant-vim ol > li:has(a.active)::before {
-  opacity: 1;
-  color: var(--amber);
-}
-
-.toc-variant-vim ol > li > a {
-  color: var(--fg-deep);
-  opacity: 0.75;
-  font-size: 12.5px;
-  text-decoration: none;
-  border: none;
-  transition:
-    opacity 200ms ease,
-    color 200ms ease;
-}
-
-.toc-variant-vim ol > li > a:hover {
-  opacity: 1;
-  color: var(--fg-deeper);
-  text-decoration: none;
-  border: none;
-}
-
-.toc-variant-vim ol > li.toc-level-1 > a {
-  padding-left: 1rem;
-  opacity: 0.6;
-}
-
-.toc-variant-vim ol > li.toc-level-2 > a {
-  padding-left: 2rem;
-  opacity: 0.5;
-}
-
-.toc-variant-vim ol > li.toc-level-3 > a {
-  padding-left: 3rem;
-  opacity: 0.45;
-}
-
-.toc-variant-vim ol > li:has(a.active) {
-  background: var(--amber-soft);
-  margin: 0 -4px;
-  padding: 2px 4px;
-}
-
-.toc-variant-vim ol > li > a.active {
-  color: var(--fg-deeper);
-  opacity: 1;
-}
-
-.toc-variant-vim .status {
-  margin-top: 14px;
-  padding-top: 10px;
-  border-top: 1px solid var(--border-color-dark);
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  color: var(--fg-light);
-  display: flex;
-  justify-content: space-between;
-}
-
-.toc-variant-vim .status b {
-  color: var(--amber);
-  font-weight: 400;
+@media (prefers-reduced-motion: reduce) {
+  nav.toc a {
+    transition: none;
+  }
 }

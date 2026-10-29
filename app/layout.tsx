@@ -1,7 +1,6 @@
 import './styles/tokens.css'
 import './styles/fonts.css'
 import './styles/prose.css'
-import './styles/toc.css'
 import './styles/globals.css'
 import './styles/shell.css'
 import { Analytics } from '@vercel/analytics/react'
