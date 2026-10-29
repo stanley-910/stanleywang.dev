@@ -50,6 +50,8 @@ const RIDGE_STEP = 6
 const SNOW_MIN = 0.08
 /** Spacing of the relief field on the far range, in px; finer than a glyph cell. */
 const FACE_STEP = 5
+/** The land's seed, fixed: its roughness and tree heights stay as composed on every visit. */
+const LAND_SEED = 1
 /**
  * The far range, composed by hand: each point is [share of the range's width, height as a share
  * of the screen height above the horizon]. Peaks join in straight runs, so they stay pointed; a
@@ -161,7 +163,11 @@ export class Garden {
   /** Flower heads as last drawn, for clicks and butterflies to find. */
   heads: Head[] = []
   private rng = mulberry32(1)
-  private seed = 1
+  /**
+   * The meadow's seed: a new one every load, so each visit grows its own garden. The land (range,
+   * snow, faces, trees) is placed by hand and keeps LAND_SEED for its small noise.
+   */
+  private seed = 1 + Math.floor(Math.random() * 0x7fffffff)
   private targetAge = new Map<Plant, number>()
   private intro = 0
   private ridges: Float32Array[] = []
@@ -522,7 +528,7 @@ export class Garden {
   private buildRidges() {
     const n = Math.ceil(this.width / RIDGE_STEP) + 2
     const H = this.height
-    const seed = this.seed * 13
+    const seed = LAND_SEED * 13
     const span = this.width / this.rangeWidth
     const x0 = this.rangeX(0)
     const xs = FAR_RANGE.map(([u]) => this.rangeX(u))
@@ -582,8 +588,8 @@ export class Garden {
       return (
         this.horizon -
         (pk * 0.76 +
-          20 * (fbm1(x / 45, this.seed + 404, 3) - 0.5) +
-          12 * (fbm1(x / 9, this.seed + 405, 2) - 0.5))
+          20 * (fbm1(x / 45, LAND_SEED + 404, 3) - 0.5) +
+          12 * (fbm1(x / 9, LAND_SEED + 405, 2) - 0.5))
       )
     }
     for (const at of massifs) {
@@ -713,7 +719,7 @@ export class Garden {
   ) {
     const hz = this.horizon
     const W = this.width
-    const seed = this.seed
+    const seed = LAND_SEED
     // About one glyph cell, so the trees keep their size against the type; on a tall phone, held
     // to the range's width so a stand doesn't tower over the magnified peaks.
     const CH = Math.min(this.height, 0.62 * this.rangeWidth) * 0.0125
