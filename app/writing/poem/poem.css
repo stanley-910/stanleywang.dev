@@ -54,17 +54,20 @@
   color: var(--ink-muted);
   font-size: 1.0625rem;
   line-height: 1.45;
+  text-wrap: balance;
 }
 
+/* The riddle and its answer at the poem's own size, a step above the intro. */
 .poem-riddle,
 .poem-password {
-  font-size: 1.5rem;
-  line-height: 1.3;
+  font-size: 1.3125rem;
+  line-height: 1.4;
 }
 
 .poem-riddle {
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-3);
   color: var(--ink);
+  text-wrap: balance;
 }
 
 .poem-password {
@@ -105,7 +108,7 @@
 @media (max-width: 480px) {
   .poem-riddle,
   .poem-password {
-    font-size: 1.375rem;
+    font-size: 1.125rem;
   }
 }
 
