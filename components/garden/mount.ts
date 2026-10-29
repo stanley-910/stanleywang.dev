@@ -29,6 +29,8 @@ const toScene = (v: number) => v / SCENE_ZOOM
 
 /** Hours of scene time per pixel of sideways scroll: a day is about three screen-widths. */
 const HOURS_PER_PX = 1 / 120
+/** A pause in the wheel this long, in ms, ends a scroll gesture. */
+const WHEEL_REST = 200
 /** How fast a released scrub's glide dies away, per second. */
 const GLIDE_DECAY = 8
 /** Fastest glide, px/s, so a hard flick only drifts on a little after release. */
@@ -211,6 +213,8 @@ export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
 
   let scrubVel = 0
   let lastWheel = 0
+  // The axis a scroll gesture started on, kept until the wheel rests.
+  let wheelAxis: 'x' | 'y' | null = null
 
   const setScrubHour = (h: number) => {
     live = false
@@ -235,7 +239,12 @@ export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
     // Sideways always scrubs; up and down scrub too while the page has
     // nowhere to scroll, as home's single screen doesn't. Down and right run
     // later, like the slider.
-    const sideways = Math.abs(e.deltaX) > Math.abs(e.deltaY)
+    // A slow sideways swipe drifts up and down too, sometimes more than it
+    // moves sideways; read per event, that drift would push the hour the
+    // wrong way. So a gesture keeps the axis it started on.
+    if (e.timeStamp - lastWheel > WHEEL_REST) wheelAxis = null
+    wheelAxis ??= Math.abs(e.deltaX) > Math.abs(e.deltaY) ? 'x' : 'y'
+    const sideways = wheelAxis === 'x'
     const scrolls =
       document.documentElement.scrollHeight > window.innerHeight + 1
     if (!sideways && scrolls) return
