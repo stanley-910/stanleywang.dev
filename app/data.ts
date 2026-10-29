@@ -53,6 +53,8 @@ type WorkExperience = {
   location: string
   id: string
   gradient?: string
+  /** A one-colour mark, drawn in the card's ink (experience-card.css). */
+  logo?: string
   caseStudy?: string
 }
 
@@ -252,6 +254,7 @@ export const PROJECTS: Project[] = [
 export const WORK_EXPERIENCE: WorkExperience[] = [
   {
     company: 'Electronic Arts',
+    logo: '/images/experience/logos/ea.svg',
     title: 'Software Engineer Intern',
     start: 'Summer 2026',
     end: '',
@@ -262,6 +265,7 @@ export const WORK_EXPERIENCE: WorkExperience[] = [
   },
   {
     company: 'Autodesk',
+    logo: '/images/experience/logos/autodesk.svg',
     title: 'Software Engineer Intern',
     start: 'Summer 2025',
     end: '',
@@ -273,6 +277,7 @@ export const WORK_EXPERIENCE: WorkExperience[] = [
   },
   {
     company: 'BETA Technologies',
+    logo: '/images/experience/logos/beta.png',
     title: 'Software Engineer Intern',
     start: 'Winter 2025',
     end: '',

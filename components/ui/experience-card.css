@@ -50,13 +50,16 @@
     visibility 0s;
 }
 
+/* The company's mark as a mask, filled with the card's ink, so every logo
+   is one colour and follows the hour. */
 .xp-logo {
   flex: none;
-  width: 28px;
-  height: 28px;
-  margin-top: 1px;
-  border-radius: var(--radius-hair);
-  object-fit: contain;
+  width: 24px;
+  height: 24px;
+  margin-top: 2px;
+  background: var(--ink);
+  -webkit-mask: var(--logo) center / contain no-repeat;
+  mask: var(--logo) center / contain no-repeat;
 }
 
 .xp-body {
