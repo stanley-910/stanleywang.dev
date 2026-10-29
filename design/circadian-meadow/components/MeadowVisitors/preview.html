@@ -1,0 +1,246 @@
+<!-- @dsCard group="Site" height=1180 subtitle="Ladybug, bumblebee and heart sprites for the poem page, night meadow and day sky" -->
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>MeadowVisitors</title>
+<style>
+  body { margin: 0; background: var(--page); }
+  .panes { display: flex; flex-wrap: wrap; gap: 1px; background: var(--hairline); }
+  .pane { flex: 1 1 560px; padding: var(--space-3); box-sizing: border-box; }
+  .pane.night { background: var(--night-ground); color: var(--scene-ink-muted); }
+  .pane.day { background: var(--day-sky-horizon); color: var(--day-ground); }
+  .label { font: 12px/16px var(--font-mono); margin: 0 0 var(--space-1); }
+  .section { margin: 0 0 var(--space-3); }
+  .row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3); }
+  figure { margin: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+  figcaption { font: 12px/16px var(--font-mono); }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<div class="panes">
+  <div class="pane night" data-scene="night"></div>
+  <div class="pane day" data-scene="day"></div>
+</div>
+<script>
+// Figures: copied from README.md. Side view, facing right; the last row sits on the position.
+var VISITORS = {
+  ladybug: {
+    big: {
+      fly: [
+        { rows: ["\\/o'. ", " (o.o:", "  ' ' "], mask: ['grswr ', ' ssssp', '  b b '] },
+        { rows: [" /o'. ", "~(o.o:", "/ ' ' "], mask: [' rswr ', 'gssssp', 'g b b '] },
+      ],
+      perch: { rows: [" ,o'. ", ' (o.o:', "  ''' "], mask: [' rswr ', ' ssssp', '  bbb '] },
+    },
+    mid: {
+      fly: [
+        { rows: ['\\o. ', '(o.:'], mask: ['gsr ', 'sssp'] },
+        { rows: ['/o. ', '~o.:'], mask: ['rsr ', 'gssp'] },
+      ],
+      perch: { rows: [",o. ", '(o.:'], mask: ['rsr ', 'sssp'] },
+    },
+    small: {
+      fly: [{ rows: ['o'], mask: ['s'] }, { rows: [':'], mask: ['s'] }],
+      perch: { rows: ['o'], mask: ['s'] },
+    },
+  },
+  bee: {
+    big: {
+      fly: [
+        { rows: ['   \\|/ ', " ,%''%/", '(.%..%o'], mask: ['   ggg ', ' rwppwb', 'epwppwp'] },
+        { rows: ['   -=- ', " ,%''%/", '(.%..%o'], mask: ['   ggg ', ' rwppwb', 'epwppwp'] },
+      ],
+      perch: { rows: [' .__,  ', " ,%''%/", '(.%..%o'], mask: [' gggg  ', ' rwppwb', 'epwppwp'] },
+    },
+    mid: {
+      fly: [
+        { rows: [' \\|/ ', '(.%.o'], mask: [' ggg ', 'epwpp'] },
+        { rows: [' -=- ', '(.%.o'], mask: [' ggg ', 'epwpp'] },
+      ],
+      perch: { rows: [' .__ ', '(.%.o'], mask: [' ggg ', 'epwpp'] },
+    },
+    small: {
+      fly: [{ rows: ['='], mask: ['s'] }, { rows: ['#'], mask: ['s'] }],
+      perch: { rows: ['='], mask: ['s'] },
+    },
+  },
+}
+var HEART = {
+  big: { rows: [' ,. ,. ', "('...:)", '  \\./  ', '   v   '], mask: [' ww ww ', 'wswwwww', '  www  ', '   w   '] },
+  mid: { rows: ["('v')", ' \\:/ ', '  v  '], mask: ['wsrww', ' www ', '  w  '] },
+  small: { rows: ['<3'], mask: ['ww'] },
+}
+var LOOKS = {
+  ladybug: { base: [204, 38, 30], pattern: [22, 18, 18], edge: [246, 240, 228], body: [26, 22, 22] },
+  bee: { base: [238, 178, 40], pattern: [30, 26, 22], edge: [226, 206, 156], body: [30, 26, 22] },
+  heart: { base: [214, 48, 86], pattern: [255, 205, 214], edge: [140, 24, 58], body: [140, 24, 58] },
+}
+var MIRROR = { '(': ')', ')': '(', '/': '\\', '\\': '/', '<': '>', '>': '<', '[': ']', ']': '[', '{': '}', '}': '{', d: 'b', b: 'd', p: 'q', q: 'p' }
+
+// A stand-in flower head for the perched pair, in the scene's poppy colours.
+var FLOWER = { rows: ['(*=@@@=*)', ' \\=====/ ', '    |    '], mask: ['wwwssswww', ' wwwwwww ', '    b    '] }
+
+function hex(v) { v = v.trim().replace('#', ''); return [0, 2, 4].map(function (i) { return parseInt(v.slice(i, i + 2), 16) }) }
+function mix(a, b, t) { return [0, 1, 2].map(function (i) { return a[i] + (b[i] - a[i]) * t }) }
+function lum(c) { return (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255 }
+function css(c, a) { return 'rgba(' + c.map(Math.round).join(',') + ',' + (a == null ? 1 : a) + ')' }
+function tok(name) { return hex(getComputedStyle(document.documentElement).getPropertyValue('--' + name)) }
+function mirror(f) {
+  return {
+    rows: f.rows.map(function (r) { return r.split('').reverse().map(function (c) { return MIRROR[c] || c }).join('') }),
+    mask: f.mask.map(function (r) { return r.split('').reverse().join('') }),
+  }
+}
+
+// Roles as in typeset.ts stampSprites, plus g (glassy wing) and r (rim) from this spec.
+function roles(look, ink) {
+  var vein = mix(look.edge, look.base, 0.35)
+  return {
+    w: [look.base, vein],
+    s: [look.base, look.pattern],
+    p: [look.pattern, look.edge],
+    e: [look.edge, look.pattern],
+    b: [null, mix(look.body, ink, 0.2)],
+    g: [null, mix(look.edge, ink, 0.7)],
+    r: [null, mix(look.base, ink, 0.2)],
+  }
+}
+
+// Draws figures onto one canvas. items: [{ fig, look, col, row }] where (col,row) is the cell of the position.
+function draw(items, cols, rows, scale, scene) {
+  var cw = 5 * scale, ch = 7 * scale
+  var cv = document.createElement('canvas')
+  var dpr = window.devicePixelRatio || 1
+  cv.width = cols * cw * dpr; cv.height = rows * ch * dpr
+  cv.style.width = cols * cw + 'px'; cv.style.height = rows * ch + 'px'
+  var ctx = cv.getContext('2d')
+  ctx.scale(dpr, dpr)
+  var bg = scene.bg
+  var ink = lum(bg) > 0.42 && !scene.night ? scene.ground : [255, 250, 240]
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+  ctx.font = '500 ' + Math.round(ch * 0.78) + 'px "Geist Mono", ui-monospace, monospace'
+  items.forEach(function (it) {
+    var R = roles(it.look, ink), f = it.fig
+    f.rows.forEach(function (row, j) {
+      var r = it.row - (f.rows.length - 1) + j
+      for (var t = 0; t < row.length; t++) {
+        var role = R[f.mask[j][t]]
+        if (!role) continue
+        var c = it.col - (row.length >> 1) + t
+        if (role[0]) { ctx.fillStyle = css(role[0], 0.85); ctx.fillRect(c * cw, r * ch, cw, ch) }
+        ctx.fillStyle = css(role[1])
+        ctx.fillText(row[t], c * cw + cw / 2, r * ch + ch / 2)
+      }
+    })
+  })
+  return cv
+}
+
+function check(name, f) {
+  f.rows.forEach(function (row, j) {
+    if (row.length !== f.mask[j].length) console.error(name, 'row', j, 'length differs from mask')
+    for (var t = 0; t < row.length; t++)
+      if (f.mask[j][t] !== ' ' && row[t] === ' ') console.error(name, 'row', j, 'col', t, 'space under a role')
+  })
+}
+Object.keys(VISITORS).forEach(function (b) { Object.keys(VISITORS[b]).forEach(function (z) { var s = VISITORS[b][z]; s.fly.forEach(function (f, i) { check(b + ' ' + z + ' fly' + i, f) }); check(b + ' ' + z + ' perch', s.perch) }) })
+Object.keys(HEART).forEach(function (z) { check('heart ' + z, HEART[z]) })
+
+function lookFor(name, scene) {
+  var l = LOOKS[name]
+  if (!scene.night) return l
+  var m = function (c) { return mix(c, scene.haze, 0.25) }
+  return { base: m(l.base), pattern: m(l.pattern), edge: m(l.edge), body: m(l.body) }
+}
+
+function fig(label, items, cols, rows, scale, scene) {
+  var f = document.createElement('figure')
+  f.appendChild(draw(items, cols, rows, scale, scene))
+  var c = document.createElement('figcaption'); c.textContent = label; f.appendChild(c)
+  return f
+}
+
+function section(pane, title, figs) {
+  var s = document.createElement('div'); s.className = 'section'
+  var l = document.createElement('p'); l.className = 'label'; l.textContent = title; s.appendChild(l)
+  var r = document.createElement('div'); r.className = 'row'
+  figs.forEach(function (f) { r.appendChild(f) }); s.appendChild(r)
+  pane.appendChild(s)
+}
+
+function build() {
+  document.querySelectorAll('.pane').forEach(function (pane) {
+    var night = pane.dataset.scene === 'night'
+    var scene = night
+      ? { bg: tok('night-ground'), ground: tok('night-ground'), haze: tok('night-haze'), night: true, flower: { base: tok('night-poppy'), pattern: tok('night-disc'), edge: tok('night-poppy-deep'), body: tok('night-stem') } }
+      : { bg: tok('day-sky-horizon'), ground: tok('day-ground'), haze: tok('day-haze'), night: false, flower: { base: tok('day-poppy'), pattern: tok('day-disc'), edge: tok('day-poppy-deep'), body: tok('day-stem') } }
+    var S = +new URLSearchParams(location.search).get('s') || 3
+    var lb = lookFor('ladybug', scene), be = lookFor('bee', scene), he = lookFor('heart', scene)
+    var l = document.createElement('p'); l.className = 'label'
+    l.textContent = night ? 'Night meadow, looks muted 25% toward the haze' : 'Day sky'
+    pane.appendChild(l)
+
+    ;[['Ladybug', 'ladybug', lb], ['Bumblebee', 'bee', be]].forEach(function (b) {
+      var V = VISITORS[b[1]], figs = []
+      ;['big', 'mid', 'small'].forEach(function (size) {
+        var set = V[size], w = size === 'big' ? 8 : size === 'mid' ? 6 : 3
+        figs.push(fig(size + ' fly 1', [{ fig: set.fly[0], look: b[2], col: w >> 1, row: 3 }], w, 4, S, scene))
+        figs.push(fig('fly 2', [{ fig: set.fly[1], look: b[2], col: w >> 1, row: 3 }], w, 4, S, scene))
+        figs.push(fig('perch', [{ fig: set.perch, look: b[2], col: w >> 1, row: 3 }], w, 4, S, scene))
+      })
+      section(pane, b[0] + ', facing right, ' + S + 'x', figs)
+    })
+
+    section(pane, 'Heart, ' + S + 'x', ['big', 'mid', 'small'].map(function (size) {
+      var w = size === 'big' ? 9 : size === 'mid' ? 7 : 4, h = size === 'big' ? 6 : size === 'mid' ? 4 : 2
+      return fig(size, [{ fig: HEART[size], look: he, col: w >> 1, row: h - 1 }], w, h, S, scene)
+    }))
+
+    // The pair: flying together, the kiss with the heart, and perched on a flower.
+    var B = VISITORS.bee.big, L = VISITORS.ladybug.big
+    section(pane, 'Together, ' + S + 'x', [
+      fig('flying', [
+        { fig: B.fly[0], look: be, col: 4, row: 5 },
+        { fig: L.fly[1], look: lb, col: 11, row: 3 },
+      ], 15, 7, S, scene),
+      fig('kiss, heart one size down', [
+        { fig: HEART.mid, look: he, col: 7, row: 5 },
+        { fig: B.fly[1], look: be, col: 3, row: 8 },
+        { fig: mirror(L.fly[0]), look: lb, col: 10, row: 9 },
+      ], 14, 10, S, scene),
+      fig('kiss, heart same size', [
+        { fig: HEART.big, look: he, col: 7, row: 5 },
+        { fig: B.fly[0], look: be, col: 3, row: 8 },
+        { fig: mirror(L.fly[1]), look: lb, col: 10, row: 9 },
+      ], 14, 10, S, scene),
+      fig('on a flower', [
+        { fig: FLOWER, look: scene.flower, col: 6, row: 6 },
+        { fig: B.perch, look: be, col: 5, row: 4 },
+        { fig: mirror(L.perch), look: lb, col: 13, row: 5 },
+      ], 15, 7, S, scene),
+    ])
+    section(pane, 'At site scale', [
+      fig('big', [
+        { fig: B.fly[0], look: be, col: 4, row: 4 },
+        { fig: L.fly[0], look: lb, col: 11, row: 3 },
+        { fig: HEART.big, look: he, col: 20, row: 4 },
+        { fig: B.perch, look: be, col: 26, row: 4 },
+        { fig: mirror(L.perch), look: lb, col: 31, row: 4 },
+      ], 36, 6, 1.2, scene),
+      fig('mid and small', [
+        { fig: VISITORS.bee.mid.fly[0], look: be, col: 3, row: 3 },
+        { fig: VISITORS.ladybug.mid.fly[0], look: lb, col: 8, row: 3 },
+        { fig: HEART.mid, look: he, col: 13, row: 3 },
+        { fig: VISITORS.bee.small.fly[0], look: be, col: 18, row: 3 },
+        { fig: VISITORS.ladybug.small.fly[0], look: lb, col: 20, row: 3 },
+        { fig: HEART.small, look: he, col: 24, row: 3 },
+      ], 28, 5, 1.2, scene),
+    ])
+  })
+}
+;(document.fonts ? document.fonts.ready : Promise.resolve()).then(build)
+</script>
+</body>
+</html>

@@ -43,15 +43,24 @@ export type Head = {
  */
 export type Look = { base: Rgb; pattern: Rgb; edge: Rgb; body: Rgb }
 
-/** A butterfly or moth, printed as a few fixed glyphs. Pose 0 is wings open, 1 half, 2 folded. */
-/** `span` is the wingspan in px, which picks the figure's size. */
+/** What a sprite prints as: an insect's figure set, or the heart over the poem's pair. */
+export type SpriteKind = 'butterfly' | 'moth' | 'ladybug' | 'bee' | 'heart'
+
+/**
+ * An insect (or a heart), printed as a few fixed glyphs. `pose` indexes its figure set: for
+ * butterflies and moths 0 is wings open, 1 half, 2 folded. `span` is its size in px, which picks
+ * the figure's size. A side view faces right; `facing` -1 mirrors it to face left.
+ */
 export type Sprite = {
   x: number
   y: number
   pose: number
   look: Look
-  moth: boolean
+  kind: SpriteKind
   span: number
+  facing?: 1 | -1
+  /** A figure size to print at instead of the one `span` picks, so a pair prints alike. */
+  size?: 'big' | 'mid' | 'small'
 }
 
 /** Petal identity for the meta layer: which petal (1..10), how lit it is, and whether its back shows. */
