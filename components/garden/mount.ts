@@ -12,7 +12,7 @@ import { mix, paletteAt, type Palette, type Rgb } from './engine/palette'
 import { Raster } from './engine/raster'
 import { Wind } from './engine/wind'
 import { playIntro } from './intro'
-import { Quality } from './quality'
+import { COARSE_ZOOM, Quality } from './quality'
 
 // Stepped at 120 Hz so a 120 Hz display gets a new pose every frame; the stems' springs scale
 // with the step, so their motion is the same at any rate.
@@ -42,8 +42,6 @@ const CELL = 5
  * window zooms the scene in instead, so its cost stops growing with its area.
  */
 const CELL_BUDGET = 270_000
-/** How much further a machine too slow for the full grid zooms in (quality.ts). */
-const COARSE_ZOOM = 1.25
 
 /** Hours of scene time per pixel of sideways scroll: a day is about three screen-widths. */
 const HOURS_PER_PX = 1 / 120

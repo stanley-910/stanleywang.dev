@@ -96,9 +96,11 @@ pinned with `?seed=1715089390`.
 
 1. **The plants keep within a budget of worker time.** Each worker reply carries its time on the
    frame; `quality.ts` keeps the plants to about one core of it (`PLANT_BUDGET`), down to 20 a
-   second. On an M4 that's still 40; a laptop whose frames take 50 ms or more gets 20, and the next
-   visit takes the coarse grid. The budget's beat has a margin so a frame time near a step doesn't
-   flip it.
+   second (18 on a 90 or 144 Hz display, snapped to its frames). On an M4 that's still 40; a laptop
+   whose frames take 50 ms or more in most of 5 s gets 20, and the next visit takes the coarse
+   grid. It goes back to the fine grid on a visit where the plants keep up and the frames, scaled
+   to the fine grid, would take under 35 ms. The budget's beat has a margin so a frame time near a
+   step doesn't flip it. Each worker's first frame, which compiles its code, isn't counted.
 2. **After 10 s with no cursor or scrub the plants slow to 30 a second.**
 3. **V8 was compiling `sampleCells` about 1,300 times a second.** A trace showed V8's compilers
    busy about 0.3 cores on an idle tab. `sampleCells`, one long loop nest run a few times a second

@@ -61,8 +61,10 @@ const MIN_PLANTS = 20
  */
 const SLOW_FRAME = PLANT_BUDGET / MIN_PLANTS
 const FAST_FRAME = SLOW_FRAME * 0.7
-/** How much more a frame costs on the fine grid than the coarse: COARSE_ZOOM (mount.ts), squared. */
-const COARSE_COST = 1.25 ** 2
+/** How much further a machine too slow for the full grid zooms in (mount.ts). */
+export const COARSE_ZOOM = 1.25
+/** How much more a frame costs on the fine grid than the coarse. */
+const COARSE_COST = COARSE_ZOOM ** 2
 /** Plant redraws per second once nobody has touched the page for a while. */
 const IDLE_PLANTS = 30
 /** Refresh rates displays run at, for the measured one to snap to. */
@@ -115,6 +117,8 @@ export class Quality {
   private behind: boolean[] = []
   private spare = 0
   private plantRates: number[] = []
+  /** For each window of plantRates, whether the workers' frames were slow (SLOW_FRAME). */
+  private slowFrames: boolean[] = []
   private settle = SETTLE
   private flips = 0
   /** Windows since the last step; a step up that has held for UP_WINDOWS no longer counts as a flip. */
@@ -170,12 +174,6 @@ export class Quality {
       if (!n || x > n + 0.1 || x < n - 1.1) this.budgetBeat = beat(hz / x)
     } else this.budgetBeat = 0
     return hz / Math.max(beat(cap), this.budgetBeat)
-  }
-
-  /** The plants' rate at this level, on this display, with no budget, idle or away. */
-  private levelRate() {
-    const hz = this.hz || 60
-    return hz / Math.max(1, Math.ceil(hz / PLANT_CAPS[this.level] - 0.01))
   }
 
   /** Whether the plants may be recorded again now, under plantRate. */
@@ -298,20 +296,24 @@ export class Quality {
   /** Decides the next visit's grid from how fast the workers return frames. */
   private plants(fps: number) {
     this.plantRates.push(fps)
+    this.slowFrames.push(this.frameMs > SLOW_FRAME)
     if (this.plantRates.length < PLANT_WINDOWS) return
-    if (this.plantRates.length > PLANT_WINDOWS) this.plantRates.shift()
+    if (this.plantRates.length > PLANT_WINDOWS) {
+      this.plantRates.shift()
+      this.slowFrames.shift()
+    }
     const mean = this.plantRates.reduce((a, b) => a + b, 0) / PLANT_WINDOWS
+    // Slow in most windows, not in one burst (a collection, another app).
+    const slow = this.slowFrames.filter(Boolean).length >= PLANT_WINDOWS * 0.8
     const cap = this.plantRate()
     // Well under the rate asked of them, or slow enough that the budget holds them at its floor,
-    // the workers want a coarser grid. Back to the fine grid only at the finest level, keeping
-    // up, with frames that would fit the budget there.
+    // the workers want a coarser grid. Back to the fine grid when they keep up, with frames that
+    // would fit the budget there.
     const fineMs = this.coarse ? this.frameMs * COARSE_COST : this.frameMs
     const want =
-      mean < Math.min(SLOW_PLANTS, cap * 0.6) || this.frameMs > SLOW_FRAME
+      mean < Math.min(SLOW_PLANTS, cap * 0.6) || slow
         ? true
-        : this.level === 0 &&
-            mean >= Math.min(cap, this.levelRate()) * FAST_PLANTS &&
-            fineMs < FAST_FRAME
+        : mean >= cap * FAST_PLANTS && fineMs < FAST_FRAME
           ? false
           : this.wantCoarse
     if (want === this.wantCoarse) return

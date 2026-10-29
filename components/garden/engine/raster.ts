@@ -196,13 +196,15 @@ export class Raster {
         const w = new Worker(new URL('./raster.worker.ts', import.meta.url), {
           type: 'module',
         })
+        // Each worker's first frame compiles its code, so its time says nothing about the machine.
+        let cold = true
         w.onmessage = (
           e: MessageEvent<RasterResult & { seq: number; ms: number }>,
         ) => {
           this.idle.push(w)
           this.replies++
-          // The first replies after the warm-up ones can still be slow; skip them too.
-          if (this.replies > WARM_REPLIES)
+          if (cold) cold = false
+          else
             this.frameMs = this.frameMs
               ? this.frameMs + (e.data.ms - this.frameMs) * 0.1
               : e.data.ms
