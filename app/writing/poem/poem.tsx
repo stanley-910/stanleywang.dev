@@ -384,7 +384,7 @@ export function Poem({ className, preview }: PoemProps) {
       scrub: false,
       visitors: 'friends',
       // A stiller air than home's: the poem's grid is finer, so the same sway reads larger.
-      wind: 0.35,
+      wind: 0.22,
       onSky: (sky) => {
         skyRef.current = sky
         remeasureRef.current?.()

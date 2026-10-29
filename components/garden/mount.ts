@@ -100,7 +100,7 @@ export function mountGarden({
   visitors = 'butterflies',
   onReady,
   zoom: sceneZoom = SCENE_ZOOM,
-  wind: windStrength = 0.6,
+  wind: windStrength = 0.35,
 }: GardenOptions) {
   const html = document.documentElement
   const quality = new Quality()
