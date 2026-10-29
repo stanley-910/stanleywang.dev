@@ -66,6 +66,12 @@ export type PetalSpec = {
   hazeAmount: number
   /** Which petals are still attached. */
   attached?: (k: number) => boolean
+  /**
+   * 0 flat, 1 furled: each petal curves round the axis instead of standing out as a flat flap,
+   * a little outside the one before, so a closing head wraps like a rolled umbrella (a California
+   * poppy at night) rather than its flaps cutting through each other.
+   */
+  wrap?: number
   kind?: Kind
 }
 
@@ -86,6 +92,7 @@ export function drawPetals(
   const [u, v] = basis(axis)
   const N = spec.count
   const S = 7
+  const wrap = spec.wrap ?? 0
   for (let k = 0; k < N; k++) {
     if (spec.attached && !spec.attached(k)) continue
     const alpha =
@@ -113,9 +120,25 @@ export function drawPetals(
         s * L * Math.sin(cupA) +
         spec.crinkle * L * 0.06 * noise1(s * 7 + k * 5.3, spec.seed)
       const ww = w * ruffle
-      const x = cx + rd[0] * rr + axis[0] * hh + td[0] * ww
-      const y = cy + rd[1] * rr + axis[1] * hh + td[1] * ww
-      depthSum += rd[2] * rr + axis[2] * hh
+      // Flat: out along the petal's ray, across it along the tangent.
+      let ox = rd[0] * rr + td[0] * ww
+      let oy = rd[1] * rr + td[1] * ww
+      let oz = rd[2] * rr + td[2] * ww
+      if (wrap > 0 && rr > 1e-3) {
+        // Furled: the width bends round the axis on a circle through the ray, each petal on a
+        // slightly wider one than the last, and no wider than its share and a little more.
+        const share = (TAU / N) * 0.65
+        const phi = clamp(ww / rr, -share, share)
+        const ring = rr * (1 + (0.1 * k) / N)
+        const c = Math.cos(phi) * ring
+        const sn = Math.sin(phi) * ring
+        ox += (rd[0] * c + td[0] * sn - ox) * wrap
+        oy += (rd[1] * c + td[1] * sn - oy) * wrap
+        oz += (rd[2] * c + td[2] * sn - oz) * wrap
+      }
+      const x = cx + ox + axis[0] * hh
+      const y = cy + oy + axis[1] * hh
+      depthSum += oz + axis[2] * hh
       out.push(x, y)
     }
     for (let i = 0; i <= S; i++) {

@@ -487,11 +487,11 @@ export class Typesetter {
               const lit = this.lit[i]
               // After dark cream ink glows against the dim petals; pull it back toward the petal's own colour.
               const reach = darkInk ? 1 : 1 - 0.5 * p.night
-              // Nearly opaque, so what's behind (a hill's edge, the sky, another flower) doesn't
-              // show through the head. By day it keeps the light the raster gave the petal
+              // Mostly opaque, so what's behind (a hill's edge, the sky) doesn't show through
+              // the head as a line across it. By day it keeps the light the raster gave the petal
               // (bloom.ts shades each flap by 0.62..1.17). After dark that shading is undone, so
               // the flowers stay full colour and the glyphs alone carry the light.
-              const body = darkInk ? 0.93 + 0.05 * lit : 0.92 + 0.06 * lit
+              const body = darkInk ? 0.75 + 0.1 * lit : 0.7 + 0.15 * lit
               const flat = 1 + p.night * (1 / (0.62 + 0.55 * lit) - 1)
               tileCol[i * 3] = Math.min(255, tileCol[i * 3] * flat)
               tileCol[i * 3 + 1] = Math.min(255, tileCol[i * 3 + 1] * flat)
@@ -584,10 +584,9 @@ export class Typesetter {
               if (this.back[i]) {
                 // A loose petal (LOOSE_PETAL in the air, LANDED_PETAL on the ground), printed like
                 // the petals it fell from: a line outline over a tile in its colour, sparse dark
-                // glyphs inside. In the air the tile is thin, so a flower it crosses still shows;
-                // on the ground it's a body, so the petal reads as lying there.
-                const landed = this.lit[i] > 0.5
-                tile[i] = (landed ? 0.45 : 0.35) * Math.min(1, v * 1.4)
+                // glyphs inside. Nearly solid, in the air as on the ground: thinner, a cream
+                // petal over the dark meadow mixed to a grey blob.
+                tile[i] = 0.85 * Math.min(1, v * 1.4)
                 const rim = this.edgeOf(c, r, this.looseCov)
                 alpha = 1
                 if (rim >= 0) {
@@ -635,6 +634,12 @@ export class Typesetter {
               else g = code(v > 0.5 ? '+' : ':')
               // Stalks hold a firm floor so a flower reads down to its root; grass is a separate kind.
               alpha = clamp(v * 3.5, 0.55, 1)
+              if (k === Kind.Stem) {
+                // A faint band in the stalk's own colour behind its line, so it reads apart from
+                // the ground rather than as a hairline; lighter than the rose's solid cane.
+                tile[i] = 0.3 * Math.min(1, v * 2)
+                ;[cr, cg, cb] = mix([cr, cg, cb], p.grassLight, 0.15)
+              }
               if (k === Kind.Stem && p.night > 0) {
                 // Night stem colours sit almost on the ground; lift them toward the moonlit haze.
                 const sc = mix(
