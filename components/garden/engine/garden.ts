@@ -416,18 +416,34 @@ export class Garden {
     const { sun, moon } = this.lights(p)
     return sun
       ? {
-          light: 0.34 + 0.26 * this.sunLook(p).low,
+          light: (0.34 + 0.26 * this.sunLook(p).low) * sun,
           color: this.sunLook(p).color,
         }
       : { light: 0.42 * moon, color: p.globe }
   }
 
+  /**
+   * How much the range stands against a low sun, 0 to 1. The square root holds it while the sun
+   * climbs clear of the crests.
+   */
+  private backlight(p: Palette) {
+    const { sun } = this.lights(p)
+    return sun > 0 ? sun * Math.sqrt(this.sunLook(p).low) : 0
+  }
+
   /** Colour of each ridge: the farther, the more it fades toward the sky. */
   private ridgeColors(p: Palette): Rgb[] {
+    // With the sun low the ridges stand against it, their near faces in shadow: they go toward
+    // silhouette, the nearest most, while the far range keeps its haze.
+    const back = this.backlight(p)
     return [
-      mix(p.hillFar, p.skyHorizon, 0.5),
-      mix(mix(p.hillFar, p.hillNear, 0.45), p.skyHorizon, 0.25),
-      mix(p.hillNear, p.ground, 0.2),
+      mix(mix(p.hillFar, p.skyHorizon, 0.5), p.ground, 0.5 * back),
+      mix(
+        mix(mix(p.hillFar, p.hillNear, 0.45), p.skyHorizon, 0.25),
+        p.ground,
+        0.5 * back,
+      ),
+      mix(mix(p.hillNear, p.ground, 0.2), p.ground, 0.6 * back),
     ]
   }
 
@@ -576,7 +592,7 @@ export class Garden {
       const { cx, cy, R } = this.globeAt()
       const look = this.sunLook(p)
       const col = sun ? look.color : p.globe
-      const strength = sun ? 0.2 + 0.12 * look.low : 0.16 * moon
+      const strength = sun ? (0.2 + 0.12 * look.low) * sun : 0.16 * moon
       const reach = sun ? R * (6 + 4 * look.low) : R * 7
       const glow = ctx.createRadialGradient(cx, cy, R, cx, cy, reach)
       const gc = col.map((v) => v | 0).join(',')
@@ -586,6 +602,8 @@ export class Garden {
       ctx.fillRect(0, 0, this.width, this.height)
     }
     const colors = this.ridgeColors(p)
+    // Backlit ridges lose most of their haze and mist, so they read as shapes against the glow.
+    const thin = 1 - 0.6 * this.backlight(p)
     const hz = p.haze.map((v) => v | 0).join(',')
     const H = this.height
     for (const [layer, ridge] of this.ridges.entries()) {
@@ -601,7 +619,7 @@ export class Garden {
         // Thinner by day, so the midday range keeps its body instead of washing into the sky.
         veil.addColorStop(
           1,
-          `rgba(${hz},${(layer ? 0.3 : 0.4) * (0.45 + 0.55 * p.night)})`,
+          `rgba(${hz},${(layer ? 0.3 : 0.4) * (0.45 + 0.55 * p.night) * thin})`,
         )
         ctx.fillStyle = veil
         ctx.fill(this.ridgePath(ridge, this.horizon).toPath2D())
@@ -626,7 +644,7 @@ export class Garden {
       const t = k / 8
       const a =
         t < 1 / 3 ? smoothstep(0, 1 / 3, t) : 1 - smoothstep(1 / 3, 1, t)
-      mist.addColorStop(t, `rgba(${hz},${(0.32 * a).toFixed(3)})`)
+      mist.addColorStop(t, `rgba(${hz},${(0.32 * a * thin).toFixed(3)})`)
     }
     ctx.fillStyle = mist
     ctx.fillRect(0, top, this.width, H * 0.18)
@@ -682,6 +700,9 @@ export class Garden {
     // shade. Only the glyphs carry it: lit slopes print a denser, brighter halftone.
     const { cx, R } = this.globeAt()
     const { light, color: lightCol } = this.slopeLight(p)
+    // A low sun sits behind the range, so the slopes we see face away from it: the light only
+    // catches a rim along the crest and the shade side deepens.
+    const rim = this.lights(p).sun > 0 ? this.sunLook(p).low : 0
     this.ridges.forEach((ridge, layer) => {
       r.fill(this.ridgePath(ridge, this.height + 10), colors[layer], Kind.Land)
       // Four strips, each shallower and stronger, so the glyphs thicken toward the crest.
@@ -691,17 +712,18 @@ export class Garden {
         : []
       ).entries()) {
         const s = q * (0.35 + 0.65 * (k / 3))
+        const sl = s * (1 - rim * (1 - k / 3))
         const { lit, shade } = this.slopes(ridge, layer, cx, reach, R * 1.5)
         r.fill(
           lit,
-          mix(colors[layer], lightCol, Math.min(1, 1.6 * light * s)),
+          mix(colors[layer], lightCol, Math.min(1, 1.6 * light * sl)),
           Kind.Land,
           1,
-          { id: 0, light: 0.5 + 0.5 * s, back: false },
+          { id: 0, light: 0.5 + 0.5 * sl, back: false },
         )
         r.fill(
           shade,
-          mix(colors[layer], p.ground, light * 0.6 * s),
+          mix(colors[layer], p.ground, light * 0.6 * s * (1 + 0.6 * rim)),
           Kind.Land,
           1,
           { id: 0, light: 0.5 - 0.5 * s, back: false },
@@ -724,7 +746,9 @@ export class Garden {
       [0, mix(p.hillNear, p.grassDark, 0.4), 1],
       [1, p.ground, 1],
     ])
-    // Low mist on the horizon, colour only, so the land underneath keeps its kind.
+    // Low mist on the horizon, colour only, so the land underneath keeps its kind. It thins
+    // against a low sun so the backlit ridges keep their shadow.
+    const veil = 0.55 * (1 - 0.6 * this.backlight(p))
     const mist = new Shape()
     mist.rect(
       -10,
@@ -738,7 +762,7 @@ export class Garden {
       this.horizon + this.height * 0.06,
       [
         [0, p.haze, 0],
-        [0.55, p.haze, 0.55],
+        [0.55, p.haze, veil],
         [1, p.haze, 0],
       ],
     )
@@ -764,9 +788,15 @@ export class Garden {
   /** How strongly the ridge crest catches the light: under the moon, or as the sun sets behind it. */
   /** How much of the sun and the moon shows: the sun by day, the moon once the night is deep. */
   private lights(p: Palette) {
-    const day = this.hour >= 6 && this.hour < 18.5
+    const h = this.hour
+    const day = h >= 6 && h < 18.5
     const moon = day ? 0 : smoothstep(0.5, 0.9, p.night) * p.moonlight
-    return { sun: day ? 1 : 0, moon }
+    // The sun comes up over three quarters of an hour and goes down the same way, rather than
+    // switching on at six like a lamp.
+    const sun = day
+      ? smoothstep(6, 6.75, h) * (1 - smoothstep(17.75, 18.5, h))
+      : 0
+    return { sun, moon }
   }
 
   /** The sun's look by height: pale and round overhead; low, it swells, flattens and reddens. */
@@ -791,7 +821,7 @@ export class Garden {
     const { sun, moon } = this.lights(p)
     if (sun + moon <= 0) return ''
     const { cx, cy } = this.globeAt()
-    return `${Math.round(cx / 4)},${Math.round(cy / 4)},${sun},${moon.toFixed(2)},${(this.moonPhase ?? moonPhaseNow()).toFixed(3)}`
+    return `${Math.round(cx / 4)},${Math.round(cy / 4)},${sun.toFixed(2)},${moon.toFixed(2)},${(this.moonPhase ?? moonPhaseNow()).toFixed(3)}`
   }
 
   /** The moon's lit and dark parts for tonight's phase, with which side is lit and how full it is. */
@@ -826,13 +856,13 @@ export class Garden {
       const { color, rx, ry } = this.sunLook(p)
       const halo = new Shape()
       halo.ellipse(cx, cy, rx * 1.45, ry * 1.45, 0, 0, TAU)
-      r.fill(halo, color, Kind.Fluff, 0.14)
+      r.fill(halo, color, Kind.Fluff, 0.14 * sun)
       const rim = new Shape()
       rim.ellipse(cx, cy, rx * 1.15, ry * 1.15, 0, 0, TAU)
-      r.fill(rim, color, Kind.Fluff, 0.35)
+      r.fill(rim, color, Kind.Fluff, 0.35 * sun)
       const disc = new Shape()
       disc.ellipse(cx, cy, rx, ry, 0, 0, TAU)
-      r.fill(disc, mix(color, [255, 250, 235], 0.25), Kind.Fluff, 1)
+      r.fill(disc, mix(color, [255, 250, 235], 0.25), Kind.Fluff, sun)
     }
     if (moon > 0) {
       // Lit by the phase: the bright limb on the right while waxing, on the left while waning,
