@@ -897,9 +897,13 @@ export class AsciiRenderer {
               if (L < 0.35) {
                 g = code(v > 0.6 ? '@' : '#')
                 alpha = 1
-                // On a tile of its own colour, so a dark centre (a poppy's green stigma) reads
-                // solid rather than as a hole in the head.
-                tile[i] = 0.85 * Math.min(1, v * 1.4)
+                // On a tile of its own colour lifted toward the haze, so a dark centre (a poppy's
+                // green stigma) reads solid rather than as a hole, without going near-black.
+                const lift = mix([cr, cg, cb], p.haze, 0.4)
+                tileCol[i * 3] = lift[0] * p.ink
+                tileCol[i * 3 + 1] = lift[1] * p.ink
+                tileCol[i * 3 + 2] = lift[2] * p.ink
+                tile[i] = 0.75 * Math.min(1, v * 1.4)
                 ;[cr, cg, cb] = mix([cr, cg, cb], p.ground, 0.5)
               } else if (
                 this.petal(c - 1, r) +
