@@ -391,7 +391,10 @@ function sampleCells(
                   li += md[m + 1]
                   bk += md[m + 2]
                   pn++
-                } else {
+                } else if (k === Kind.Land || md[m] === 0) {
+                  // Fluff reads only fluff's own marks (id 0): a seed head, firefly or the moon
+                  // in front of a petal or leaf would otherwise take its back flag and print as
+                  // a loose petal.
                   ll += md[m + 1]
                   lb += md[m + 2]
                   ln++
