@@ -13,6 +13,9 @@ import { Wind } from './engine/wind'
 const STEP = 1 / 60
 const MAX_STEPS = 3
 const MEASURE_EVERY = 30
+/** The loop runs at most this often, ms: the meadow's motion gains nothing above 60 fps, and a
+ * 120 Hz display would otherwise do twice the work. A little under 1000/60 so 60 Hz never skips. */
+const MIN_FRAME = 12
 
 // The site's page colours (tokens.css); the scene fades into them.
 const PAGE: Record<'dark' | 'light', Rgb> = {
@@ -291,6 +294,10 @@ export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
   // ── loop ──────────────────────────────────────────────────────────
 
   const frame = (now: number) => {
+    if (now - last < MIN_FRAME) {
+      raf = requestAnimationFrame(frame)
+      return
+    }
     const dt = Math.min(0.1, (now - last) / 1000)
     last = now
     acc += dt
