@@ -51,10 +51,10 @@ function BlogHeader() {
         {post.title}
       </h1>
       <div className="flex flex-col">
-        <div className="flex flex-row items-center gap-2 font-mono text-sm tracking-tighter text-zinc-500 dark:text-zinc-400">
+        <div className="flex flex-row items-center gap-2 font-mono text-sm tracking-tighter text-[var(--ink-muted)]">
           {post.description}
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5 font-mono text-sm font-bold tracking-tighter text-zinc-500 sm:gap-x-3 dark:text-zinc-400">
+        <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5 font-mono text-sm tracking-tighter text-[var(--ink-muted)] sm:gap-x-3">
           <span className="inline-flex whitespace-nowrap">
             <time dateTime={post.date}>
               {new Date(post.date).toLocaleDateString('en-US', {
@@ -65,11 +65,8 @@ function BlogHeader() {
             </time>
           </span>
           {post.edited ? (
-            <span className="inline-flex items-center gap-3 whitespace-nowrap before:text-zinc-500 before:content-['·'] dark:before:text-zinc-400">
-              <time
-                dateTime={post.edited}
-                className="text-zinc-500 dark:text-zinc-400"
-              >
+            <span className="inline-flex items-center gap-3 whitespace-nowrap before:text-[var(--ink-muted)] before:content-['·']">
+              <time dateTime={post.edited} className="text-[var(--ink-muted)]">
                 Edited{' '}
                 {new Date(post.edited).toLocaleDateString('en-US', {
                   year: 'numeric',
@@ -79,11 +76,11 @@ function BlogHeader() {
               </time>
             </span>
           ) : null}
-          <span className="inline-flex items-center gap-3 whitespace-nowrap before:text-zinc-500 before:content-['·'] dark:before:text-zinc-400">
+          <span className="inline-flex items-center gap-3 whitespace-nowrap before:text-[var(--ink-muted)] before:content-['·']">
             <span>{post.readingTime}</span>
           </span>
           {tags.length > 0 ? (
-            <span className="inline-flex max-w-full min-w-0 items-start gap-2 before:text-zinc-500 before:content-['·'] sm:items-center sm:gap-3 dark:before:text-zinc-400">
+            <span className="inline-flex max-w-full min-w-0 items-start gap-2 before:text-[var(--ink-muted)] before:content-['·'] sm:items-center sm:gap-3">
               <span className="font-mono text-sm tracking-tighter">
                 [{` `}
                 {tags.map((tag, index) => (
@@ -141,7 +138,7 @@ export default function LayoutBlogPost({
       />
 
       <motion.main
-        className="prose prose-gray dark:prose-invert prose-pre:bg-transparent prose-pre:p-0 mt-10 space-y-12"
+        className="post prose prose-gray dark:prose-invert prose-pre:bg-transparent prose-pre:p-0 mt-10 space-y-12"
         variants={VARIANTS_CONTAINER}
         initial="hidden"
         animate="visible"

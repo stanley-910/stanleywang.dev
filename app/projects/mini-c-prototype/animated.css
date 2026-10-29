@@ -1,29 +1,64 @@
-/* Animated compiler, revision D — dense mono layout on the site's zinc shell. */
+/* Animated compiler on Circadian Meadow (design/circadian-meadow): plain
+   `page` with `ink`, colours only from the page tokens. The theme is the
+   site's, following the hour; nothing here picks one. */
+
+/* The page tokens, until the site shell defines them (tokens.json). Layered,
+   so any unlayered definition of the site's wins over these; the site's
+   must stay unlayered (app/styles/tokens.css on site-shell is), or a
+   layer of its own declared before this one. */
+@layer ac-tokens {
+  :root {
+    --page: #ebeae6;
+    --ink: #252522;
+    --ink-muted: #63625e;
+    --hairline: #8f8e89;
+    --control: #ebeae6cc;
+    --focus: var(--ink);
+  }
+  :root.dark,
+  :root[data-theme='dark'] {
+    --page: #1b1b19;
+    --ink: #e4e2da;
+    --ink-muted: #9d9b94;
+    --hairline: #6a6964;
+    --control: #1b1b19c7;
+  }
+}
+
 .ac {
-  /* Light: an off-white rather than #fff, lines and the faint grey a
-     step darker, and register colours at about half the tint, so what
-     reads as a deep tint on black isn't a bright pastel on white
-     (Stanley, 2026-10-06). */
-  --bg: #f7f7f8;
-  --ink: #18181b;
-  --muted: #71717a;
-  --faint: #8a8a94;
-  --line: #dcdce0;
-  --wash: #ebebee;
+  /* Quieter than ink-muted, for what's only there to be found (the about
+     tab, a spent register), and the faint fill of a hover. */
+  --ac-faint: color-mix(in srgb, var(--ink-muted) 70%, var(--page));
+  --ac-wash: color-mix(in srgb, var(--ink) 6%, var(--page));
+  /* Colours the tokens don't name yet, from the meadow's own: an error in
+     the poppy's, a resolved name in the stem's, a virtual register in the
+     dandelion's (the designer agent, 2026-10-29). */
+  --ac-err: #9a4b2b;
+  --ac-ok: #4f6b45;
+  --ac-vreg: #8a6d2f;
   /* How much of a register's colour goes into a fill: a coloured node, the
-     node a step is about, and the flash as it lands in the listing. */
-  --fill: 9%;
-  --fill-strong: 20%;
-  --fill-flash: 24%;
-  --err: #9a4b2b;
-  --ok: #2f7a4b;
-  /* Virtual registers, lit on the allocator's first slide: the site's
-     accent, its stars' gold (app/page.tsx), which the register palette
-     (INK in animated.tsx) doesn't use. */
-  --vreg: rgb(186, 149, 94);
+     node a step is about, and the flash as it lands in the listing. Light
+     pages take about half the tint, so what reads as a deep tint at night
+     isn't a bright pastel by day (Stanley, 2026-10-06). */
+  --ac-fill: 9%;
+  --ac-fill-strong: 20%;
+  --ac-fill-flash: 24%;
+  /* The interference graph's registers (INK in animated.tsx): eight hues at
+     one lightness and chroma, muted poppy round to cosmos vein. */
+  --ac-reg-l: 0.52;
+  --ac-reg-c: 0.1;
+  --ac-reg-0: oklch(var(--ac-reg-l) var(--ac-reg-c) 250);
+  --ac-reg-1: oklch(var(--ac-reg-l) var(--ac-reg-c) 70);
+  --ac-reg-2: oklch(var(--ac-reg-l) var(--ac-reg-c) 150);
+  --ac-reg-3: oklch(var(--ac-reg-l) var(--ac-reg-c) 25);
+  --ac-reg-4: oklch(var(--ac-reg-l) var(--ac-reg-c) 290);
+  --ac-reg-5: oklch(var(--ac-reg-l) var(--ac-reg-c) 200);
+  --ac-reg-6: oklch(var(--ac-reg-l) var(--ac-reg-c) 340);
+  --ac-reg-7: oklch(var(--ac-reg-l) var(--ac-reg-c) 115);
   --row: 22px;
   position: relative;
-  /* Out to the site header's margins (48px each side, lg:px-12). */
+  /* Out to the site header's margins (48px each side, lg:px-12). An
+     interactive piece keeps its own width rather than the measure. */
   width: min(1680px, calc(100vw - 96px));
   left: 50%;
   transform: translateX(-50%);
@@ -33,19 +68,16 @@
   font: 12px/1.45 var(--font-mono);
   -webkit-font-smoothing: antialiased;
 }
-.dark .ac {
-  --bg: #09090b;
-  --ink: #e4e4e7;
-  --muted: #a1a1aa;
-  --faint: #52525b;
-  --line: #27272a;
-  --wash: #18181b;
-  --err: #e5a58a;
-  --ok: #8fcfa2;
-  --vreg: rgb(186, 149, 94);
-  --fill: 16%;
-  --fill-strong: 34%;
-  --fill-flash: 40%;
+:root.dark .ac,
+:root[data-theme='dark'] .ac {
+  --ac-err: #e5a58a;
+  --ac-ok: #a9bf98;
+  --ac-vreg: #e2cf86;
+  --ac-fill: 16%;
+  --ac-fill-strong: 34%;
+  --ac-fill-flash: 40%;
+  --ac-reg-l: 0.78;
+  --ac-reg-c: 0.09;
 }
 .ac *,
 .ac *::before,
@@ -65,7 +97,7 @@
 .ac ::-webkit-scrollbar-track {
   background: repeating-linear-gradient(
       to bottom,
-      var(--line) 0 2px,
+      var(--hairline) 0 2px,
       transparent 2px 5px
     )
     center / 1px 100% no-repeat;
@@ -73,7 +105,7 @@
 .ac ::-webkit-scrollbar-track:horizontal {
   background: repeating-linear-gradient(
       to right,
-      var(--line) 0 2px,
+      var(--hairline) 0 2px,
       transparent 2px 5px
     )
     center / 100% 1px no-repeat;
@@ -141,7 +173,7 @@
     scrollbar-color: transparent transparent;
   }
   .ac [data-reveal] {
-    scrollbar-color: var(--muted) transparent;
+    scrollbar-color: var(--ink-muted) transparent;
   }
 }
 /* Scrollbars off (the options menu): panes scroll by wheel, touch or keys
@@ -169,7 +201,7 @@
 @keyframes ac-rail {
   from,
   to {
-    --rail: var(--line);
+    --rail: var(--hairline);
   }
 }
 /* The source and the listing also scroll sideways (long lines): a second
@@ -200,7 +232,7 @@
 @keyframes ac-rail-x {
   from,
   to {
-    --rail-x: var(--line);
+    --rail-x: var(--hairline);
   }
 }
 .ac button {
@@ -219,8 +251,9 @@
   display: inline-block;
   min-width: 18px;
   padding: 0 4px;
-  border: 1px solid currentColor;
-  font: 10px/16px var(--font-mono);
+  border: 1px solid var(--hairline);
+  color: var(--ink-muted);
+  font: 11px/16px var(--font-mono);
   text-align: center;
   text-transform: uppercase;
 }
@@ -237,8 +270,10 @@
 .ac-home {
   display: none;
 }
-/* Top line: numbered phases, about. */
+/* Top line: the phases, about; in the page's sans, as the site's nav. */
 .ac-top {
+  font-family: var(--font-sans);
+  font-size: 13px;
   display: flex;
   align-items: baseline;
   gap: 24px;
@@ -251,35 +286,41 @@
 }
 .ac-phases button {
   padding: 1px 4px;
-  color: var(--muted);
+  color: var(--ink-muted);
   white-space: nowrap;
 }
+.ac-phases button:hover {
+  color: var(--ink);
+}
+/* The current phase as the site's nav marks its page: in ink, underlined,
+   never a filled tab. */
 .ac-phases button.active {
-  color: var(--bg);
-  background: var(--ink);
+  color: var(--ink);
+  text-decoration: underline 1px;
+  text-underline-offset: 4px;
 }
 .ac-about {
   position: relative;
   margin-left: auto;
-  color: var(--muted);
-  z-index: 4;
+  color: var(--ink-muted);
+  /* (over the note and guide windows, 35-36) */
+  z-index: 40;
 }
 /* Greyer than the phases: it isn't one. */
 .ac-about summary {
   cursor: pointer;
   list-style: none;
   padding: 1px 4px;
-  color: var(--faint);
+  color: var(--ac-faint);
 }
 .ac-about summary:hover {
-  color: var(--muted);
+  color: var(--ink-muted);
 }
 .ac-about summary::-webkit-details-marker {
   display: none;
 }
 .ac-about[open] summary {
   color: var(--ink);
-  background: var(--line);
 }
 .ac-about > div {
   position: absolute;
@@ -287,8 +328,10 @@
   top: calc(100% + 6px);
   width: 340px;
   padding: 10px 12px;
-  background: var(--bg);
-  border: 1px solid var(--line);
+  border: 1px solid var(--hairline);
+  background: var(--control);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
   color: var(--ink);
 }
 .ac-about p {
@@ -303,7 +346,7 @@
   place-items: center;
   /* (the phases' gap from about, not the header's) */
   margin-left: -10px;
-  color: var(--muted);
+  color: var(--ink-muted);
 }
 .ac .ac-max:hover {
   color: var(--ink);
@@ -327,7 +370,7 @@
     margin: 0;
     padding: 10px 24px 8px;
     overflow: auto;
-    background: var(--bg);
+    background: var(--page);
   }
   .ac.max .ac-scene {
     /* The window, less the tabs above and the keys below. */
@@ -341,8 +384,8 @@
   position: relative;
   display: grid;
   grid-template-columns: var(--editor-w) minmax(0, 1fr);
-  border: 1px solid var(--line);
-  background: color-mix(in srgb, var(--bg) 90%, transparent);
+  border: 1px solid var(--hairline);
+  background: color-mix(in srgb, var(--page) 90%, transparent);
 }
 .ac-editor {
   display: flex;
@@ -353,7 +396,7 @@
   height: 0;
   min-height: 100%;
   overflow: hidden;
-  border-right: 1px solid var(--line);
+  border-right: 1px solid var(--hairline);
 }
 /* Only the source gives way when the note grows. */
 .ac-editor > .ac-bar,
@@ -367,8 +410,8 @@
   gap: 8px;
   height: 28px;
   padding: 0 10px;
-  border-bottom: 1px solid var(--line);
-  color: var(--muted);
+  border-bottom: 1px solid var(--hairline);
+  color: var(--ink-muted);
   font-size: 12px;
   white-space: nowrap;
 }
@@ -384,7 +427,7 @@
   color: var(--ink);
 }
 .ac-bar b.bad {
-  color: var(--err);
+  color: var(--ac-err);
 }
 .ac-file {
   color: var(--ink);
@@ -396,7 +439,7 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  color: var(--muted);
+  color: var(--ink-muted);
   text-decoration: none;
   cursor: pointer;
 }
@@ -409,6 +452,7 @@
 }
 /* Same box as the token card: hairline border, page background. */
 .ac-picker ul {
+  font-family: var(--font-sans);
   position: absolute;
   top: calc(100% + 4px);
   right: 0;
@@ -417,13 +461,15 @@
   margin: 0;
   padding: 4px 0;
   list-style: none;
-  border: 1px solid var(--line);
-  background: var(--bg);
+  border: 1px solid var(--hairline);
+  background: var(--control);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
   outline: none;
 }
 .ac-picker li {
   padding: 3px 12px 3px 22px;
-  color: var(--muted);
+  color: var(--ink-muted);
   cursor: pointer;
   position: relative;
 }
@@ -437,11 +483,11 @@
   top: -5px;
   right: 12px;
   left: 12px;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--hairline);
 }
 .ac-picker li.active {
   color: var(--ink);
-  background: var(--line);
+  background: var(--ac-wash);
 }
 .ac-picker li[aria-selected='true'] {
   color: var(--ink);
@@ -478,14 +524,14 @@
   display: flex;
   flex-direction: column;
   padding: 8px 0;
-  color: var(--faint);
+  color: var(--ac-faint);
   text-align: right;
   user-select: none;
   /* Line numbers stay put while a long line scrolls the pane sideways. */
   position: sticky;
   left: 0;
   z-index: 3;
-  background: var(--bg);
+  background: var(--page);
 }
 .ac-gutter span {
   display: block;
@@ -539,36 +585,36 @@
   color: var(--ink);
 }
 .ac-text mark {
-  color: var(--bg);
+  color: var(--page);
   background: var(--ink);
 }
 .ac-text mark:empty {
   background: none;
 }
 .ac-text mark.err {
-  background: var(--err);
+  background: var(--ac-err);
 }
 /* The lookup's pair, as on the stage: an outlined use and its filled
    declaration. */
 .ac-text mark.ok.use {
   color: var(--ink);
-  background: color-mix(in srgb, var(--ok) 8%, var(--bg));
-  box-shadow: inset 0 0 0 1px var(--ok);
+  background: color-mix(in srgb, var(--ac-ok) 8%, var(--page));
+  box-shadow: inset 0 0 0 1px var(--ac-ok);
 }
 .ac-text mark.ok.decl {
   color: var(--ink);
-  background: color-mix(in srgb, var(--ok) 32%, transparent);
+  background: color-mix(in srgb, var(--ac-ok) 32%, transparent);
 }
 /* A return that doesn't fit its function's signature, the same pair in
    red. */
 .ac-text mark.bad.use {
   color: var(--ink);
-  background: color-mix(in srgb, var(--err) 8%, var(--bg));
-  box-shadow: inset 0 0 0 1px var(--err);
+  background: color-mix(in srgb, var(--ac-err) 8%, var(--page));
+  box-shadow: inset 0 0 0 1px var(--ac-err);
 }
 .ac-text mark.bad.decl {
   color: var(--ink);
-  background: color-mix(in srgb, var(--err) 32%, transparent);
+  background: color-mix(in srgb, var(--ac-err) 32%, transparent);
 }
 /* Detailed lexer: characters read so far underlined, the current one a block
    (outlined when only looked at), skipped whitespace a faint band. */
@@ -579,7 +625,7 @@
   text-underline-offset: 3px;
 }
 .ac-text mark.cursor {
-  color: var(--bg);
+  color: var(--page);
   background: var(--ink);
 }
 .ac-text mark.cursor.peek {
@@ -589,7 +635,7 @@
 }
 .ac-text mark.skip {
   color: inherit;
-  background: var(--line);
+  background: var(--ac-wash);
 }
 /* .ac button would reset the padding and border; the message keeps the
    panel's text colour, only the tag is red. */
@@ -599,13 +645,13 @@
   gap: 8px;
   width: 100%;
   padding: 6px 10px;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--hairline);
   text-align: left;
   white-space: nowrap;
 }
 .ac-diag-tag {
   flex: none;
-  color: var(--err);
+  color: var(--ac-err);
   font-weight: 600;
 }
 /* One line, cut with an ellipsis; hovering a cut message scrolls it. */
@@ -684,7 +730,7 @@
   flex: 1 1 auto;
   flex-direction: column;
   min-height: 0;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--hairline);
 }
 /* The editor's right border, draggable. */
 .ac-colsplit {
@@ -701,7 +747,7 @@
   outline: none;
 }
 .ac-work:has(> .ac-colsplit:is(:hover, :focus-visible, :active)) .ac-editor {
-  border-right-color: var(--muted);
+  border-right-color: var(--ink-muted);
 }
 /* The note's top border, draggable. */
 .ac-split {
@@ -720,7 +766,7 @@
   outline: none;
 }
 .ac-note:has(> .ac-split:is(:hover, :focus-visible, :active)) {
-  border-top-color: var(--muted);
+  border-top-color: var(--ink-muted);
 }
 .ac-note-title {
   overflow: hidden;
@@ -736,7 +782,7 @@
   gap: 12px;
   /* The right side clears the notes window's size grip. */
   padding: 0 16px 8px 10px;
-  color: var(--muted);
+  color: var(--ink-muted);
   font-size: 11px;
 }
 /* The counter turns into "skip" on hover; both share a grid cell so the
@@ -744,7 +790,7 @@
 .ac-slides {
   display: grid;
   justify-items: end;
-  color: var(--muted);
+  color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
@@ -770,8 +816,8 @@
   margin: 8px 0 0;
   padding: 6px 8px;
   overflow-x: auto;
-  border-left: 2px solid var(--faint);
-  background: color-mix(in srgb, var(--line) 45%, var(--bg));
+  border-left: 2px solid var(--ac-faint);
+  background: color-mix(in srgb, var(--hairline) 45%, var(--page));
   font-family: var(--font-mono);
   line-height: 1.45;
   /* (a token stream wraps between tokens in a narrow pane) */
@@ -781,14 +827,14 @@
 .ac-slide-quote {
   margin: 10px 0 0;
   padding: 0 0 0 10px;
-  border-left: 2px solid var(--faint);
-  color: var(--muted);
+  border-left: 2px solid var(--ac-faint);
+  color: var(--ink-muted);
   white-space: normal;
 }
 /* A slide's hint, last: a pointer to a setting, quieter than the text. */
 .ac-slide-hint {
   margin: 10px 0 0;
-  color: var(--muted);
+  color: var(--ink-muted);
   white-space: normal;
 }
 /* The setting it names, a link that flips it. */
@@ -797,7 +843,7 @@
   padding: 0;
   color: var(--ink);
   text-decoration: underline;
-  text-decoration-color: var(--faint);
+  text-decoration-color: var(--ac-faint);
   text-underline-offset: 2px;
   cursor: pointer;
 }
@@ -828,19 +874,19 @@
   margin: 10px 0 0;
   padding: 0;
   list-style: none;
-  color: var(--muted);
+  color: var(--ink-muted);
 }
 .ac-lexemes li {
   padding: 0 4px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--hairline);
 }
 .ac-lexemes li.current {
   border-color: var(--ink);
   background: var(--ink);
-  color: var(--bg);
+  color: var(--page);
 }
 .ac-note.err .ac-note-title {
-  color: var(--err);
+  color: var(--ac-err);
 }
 /* Every record in the pane under the source at one size and one inset:
    the typing rule's 11px, 4px under the bar's padding (Stanley,
@@ -866,7 +912,7 @@
    0.5px border; a half-pixel shadow draws as a device pixel.) */
 .ac-note > .ac-bar {
   border-bottom: 0;
-  box-shadow: inset 0 -0.5px 0 var(--line);
+  box-shadow: inset 0 -0.5px 0 var(--hairline);
 }
 /* The step's note docked in the pane (trial, the lexer's steps): the
    file's name on the bar as on the floating window, the note in its face,
@@ -877,7 +923,7 @@
 }
 .ac .ac-bar .ac-note-undock {
   padding: 0 2px;
-  color: var(--muted);
+  color: var(--ink-muted);
   font-size: 13px;
   text-decoration: none;
   line-height: 1;
@@ -887,7 +933,7 @@
   color: var(--ink);
 }
 .ac-note-step {
-  font-family: 'Notes Prose', var(--font-mono);
+  font-family: var(--font-sans);
   line-height: 1.5;
 }
 .ac .ac-note-step code {
@@ -901,16 +947,14 @@
 }
 .ac-window-body > .ac-pane-head {
   margin-top: 12px;
-  font-family: var(--font-mono);
 }
-.ac-window-body > .ac-pane-blurb,
 .ac-window-body > .ac-lexemes {
   font-family: var(--font-mono);
 }
 /* What the class is, over its kinds. */
 .ac-pane-blurb {
   margin: 0;
-  color: var(--muted);
+  color: var(--ink-muted);
   white-space: normal;
 }
 .ac-editor .ac-scopes,
@@ -919,6 +963,15 @@
 }
 /* The symbol table in the floating window reads as it does docked. */
 .ac-window-body .ac-scopes {
+  font-family: var(--font-mono);
+}
+/* A note's prose is in the page's sans, as the floating window's is; what
+   it shows of the program (names, kinds, the symbol table) stays mono. */
+.ac-note-body {
+  font-family: var(--font-sans);
+}
+.ac-note-body :is(code, pre, .ac-lexemes, .ac-scopes, .ac-char-table),
+.ac-window-body :is(code, pre, .ac-lexemes, .ac-scopes, .ac-char-table) {
   font-family: var(--font-mono);
 }
 .ac-note-body {
@@ -943,6 +996,13 @@
   flex-direction: column;
   min-width: 0;
 }
+/* Only the scene's rows read it, so a pan (every frame of one) restyles the
+   scene alone rather than everything in it, as an inherited one would. */
+@property --pan-y {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
 .ac-scene {
   position: relative;
   flex: 1 1 auto;
@@ -950,7 +1010,7 @@
      176px together), within a floor and a ceiling. */
   height: clamp(420px, calc(100dvh - 176px), 1400px);
   overflow: hidden;
-  background-image: linear-gradient(var(--wash) 1px, transparent 1px);
+  background-image: linear-gradient(var(--ac-wash) 1px, transparent 1px);
   /* The rows pan and zoom with the canvas (canvas-zoom.ts). */
   background-size: 100% calc(22px * var(--zoom, 1));
   background-position: 0 calc(var(--pan-y, 0px) - 1px);
@@ -963,8 +1023,8 @@
   position: absolute;
   z-index: 5;
   display: flex;
-  border: 1px solid var(--line);
-  background: var(--bg);
+  border: 1px solid var(--hairline);
+  background: var(--page);
   transition:
     right 0.3s ease,
     bottom 0.3s ease;
@@ -974,10 +1034,10 @@
   place-items: center;
   width: 26px;
   height: 26px;
-  color: var(--muted);
+  color: var(--ink-muted);
 }
 .ac-zoom button + button {
-  border-left: 1px solid var(--line);
+  border-left: 1px solid var(--hairline);
 }
 .ac-zoom button:hover:not(:disabled) {
   color: var(--ink);
@@ -1024,19 +1084,19 @@
   position: absolute;
   z-index: 4;
   overflow: hidden;
-  background: var(--bg);
+  background: var(--page);
 }
 .ac-listing.side {
   top: 0;
   right: 0;
   bottom: 0;
-  border-left: 1px solid var(--line);
+  border-left: 1px solid var(--hairline);
 }
 .ac-listing.foot {
   right: 0;
   bottom: 0;
   left: 0;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--hairline);
 }
 .ac-listing.foot.flow {
   position: relative;
@@ -1073,10 +1133,10 @@
   /* (at most most of the pane: the listing keeps its floor) */
   max-height: calc(100% - 96px);
   min-height: 0;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--hairline);
 }
 .ac-stackpane:has(> .ac-split:is(:hover, :focus-visible, :active)) {
-  border-top-color: var(--muted);
+  border-top-color: var(--ink-muted);
 }
 .ac-stackpane-body {
   flex: 1 1 auto;
@@ -1155,10 +1215,10 @@
 }
 /* (inside the pane: the line lies along its border) */
 .ac-listsplit.side:is(:hover, :focus-visible, :active) {
-  background: linear-gradient(90deg, var(--muted) 1px, transparent 1px);
+  background: linear-gradient(90deg, var(--ink-muted) 1px, transparent 1px);
 }
 .ac-listsplit.foot:is(:hover, :focus-visible, :active) {
-  background: linear-gradient(var(--muted) 1px, transparent 1px);
+  background: linear-gradient(var(--ink-muted) 1px, transparent 1px);
 }
 /* A phone's grips (animated.tsx, flowSplit): a finger-sized strip with a
    short bar at its middle, since a finger can't hover to find an edge.
@@ -1180,7 +1240,7 @@
   left: calc(50% - 18px);
   width: 36px;
   height: 3px;
-  background: var(--faint);
+  background: var(--ac-faint);
 }
 /* (a no-height mark between the stage's canvas and the listing, the
    strip placed from it) */
@@ -1211,9 +1271,6 @@
 .ac-listing-scroll:focus-visible {
   outline: 1px solid var(--ink);
   outline-offset: -1px;
-}
-.dark .ac-piece {
-  border-color: #3f3f46;
 }
 .ac-edges {
   position: absolute;
@@ -1253,11 +1310,11 @@
 }
 /* Parse: a shown node not yet attached, and the group being read. */
 .ac-held {
-  stroke: var(--muted);
+  stroke: var(--ink-muted);
   stroke-dasharray: 2 3;
 }
 .ac-group {
-  stroke: var(--muted);
+  stroke: var(--ink-muted);
   stroke-dasharray: 3 3;
 }
 .ac-group.closed {
@@ -1272,13 +1329,13 @@
 /* What a declaration makes: var, function or struct. */
 .ac-scope-kind {
   margin-left: 8px;
-  color: var(--faint);
+  color: var(--ac-faint);
 }
 .ac-scope {
   margin: 0 0 0 3px;
   padding: 0 0 0 11px;
   list-style: none;
-  border-left: 1px solid var(--line);
+  border-left: 1px solid var(--hairline);
   transition:
     border-color 0.3s,
     box-shadow 0.3s;
@@ -1287,7 +1344,7 @@
   overflow: hidden;
 }
 .ac-scope-name {
-  color: var(--muted);
+  color: var(--ink-muted);
   transition: color 0.3s;
 }
 /* The scope the name is in: its name and rows bright, its rail bold. The
@@ -1303,11 +1360,11 @@
   box-shadow: inset 1px 0 0 var(--ink);
 }
 .ac-scope-empty {
-  color: var(--faint);
+  color: var(--ac-faint);
 }
 .ac-scope code {
   padding: 0 3px;
-  color: var(--muted);
+  color: var(--ink-muted);
   transition:
     color 0.3s,
     background-color 0.25s;
@@ -1316,16 +1373,16 @@
   color: var(--ink);
 }
 .ac-scope code.found {
-  color: var(--bg);
+  color: var(--page);
   background: var(--ink);
 }
 .ac-scope code.found.ok {
   color: var(--ink);
-  background: color-mix(in srgb, var(--ok) 32%, transparent);
+  background: color-mix(in srgb, var(--ac-ok) 32%, transparent);
   transition: background-color 0.25s;
 }
 .ac-scope.hit:not(.home) {
-  border-left-color: var(--muted);
+  border-left-color: var(--ink-muted);
 }
 /* Looked in, not found there. */
 .ac-scope.passed {
@@ -1344,7 +1401,7 @@
     left top / 2px 100% no-repeat border-box;
 }
 .ac-scope.passed:not(.home) {
-  border-left-color: var(--muted);
+  border-left-color: var(--ink-muted);
 }
 .ac-scope small {
   font-size: inherit;
@@ -1359,15 +1416,13 @@
   white-space: normal;
 }
 .ac-scope-note.err {
-  color: var(--err);
+  color: var(--ac-err);
 }
 .ac-scope-note code {
-  padding: 0 3px;
-  background: var(--line);
   color: var(--ink);
 }
 .ac-scope small.err {
-  color: var(--err);
+  color: var(--ac-err);
 }
 /* The name itself reads as code, apart from the error around it. */
 .ac-scope small code {
@@ -1377,10 +1432,10 @@
 /* A lookup draws green while its declaration lights up. The halo keeps
    tree-edge crossings legible; the dot marks the declaration. */
 .ac-link {
-  stroke: var(--muted);
+  stroke: var(--ink-muted);
 }
 .ac-link.ok {
-  stroke: var(--ok);
+  stroke: var(--ac-ok);
 }
 /* The name pass walking the tree to the next name: a brighter pass over
    the edges it follows. */
@@ -1390,29 +1445,29 @@
 }
 /* A return's check: its value's type up to its function's `→ T`. */
 .ac-return-link.ok {
-  stroke: var(--ok);
+  stroke: var(--ac-ok);
 }
 .ac-return-link.bad {
-  stroke: var(--err);
+  stroke: var(--ac-err);
 }
 .ac-link-halo {
-  stroke: var(--bg);
+  stroke: var(--page);
   stroke-width: 3;
 }
 .ac-link-end {
   fill: var(--ink);
-  stroke: var(--bg);
+  stroke: var(--page);
   stroke-width: 1;
 }
 .ac-link-end.ok {
-  fill: var(--ok);
+  fill: var(--ac-ok);
 }
 .ac-piece {
   position: absolute;
   height: 22px;
   padding: 0 7px;
-  border: 1px solid var(--line);
-  background: var(--bg);
+  border: 1px solid var(--hairline);
+  background: var(--page);
   color: var(--ink);
   line-height: 20px;
   white-space: nowrap;
@@ -1423,10 +1478,10 @@
     border-color 0.15s;
 }
 .ac-piece.kind-keyword {
-  color: var(--muted);
+  color: var(--ink-muted);
 }
 .ac-piece.kind-symbol {
-  color: var(--muted);
+  color: var(--ink-muted);
 }
 .ac-piece.node.kind-symbol,
 .ac-piece.node.kind-keyword {
@@ -1439,13 +1494,13 @@
 }
 .ac-piece.node.pending {
   border-style: dashed;
-  border-color: var(--muted);
+  border-color: var(--ink-muted);
 }
 .ac-piece.focused,
 .ac-piece.node.focused {
   border-color: var(--ink);
   background: var(--ink);
-  color: var(--bg);
+  color: var(--page);
 }
 /* An operator shown a step early, where it will sit. */
 .ac-piece.node.preview,
@@ -1453,7 +1508,7 @@
   border-width: 1px;
   border-style: dashed;
   border-color: var(--ink);
-  background: var(--bg);
+  background: var(--page);
   color: var(--ink);
 }
 /* Declarations keep a faint tint during the name pass. A lookup lights
@@ -1467,24 +1522,24 @@
 }
 /* A name with no declaration keeps a faint red tint. */
 .ac-piece.node.missing:not(.focused) {
-  background: color-mix(in srgb, var(--err) 24%, transparent);
+  background: color-mix(in srgb, var(--ac-err) 24%, transparent);
   transition: background-color 0.6s;
 }
 .ac .ac-piece.node.found {
   color: var(--ink);
-  background: color-mix(in srgb, var(--ok) 32%, transparent);
+  background: color-mix(in srgb, var(--ac-ok) 32%, transparent);
   transition:
     background-color 0.25s,
     border-color 0.25s;
 }
 /* A use is outlined, pointing at its filled declaration. */
 .ac .ac-piece.node.found.use {
-  box-shadow: inset 0 0 0 1px var(--ok);
-  background: color-mix(in srgb, var(--ok) 8%, var(--bg));
+  box-shadow: inset 0 0 0 1px var(--ac-ok);
+  background: color-mix(in srgb, var(--ac-ok) 8%, var(--page));
 }
 /* An operator outside the group being read: nothing inside competes with it. */
 .ac-piece.node.outside {
-  color: var(--muted);
+  color: var(--ink-muted);
 }
 /* Kind label under the lexeme being read. */
 .ac-piece small {
@@ -1493,7 +1548,7 @@
   left: 50%;
   transform: translateX(-50%);
   font-size: 10px;
-  color: var(--muted);
+  color: var(--ink-muted);
 }
 /* A landing node's class, moved off the edges around it. */
 .ac-piece small.ac-class.right {
@@ -1526,9 +1581,9 @@
   left: 100%;
   transform: translate(5px, -50%);
   padding: 0 3px;
-  border: 1px solid var(--line);
-  background: var(--bg);
-  color: var(--muted);
+  border: 1px solid var(--hairline);
+  background: var(--page);
+  color: var(--ink-muted);
   font-size: 10px;
   line-height: 13px;
   white-space: nowrap;
@@ -1538,20 +1593,20 @@
 }
 /* An operator's operands, on the step it takes their types. */
 .ac-piece small.ac-type.input {
-  border-color: var(--muted);
+  border-color: var(--ink-muted);
   color: var(--ink);
 }
 /* What a return must match (its function's return type), for the step
    that checks it. */
 .ac-piece small.ac-type.need {
   border-style: dashed;
-  border-color: var(--muted);
+  border-color: var(--ink-muted);
   color: var(--ink);
 }
 /* A built-in's signature: declared nowhere in the program, so said so. */
 .ac-piece small.ac-type.builtin::after {
   content: ' built-in';
-  color: var(--faint);
+  color: var(--ac-faint);
 }
 /* A value and what it must fit: green once the check lands. */
 .ac-piece small.ac-type.ok {
@@ -1567,15 +1622,15 @@
   animation: ac-type-ok-text 0.25s var(--land, 0.42s) both;
 }
 .ac-piece small.ac-type.returns-bad .returns {
-  color: var(--err);
+  color: var(--ac-err);
 }
 .ac-piece small.ac-type.bad {
-  border-color: var(--err);
-  color: var(--err);
+  border-color: var(--ac-err);
+  color: var(--ac-err);
 }
 .ac-piece small.ac-type.unknown {
   border-style: dashed;
-  color: var(--muted);
+  color: var(--ink-muted);
 }
 @keyframes ac-type-in {
   from {
@@ -1589,20 +1644,20 @@
 }
 @keyframes ac-type-ok-text {
   from {
-    color: var(--muted);
+    color: var(--ink-muted);
   }
   to {
-    color: var(--ok);
+    color: var(--ac-ok);
   }
 }
 @keyframes ac-type-ok {
   from {
-    border-color: var(--muted);
+    border-color: var(--ink-muted);
     color: var(--ink);
   }
   to {
-    border-color: var(--ok);
-    color: var(--ok);
+    border-color: var(--ac-ok);
+    color: var(--ac-ok);
   }
 }
 /* Emit: the register a node leaves behind (reg-badges.ts), drawn like a
@@ -1613,16 +1668,16 @@
   position: absolute;
   z-index: 2;
   padding: 0 3px;
-  border: 1px solid var(--line);
-  background: var(--bg);
-  color: var(--muted);
+  border: 1px solid var(--hairline);
+  background: var(--page);
+  color: var(--ink-muted);
   font-size: 10px;
   line-height: 13px;
   white-space: nowrap;
   pointer-events: none;
 }
 .ac-reg.spent {
-  border-color: var(--muted);
+  border-color: var(--ink-muted);
   color: var(--ink);
 }
 .ac-reg.new {
@@ -1631,8 +1686,8 @@
 @keyframes ac-reg-new {
   from,
   40% {
-    border-color: var(--ok);
-    color: var(--ok);
+    border-color: var(--ac-ok);
+    color: var(--ac-ok);
   }
 }
 .ac-piece.small {
@@ -1675,7 +1730,7 @@
 }
 .ac-asm:is(.blocks, .listing) .ac-ins > span {
   padding-right: 8px;
-  color: var(--faint);
+  color: var(--ac-faint);
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
@@ -1684,7 +1739,7 @@
 }
 /* The current block: a wash and a bar, not an inverted slab. */
 .ac-asm:is(.blocks, .listing) .ac-ins.current {
-  background: var(--wash);
+  background: var(--ac-wash);
   color: var(--ink);
   box-shadow: inset 2px 0 var(--ink);
 }
@@ -1698,19 +1753,19 @@
   color: var(--ink);
 }
 .ac-asm.listing .ac-ins.current small {
-  color: var(--muted);
+  color: var(--ink-muted);
   opacity: 1;
 }
 /* Lines the allocator adds once registers are known: pushRegisters'
    saves, popRegisters' restores and spill code. */
 .ac-asm.listing .ac-ins.added :is(b, code) {
-  color: var(--muted);
+  color: var(--ink-muted);
 }
 .ac-asm-head,
 .ac-asm-label {
   overflow: hidden;
   padding-left: 34px;
-  color: var(--muted);
+  color: var(--ink-muted);
   white-space: pre;
   text-overflow: ellipsis;
 }
@@ -1733,8 +1788,8 @@
   justify-self: start;
   align-self: center;
   padding: 0 3px;
-  border: 1px dashed var(--muted);
-  color: var(--muted);
+  border: 1px dashed var(--ink-muted);
+  color: var(--ink-muted);
   line-height: 15px;
 }
 
@@ -1748,7 +1803,7 @@
   pointer-events: none;
 }
 .ac-lane {
-  color: var(--faint);
+  color: var(--ac-faint);
   transition: color 0.2s;
 }
 .ac-lane.lit {
@@ -1803,31 +1858,27 @@
   text-underline-offset: 2px;
 }
 .ac-arg.focus.def {
-  color: var(--ok);
+  color: var(--ac-ok);
 }
 /* The register allocator's first slide: every virtual register lit in a
    colour of its own, the ones it has to fit into real registers. */
 .ac-arg {
   /* (out of the lit slide, it fades back) */
-  transition:
-    color 0.4s,
-    text-shadow 0.4s;
+  transition: color 0.4s;
 }
 .ac-arg.lit {
-  color: var(--vreg);
-  text-shadow: 0 0 4px color-mix(in srgb, var(--vreg) 30%, transparent);
+  color: var(--ac-vreg);
   animation: ac-vreg-in 0.28s ease-out calc(var(--lit-at, 0) * 45ms) both;
 }
-/* A fast downward sweep, a line at a time (--lit-at): each flares as it
-   lights, then settles to its glow, before the next one does. */
+/* A fast downward sweep, a line at a time (--lit-at): each flares toward
+   the page's own ink as it lights, then settles to its colour, before the
+   next one does. Colour only: the system has no glows. */
 @keyframes ac-vreg-in {
   from {
     color: var(--ink);
-    text-shadow: 0 0 0 transparent;
   }
   35% {
-    color: color-mix(in srgb, var(--vreg) 75%, #fff);
-    text-shadow: 0 0 6px color-mix(in srgb, var(--vreg) 60%, transparent);
+    color: color-mix(in srgb, var(--ac-vreg) 55%, var(--ink));
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -1843,7 +1894,7 @@
 }
 @keyframes ac-phys-in {
   from {
-    background: color-mix(in oklab, var(--c) var(--fill-flash), transparent);
+    background: color-mix(in oklab, var(--c) var(--ac-fill-flash), transparent);
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -1859,7 +1910,7 @@
   filter: opacity(0.3);
 }
 .ac-piece.life {
-  outline: 1px dashed var(--muted);
+  outline: 1px dashed var(--ink-muted);
   outline-offset: 2px;
 }
 
@@ -1947,11 +1998,11 @@
 .ac-proof.folded {
   display: inline-block;
   padding: 0 4px 2px;
-  border-bottom: 1px dashed var(--line);
+  border-bottom: 1px dashed var(--hairline);
 }
 .ac-proof .bad,
 .ac-proof.bad > .ac-proof-conclusion {
-  color: var(--err);
+  color: var(--ac-err);
   opacity: 1;
 }
 @media (prefers-reduced-motion: reduce) {
@@ -1964,10 +2015,10 @@
 .ac-hover-proof {
   position: absolute;
   padding: calc(6px * var(--ck, 1)) calc(10px * var(--ck, 1));
-  border: 1px solid var(--line);
-  background: var(--bg);
+  border: 1px solid var(--hairline);
+  background: var(--page);
   color: var(--ink);
-  font-family: 'Notes Prose', var(--font-mono);
+  font-family: var(--font-sans);
   font-size: calc(11px * var(--ck, 1));
   line-height: 1.4;
   pointer-events: none;
@@ -2011,41 +2062,6 @@
   margin: 0;
 }
 
-/* The notes are set in the Berkeley Mono Prose build, tighter and with
-   serifed letters for running text; code and the rest of the page stay in the
-   Def build (app/styles/fonts.css). Both are served from public/fonts. */
-@font-face {
-  font-family: 'Notes Prose';
-  src: url('/fonts/berkeley-mono/BerkeleyMonoProse-Regular.woff2')
-    format('woff2');
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Notes Prose';
-  src: url('/fonts/berkeley-mono/BerkeleyMonoProse-Oblique.woff2')
-    format('woff2');
-  font-style: italic;
-  font-weight: 400;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Notes Prose';
-  src: url('/fonts/berkeley-mono/BerkeleyMonoProse-Bold.woff2') format('woff2');
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Notes Prose';
-  src: url('/fonts/berkeley-mono/BerkeleyMonoProse-Bold-Oblique.woff2')
-    format('woff2');
-  font-style: italic;
-  font-weight: 700;
-  font-display: swap;
-}
-
 /* The step's note, in a small window over the simulation (note-window.tsx):
    a file's name for a title, like an editor's note in the margin, a bar to
    drag it by and a box that rolls it up to the bar. Quiet lines only: it
@@ -2056,9 +2072,12 @@
   /* Its width is animated (note-window.tsx); this only caps it. */
   max-width: calc(100% - 16px);
   overflow: hidden;
-  border: 1px solid var(--line);
-  background: var(--bg);
-  font-size: 12px;
+  border: 1px solid var(--hairline);
+  /* Nearly the page, without the popovers' blur: it stays open over a
+     stage that repaints every frame, and a backdrop blur there costs a
+     readback and a blur per frame (WebKit most). */
+  background: color-mix(in srgb, var(--page) 94%, transparent);
+  font: 12px/1.45 var(--font-sans);
 }
 .ac-window-bar {
   display: flex;
@@ -2077,12 +2096,12 @@
    as under the side pane's headline, lighter than the window's edge. */
 .ac-window-open {
   overflow: hidden;
-  box-shadow: inset 0 0.5px 0 var(--line);
+  box-shadow: inset 0 0.5px 0 var(--hairline);
 }
 .ac-window-title {
   flex: none;
   overflow: hidden;
-  color: var(--muted);
+  color: var(--ink-muted);
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2090,7 +2109,7 @@
 .ac .ac-window-box {
   margin-left: auto;
   padding: 0 2px;
-  color: var(--faint);
+  color: var(--ac-faint);
   font-size: 12px;
   line-height: 1;
   cursor: pointer;
@@ -2100,7 +2119,7 @@
 }
 /* The dock arrow takes the bar's free space; the box sits right beside it. */
 .ac .ac-window-dock {
-  color: var(--muted);
+  color: var(--ink-muted);
   font-size: 13px;
 }
 .ac .ac-window-dock + .ac-window-box {
@@ -2116,17 +2135,16 @@
   padding: 8px 3px 8px 10px;
   /* The title's size, in full ink: a caption under the file's name. */
   color: var(--ink);
-  font-family: 'Notes Prose', var(--font-mono);
-  font-size: 11px;
+  font-family: var(--font-sans);
+  font-size: 12px;
   line-height: 1.5;
   white-space: pre-line;
 }
-/* Code inside a note stays in the page's own face, as on the stage, on a
-   chip so a name or `$ra` reads apart from the prose (Stanley, 2026-09-27).
+/* Code inside a note stays in the page's own face, as on the stage, so a
+   name or `$ra` reads apart from the prose (Stanley, 2026-09-27): mono in
+   sans text, with no chip (the system fills no code).
    (At `.ac code`'s weight, so the symbol table's lit names keep theirs.) */
 .ac-window-body code {
-  padding: 0 3px;
-  background: var(--line);
   font-family: var(--font-mono);
 }
 /* The note's text, wrapped only so the narration can find its words. */
@@ -2135,19 +2153,19 @@
 }
 /* The word being said (narration.tsx). */
 ::highlight(narration) {
-  background-color: color-mix(in srgb, var(--vreg) 35%, transparent);
+  background-color: color-mix(in srgb, var(--ac-vreg) 35%, transparent);
   color: var(--ink);
 }
 /* What the note is about (the welcome, a slide, an error, a step title). */
 .ac-window-head {
   display: block;
   margin-bottom: 4px;
-  color: var(--muted);
+  color: var(--ink-muted);
   font-size: 11px;
 }
 .ac-window.err .ac-window-head,
 .ac-note.err .ac-window-head {
-  color: var(--err);
+  color: var(--ac-err);
 }
 /* Afloat, no box: the stack itself on the stage, and what labels it on
    a faint ground of their own so they read apart from the tree's text
@@ -2161,7 +2179,7 @@
   width: calc(176px + (var(--room-max, 5) + 9) * 1ch);
 }
 .ac-stack.floating .ac-stack-ptr {
-  background: color-mix(in srgb, var(--ink) 8%, var(--bg));
+  background: color-mix(in srgb, var(--ink) 8%, var(--page));
 }
 .ac-stack:active {
   cursor: grabbing;
@@ -2236,7 +2254,7 @@
   flex-shrink: 0;
   margin: 0 auto 0 6px;
   font-style: normal;
-  color: var(--muted);
+  color: var(--ink-muted);
   white-space: nowrap;
 }
 /* A register given a word's address arrives from where it was counted
@@ -2260,8 +2278,8 @@
 }
 @keyframes ac-store-flash {
   25% {
-    border-color: var(--ok);
-    background-color: color-mix(in srgb, var(--ok) 60%, var(--bg));
+    border-color: var(--ac-ok);
+    background-color: color-mix(in srgb, var(--ac-ok) 60%, var(--page));
   }
 }
 .ac-stack-body {
@@ -2278,8 +2296,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 5px;
-  border: 1px solid var(--line);
-  background: var(--bg);
+  border: 1px solid var(--hairline);
+  background: var(--page);
   color: var(--ink);
   transform-origin: top;
   transition:
@@ -2287,9 +2305,6 @@
     background-color 0.3s var(--delay, 0s);
   /* (for its value's slide in, .ac-stack-value) */
   container-type: inline-size;
-}
-.dark .ac-stack-cell {
-  border-color: #3f3f46;
 }
 /* A long name gives way (ellipsis) before its value and offset do. */
 .ac-stack-cell > span {
@@ -2304,39 +2319,39 @@
 }
 .ac-stack-cell small {
   font-size: 10px;
-  color: var(--faint);
+  color: var(--ac-faint);
 }
 /* The caller's words, above this frame. */
 .ac-stack-cell.caller {
-  color: var(--muted);
+  color: var(--ink-muted);
 }
 .ac-stack-cell.edge {
   border-top-color: var(--ink) !important;
 }
 .ac-stack-cell.saved {
   border-style: dashed;
-  border-color: var(--muted) !important;
-  color: var(--muted);
+  border-color: var(--ink-muted) !important;
+  color: var(--ink-muted);
 }
 /* Freed by `$sp` but still to be read (the epilogue's restores). */
 .ac-stack-cell.released {
   border-style: dashed;
-  color: var(--muted);
+  color: var(--ink-muted);
 }
 /* An array's middle words, folded into one row. */
 .ac-stack-cell.fold > span {
   font-style: italic;
-  color: var(--faint);
+  color: var(--ac-faint);
 }
 /* On a call, the callee's frame as it will sit under `$sp`. */
 .ac-stack-cell.ghost {
   border-style: dashed;
-  color: var(--muted);
+  color: var(--ink-muted);
 }
 /* A call's argument or result: the callee's name in grey. */
 .ac-stack-cell > span > i {
   font-style: normal;
-  color: var(--faint);
+  color: var(--ac-faint);
 }
 /* The calling convention's step over the column (stack-view.ts
    conventionStep): the side taking it, and what it does. One line, kept when empty, so the column
@@ -2347,7 +2362,7 @@
   overflow: hidden;
   font-size: 10px;
   line-height: 18px;
-  color: var(--muted);
+  color: var(--ink-muted);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -2362,7 +2377,7 @@
   height: 19px;
   line-height: 19px;
   font-size: 10px;
-  color: var(--faint);
+  color: var(--ac-faint);
 }
 /* Outlined when read, tinted when written, as its instruction arrives. */
 .ac-stack-cell.read {
@@ -2371,8 +2386,8 @@
 }
 .ac-stack-cell.write {
   z-index: 1;
-  border-color: var(--ok) !important;
-  background: color-mix(in srgb, var(--ok) 28%, var(--bg));
+  border-color: var(--ac-ok) !important;
+  background: color-mix(in srgb, var(--ac-ok) 28%, var(--page));
 }
 .ac-stack-ptr {
   position: absolute;
@@ -2392,11 +2407,11 @@
 }
 .ac-stack-ptr.fp::after {
   content: ' ›';
-  color: var(--muted);
+  color: var(--ink-muted);
 }
 .ac-stack-ptr.sp::before {
   content: '‹ ';
-  color: var(--muted);
+  color: var(--ink-muted);
 }
 /* Registers holding a word's address, while they are live: a dashed
    reference from outside, dimmed, since nothing moves until a load or a
@@ -2404,11 +2419,11 @@
 .ac-stack-ptr.reg {
   left: 100%;
   padding-left: 3px;
-  color: var(--muted);
+  color: var(--ink-muted);
 }
 .ac-stack-ptr.reg::before {
   content: '‹┄ ';
-  color: var(--faint);
+  color: var(--ac-faint);
 }
 /* On `$sp`'s row: after it, a space apart, under its arrow, still dashed. */
 .ac-stack-ptr.reg.after-sp {
@@ -2425,14 +2440,14 @@
   white-space: pre;
 }
 .ac-ins > span {
-  color: var(--faint);
+  color: var(--ac-faint);
 }
 .ac-ins.current {
   background: var(--ink);
-  color: var(--bg);
+  color: var(--page);
 }
 .ac-ins.current > span {
-  color: var(--bg);
+  color: var(--page);
   opacity: 0.6;
 }
 .ac-regs {
@@ -2440,15 +2455,13 @@
   flex-wrap: wrap;
   gap: 4px 10px;
   margin-top: 10px;
-  color: var(--muted);
+  color: var(--ink-muted);
   font-size: 11px;
 }
 
 .ac-note code,
 .ac-hover code {
-  font-family: inherit;
-  padding: 0 3px;
-  background: var(--line);
+  font-family: var(--font-mono);
 }
 
 /* Card under a clicked or hovered token or node, at the node's size
@@ -2456,8 +2469,8 @@
 .ac-hover {
   position: absolute;
   padding: calc(6px * var(--ck, 1)) calc(10px * var(--ck, 1));
-  border: 1px solid var(--line);
-  background: var(--bg);
+  border: 1px solid var(--hairline);
+  background: var(--page);
   color: var(--ink);
   font-size: calc(11px * var(--ck, 1));
   line-height: 1.4;
@@ -2487,8 +2500,9 @@
 }
 /* The step, by the scrubber it reads. */
 .ac-counter {
+  font-family: var(--font-mono);
   margin-left: -8px;
-  color: var(--muted);
+  color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -2503,21 +2517,23 @@
   display: none;
 }
 
-/* Footer key bar, Commit-Mono style. */
+/* Footer transport: plain words and icons in the page's sans; the step
+   counter stays mono, so its digits don't jump. */
 .ac-keys {
+  font-family: var(--font-sans);
   display: flex;
   align-items: center;
   gap: 18px;
   height: 36px;
   padding: 0 2px;
-  color: var(--muted);
-  background: color-mix(in srgb, var(--bg) 90%, transparent);
+  color: var(--ink-muted);
+  background: color-mix(in srgb, var(--page) 90%, transparent);
 }
 .ac-keys button {
   display: flex;
   align-items: center;
   gap: 4px;
-  color: var(--muted);
+  color: var(--ink-muted);
   white-space: nowrap;
 }
 .ac-step {
@@ -2545,7 +2561,7 @@
   background: linear-gradient(
       to right,
       var(--ink) var(--p),
-      var(--line) var(--p)
+      var(--hairline) var(--p)
     )
     center / 100% 1px no-repeat;
   cursor: pointer;
@@ -2554,19 +2570,17 @@
   width: 2px;
   height: 12px;
   border: 0;
-  border-radius: 0;
+  border-radius: 2px;
   appearance: none;
   background: var(--ink);
-  box-shadow: 0 0 6px color-mix(in srgb, var(--ink) 60%, transparent);
   transition: height 0.15s;
 }
 .ac-keys input::-moz-range-thumb {
   width: 2px;
   height: 12px;
   border: 0;
-  border-radius: 0;
+  border-radius: 2px;
   background: var(--ink);
-  box-shadow: 0 0 6px color-mix(in srgb, var(--ink) 60%, transparent);
   transition: height 0.15s;
 }
 .ac-keys input:hover::-webkit-slider-thumb,
@@ -2620,7 +2634,7 @@
     padding: env(safe-area-inset-top) 12px 0;
     overflow: hidden;
     transform: none;
-    background: var(--bg);
+    background: var(--page);
   }
   .ac-max {
     display: none;
@@ -2640,7 +2654,7 @@
     width: 32px;
     height: 32px;
     margin-left: -8px;
-    color: var(--muted);
+    color: var(--ink-muted);
   }
   .ac-home svg {
     width: 20px;
@@ -2717,7 +2731,7 @@
   .ac-flownote {
     position: relative;
     flex: none;
-    border-top: 1px solid var(--line);
+    border-top: 1px solid var(--hairline);
   }
   .ac-note:not(.open) .ac-note-body {
     display: none;
@@ -2738,7 +2752,7 @@
     align-self: stretch;
     width: 44px;
     margin-right: -10px;
-    color: var(--faint);
+    color: var(--ac-faint);
     text-decoration: none;
   }
   .ac-stage {
@@ -2783,16 +2797,16 @@
     background: none;
   }
   .ac-scene {
-    border: 1px solid var(--line);
+    border: 1px solid var(--hairline);
   }
   .ac-listing.foot.flow {
     margin-top: 6px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--hairline);
   }
   .ac-editor {
     /* (sized by its panes here, and its grip sits in the gap above it) */
     overflow: visible;
-    border: 1px solid var(--line);
+    border: 1px solid var(--hairline);
   }
   /* Docked: the note, then one row of controls, at the bottom of the
      screen. */
@@ -2804,8 +2818,8 @@
     flex-direction: column;
     margin-top: 6px;
     padding-bottom: env(safe-area-inset-bottom);
-    border-top: 1px solid var(--line);
-    background: var(--bg);
+    border-top: 1px solid var(--hairline);
+    background: var(--page);
   }
   .ac-window.docked {
     position: static;
@@ -2844,7 +2858,7 @@
     gap: 0;
     height: 48px;
     padding: 0;
-    background: var(--bg);
+    background: var(--page);
   }
   .ac-keys .ac-roomy {
     display: none;
@@ -2908,11 +2922,6 @@
   }
   /* (no keyboard to list) */
   .ac .ac-more-keys {
-    display: none;
-  }
-  /* The site's scroll buttons (ScrollToTop.tsx) would sit on the dock's
-     `?`; the tool is the page here. */
-  body:has(.ac-dock) .scroll-buttons {
     display: none;
   }
 }
@@ -3010,9 +3019,9 @@
   justify-content: center;
   width: 38px;
   height: 38px;
-  border: 1px solid color-mix(in srgb, var(--ink) 45%, var(--bg));
+  border: 1px solid color-mix(in srgb, var(--ink) 45%, var(--page));
   border-radius: 50%;
-  background: var(--bg);
+  background: var(--page);
   color: var(--ink);
   font: inherit;
   font-size: 11px;
@@ -3033,14 +3042,14 @@
 }
 .ac-vr.coloured {
   border-color: var(--tint);
-  background: color-mix(in srgb, var(--c) var(--fill), var(--bg));
+  background: color-mix(in srgb, var(--c) var(--ac-fill), var(--page));
   color: var(--tint);
 }
 /* Set aside: a ghost in place, with its place on the stack. */
 .ac-vr.aside {
   border-style: dashed;
-  border-color: var(--faint);
-  color: var(--muted);
+  border-color: var(--ac-faint);
+  color: var(--ink-muted);
 }
 /* Its place on the stack: a small disc sitting on the rim at the top
    right, cut out of the circle by a ring of the background. */
@@ -3052,8 +3061,8 @@
   height: 16px;
   padding: 0 4px;
   border-radius: 8px;
-  background: color-mix(in srgb, var(--ink) 16%, var(--bg));
-  box-shadow: 0 0 0 2px var(--bg);
+  background: color-mix(in srgb, var(--ink) 16%, var(--page));
+  box-shadow: 0 0 0 2px var(--page);
   color: var(--ink);
   font-size: 9px;
   font-style: normal;
@@ -3072,11 +3081,11 @@
 }
 .ac-vr.focused i {
   background: var(--ink);
-  color: var(--bg);
+  color: var(--page);
 }
 .ac-vr.coloured.focused {
   border-color: var(--tint);
-  background: color-mix(in srgb, var(--c) var(--fill-strong), var(--bg));
+  background: color-mix(in srgb, var(--c) var(--ac-fill-strong), var(--page));
   color: var(--ink);
 }
 .ac-vr.coloured.focused i {
@@ -3084,33 +3093,33 @@
 }
 /* Set aside with every register still busy: it may have to spill. */
 .ac-vr.candidate i {
-  background: var(--bg);
-  outline: 1px dashed var(--muted);
+  background: var(--page);
+  outline: 1px dashed var(--ink-muted);
   outline-offset: -1px;
 }
 .ac-vr.spilled {
   border-style: dashed;
-  border-color: var(--err);
-  background: var(--bg);
-  color: var(--err);
+  border-color: var(--ac-err);
+  background: var(--page);
+  color: var(--ac-err);
 }
 .ac-ins em {
   font-style: normal;
-  color: var(--muted);
+  color: var(--ink-muted);
   padding-right: 6px;
 }
 .ac-ins small {
   margin-left: auto;
   font-size: 10px;
-  color: var(--faint);
+  color: var(--ac-faint);
   align-self: center;
 }
 .ac-ins.dead :is(b, code) {
-  color: var(--faint);
+  color: var(--ac-faint);
   text-decoration: line-through;
 }
 .ac-ins.current small {
-  color: var(--bg);
+  color: var(--page);
   opacity: 0.7;
 }
 
@@ -3122,7 +3131,7 @@
 }
 .ac-char-table th {
   padding: 0 12px 0 0;
-  color: var(--muted);
+  color: var(--ink-muted);
   font-weight: 400;
   text-align: left;
   vertical-align: top;
@@ -3136,7 +3145,7 @@
 }
 .ac-char-table code {
   padding: 0 3px;
-  color: var(--muted);
+  color: var(--ink-muted);
   opacity: 0.4;
 }
 .ac-char-table code.prefix {
@@ -3144,7 +3153,7 @@
   opacity: 1;
 }
 .ac-char-table code.exact {
-  color: var(--bg);
+  color: var(--page);
   background: var(--ink);
   opacity: 1;
 }
@@ -3158,6 +3167,8 @@
 
 .ac-more {
   position: relative;
+  /* (its menu over the note and guide windows) */
+  z-index: 40;
   display: flex;
   align-items: center;
 }
@@ -3169,10 +3180,9 @@
 }
 /* The syntax guide: a window as the note's (.ac-window, note-window.tsx),
    over the stage's corner by the editor while the editor or it has focus,
-   or pinned. A soft shadow: it hovers over what it doesn't belong to. */
+   or pinned. */
 .ac-window.guide {
   z-index: 36;
-  box-shadow: 0 6px 24px color-mix(in srgb, #000 18%, transparent);
   transition:
     opacity 0.18s ease-out,
     translate 0.18s ease-out;
@@ -3194,7 +3204,7 @@
   display: flex;
   /* (before the name, so the bar's gap and no more) */
   margin: 0 0 0 -4px;
-  color: var(--faint);
+  color: var(--ac-faint);
 }
 /* (beside the −, not pushed to the end: the − already is) */
 .ac .ac-window-close {
@@ -3223,7 +3233,7 @@
 .ac-guide-text section {
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--hairline);
 }
 .ac-guide-text section:first-child {
   margin-top: 0;
@@ -3241,8 +3251,7 @@
   font-size: 11px;
 }
 .ac-guide-text p code {
-  padding: 0 3px;
-  background: var(--line);
+  color: var(--ink);
 }
 /* Each example names its language in its corner (not selected, so a copy
    is the code): Mini-C on the right way, C on the usual way it rejects.
@@ -3251,12 +3260,12 @@
 .ac-guide-ex {
   position: relative;
   margin-top: 6px;
-  border-left: 2px solid var(--ok);
-  background: color-mix(in srgb, var(--line) 45%, var(--bg));
+  border-left: 2px solid var(--ac-ok);
+  background: color-mix(in srgb, var(--hairline) 45%, var(--page));
 }
 .ac-guide-ex.bad {
   margin-top: 4px;
-  border-left-color: var(--err);
+  border-left-color: var(--ac-err);
 }
 .ac-guide-ex::before {
   content: attr(data-label);
@@ -3265,14 +3274,14 @@
   right: 7px;
   z-index: 1;
   padding-left: 4px;
-  background: color-mix(in srgb, var(--line) 45%, var(--bg));
-  font-family: 'Notes Prose', var(--font-mono);
+  background: color-mix(in srgb, var(--hairline) 45%, var(--page));
+  font-family: var(--font-sans);
   font-size: 10px;
-  color: color-mix(in srgb, var(--ok) 70%, var(--muted));
+  color: color-mix(in srgb, var(--ac-ok) 70%, var(--ink-muted));
   user-select: none;
 }
 .ac-guide-ex.bad::before {
-  color: color-mix(in srgb, var(--err) 70%, var(--muted));
+  color: color-mix(in srgb, var(--ac-err) 70%, var(--ink-muted));
 }
 .ac-guide-text pre {
   margin: 0;
@@ -3284,7 +3293,7 @@
 }
 /* A comment, muted as in an editor. */
 .ac-guide-text pre .cm {
-  color: var(--faint);
+  color: var(--ac-faint);
 }
 /* (not the inline code's chip, which the note's code takes) */
 .ac .ac-guide-text pre code {
@@ -3297,8 +3306,10 @@
   bottom: calc(100% + 6px);
   z-index: 5;
   padding: 4px 0;
-  border: 1px solid var(--line);
-  background: var(--bg);
+  border: 1px solid var(--hairline);
+  background: var(--control);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
 }
 .ac-keys .ac-more-menu button {
   gap: 8px;
@@ -3314,7 +3325,7 @@
   gap: 4px 10px;
   margin: 4px 0 0;
   padding: 8px 12px 4px;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--hairline);
   white-space: nowrap;
 }
 .ac-more-keys dt {
@@ -3341,8 +3352,8 @@
 .ac-window-grip:focus-visible {
   outline: none;
   box-shadow:
-    inset -1px 0 0 var(--muted),
-    inset 0 -1px 0 var(--muted);
+    inset -1px 0 0 var(--ink-muted),
+    inset 0 -1px 0 var(--ink-muted);
 }
 /* The other edges and corners that size it: thin strips along the border,
    over the bar's edge too, as a desktop window's. */
@@ -3408,10 +3419,10 @@
    child the step's rule holds to a type, in the colour of whether its
    type held. */
 .ac-edges path.assert.ok {
-  stroke: var(--ok);
+  stroke: var(--ac-ok);
 }
 .ac-edges path.assert.bad {
-  stroke: var(--err);
+  stroke: var(--ac-err);
 }
 /* A token sliding into the node that absorbs it (a field's name into
    `.value`) fades out over that node: the pointer is the node's. */
@@ -3434,9 +3445,9 @@
   width: 100%;
   height: 96px;
   margin-top: 4px;
-  border: 1px dashed var(--line);
+  border: 1px dashed var(--hairline);
   background: none;
-  color: var(--faint);
+  color: var(--ac-faint);
   font: inherit;
   cursor: pointer;
 }
@@ -3467,8 +3478,8 @@
   gap: 2px;
   margin-top: 6px;
   padding: 4px 8px;
-  border-left: 2px solid var(--line);
-  color: var(--muted);
+  border-left: 2px solid var(--hairline);
+  color: var(--ink-muted);
 }
 .ac .ac-ast-note code {
   justify-self: start;

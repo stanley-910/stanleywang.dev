@@ -1,0 +1,89 @@
+/*
+  The home page's meadow (components/garden). The canvas fills the first
+  screen behind the top bar; the bio sits on its ground, 128px off the
+  bottom like the prototype, and the rest of home follows on page colour.
+*/
+
+/* The top bar's height (shell.css: its padding plus a 20px line), so the
+   hero ends where the first screen does. */
+.garden-home {
+  --header-block: 116px;
+}
+
+@media (max-width: 480px) {
+  .garden-home {
+    --header-block: 70px;
+  }
+}
+
+.garden-canvas {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 0;
+  display: block;
+  width: 100%;
+  height: 100vh;
+  height: 100svh;
+  cursor: crosshair;
+  /* A sideways swipe scrubs the hour; it mustn't page the browser back. */
+  overscroll-behavior-x: none;
+}
+
+/* Over the canvas, the top bar and the hero stay on top. */
+.site-header {
+  position: relative;
+  z-index: 1;
+}
+
+/* On home the bar sits on the sky; mount.ts picks the ink that reads best
+   against it, whatever the page theme. */
+:root[data-sky='dark'] .site-header {
+  /* The hour's toned cream (mount.ts), as on the bio. */
+  --ink: var(--garden-ink, #e4e2da);
+  --ink-muted: var(--garden-ink-muted, #b4b2aa);
+  --glass: #10141c;
+}
+
+:root[data-sky='light'] .site-header {
+  --ink: #1b1b19;
+  --ink-muted: #3b3a37;
+  --glass: #ebeae6;
+}
+
+/* The home text sits on the scene's dark ground at every hour, so it keeps
+   the night page's colours; its hover cards take the hour's panel. */
+.garden-hero {
+  --page: var(--page-dark);
+  --ink: var(--garden-ink, #e4e2da);
+  --ink-muted: var(--garden-ink-muted, #9d9b94);
+  --hairline: #6a6964;
+  /* mount.ts tints it with the hour. */
+  --surface: var(--garden-panel, #242422);
+  --focus: var(--ink);
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  min-height: calc(100vh - var(--header-block));
+  min-height: calc(100svh - var(--header-block));
+  padding-bottom: 128px;
+  color: var(--ink);
+  pointer-events: none;
+}
+
+.garden-hero a,
+.garden-hero button {
+  pointer-events: auto;
+}
+
+.garden-hero .bio {
+  max-width: var(--measure);
+}
+
+@media (max-height: 720px), (max-width: 760px) {
+  .garden-hero {
+    padding-bottom: 48px;
+  }
+}

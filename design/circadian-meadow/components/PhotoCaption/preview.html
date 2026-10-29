@@ -1,0 +1,30 @@
+<!-- @dsCard group="Site" height=420 subtitle="Caption pill, closed and open, over placeholder frames" -->
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>PhotoCaption</title>
+<style>
+  body { margin: 0; }
+  .row { display: flex; flex-wrap: wrap; gap: 1px; background: var(--hairline); }
+  .frame { flex: 1 1 360px; display: flex; gap: var(--space-3); background: var(--page); padding: var(--space-4) var(--gutter); }
+  .photo { position: relative; flex: 1; aspect-ratio: 1463 / 2075; max-height: 340px; background: repeating-linear-gradient(135deg, transparent 0 11px, color-mix(in srgb, var(--hairline) 22%, transparent) 11px 12px), var(--surface); }
+  .cap { position: absolute; left: var(--space-1); right: var(--space-1); bottom: var(--space-1); display: flex; flex-direction: column; align-items: flex-start; gap: 6px; font: 12px/16px var(--font-mono); color: var(--caption-ink); }
+  .pill { display: inline-flex; flex-wrap: wrap; gap: 0 0.75em; padding: 4px 10px; border-radius: var(--radius-pill); background: var(--caption-fill); backdrop-filter: blur(6px); }
+  .muted { color: var(--caption-ink-muted); }
+  dl { display: grid; grid-template-columns: auto 1fr; gap: 2px var(--space-2); margin: 0; padding: var(--space-1) 10px; border-radius: var(--radius-card); background: var(--caption-fill); backdrop-filter: blur(6px); }
+  dt { color: var(--caption-ink-muted); } dd { margin: 0; }
+</style>
+</head>
+<body>
+<div class="row">
+  <div class="frame" data-theme="light">
+    <div class="photo"><div class="cap"><span class="pill"><span>Tokyo, Japan</span><span class="muted">Portra 400</span><span class="muted">2026</span></span></div></div>
+    <div class="photo"><div class="cap"><dl><dt>Date</dt><dd>Oct 9, 2026</dd><dt>Camera</dt><dd>Olympus Pen EE-3</dd><dt>Lens</dt><dd>D.Zuiko 28mm f/3.5</dd><dt>Film</dt><dd>Kodak Portra 400</dd></dl><span class="pill"><span>Tokyo, Japan</span><span class="muted">Portra 400</span><span class="muted">2026</span></span></div></div>
+  </div>
+  <div class="frame" data-theme="dark" style="flex: 0 1 375px; box-sizing: border-box">
+    <div class="photo"><div class="cap"><span class="pill"><span>Tokyo, Japan</span><span class="muted">Portra 400</span><span class="muted">2026</span></span></div></div>
+  </div>
+</div>
+</body>
+</html>

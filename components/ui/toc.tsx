@@ -1,229 +1,158 @@
 'use client'
 import GithubSlugger from 'github-slugger'
-import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
-import { BLOG_POSTS } from '@/app/data'
 import '@/app/styles/toc.css'
 
-interface TocItem {
-  level: number
-  text: string
+// A post's table of contents (design/circadian-meadow/components/
+// TableOfContents): a rail in the left gutter from 1280px, and a closed
+// "contents" disclosure in the reading column below that. Opt in per post
+// with <TOC /> in its MDX.
+
+type Heading = {
   slug: string
+  text: string
+  /** 0 for the post's shallowest heading level, at most 2. */
+  depth: number
 }
 
-export type TocVariant = 'classic' | 'staffline' | 'vim'
+type Node = Heading & { children: Node[] }
 
-const variantByTag: Record<string, TocVariant> = {
-  jazz: 'staffline',
-  music: 'staffline',
-  essay: 'staffline',
-  art: 'staffline',
-  ml: 'vim',
-  'machine learning': 'vim',
-  dev: 'vim',
-  code: 'vim',
-  algorithms: 'vim',
-  rnns: 'vim',
+/** The heading counts as current once its top is above this share of the window. */
+const CURRENT_LINE = 0.25
+
+// The post body's section headings: not the header's title, nor anything
+// marked out (the footnotes).
+function readHeadings(): Heading[] {
+  const slugger = new GithubSlugger()
+  const els = [
+    ...document.querySelectorAll<HTMLElement>(
+      'main.post :is(h1, h2, h3, h4):not([data-toc-exclude])',
+    ),
+  ]
+  const levels = els.map((el) => Number(el.tagName[1]))
+  const top = Math.min(...levels)
+  return els.map((el, i) => {
+    // Clickable headers end in a "#"; it isn't part of the title.
+    const text = (el.textContent ?? '').replace(/\s*#\s*$/, '').trim()
+    if (!el.id) el.id = slugger.slug(text)
+    return { slug: el.id, text, depth: Math.min(2, levels[i] - top) }
+  })
 }
 
-function resolveVariantFromTags(tags: string[]): TocVariant {
-  for (const tag of tags) {
-    const mapped = variantByTag[tag.toLowerCase()]
-    if (mapped) return mapped
+// Nests the flat list so each <ol> mirrors a heading level.
+function nest(headings: Heading[]): Node[] {
+  const root: Node[] = []
+  const stack: Node[] = []
+  for (const h of headings) {
+    const node: Node = { ...h, children: [] }
+    while (stack.length && stack[stack.length - 1].depth >= h.depth) stack.pop()
+    ;(stack.length ? stack[stack.length - 1].children : root).push(node)
+    stack.push(node)
   }
-  return 'classic'
+  return root
 }
 
-export function TableOfContents({
-  title,
-  variant,
-}: {
-  title?: string
-  variant?: TocVariant
-}) {
-  const pathname = usePathname()
-  const [headings, setHeadings] = useState<TocItem[]>([])
-  const [minLevel, setMinLevel] = useState(1)
-  const [activeId, setActiveId] = useState<string>('')
-  const [scrollProgress, setScrollProgress] = useState(0)
+export function TableOfContents() {
+  const [headings, setHeadings] = useState<Heading[]>([])
+  const [current, setCurrent] = useState('')
+  const railRef = useRef<HTMLDivElement>(null)
 
-  const post = BLOG_POSTS.find((p) => p.link === pathname)
-  const resolvedVariant: TocVariant =
-    variant ?? resolveVariantFromTags(post?.tags ?? [])
+  useEffect(() => setHeadings(readHeadings()), [])
 
-  const totalMinutes = post?.readingTime
-    ? parseInt(post.readingTime, 10) || 0
-    : 0
-  const minutesLeft = Math.max(
-    0,
-    Math.ceil(totalMinutes * (1 - scrollProgress)),
-  )
-
-  // Setup headings
+  // The current section: the last heading above the line, or the last of
+  // all at the page's foot. Read once per frame while scrolling.
   useEffect(() => {
-    const slugger = new GithubSlugger()
-    const headingElements = document.querySelectorAll('h1, h2, h3, h4')
-
-    const items: TocItem[] = Array.from(headingElements)
-      .filter((heading) => !heading.hasAttribute('data-toc-exclude'))
-      .map((heading) => {
-        const level = parseInt(heading.tagName[1])
-        // Get text content and remove the hash symbol that appears in clickable headers
-        const rawText = heading.textContent || ''
-        const text = rawText.replace(/\s*#\s*$/, '').trim() // Remove trailing hash symbol with optional whitespace
-        const slug = slugger.slug(text)
-
-        if (!heading.id) {
-          heading.id = slug
-        }
-
-        return { level, text, slug }
-      })
-
-    if (items.length > 0) {
-      const minHeadingLevel = Math.min(...items.map((item) => item.level))
-      setMinLevel(minHeadingLevel)
-      setHeadings(items)
-    }
-  }, [])
-
-  // Setup intersection observer for active state
-  useEffect(() => {
-    if (headings.length === 0) return
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            if (window.scrollY < 10) {
-              setActiveId('')
-            } else {
-              setActiveId(entry.target.id)
-            }
-          }
-        })
-      },
-      {
-        rootMargin: '-3% 0px -92% 0px',
-      },
-    )
-
-    const headingElements = document.querySelectorAll('h1, h2, h3, h4')
-    headingElements.forEach((heading) => {
-      if (heading.id) {
-        observer.observe(heading)
-      }
-    })
-
-    return () => observer.disconnect()
-  }, [headings])
-
-  // Track scroll progress for the vim status bar
-  useEffect(() => {
-    if (resolvedVariant !== 'vim') return
+    if (!headings.length) return
+    const els = headings
+      .map((h) => document.getElementById(h.slug))
+      .filter((el): el is HTMLElement => el !== null)
+    let frame = 0
     const update = () => {
-      const max = document.documentElement.scrollHeight - window.innerHeight
-      setScrollProgress(max > 0 ? Math.min(1, window.scrollY / max) : 0)
+      frame = 0
+      const atFoot =
+        window.innerHeight + window.scrollY >=
+        document.documentElement.scrollHeight - 2
+      if (atFoot) return setCurrent(els[els.length - 1].id)
+      const line = window.innerHeight * CURRENT_LINE
+      let id = ''
+      for (const el of els) {
+        if (el.getBoundingClientRect().top <= line) id = el.id
+        else break
+      }
+      setCurrent(id)
+    }
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(update)
     }
     update()
-    window.addEventListener('scroll', update, { passive: true })
-    window.addEventListener('resize', update)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll)
     return () => {
-      window.removeEventListener('scroll', update)
-      window.removeEventListener('resize', update)
+      cancelAnimationFrame(frame)
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
     }
-  }, [resolvedVariant])
+  }, [headings])
 
-  const scrollToHeading = (slug: string) => {
-    const element = document.getElementById(slug)
-    if (element) {
-      const scrollMargin = Math.round(window.innerHeight * 0.03)
-      element.style.scrollMarginTop = `${scrollMargin}px`
+  // Keep the current row in view inside the rail, without scrolling the page.
+  useEffect(() => {
+    const rail = railRef.current
+    const row = rail?.querySelector<HTMLElement>('[aria-current]')
+    if (!rail || !row) return
+    const top = row.offsetTop - rail.offsetTop
+    if (top < rail.scrollTop) rail.scrollTop = top
+    else if (top + row.offsetHeight > rail.scrollTop + rail.clientHeight)
+      rail.scrollTop = top + row.offsetHeight - rail.clientHeight
+  }, [current])
 
-      element.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-      })
+  if (!headings.length) return null
 
-      // Reset scroll margin after animation
-      setTimeout(() => {
-        element.style.scrollMarginTop = ''
-      }, 1000)
-    }
+  const jump = (e: React.MouseEvent, slug: string) => {
+    const el = document.getElementById(slug)
+    if (!el) return
+    e.preventDefault()
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)')
+    el.scrollIntoView({
+      behavior: reduced.matches ? 'auto' : 'smooth',
+      block: 'start',
+    })
+    history.replaceState(null, '', `#${slug}`)
+    setCurrent(slug)
+    el.tabIndex = -1
+    el.focus({ preventScroll: true })
   }
 
-  const getIndentClass = (level: number) => {
-    const relativeLevel = level - minLevel
-    switch (relativeLevel) {
-      case 0:
-        return 'toc-level-0'
-      case 1:
-        return 'toc-level-1'
-      case 2:
-        return 'toc-level-2'
-      case 3:
-        return 'toc-level-3'
-      default:
-        return 'toc-level-0'
-    }
-  }
+  const list = (nodes: Node[]) => (
+    <ol>
+      {nodes.map((n) => (
+        <li key={n.slug}>
+          <a
+            href={`#${n.slug}`}
+            aria-current={current === n.slug ? 'location' : undefined}
+            style={{ '--depth': n.depth } as React.CSSProperties}
+            onClick={(e) => jump(e, n.slug)}
+          >
+            {n.text}
+          </a>
+          {n.children.length > 0 && list(n.children)}
+        </li>
+      ))}
+    </ol>
+  )
 
-  if (headings.length === 0) {
-    return null
-  }
-
-  const activeIndex = headings.findIndex((h) => h.slug === activeId)
-
-  const items = headings.map((heading, index) => (
-    <li key={index} className={getIndentClass(heading.level)}>
-      <a
-        href={`#${heading.slug}`}
-        onClick={(e) => {
-          e.preventDefault()
-          scrollToHeading(heading.slug)
-        }}
-        className={activeId === heading.slug ? 'active' : ''}
-      >
-        {heading.text}
-      </a>
-    </li>
-  ))
-
-  const variantTitle =
-    resolvedVariant === 'vim'
-      ? ':TOC'
-      : resolvedVariant === 'staffline'
-        ? '§ contents'
-        : title
+  const tree = nest(headings)
 
   return (
-    <nav
-      className={`table-of-contents toc-variant-${resolvedVariant} toc-always-on mounted ml-6`}
-      data-next-scroll-boundary
-    >
-      {variantTitle && (
-        <div className="flex items-center pt-2">
-          <span className="toc-title mb-2 text-sm font-bold">
-            {variantTitle}
-          </span>
-        </div>
-      )}
-      {resolvedVariant === 'vim' ? <ol>{items}</ol> : <ul>{items}</ul>}
-      {resolvedVariant === 'vim' && (
-        <div className="status">
-          <span>
-            {totalMinutes > 0 ? (
-              <b>~{minutesLeft} min left</b>
-            ) : (
-              <b>─ NORMAL ─</b>
-            )}
-          </span>
-          <span>
-            {Math.max(0, activeIndex) + 1}/{headings.length}
-          </span>
-        </div>
-      )}
+    <nav className="toc" aria-label="Contents" data-toc-exclude>
+      <div ref={railRef} className="toc-rail">
+        <p className="toc-label">contents</p>
+        {list(tree)}
+      </div>
+      <details className="toc-inline">
+        <summary className="toc-label">contents</summary>
+        {list(tree)}
+      </details>
     </nav>
   )
 }

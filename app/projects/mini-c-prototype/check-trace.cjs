@@ -92,22 +92,26 @@ console.log(
 )
 
 // The sketch's tree must match the real compiler's ASTPrinter output for the presets.
-const refSource = fs.readFileSync(path.join(__dirname, 'reference.ts'), 'utf8')
-const refCompiled = ts.transpileModule(refSource, {
-  compilerOptions: {
-    module: ts.ModuleKind.CommonJS,
-    target: ts.ScriptTarget.ES2020,
-  },
-}).outputText
-// reference.ts imports the compiler-emitted trace JSON; resolve those here.
-const refBox = {
-  exports: {},
-  require: (m) => ({
-    default: JSON.parse(fs.readFileSync(path.join(__dirname, m), 'utf8')),
-  }),
-}
-vm.runInNewContext(refCompiled, refBox)
-for (const r of refBox.exports.REFERENCES) {
+// Each example with its trace (reference.ts loads all but the first on
+// demand); presets.json must be what presets.cjs writes from the traces.
+const { presets } = require('./reference/presets.cjs')
+assert.deepEqual(
+  JSON.parse(
+    fs.readFileSync(path.join(__dirname, 'reference/presets.json'), 'utf8'),
+  ),
+  presets(),
+  'reference/presets.json is stale: node app/projects/mini-c-prototype/reference/presets.cjs',
+)
+const REFERENCES = presets().map((p) => {
+  const trace = JSON.parse(
+    fs.readFileSync(
+      path.join(__dirname, 'reference', `${p.file}.trace.json`),
+      'utf8',
+    ),
+  )
+  return { ...p, trace, ast: trace.ast ?? '' }
+})
+for (const r of REFERENCES) {
   // every preset's frames are self-consistent with its own token list
   for (const token of r.trace.tokens)
     assert.equal(r.trace.text.slice(token.start, token.end), token.text, r.name)

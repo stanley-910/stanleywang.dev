@@ -8,53 +8,23 @@ interface PostsTableProps {
   posts: BlogPost[]
 }
 
+// Every post in one list, newest first, each dated with its year.
 export default function PostsTable({ posts }: PostsTableProps) {
-  // Group posts by year
-  const postsByYear = posts.reduce(
-    (acc, post) => {
-      const year = new Date(post.date).getFullYear().toString()
-      if (!acc[year]) {
-        acc[year] = []
-      }
-      acc[year].push(post)
-      return acc
-    },
-    {} as Record<string, BlogPost[]>,
-  )
-
-  // Sort years in descending order
-  const sortedYears = Object.keys(postsByYear).sort(
-    (a, b) => parseInt(b) - parseInt(a),
+  const sorted = [...posts].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
   )
 
   return (
-    <div className="posts-container">
-      {sortedYears.map((year) => (
-        <div key={year} className="posts-grid">
-          {/* Year column */}
-          <div className="year-column font-mono text-[0.9em]">{year}</div>
-
-          {/* Posts column */}
-          <div className="posts-column">
-            {postsByYear[year]
-              .sort(
-                (a, b) =>
-                  new Date(b.date).getTime() - new Date(a.date).getTime(),
-              )
-              .map((post) => (
-                <Link href={post.link} key={post.uid} className="post-link">
-                  <div className="post-row">
-                    <p className="post-title font-serif text-[1em]">
-                      {post.title}
-                    </p>
-                    <div className="post-date font-mono text-[0.9em]">
-                      {format(new Date(post.date), 'MMMM dd')}
-                    </div>
-                  </div>
-                </Link>
-              ))}
+    <div className="posts-container posts-list">
+      {sorted.map((post) => (
+        <Link href={post.link} key={post.uid} className="post-link">
+          <div className="post-row">
+            <p className="post-title">{post.title}</p>
+            <div className="post-date font-mono text-[0.9em]">
+              {format(new Date(post.date), 'MMM d, yyyy')}
+            </div>
           </div>
-        </div>
+        </Link>
       ))}
     </div>
   )

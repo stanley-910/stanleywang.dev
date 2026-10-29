@@ -43,7 +43,11 @@ function load(file) {
   modules.set(absolute, box.exports)
   return box.exports
 }
-const { REFERENCES } = load('reference.ts')
+const { presets } = require(path.join(PAGE, 'reference/presets.cjs'))
+const REFERENCES = presets(path.join(PAGE, 'reference')).map((p) => ({
+  ...p,
+  trace: require(path.join(PAGE, 'reference', `${p.file}.trace.json`)),
+}))
 const { scopesOf } = load('scopes.ts')
 const { treePositions } = load('trace.ts')
 const { packTray, treeRows } = load('stage-layout.ts')

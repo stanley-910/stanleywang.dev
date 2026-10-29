@@ -146,3 +146,22 @@ html {
     animation: none;
   }
 }
+
+/* Circadian Meadow: every page is plain `page` with `ink` text. */
+body {
+  background: var(--page);
+  color: var(--ink);
+  /* Across the light/dark switch the page glides to the new colour while
+     the text is faded out (time-control.css), rather than snapping. */
+  transition: background-color 200ms var(--ease-calm);
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+}
+
+/* Layered, so a component's own outline utilities still win. */
+@layer base {
+  :focus-visible {
+    outline: 1px solid var(--focus);
+    outline-offset: 3px;
+  }
+}

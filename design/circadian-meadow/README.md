@@ -19,7 +19,7 @@ A procedurally grown flower meadow printed in monospace glyphs, behind Stanley W
 ## Content
 
 - The home page carries no name or heading. The bio opens the page, in Stanley's words, exactly as written, with a lowercase `github / linkedin` row under it.
-- Sentence case everywhere. Control labels are one word: Time, Wind, Regrow, Hide. Hints are a single italic sentence: "Click the meadow to sow."
+- Sentence case everywhere, except the top bar's lowercase words. Control labels are one word: Time, Wind, Regrow, Hide. Hints are a single sentence in `meta` mono: "Click the meadow to sow."
 - No marketing voice and no emoji. The garden is the flourish; the words stay plain.
 
 ## Colour
@@ -42,6 +42,8 @@ Rules:
 
 ## Home and the veil
 
+> Ticket 2 (ReadingTime, spec only) proposes replacing the veil with a 150ms fade. Until it's built and approved, this section describes the prototype.
+
 The home page is the meadow, edge to edge, in full colour. There is no mount, frame or edge fade on it.
 
 - Leaving home, the page colour closes over the scene from the edges in: the sides and top first, the middle last, eased over `veil-duration` (0.9s). Its leading band is soft, `veil-edge` (26%) wide, so the scene dissolves rather than wipes. The bio fades out first, in 0.2s.
@@ -53,13 +55,15 @@ The home page is the meadow, edge to edge, in full colour. There is no mount, fr
 
 ## Type
 
-- `body` (Instrument Sans 15px / 24px, growing to 3vh) for the bio; `link` (14px) for the link row; `control` (12px) for the settings panel.
-- `hint` (Bodoni Moda italic 13px) for instructions and specimen captions, in `ink-muted`. It is the only use of the display face.
-- `glyph` (IBM Plex Mono 500) is the garden's type. Its size follows the cell: 0.78 × cell height, with the cell `cell-width` wide and `cell-aspect` tall.
+Two faces, nothing else: **Geist** (variable, 100–900) for words and **Geist Mono** (variable) for everything that is a label, a date, a link row or a glyph. No serif, no italic. On the site they load through `next/font` and are named `--font-sans` and `--font-mono`.
+
+- Sans: `body` (15px / 24px; the home bio grows to 3vh) for prose and descriptions; `title` (18px, 500) for the flagship project's name only; `small` (13px) for hover cards; `control` (12px) for the settings panel. Headings are `body` at weight 500.
+- Mono: `nav` (14px) for the top bar; `link` (13px) for quiet link rows; `meta` (12px) for dates, kinds, captions and hints, in `ink-muted`; `glyph` (500) for the garden, sized to the cell: 0.78 × cell height, with the cell `cell-width` wide and `cell-aspect` tall.
+- Weight is the only emphasis: 400 for text, 500 for names and headings, 600 for a quiet link on hover. Mono for anything whose weight changes, because Geist Mono keeps every weight the same width.
 
 ## Layout
 
-Placed like the koi pond page: a left gutter of 20vw from 1024px up (`gutter`, 24px, below that), the bio `hero-bottom` (128px) above the foot (48px when the window is under 720px tall), at most `measure` (54rem) wide. The settings panel floats top left, inset `space-3`. Nothing is rounded (`radius-none`) except slider thumbs and dots.
+Placed like the koi pond page: a left gutter of 20vw from 1024px up (`gutter`, 24px, below that), the bio `hero-bottom` (128px) above the foot (48px when the window is under 720px tall), at most `measure` (54rem) wide. The settings panel floats top left, inset `space-3`. Everything in the flow is square (`radius-none`): panels, buttons, images, plates. Rounded corners are for things that float over something else: `radius-card` (6px) on hover cards and caption details, `radius-pill` on pills over media, `radius-hair` on slider thumbs, `radius-dot` on dots. Shadow is for floating cards only (`shadow-card`).
 
 ## The garden's glyphs
 
@@ -105,10 +109,15 @@ There is no logo or icon set. The name, where it appears outside the home page, 
 
 Every page other than home is plain `page` with `ink` text. The meadow is never a background there. These rules hold until a component in `components/` says otherwise.
 
-- **Header:** the name in plain `ink`, `body` type, no logo. Navigation is a short row of lowercase text links in `ink-muted`, the current page in `ink`. No bar, border or background; it sits on `page`.
-- **Project pages and blog posts:** one column at `measure`, left-aligned to the same 20vw gutter as the home bio, so moving between pages doesn't shift the reading line. Headings in `body` weight 500, not the display face.
-- **Code and math:** monospace is IBM Plex Mono, the garden's own face. Code blocks are a `hairline` rule, not a filled box.
-- **Images:** full measure, no radius, no shadow. Captions in `hint`.
+- **Top bar:** SiteHeader. One row of lowercase mono words (`stanley projects film writing music`) and the sun/moon, current page in `ink`, the rest `ink-muted`. No bar, border or background.
+- **Links:** LinkStyle. In prose, `ink` with a `hairline` underline; quiet rows (socials) are mono `ink-muted`, no underline, heavier on hover.
+- **Experience:** ExperienceCard. Company names in the bio open a small card with the role.
+- **Projects:** ProjectsPage and ProjectCard. One ledger, the compiler first.
+- **Photos:** PhotoCaption, on `/film`. A pill over each photo's corner.
+- **Time off home:** ReadingTime (spec only). Reading colours drift with the hour, a slider under the sun/moon, and a 150ms exit from home in place of the veil.
+- **Project pages and blog posts:** one column, its text at most `measure-read` (40rem), left-aligned to the same gutter as the home bio, so moving between pages doesn't shift the reading line. Headings in `body` weight 500.
+- **Code and math:** Geist Mono. Code blocks are a `hairline` rule, not a filled box; interactive code (the compiler snippet) sits on `surface`.
+- **Images:** full measure, no radius, no shadow, aspect ratio reserved. Captions in `meta`.
 - **Glyph accents:** a page may borrow one small piece of the garden (a single specimen, a divider of ramp glyphs), never a full scene.
 
-Components still to design: SiteHeader, ProjectPage, PostLayout, ProseBlock, CodeBlock, Figure, Divider. The `designer` agent owns them; see `design/README.md`.
+Components still to design: ProjectPage, PostLayout, ProseBlock, CodeBlock, Figure, Divider. The `designer` agent owns them; see `design/README.md`.

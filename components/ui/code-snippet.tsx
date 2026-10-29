@@ -20,14 +20,14 @@ export function CodeSnippet({
     : `${snippet.href}?example=${encodeURIComponent(snippet.label)}`
 
   return (
-    <div className="overflow-hidden rounded-xl bg-[#f7f7f8] font-mono text-[12px] text-zinc-900 ring-1 ring-[#dcdce0] ring-inset dark:bg-[#09090b] dark:text-zinc-200 dark:ring-[#27272a]">
-      <div className="flex h-7 items-center justify-between border-b border-[#dcdce0] px-2.5 text-zinc-500 dark:border-[#27272a] dark:text-zinc-400">
-        <span className="text-zinc-900 dark:text-zinc-200">{snippet.file}</span>
+    <div className="overflow-hidden border border-[color:color-mix(in_srgb,var(--hairline)_45%,transparent)] bg-[color:var(--surface)] font-mono text-[12px] text-[color:var(--ink)]">
+      <div className="flex h-7 items-center justify-between border-b border-[color:color-mix(in_srgb,var(--hairline)_45%,transparent)] px-2.5 text-[color:var(--ink-muted)]">
+        <span className="text-[color:var(--ink)]">{snippet.file}</span>
         <span>{edited ? 'edited' : snippet.label}</span>
       </div>
       <div className="grid grid-cols-[34px_1fr] overflow-x-auto py-2 leading-[19px]">
         <div
-          className="pr-2 text-right text-[#8a8a94] select-none dark:text-[#52525b]"
+          className="pr-2 text-right text-[color:var(--hairline)] select-none"
           aria-hidden
         >
           {Array.from({ length: lineCount }, (_, i) => (
@@ -52,14 +52,14 @@ export function CodeSnippet({
           autoCapitalize="off"
           autoCorrect="off"
           aria-label={`Edit ${snippet.file}`}
-          className="block w-full resize-none overflow-hidden bg-transparent pr-2.5 leading-[19px] whitespace-pre caret-zinc-900 outline-none dark:caret-zinc-200"
+          className="block w-full resize-none overflow-hidden bg-transparent pr-2.5 leading-[19px] whitespace-pre caret-[color:var(--ink)] outline-none"
         />
       </div>
-      <div className="flex h-8 items-center justify-end border-t border-[#dcdce0] px-2.5 dark:border-[#27272a]">
+      <div className="flex h-8 items-center justify-end border-t border-[color:color-mix(in_srgb,var(--hairline)_45%,transparent)] px-2.5">
         <Link
           href={href}
           prefetch={false}
-          className="bg-zinc-900 px-1 py-px text-[#f7f7f8] transition-opacity hover:opacity-80 dark:bg-zinc-200 dark:text-[#09090b]"
+          className="bg-[color:var(--ink)] px-1 py-px text-[color:var(--page)] transition-opacity hover:opacity-80"
         >
           compile
         </Link>

@@ -1,0 +1,123 @@
+/* ExperienceCard: design/circadian-meadow/components/ExperienceCard. */
+
+.xp {
+  position: relative;
+}
+
+.xp-card {
+  position: absolute;
+  z-index: 30;
+  left: 0;
+  bottom: calc(100% + var(--space-1));
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: min(23rem, calc(100vw - 24px));
+  padding: var(--space-2);
+  border: 1px solid color-mix(in srgb, var(--hairline) 55%, transparent);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-small);
+  font-weight: var(--weight-body);
+  line-height: 1.45;
+  text-align: left;
+  white-space: normal;
+  visibility: hidden;
+  opacity: 0;
+  transform: translate(var(--shift-x, 0px), 4px);
+  transition:
+    opacity var(--duration-card) var(--ease-calm),
+    transform var(--duration-card) var(--ease-calm),
+    visibility 0s linear var(--duration-card);
+}
+
+.xp-card[data-below] {
+  top: calc(100% + var(--space-1));
+  bottom: auto;
+  transform: translate(var(--shift-x, 0px), -4px);
+}
+
+.xp-card[data-open] {
+  visibility: visible;
+  opacity: 1;
+  transform: translate(var(--shift-x, 0px), 0);
+  transition:
+    opacity var(--duration-card) var(--ease-calm),
+    transform var(--duration-card) var(--ease-calm),
+    visibility 0s;
+}
+
+/* The company's mark beside its name, at the name's size: a mask filled
+   with the card's ink, so every logo is one colour and follows the hour. */
+.xp-logo {
+  flex: none;
+  width: 1.25em;
+  height: 1.25em;
+  background: var(--ink);
+  -webkit-mask: var(--logo) center / contain no-repeat;
+  mask: var(--logo) center / contain no-repeat;
+}
+
+.xp-body {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.xp-top {
+  display: flex;
+  /* Centre, not baseline: the logo leading the name would set its
+     baseline at the logo's foot and drop the date below the name. */
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.xp-company {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-weight: var(--weight-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.xp-when {
+  flex: none;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+}
+
+.xp-role {
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  line-height: var(--leading-meta);
+}
+
+.xp-desc {
+  margin-top: 2px;
+  color: var(--ink);
+}
+
+.xp-more {
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xp-card,
+  .xp-card[data-below],
+  .xp-card[data-open] {
+    transform: translate(var(--shift-x, 0px), 0);
+    transition: none;
+  }
+}
