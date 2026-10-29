@@ -137,6 +137,11 @@ export abstract class Plant {
     return mix(c, p.haze, this.haze)
   }
 
+  /** Stems take half the haze, between heads and leaves, so a far bloom never floats free of its stalk. */
+  protected stalked(c: Rgb, p: Palette): Rgb {
+    return mix(c, p.haze, this.haze * 0.5)
+  }
+
   /** Flower heads take only a little of the distance haze, so far blooms keep their colour. */
   protected bloomed(c: Rgb, p: Palette): Rgb {
     return mix(mix(c, p.haze, this.haze * 0.35), p.ground, this.dim)
@@ -398,7 +403,7 @@ export class Poppy extends Plant {
     const ph = this.phase()
     const s = this.stem
     const wither = ph.wither
-    const stemColor = this.hazed(this.withered(p.stem, wither, p), p)
+    const stemColor = this.stalked(this.withered(p.stem, wither, p), p)
     const leafColor = this.hazed(
       this.withered(mix(p.grassDark, p.stem, 0.45), wither, p),
       p,
@@ -759,7 +764,7 @@ export class Cosmos extends Plant {
   draw(r: Raster, env: Env) {
     const p = env.palette
     const wither = smoothstep(this.cycle - 8, this.cycle, this.age)
-    const stemColor = this.hazed(
+    const stemColor = this.stalked(
       this.withered(mix(p.stem, p.grassDark, 0.2), wither, p),
       p,
     )
@@ -983,7 +988,7 @@ export class Lace extends Plant {
     const p = env.palette
     const ph = this.phase()
     const s = this.stem
-    const stemColor = this.hazed(
+    const stemColor = this.stalked(
       this.withered(mix(p.stem, p.grassDark, 0.15), ph.wither, p),
       p,
     )
@@ -1230,7 +1235,7 @@ export class Dandelion extends Plant {
     const p = env.palette
     const ph = this.phase()
     const s = this.stem
-    const stemColor = this.hazed(
+    const stemColor = this.stalked(
       this.withered(mix(p.stem, p.grassLight, 0.15), ph.wither, p),
       p,
     )
