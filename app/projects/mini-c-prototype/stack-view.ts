@@ -713,7 +713,7 @@ function build(
   const rows: StackRow[] = []
   const rowOf = new Map<number, number>()
   const addRange = (hi: number, lo: number, data: boolean) => {
-    for (let w = hi; w >= lo;) {
+    for (let w = hi; w >= lo; ) {
       const o = objectAt(w)
       const big =
         o && o.hi - o.lo > 24 && /\[\d+\]/.test(words.get(w)?.label ?? '')

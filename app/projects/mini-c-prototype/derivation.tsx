@@ -16,7 +16,8 @@ const CHECKS = new Set(['return', 'if', 'while', 'assign'])
 // Something above a line: a proven part, or a fact the rule reads off the
 // program (a declaration, a field, a function's return type).
 type Premise =
-  { kind: 'part'; id: number } | { kind: 'fact'; key: string; code: string }
+  | { kind: 'part'; id: number }
+  | { kind: 'fact'; key: string; code: string }
 
 type Rule = {
   premises: Premise[]

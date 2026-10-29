@@ -15,7 +15,8 @@ export type Token = Span & {
 // looked at (`look`), and what for (Tokeniser.ReadObserver lists the
 // words); or an error it reported there.
 export type LexRead =
-  { at: number; does: LexDecision; look?: true } | { at: number; error: string }
+  | { at: number; does: LexDecision; look?: true }
+  | { at: number; error: string }
 export type LexDecision =
   // taken: between tokens, then the first character of a token
   | 'space'
@@ -562,7 +563,7 @@ export function buildTrace(source: string): Trace {
     // What it read on the way to each token, in the real tokeniser's words
     // (Token.reads), so the detailed lexer plays these tokens too.
     let reads: LexRead[] = []
-    for (let offset = 0; offset < source.length;) {
+    for (let offset = 0; offset < source.length; ) {
       if (/\s/.test(source[offset])) {
         reads.push({ at: offset, does: 'space' })
         offset++

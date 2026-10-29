@@ -677,18 +677,12 @@ export function startRailCurve(root: HTMLElement): (() => void) | null {
   const passive = { capture: true, passive: true }
   const on: On[] = [
     [root, 'scroll', scrolled, passive],
-    ...['wheel', 'touchmove', 'pointerdown', 'pointermove'].map((type): On => [
-      root,
-      type,
-      touched,
-      passive,
-    ]),
-    ...['pointerover', 'touchstart', 'focusin'].map((type): On => [
-      root,
-      type,
-      noticed,
-      passive,
-    ]),
+    ...['wheel', 'touchmove', 'pointerdown', 'pointermove'].map(
+      (type): On => [root, type, touched, passive],
+    ),
+    ...['pointerover', 'touchstart', 'focusin'].map(
+      (type): On => [root, type, noticed, passive],
+    ),
     [root, 'pointermove', moved as EventListener, passive],
     [grip, 'pointerdown', pressed as EventListener, {}],
     [grip, 'pointermove', dragged as EventListener, {}],
