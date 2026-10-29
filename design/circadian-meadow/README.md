@@ -119,6 +119,7 @@ Every page other than home is plain `page` with `ink` text. The meadow is never 
 - **Project pages and blog posts:** one column, its text at most `measure-read` (40rem), left-aligned to the same gutter as the home bio, so moving between pages doesn't shift the reading line. Headings in `body` weight 500.
 - **Code and math:** Geist Mono. Code blocks are a `hairline` rule, not a filled box; interactive code (the compiler snippet) sits on `surface`.
 - **Images:** full measure, no radius, no shadow, aspect ratio reserved. Captions in `meta`.
+- **The poem:** Rose. One red rose grows once at the centre of the screen as the line marked `@ rose` scrolls in. It's the poem's one feature flower.
 - **Glyph accents:** a page may borrow one small piece of the garden (a single specimen, a divider of ramp glyphs), never a full scene.
 
 Components still to design: ProjectPage, PostLayout, ProseBlock, CodeBlock, Figure, Divider. The `designer` agent owns them; see `design/README.md`.
