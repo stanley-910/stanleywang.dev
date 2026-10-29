@@ -3,6 +3,7 @@ import { bayer, clamp, fbm2, hash, smoothstep } from './math'
 import { mix, type Palette, type Rgb } from './palette'
 import { CLOUD, code, GLYPHS, MAT, PLANT } from './typeset'
 
+import type { Meteors } from './meteors'
 import type { Raster } from './raster'
 
 export type Rect = { left: number; top: number; right: number; bottom: number }
@@ -11,6 +12,8 @@ const CLOUD_CODES = [...CLOUD].map(code)
 const DOT = code('·')
 const PERIOD = code('.')
 const PLUS = code('+')
+/** How strongly a shooting star lights the tile behind its glyph. */
+const GLOW = 0.3
 
 export type FrameInput = {
   raster: Raster
@@ -25,6 +28,8 @@ export type FrameInput = {
    */
   veil: number
   pointer: { x: number; y: number; active: boolean }
+  /** Shooting stars, already painted for this frame. */
+  meteors?: Meteors
   /** Paints smooth shapes (hill silhouettes) between the sky gradient and the glyphs. */
   backdrop?: (ctx: CanvasRenderingContext2D) => void
   /** Changes whenever the backdrop would paint differently, beyond the palette. */
@@ -238,7 +243,16 @@ export class AsciiRenderer {
   }
 
   render(input: FrameInput) {
-    const { raster, palette: p, time, horizon, page, veil, pointer } = input
+    const {
+      raster,
+      palette: p,
+      time,
+      horizon,
+      page,
+      veil,
+      pointer,
+      meteors,
+    } = input
     if (veil >= 1) {
       // Another page: nothing but the page colour.
       this.gl.clear(page)
@@ -303,6 +317,10 @@ export class AsciiRenderer {
     const glow = 0.18 + 0.55 * p.night
     const groundTop = mix(p.hillNear, p.ground, 0.5)
     const groundBottom = mix(p.ground, p.skyHorizon, 0.08)
+    const streaks = meteors?.alive ? meteors : null
+    // A fireball's light on the ridges near its head.
+    const glint = streaks?.glint
+    const reach = 0.3 * H
     for (let r = 0; r < rows; r++) {
       const y = r * ch + ch / 2
       const skyRow = y < horizon
@@ -327,6 +345,8 @@ export class AsciiRenderer {
         let cb = 0
         let a = 0
         let t = 0
+        // A shooting star lights its cell's tile, in place of the raster's.
+        let glowing = false
         const f = flags[i]
         if (f & MAT) {
           g = glyph[i]
@@ -392,6 +412,19 @@ export class AsciiRenderer {
             cb = (b2 + (clB - b2) * 0.22) * k
             s = 0.55
           }
+          // A shooting star prints over a star or the screen, and dims behind cloud.
+          if (streaks) {
+            const sa = streaks.alpha[i] * (1 - 0.6 * shape)
+            if (sa >= 0.06) {
+              g = streaks.glyph[i]
+              cr = streaks.rgb[i * 3]
+              cg = streaks.rgb[i * 3 + 1]
+              cb = streaks.rgb[i * 3 + 2]
+              s = sa
+              t = GLOW * sa * dim[i]
+              glowing = true
+            }
+          }
           if (g) {
             a = s * dim[i]
             if (a < 0.06) g = 0
@@ -418,13 +451,23 @@ export class AsciiRenderer {
             }
           }
         }
+        if (glint && skyRow && f & MAT && !(f & PLANT)) {
+          const dd = Math.hypot(c * cw + cw / 2 - glint.x, y - glint.y)
+          if (dd < reach) {
+            const kk = glint.k * (1 - dd / reach) ** 2
+            cr += (glint.col[0] - cr) * kk
+            cg += (glint.col[1] - cg) * kk
+            cb += (glint.col[2] - cb) * kk
+          }
+        }
         inkData[o] = b0 + (cr - b0) * a
         inkData[o + 1] = b1 + (cg - b1) * a
         inkData[o + 2] = b2 + (cb - b2) * a
         if (t > 0) {
-          tileData[o] = tileCol[i * 3]
-          tileData[o + 1] = tileCol[i * 3 + 1]
-          tileData[o + 2] = tileCol[i * 3 + 2]
+          const tc = glowing && streaks ? streaks.rgb : tileCol
+          tileData[o] = tc[i * 3]
+          tileData[o + 1] = tc[i * 3 + 1]
+          tileData[o + 2] = tc[i * 3 + 2]
           tileData[o + 3] = t * 255
         } else tileData[o + 3] = 0
       }

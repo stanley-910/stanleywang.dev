@@ -1,0 +1,197 @@
+<!-- @dsCard group="Site" height=900 subtitle="Shooting stars on the twilight and night skies, with the fireball's glint and the still streak" -->
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>ShootingStar</title>
+<style>
+  body { margin: 0; background: var(--page); color: var(--ink-muted); }
+  .panes { display: flex; flex-wrap: wrap; gap: 1px; background: var(--hairline); }
+  .pane { flex: 1 1 520px; padding: var(--space-3); box-sizing: border-box; background: var(--page); }
+  .label { font: 12px/16px var(--font-mono); margin: 0 0 var(--space-1); }
+  canvas { display: block; width: 100%; cursor: crosshair; }
+  .still { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+  .still figure { margin: 0; flex: 1 1 240px; }
+  figcaption { font: 12px/16px var(--font-mono); margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="panes">
+  <div class="pane"><p class="label">twilight, 20:15. Click the sky</p><canvas data-sky="twilight" height="300"></canvas></div>
+  <div class="pane"><p class="label">night, 22:30. Click the sky</p><canvas data-sky="night" height="300"></canvas></div>
+</div>
+<div class="panes">
+  <div class="pane">
+    <div class="still">
+      <figure><canvas data-still="18" height="120"></canvas><figcaption>18°, falling right</figcaption></figure>
+      <figure><canvas data-still="34" height="120"></canvas><figcaption>34°, falling left</figcaption></figure>
+      <figure><canvas data-still="50" height="120"></canvas><figcaption>50°, falling right</figcaption></figure>
+      <figure><canvas data-still="rm" height="120"></canvas><figcaption>Reduced motion, held 0.8 s</figcaption></figure>
+    </div>
+  </div>
+</div>
+<script>
+// A sketch of README.md's rules on a plain sky: cells 5x7 scene px drawn at 8x11 CSS px.
+var CW = 8, CH = 11.2
+function hex(v) { v = v.trim().replace('#', ''); return [0, 2, 4].map(function (i) { return parseInt(v.slice(i, i + 2), 16) }) }
+function tok(n) { return hex(getComputedStyle(document.documentElement).getPropertyValue('--' + n)) }
+function mix(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t] }
+function css(c, a) { return 'rgba(' + (c[0] | 0) + ',' + (c[1] | 0) + ',' + (c[2] | 0) + ',' + (a == null ? 1 : a) + ')' }
+function ss(a, b, x) { var t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t) }
+function hash(a, b) { var s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return s - Math.floor(s) }
+function A(u) { return ss(0, 0.15, u) * (0.75 + 0.25 * u) }
+
+function look(name) {
+  return {
+    top: tok(name + '-sky-top'), hz: tok(name + '-sky-horizon'), hill: tok(name + '-hill-far'),
+    cloud: tok(name + '-cloud'), head: tok(name + '-fluff'), night: name === 'night' ? 1 : 0.6,
+  }
+}
+
+// The cell run of a path, each with its progress u and tail glyph (README: Glyphs).
+function run(x0, y0, x1, y1) {
+  var dx = x1 - x0, dy = y1 - y0, right = dx > 0
+  var steps = Math.ceil(Math.max(Math.abs(dx) / CW, Math.abs(dy) / CH) * 2)
+  var slope = (Math.abs(dy) / CH) / Math.max(1e-6, Math.abs(dx) / CW)
+  var seen = {}, cells = []
+  for (var k = 0; k <= steps; k++) {
+    var u = k / steps, x = x0 + dx * u, y = y0 + dy * u
+    var c = Math.floor(x / CW), r = Math.floor(y / CH), key = c + ',' + r
+    if (seen[key]) continue
+    seen[key] = 1
+    var cx = (c + 0.5) * CW, yl = y0 + dy * ((cx - x0) / dx), f = (yl - r * CH) / CH
+    var g = f < 0.33 ? (right ? '`' : "'") : f > 0.66 ? '.' : slope > 0.6 ? (right ? '\\' : '/') : '-'
+    cells.push({ c: c, r: r, u: u, g: g })
+  }
+  return cells
+}
+
+function setup(cv) {
+  var dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.height
+  cv.width = w * dpr; cv.height = h * dpr; cv.style.height = h + 'px'
+  var ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+  ctx.font = '500 ' + Math.round(CH * 0.78) + 'px ' + getComputedStyle(document.documentElement).getPropertyValue('--font-glyph')
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+  return { ctx: ctx, w: w, h: h, cols: Math.ceil(w / CW), rows: Math.ceil(h / CH) }
+}
+
+function sky(s, L, ridge) {
+  var g = s.ctx.createLinearGradient(0, 0, 0, s.h)
+  g.addColorStop(0, css(L.top)); g.addColorStop(1, css(L.hz))
+  s.ctx.fillStyle = g; s.ctx.fillRect(0, 0, s.w, s.h)
+  if (!ridge) return
+  s.ctx.fillStyle = css(L.hill); s.ctx.beginPath(); s.ctx.moveTo(0, s.h)
+  for (var x = 0; x <= s.w; x += 4) s.ctx.lineTo(x, ridge(x))
+  s.ctx.lineTo(s.w, s.h); s.ctx.fill()
+}
+
+function glyph(s, c, r, ch, col, a) {
+  s.ctx.fillStyle = css(col, a); s.ctx.fillText(ch, (c + 0.5) * CW, (r + 0.5) * CH)
+}
+
+function live(cv) {
+  var L = look(cv.dataset.sky), s = setup(cv)
+  var ridge = function (x) { return s.h * 0.72 - 40 * Math.max(0, Math.sin(x / 90 + 1)) - 22 * Math.sin(x / 37) }
+  var radiant = [s.w * (0.2 + 0.6 * Math.random()), -0.45 * s.h]
+  var streaks = [], last = 0, lastFire = -1e9
+  function spawn(x, y, now) {
+    if (y > ridge(x) - CH || streaks.length >= 3 || now - last < 120) return
+    last = now
+    var fire = Math.random() < 1 / 6 && now - lastFire > 6000
+    if (fire) lastFire = now
+    var dx = x - radiant[0], dy = y - radiant[1], right = dx >= 0
+    var ang = Math.atan2(dy, Math.abs(dx)) * 180 / Math.PI
+    ang = Math.min(50, Math.max(18, ang)) * Math.PI / 180
+    var d = [Math.cos(ang) * (right ? 1 : -1), Math.sin(ang)]
+    // Lengths in cells, as the engine's: a scene px is a fifth of a cell across.
+    var sceneW = s.cols * 5
+    var len = Math.min(380, Math.max(170, 0.17 * sceneW)) * (fire ? 1.35 : 1) / 5 * CW
+    var x0 = x - 0.4 * len * d[0], y0 = y - 0.4 * len * d[1]
+    streaks.push({
+      cells: run(x0, y0, x + 0.6 * len * d[0], y + 0.6 * len * d[1]),
+      x0: x0, y0: y0, d: d, len: len, at: now, fire: fire,
+      T: (fire ? 500 + Math.random() * 100 : 280 + Math.random() * 120),
+      tau: fire ? 120 : 70,
+    })
+  }
+  cv.addEventListener('click', function (e) {
+    var b = cv.getBoundingClientRect(); spawn(e.clientX - b.left, e.clientY - b.top, performance.now())
+  })
+  var auto = 0
+  function frame(now) {
+    if (now - auto > 1400) { auto = now; spawn(s.w * (0.15 + 0.7 * Math.random()), s.h * (0.15 + 0.3 * Math.random()), now) }
+    sky(s, L, ridge)
+    var B = 0.65 + 0.35 * ss(0.5, 0.9, L.night), glint = null, land = []
+    // Stars, and the ridge's halftone, which a fireball can lift.
+    for (var r = 0; r < s.rows; r++) for (var c = 0; c < s.cols; c++) {
+      var x = (c + 0.5) * CW, y = (r + 0.5) * CH, top = ridge(x)
+      if (y < top) { if (hash(c, r) < 0.008 * L.night) glyph(s, c, r, hash(r, c) < 0.2 ? '+' : '.', [230, 235, 255], 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(now / 400 * (1 + hash(c, 9) * 3) + c))) }
+      else if (y < top + 30 && (c + r) % 2 === 0) land.push([c, r, x, y])
+    }
+    streaks = streaks.filter(function (m) {
+      var t = now - m.at, uNow = t / m.T, burning = uNow < 1
+      var flare = m.fire && uNow > 1 - 80 / m.T && burning
+      if (m.fire) {
+        var G = burning ? (flare ? 0.45 : 0.3 * A(uNow) * B) : 0.45 * Math.max(0, 1 - (t - m.T) / 150)
+        var hx = m.x0 + m.d[0] * m.len * Math.min(1, uNow), hy = m.y0 + m.d[1] * m.len * Math.min(1, uNow)
+        if (G > 0) glint = { x: hx, y: hy, G: G, col: L.head }
+      }
+      var any = false
+      m.cells.forEach(function (cell) {
+        var ti = cell.u * m.T
+        if (ti > t || cell.r < 0) return
+        var x = (cell.c + 0.5) * CW, y = (cell.r + 0.5) * CH
+        if (y >= ridge(x)) return
+        var head = burning && cell.u <= uNow && cell.u > uNow - 1.2 * CW / m.len
+        var a = head ? A(uNow) * B : A(cell.u) * B * Math.exp(-(t - ti) / m.tau)
+        if (a < 0.06) return
+        any = true
+        var col = head ? L.head : mix(L.head, L.cloud, 1 - Math.exp(-(t - ti) / m.tau))
+        glyph(s, cell.c, cell.r, head ? '*' : cell.g, col, a)
+        if (head && flare) [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (o) { glyph(s, cell.c + o[0], cell.r + o[1], '·', L.head, 0.5 * a) })
+      })
+      return burning || any
+    })
+    land.forEach(function (q) {
+      var col = mix(L.hill, L.cloud, 0.35), a = 0.55
+      if (glint) {
+        var dd = Math.hypot(q[2] - glint.x, q[3] - glint.y), R = 0.3 * s.h * 2
+        if (dd < R) { var g = glint.G * Math.pow(1 - dd / R, 2); col = mix(col, glint.col, g); a += 0.4 * g }
+      }
+      glyph(s, q[0], q[1], '.', col, a)
+    })
+    requestAnimationFrame(frame)
+  }
+  requestAnimationFrame(frame)
+}
+
+function still(cv) {
+  var L = look('night'), s = setup(cv), key = cv.dataset.still
+  sky(s, L, null)
+  var deg = key === 'rm' ? 30 : +key, right = key !== '34', a = deg * Math.PI / 180
+  var len = Math.min(s.w * 0.8, (s.h * 0.75) / Math.sin(a))
+  var dx = Math.cos(a) * len * (right ? 1 : -1), dy = Math.sin(a) * len
+  var x0 = s.w / 2 - dx / 2, y0 = s.h / 2 - dy / 2
+  var cells = run(x0, y0, x0 + dx, y0 + dy), tau = 70, T = 340
+  cells.forEach(function (cell, i) {
+    var last = i === cells.length - 1, aa, col
+    if (key === 'rm') { aa = A(cell.u) * (0.35 + 0.65 * cell.u); col = mix(L.head, L.cloud, 0.6 * (1 - cell.u)) }
+    else {
+      // The moment the head is at 85%: tail fading behind it, nothing ahead.
+      var t = 0.85 * T, ti = cell.u * T
+      if (ti > t) return
+      aa = A(cell.u) * Math.exp(-(t - ti) / tau); col = mix(L.head, L.cloud, 1 - Math.exp(-(t - ti) / tau))
+      last = cell.u > 0.85 - 1.2 * CW / len
+    }
+    if (aa < 0.06) return
+    glyph(s, cell.c, cell.r, last ? '*' : cell.g, last ? L.head : col, last ? Math.max(aa, 0.9) : aa)
+  })
+}
+
+;(document.fonts ? document.fonts.ready : Promise.resolve()).then(function () {
+  document.querySelectorAll('canvas[data-sky]').forEach(live)
+  document.querySelectorAll('canvas[data-still]').forEach(still)
+})
+</script>
+</body>
+</html>

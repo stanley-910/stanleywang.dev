@@ -44,7 +44,8 @@ for (const ramp of [
   SLOPE_LIT,
   CLOUD,
   LINES.join(''),
-  '@#Oo+:·',
+  // The shooting star's tail (meteors.ts), here so main thread and workers agree on its code.
+  '@#Oo+:·`',
 ])
   for (const ch of ramp) code(ch)
 

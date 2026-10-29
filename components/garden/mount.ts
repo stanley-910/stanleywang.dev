@@ -6,6 +6,7 @@ import { currentHour, HOUR_EVENT, setHour } from '@/lib/circadian'
 import { AsciiRenderer, type Rect } from './engine/ascii'
 import { Garden } from './engine/garden'
 import { smoothstep } from './engine/math'
+import { Meteors, STILL_FOR } from './engine/meteors'
 import { mix, paletteAt, type Palette, type Rgb } from './engine/palette'
 import { Raster } from './engine/raster'
 import { Wind } from './engine/wind'
@@ -114,10 +115,12 @@ export function mountGarden({
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)')
   const coarse = window.matchMedia('(pointer: coarse)')
   let heartTimer = 0
+  let starTimer = 0
   const wind = new Wind()
   wind.strength = windStrength
   const raster = new Raster()
   const ascii = new AsciiRenderer(canvas, font)
+  const meteors = new Meteors()
   // The page's hour (lib/circadian.ts): the clock's, or one set on the time
   // slider or by scrubbing here.
   const start0 = currentHour()
@@ -264,6 +267,7 @@ export function mountGarden({
       raster.submit(now, { palette, horizon: garden.horizon, hill })
     }
     if (!raster.ready) return
+    meteors.paint(performance.now() / 1000, palette, palette.ink)
     ascii.render({
       raster,
       palette,
@@ -272,6 +276,7 @@ export function mountGarden({
       page,
       veil: 0,
       pointer: wind.pointer,
+      meteors,
       backdrop: (ctx) => garden.backdrop(ctx, palette),
       backdropKey: garden.backdropKey(palette),
     })
@@ -294,6 +299,7 @@ export function mountGarden({
     const h = toScene(box.height)
     ascii.resize(w, h, dpr * zoom, CELL)
     raster.resize(ascii.cols, ascii.rows, ascii.cw, ascii.ch)
+    meteors.resize(ascii.cols, ascii.rows)
     if (w !== width || h !== height) {
       width = w
       height = h
@@ -517,6 +523,8 @@ export function mountGarden({
   const stop = () => {
     cancelAnimationFrame(raf)
     raf = 0
+    // None hangs half drawn when the scene comes back.
+    meteors.clear()
     sendHour()
   }
 
@@ -608,6 +616,29 @@ export function mountGarden({
       if (reduced.matches) draw(true)
       return
     }
+    // After dark the open sky above the ridges takes a shooting star instead of a flower.
+    if (paletteAt(hour).night >= 0.5 && y < garden.hillTop(x) - 7) {
+      const made = meteors.spawn(
+        x,
+        y,
+        width,
+        height,
+        ascii.cw,
+        ascii.ch,
+        performance.now() / 1000,
+        reduced.matches,
+      )
+      if (made && reduced.matches) {
+        // Still: the whole streak for a moment, then gone, one frame for each.
+        draw(true)
+        clearTimeout(starTimer)
+        starTimer = window.setTimeout(() => {
+          meteors.clear()
+          draw(true)
+        }, STILL_FOR * 1000)
+      }
+      return
+    }
     if (garden.sow(x, y) && reduced.matches) {
       garden.skipIntro()
       draw(true)
@@ -685,6 +716,7 @@ export function mountGarden({
     root.removeEventListener('pointerdown', onPointerDown)
     root.removeEventListener('click', onClick)
     clearTimeout(heartTimer)
+    clearTimeout(starTimer)
     reduced.removeEventListener('change', start)
     document.removeEventListener('visibilitychange', onVisibility)
     raster.dispose()
