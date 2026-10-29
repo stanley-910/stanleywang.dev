@@ -3,6 +3,7 @@ import { bayer, clamp, fbm2, hash, smoothstep } from './math'
 import { mix, type Palette, type Rgb } from './palette'
 import { CLOUD, code, GLYPHS, MAT, PLANT } from './typeset'
 
+import type { Birds } from './birds'
 import type { Meteors } from './meteors'
 import type { Raster } from './raster'
 
@@ -30,6 +31,8 @@ export type FrameInput = {
   pointer: { x: number; y: number; active: boolean }
   /** Shooting stars, already painted for this frame. */
   meteors?: Meteors
+  /** Birds in the day sky, already painted for this frame. */
+  birds?: Birds
   /** Paints smooth shapes (hill silhouettes) between the sky gradient and the glyphs. */
   backdrop?: (ctx: CanvasRenderingContext2D) => void
   /** Changes whenever the backdrop would paint differently, beyond the palette. */
@@ -253,6 +256,7 @@ export class AsciiRenderer {
       veil,
       pointer,
       meteors,
+      birds,
     } = input
     if (veil >= 1) {
       // Another page: nothing but the page colour.
@@ -321,6 +325,7 @@ export class AsciiRenderer {
     const streaks = meteors?.alive ? meteors : null
     // A fireball's light on the ridges near its head.
     const glint = streaks?.glint
+    const flock = birds?.alive ? birds : null
     const reach = 0.3 * H
     for (let r = 0; r < rows; r++) {
       const y = r * ch + ch / 2
@@ -435,12 +440,23 @@ export class AsciiRenderer {
             cb = Math.min(255, cb)
           }
         }
+        // A bird is a silhouette over anything in its band of sky: open sky, cloud or the sun.
+        let shadow = false
+        if (flock && skyRow && flock.alpha[i] > 0) {
+          g = flock.glyph[i]
+          cr = flock.col[0]
+          cg = flock.col[1]
+          cb = flock.col[2]
+          a = flock.alpha[i] * dim[i]
+          t = flock.tile[i] * dim[i]
+          shadow = true
+        }
         inkData[o + 3] = g
         if (!g) {
           tileData[o + 3] = 0
           continue
         }
-        if (lit) {
+        if (lit && !shadow) {
           const dx = c * cw + cw / 2 - pointer.x
           if (Math.abs(dx) < lightR) {
             const dd = Math.hypot(dx, py)
@@ -464,7 +480,12 @@ export class AsciiRenderer {
         inkData[o] = b0 + (cr - b0) * a
         inkData[o + 1] = b1 + (cg - b1) * a
         inkData[o + 2] = b2 + (cb - b2) * a
-        if (t > 0) {
+        if (t > 0 && shadow && flock) {
+          tileData[o] = flock.col[0]
+          tileData[o + 1] = flock.col[1]
+          tileData[o + 2] = flock.col[2]
+          tileData[o + 3] = t * 255
+        } else if (t > 0) {
           const tc = glowing && streaks ? streaks.rgb : tileCol
           tileData[o] = tc[i * 3]
           tileData[o + 1] = tc[i * 3 + 1]

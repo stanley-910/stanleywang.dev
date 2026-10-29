@@ -4,6 +4,7 @@
 import { currentHour, HOUR_EVENT, setHour } from '@/lib/circadian'
 
 import { AsciiRenderer, type Rect } from './engine/ascii'
+import { Birds, BY_DAY } from './engine/birds'
 import { Garden } from './engine/garden'
 import { smoothstep } from './engine/math'
 import { Meteors, STILL_FOR } from './engine/meteors'
@@ -121,6 +122,7 @@ export function mountGarden({
   const raster = new Raster()
   const ascii = new AsciiRenderer(canvas, font)
   const meteors = new Meteors()
+  const birds = new Birds()
   // The page's hour (lib/circadian.ts): the clock's, or one set on the time
   // slider or by scrubbing here.
   const start0 = currentHour()
@@ -242,6 +244,8 @@ export function mountGarden({
 
   // Top of the painted hills per cell column, sent with each frame for the ink to contrast with.
   let hill = new Float32Array(0)
+  // The highest ridge on screen, which birds fly above.
+  let peak = Infinity
   // The far range's faces per cell, for the rock's tiles.
   let relief = new Float32Array(0)
 
@@ -264,8 +268,11 @@ export function mountGarden({
       raster.clear()
       garden.draw(raster, palette)
       if (hill.length !== ascii.cols) hill = new Float32Array(ascii.cols)
-      for (let c = 0; c < hill.length; c++)
+      peak = Infinity
+      for (let c = 0; c < hill.length; c++) {
         hill[c] = garden.hillTop((c + 0.5) * ascii.cw)
+        peak = Math.min(peak, hill[c])
+      }
       if (relief.length !== ascii.cols * ascii.rows)
         relief = new Float32Array(ascii.cols * ascii.rows)
       const face = garden.relief(
@@ -286,7 +293,13 @@ export function mountGarden({
       })
     }
     if (!raster.ready) return
-    meteors.paint(performance.now() / 1000, palette, palette.ink)
+    const secs = performance.now() / 1000
+    meteors.paint(secs, palette, palette.ink)
+    birds.fly(
+      secs,
+      palette.night < BY_DAY && !reduced.matches ? skyFor() : null,
+    )
+    birds.paint(secs, palette)
     ascii.render({
       raster,
       palette,
@@ -296,11 +309,25 @@ export function mountGarden({
       veil: 0,
       pointer: wind.pointer,
       meteors,
+      birds,
       backdrop: (ctx) => garden.backdrop(ctx, palette),
       backdropKey: garden.backdropKey(palette),
     })
     // The opening shows the meadow once the workers are past their slow first frames.
     if (raster.warm) playIntro()
+  }
+
+  /** Where birds may fly: from under the header down to three rows over the highest ridge. */
+  const skyFor = () => {
+    const top = 0.14 * height
+    return {
+      W: width,
+      H: height,
+      cw: ascii.cw,
+      ch: ascii.ch,
+      top,
+      bottom: Math.max(top, Math.min(0.3 * height, peak - 3 * ascii.ch)),
+    }
   }
 
   /** The canvas size and density last laid out, so a callback at the same size does nothing. */
@@ -319,6 +346,7 @@ export function mountGarden({
     ascii.resize(w, h, dpr * zoom, CELL)
     raster.resize(ascii.cols, ascii.rows, ascii.cw, ascii.ch)
     meteors.resize(ascii.cols, ascii.rows)
+    birds.resize(ascii.cols, ascii.rows)
     if (w !== width || h !== height) {
       width = w
       height = h
@@ -544,6 +572,7 @@ export function mountGarden({
     raf = 0
     // None hangs half drawn when the scene comes back.
     meteors.clear()
+    birds.clear()
     sendHour()
   }
 
@@ -635,8 +664,15 @@ export function mountGarden({
       if (reduced.matches) draw(true)
       return
     }
-    // After dark the open sky above the ridges takes a shooting star instead of a flower.
-    if (paletteAt(hour).night >= 0.5 && y < garden.hillTop(x) - 7) {
+    const night = paletteAt(hour).night
+    const openSky = y < garden.hillTop(x) - 7
+    // By day the open sky above the ridges sends a bird instead of a flower; reduced motion sows.
+    if (night < BY_DAY && openSky && !reduced.matches) {
+      birds.call(x, y, skyFor(), performance.now() / 1000)
+      return
+    }
+    // After dark it takes a shooting star.
+    if (night >= 0.5 && openSky) {
       const made = meteors.spawn(
         x,
         y,

@@ -22,7 +22,7 @@ Mostly no, sometimes yes. An ordinary shooting star is a grain of dust burning u
 
 Today a click anywhere above the meadow sows a flower at the horizon below it (`Garden.sow`), at any hour, and after dark a few fireflies gather there.
 
-**Recommended:** after dark, a click on the open sky makes a shooting star instead of a flower. Clicks on the ridges and the meadow still sow, at every hour, so sowing is never out of reach. By day a sky click sows as now.
+**Recommended:** after dark, a click on the open sky makes a shooting star instead of a flower. Clicks on the ridges and the meadow still sow, at every hour, so sowing is never out of reach. By day a sky click sows as now. (Since 2026-10-30, a day sky click sends a bird instead: see Bird. Twilight, `night` 0.3 to 0.5, still sows.)
 
 - **Open sky** is above the painted land: `y < garden.hillTop(x) - 7` (one row of slack above the crest, so a click on a peak sows rather than launching a star from the rock). Clicks below that line are the ridges' and sow as now.
 - **After dark** is `night ≥ 0.5`: from about 19:45, in deep twilight once the stars are well out, to about 05:50, before dawn. Stars show from `night > 0.1`, but they're faint until about 0.5, and a meteor in a bright sunset sky reads as a scratch on the screen.
@@ -179,7 +179,7 @@ Built once per streak: the cell run, about 50 to 90 cells. Per frame, before the
 | Flaring (fireball, last 80 ms) | `*` with a cross of `·`; ridges near it lift by up to 0.45 |
 | Cut | No head; the tail fades out back along the path |
 | Behind the land | Nothing in land cells; the streak runs on unseen and its tail fades as usual |
-| By day (`night < 0.5`) | None: the sky click sows |
+| By day (`night < 0.5`) | None: the sky click sends a bird (Bird) under 0.3, sows from 0.3 |
 | Reduced motion | The whole streak, still, 0.8 s |
 
 ## Constants
@@ -219,7 +219,7 @@ Decoration. The canvas stays `aria-hidden` and gets no focus stop; there's no ke
 - **Desktop and 375 px wide:** about 14% of the width on desktop, about 30% on a phone; a tap makes one; a scrub doesn't.
 - **The poem:** same behaviour at its finer grid; clicking the poem's text never makes a star.
 - **Reduced motion:** a still streak for 0.8 s, then nothing; no glint.
-- **Day:** a sky click sows as before; nothing else changes.
+- **Day:** a sky click sends a bird (Bird); no streak.
 - **Cost:** a performance trace while spamming shows no new long tasks and no worker traffic from streaks.
 
 ## Notes
