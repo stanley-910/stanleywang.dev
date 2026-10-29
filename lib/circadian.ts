@@ -157,8 +157,14 @@ export function setHour(hour: number | null) {
   window.dispatchEvent(new CustomEvent(HOUR_EVENT, { detail: hour }))
 }
 
+// The colours last written, so an hour that doesn't change them doesn't restyle the page.
+let applied = ''
+
 /** Writes the colours as the page's CSS variables, the theme-color included. */
 export function applyColours(c: ReadingColours) {
+  const key = `${c.page} ${c.ink} ${c.inkMuted} ${c.hairline} ${c.surface}`
+  if (key === applied) return
+  applied = key
   const s = document.documentElement.style
   s.setProperty('--page', c.page)
   s.setProperty('--ink', c.ink)

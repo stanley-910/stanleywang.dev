@@ -411,7 +411,10 @@ export function Poem({ className, preview }: PoemProps) {
     if (!poem || !el) return
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)')
     let anchors = anchorsFor(poem, el, skyRef.current)
-    const remeasure = () => (anchors = anchorsFor(poem, el, skyRef.current))
+    const remeasure = () => {
+      anchors = anchorsFor(poem, el, skyRef.current)
+      stir()
+    }
     remeasureRef.current = remeasure
     const sized = new ResizeObserver(remeasure)
     sized.observe(el)
@@ -422,8 +425,10 @@ export function Poem({ className, preview }: PoemProps) {
     let shown = currentHour().hour
     const first = hourAt(anchors, window.scrollY)
     shown += Math.round((first - shown) / 24) * 24
+    // The page hears the hour to the minute: each new hour restyles all of it.
+    let sent = NaN
     let raf = 0
-    let last = performance.now()
+    let last = 0
     const frame = (now: number) => {
       const dt = Math.min(0.1, (now - last) / 1000)
       last = now
@@ -431,13 +436,18 @@ export function Poem({ className, preview }: PoemProps) {
       const next = reduced.matches
         ? target
         : shown + (target - shown) * (1 - Math.exp(-EASE * dt))
-      if (Math.abs(next - shown) > 1e-4 || Math.abs(target - shown) > 1e-4) {
-        shown = Math.abs(target - next) < 1e-3 ? target : next
-        setHour(((shown % 24) + 24) % 24)
-      }
+      shown = Math.abs(target - next) < 1e-3 ? target : next
+      const minute = Math.round((((shown % 24) + 24) % 24) * 60) / 60
+      if (minute !== sent) setHour((sent = minute))
+      // At rest the loop stops; a scroll or a new layout starts it again.
+      raf = shown === target ? 0 : requestAnimationFrame(frame)
+    }
+    const stir = () => {
+      if (raf) return
+      last = performance.now()
       raf = requestAnimationFrame(frame)
     }
-    raf = requestAnimationFrame(frame)
+    stir()
 
     // The rose grows as the room above its line scrolls by, and stays.
     const cue = el.querySelector<HTMLElement>('[data-rose]')
@@ -454,9 +464,11 @@ export function Poem({ className, preview }: PoemProps) {
     }
     bloom()
     window.addEventListener('scroll', bloom, { passive: true })
+    window.addEventListener('scroll', stir, { passive: true })
     return () => {
       cancelAnimationFrame(raf)
       window.removeEventListener('scroll', bloom)
+      window.removeEventListener('scroll', stir)
       sized.disconnect()
       window.removeEventListener('resize', remeasure)
       remeasureRef.current = undefined

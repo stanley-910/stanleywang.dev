@@ -385,8 +385,6 @@ export function mountGarden({
   let lastWheel = 0
   /** When the wheel or a finger last moved the hour, on the event clock. */
   let lastScrub = 0
-  /** When the hour was last set elsewhere (the time slider, the poem's scroll). */
-  let lastStir = 0
   // The axis a scroll gesture started on, kept until the wheel rests.
   let wheelAxis: 'x' | 'y' | null = null
   // The hour scrubbed here but not yet handed to the rest of the page.
@@ -426,7 +424,6 @@ export function mountGarden({
   // The hour set elsewhere: the time slider, or its `now`.
   const onHourChange = () => {
     busy()
-    lastStir = performance.now()
     const now = currentHour()
     hour = now.hour
     live = !now.set
@@ -567,7 +564,7 @@ export function mountGarden({
     if (++frames % MEASURE_EVERY === 0) measure()
     // The cursor's light and a shooting star move every display frame; the rest on the plants' beat.
     quality.calm =
-      now - Math.max(lastMove, lastScrub, lastStir) > LIVELY_FOR &&
+      now - Math.max(lastMove, lastScrub) > LIVELY_FOR &&
       scrubVel === 0 &&
       !meteors.alive
     if (!quality.skip(frames)) draw()

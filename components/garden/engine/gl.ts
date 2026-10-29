@@ -125,6 +125,8 @@ export class GlyphCompositor implements Compositor {
       antialias: false,
       depth: false,
       stencil: false,
+      // Keeps a laptop with two GPUs on its integrated one, which is plenty for this.
+      powerPreference: 'low-power',
     })
     if (!gl) throw new Error('WebGL2 unavailable')
     this.gl = gl
