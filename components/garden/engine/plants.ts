@@ -457,6 +457,9 @@ export class Poppy extends Plant {
     const axis = headAxis(tip, this.facing * ph.open)
     const list: { depth: number; draw: () => void }[] = []
     const poppy = this.bloomed(p.poppy, p)
+    // Furling as it closes; once mostly furled, the dark heart and blotches are wrapped inside.
+    const furl = smoothstep(0.75, 0.25, open)
+    const hidden = furl > 0.6
     drawPetals(
       r,
       tx,
@@ -464,7 +467,8 @@ export class Poppy extends Plant {
       axis,
       {
         count: 4,
-        length: H * lerp(0.55, 1, open),
+        // Closing, the petals keep most of their length and wrap round each other.
+        length: H * lerp(0.82, 1, open),
         width: (u) =>
           H *
           0.66 *
@@ -476,17 +480,18 @@ export class Poppy extends Plant {
         seed: this.seed,
         front: poppy,
         back: mix(poppy, this.bloomed(p.poppyDeep, p), 0.55),
-        blotch: shade(p.disc, 0.9),
+        blotch: hidden ? undefined : shade(p.disc, 0.9),
         haze: p.haze,
         hazeAmount: 0,
         attached: (k) => k >= this.shed,
+        wrap: furl,
       },
       list,
     )
     r.heads.push({
       x: tx,
       y: ty,
-      r: H * lerp(0.55, 1, open),
+      r: H * lerp(0.82, 1, open),
       species: 'poppy',
       petal: poppy,
       disc: this.bloomed(p.disc, p),
@@ -496,44 +501,45 @@ export class Poppy extends Plant {
     })
     // Stigma disc and the ring of dark stamens, sorted in among the petals; never under two cells.
     const centerDepth = axis[2] * H * 0.1
-    list.push({
-      depth: centerDepth,
-      draw: () => {
-        const ring = disc(
-          tx,
-          ty,
-          axis,
-          Math.max(H * 0.27, 1.6 * r.minLine),
-          H * 0.06,
-        )
-        r.fill(ring, this.bloomed(shade(p.disc, 1.1), p), Kind.Disc, 0.95)
-        const top = disc(tx, ty, axis, H * 0.14, H * 0.16)
-        r.fill(top, this.hazed(mix(p.stem, p.haze, 0.3), p), Kind.Disc)
-        const [u, v] = basis(axis)
-        const rays = new Shape()
-        for (let i = 0; i < 8; i++) {
-          const a = (i / 8) * TAU
-          const [x0, y0] = project(tx, ty, axis, [u, v], 0, 0, H * 0.17)
-          const [x1, y1] = project(
+    if (!hidden)
+      list.push({
+        depth: centerDepth,
+        draw: () => {
+          const ring = disc(
             tx,
             ty,
             axis,
-            [u, v],
-            Math.cos(a) * H * 0.14,
-            Math.sin(a) * H * 0.14,
-            H * 0.16,
+            Math.max(H * 0.27, 1.6 * r.minLine),
+            H * 0.06,
           )
-          rays.moveTo(x0, y0)
-          rays.lineTo(x1, y1)
-        }
-        r.stroke(
-          rays,
-          this.bloomed(p.disc, p),
-          Kind.Disc,
-          Math.max(0.5, H * 0.03),
-        )
-      },
-    })
+          r.fill(ring, this.bloomed(shade(p.disc, 1.1), p), Kind.Disc, 0.95)
+          const top = disc(tx, ty, axis, H * 0.14, H * 0.16)
+          r.fill(top, this.hazed(mix(p.stem, p.haze, 0.3), p), Kind.Disc)
+          const [u, v] = basis(axis)
+          const rays = new Shape()
+          for (let i = 0; i < 8; i++) {
+            const a = (i / 8) * TAU
+            const [x0, y0] = project(tx, ty, axis, [u, v], 0, 0, H * 0.17)
+            const [x1, y1] = project(
+              tx,
+              ty,
+              axis,
+              [u, v],
+              Math.cos(a) * H * 0.14,
+              Math.sin(a) * H * 0.14,
+              H * 0.16,
+            )
+            rays.moveTo(x0, y0)
+            rays.lineTo(x1, y1)
+          }
+          r.stroke(
+            rays,
+            this.bloomed(p.disc, p),
+            Kind.Disc,
+            Math.max(0.5, H * 0.03),
+          )
+        },
+      })
     // The bud's halves part behind the petals pushing out of it. Drawn over them, they printed
     // as foliage across the middle of the head: sparse glyphs with no tile, so a see-through hole.
     if (ph.open < 0.35)
