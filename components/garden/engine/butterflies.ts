@@ -128,6 +128,10 @@ type Butterfly = {
   hop: boolean
   /** Which way round it circles a flower. */
   spin: 1 | -1
+  /** A flower it was called to while sitting, to fly to once it's up. */
+  call: object | null
+  /** When it was last called, so the latest one answers the next click. */
+  called: number
   /** Wingspan in px, easing toward its flower's scale so far visitors print small. */
   span: number
 }
@@ -136,13 +140,15 @@ type Butterfly = {
  * Butterflies by day and moths after dark. One flies in from the nearest edge when a flower is
  * clicked, in bursts of flapping and glides that never run straight, circles the head once or
  * twice, lands and basks, opening and closing its wings slowly and shuffling about, then hops to
- * a nearby flower or leaves. A fast sweep of the cursor nearby startles it off.
+ * a nearby flower or leaves. A fast sweep of the cursor nearby startles it off. Clicking another
+ * flower while it's about steers it there instead of calling a second one.
  */
 export class Butterflies {
   list: Butterfly[] = []
   /** Flowers sown by a click get a visitor once they've opened. */
   private pending: { owner: object; t: number }[] = []
   private nextSeed = 1
+  private calls = 0
   private width = 0
 
   clear() {
@@ -150,10 +156,21 @@ export class Butterflies {
     this.pending = []
   }
 
-  /** Sends a butterfly to the flower: a new one from the nearest edge, or one already about if the garden is full. */
+  /**
+   * Sends a butterfly to the flower. One already about, and not on its way out, takes the call
+   * wherever it is, so a click steers the butterfly on screen; only when none is about does a new
+   * one fly in from the nearest edge.
+   */
   summon(owner: object, heads: Head[], p: Palette) {
     const head = heads.find((h) => h.owner === owner)
     if (!head) return
+    const about = this.list
+      .filter((b) => b.state !== 'leave')
+      .sort((a, c) => c.called - a.called)[0]
+    if (about) {
+      this.redirect(about, owner, head)
+      return
+    }
     if (
       this.list.some(
         (b) =>
@@ -211,9 +228,34 @@ export class Butterflies {
       hop: false,
       spin: rng() < 0.5 ? 1 : -1,
       span: spanAt(head),
+      call: null,
+      called: ++this.calls,
     }
     this.send(b, owner, head, false)
     this.list.push(b)
+  }
+
+  /** Steers a butterfly already about to another flower; a sitting one takes off first. */
+  private redirect(b: Butterfly, owner: object, head: Head) {
+    b.called = ++this.calls
+    b.visits = 0
+    if (b.target === owner && b.state !== 'takeoff') return
+    if (b.state === 'perch' || b.state === 'land') {
+      b.call = owner
+      b.state = 'takeoff'
+      b.phaseT = 0.3
+      b.flapping = true
+      b.beat = 0
+      b.vx = (b.rng() - 0.5) * 80
+      b.vy = -70
+    } else if (b.state === 'takeoff') b.call = owner
+    else
+      this.send(
+        b,
+        owner,
+        head,
+        Math.hypot(head.x - b.x, head.y - b.y) < HOP_RANGE,
+      )
   }
 
   /** A visitor for a newly sown flower, once it has had time to open. */
@@ -304,7 +346,20 @@ export class Butterflies {
           b.beat += dt * 9 * TAU
           b.vy += (-260 - b.vy * 2) * dt
           b.phaseT -= dt
-          if (b.phaseT <= 0) this.lift(b, heads)
+          if (b.phaseT <= 0) {
+            const called = b.call
+              ? heads.find((h) => h.owner === b.call && h.alpha > 0.3)
+              : undefined
+            b.call = null
+            if (called?.owner)
+              this.send(
+                b,
+                called.owner,
+                called,
+                Math.hypot(called.x - b.x, called.y - b.y) < HOP_RANGE,
+              )
+            else this.lift(b, heads)
+          }
           break
         }
         case 'approach': {
