@@ -44,12 +44,18 @@ const GLIDE_MAX = 1200
 
 type GardenOptions = {
   canvas: HTMLCanvasElement
-  /** Holds the bio (`.bio`), which no flower is planted under, and takes the clicks that sow. */
+  /** Holds the bio (`.bio`) or a column of text (`[data-clear-column]`), which no flower is
+   * planted under (a column keeps only a few dandelions), and takes the clicks that sow. */
   root: HTMLElement
   /** The glyph face's CSS family list. */
   font: string
   /** Called with the scene's hour, as HH:MM, whenever it changes minute, and whether it follows the clock. */
   onHour?: (label: string, live: boolean) => void
+  /** Called once the scene has a size, and on each resize, with when the sun clears and meets the
+   * ridges and when the moon sets behind them. */
+  onSky?: (sky: { sunrise: number; sunset: number; moonset: number }) => void
+  /** Whether the wheel scrubs the hour; off where the page sets it (the poem's scroll). */
+  scrub?: boolean
 }
 
 function localHour() {
@@ -58,7 +64,14 @@ function localHour() {
 }
 
 /** Starts the scene; the returned function stops it and removes its listeners. */
-export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
+export function mountGarden({
+  canvas,
+  root,
+  font,
+  onHour,
+  onSky,
+  scrub = true,
+}: GardenOptions) {
   const html = document.documentElement
   let zoom = SCENE_ZOOM
   const toScene = (v: number) => v / zoom
@@ -222,12 +235,17 @@ export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
     if (w !== width || h !== height) {
       width = w
       height = h
-      const bio = root.querySelector<HTMLElement>('.bio')
-      garden.keepClear = bio
-        ? sceneRect(bio.getBoundingClientRect(), box)
-        : null
+      const bio = root.querySelector<HTMLElement>('.bio, [data-clear-column]')
+      const clear = bio ? sceneRect(bio.getBoundingClientRect(), box) : null
+      // Text that scrolls over the scene (the poem) crosses all of it, top to bottom.
+      garden.keepClearColumn = !!bio?.hasAttribute('data-clear-column')
+      garden.keepClear =
+        clear && garden.keepClearColumn
+          ? { ...clear, top: 0, bottom: h }
+          : clear
       garden.resize(w, h)
       if (reduced.matches) garden.skipIntro()
+      onSky?.(garden.sunTimes())
     }
     measure()
     // Rasterise this size's first frame here: a worker's first reply can be
@@ -261,7 +279,7 @@ export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
 
   const onWheel = (e: WheelEvent) => {
     // The time slider handles its own scroll.
-    if (!visible || e.defaultPrevented) return
+    if (!scrub || !visible || e.defaultPrevented) return
     // Sideways always scrubs; up and down scrub too while the page has
     // nowhere to scroll, as home's single screen doesn't. Down and right run
     // later, like the slider.
@@ -392,7 +410,8 @@ export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
       .composedPath()
       .some(
         (n) =>
-          n instanceof Element && n.matches('a, button, input, label, form'),
+          n instanceof Element &&
+          n.matches('a, button, input, label, form, [data-no-sow]'),
       )
     if (interactive) return
     const origin = canvas.getBoundingClientRect()

@@ -57,6 +57,11 @@ export class Garden {
   hour = 15
   /** Where the bio sits. Flowers aren't planted under it and the grass thins out there. */
   keepClear: Rect | null = null
+  /**
+   * The text over `keepClear` runs the screen's full height (the poem), so the grass grows under
+   * it and only a few dandelions flower there.
+   */
+  keepClearColumn = false
   /** Strips planted so far, and the window height they were grown for. */
   private strips = 0
   /** Overrides the moon's phase (0 new, 0.5 full) for testing; null follows the calendar. */
@@ -130,7 +135,7 @@ export class Garden {
       this.height,
       (z) => this.floor(z),
       this.seed * 7 + 3,
-      this.keepClear,
+      this.keepClearColumn ? null : this.keepClear,
     )
     this.buildRidges()
   }
@@ -162,7 +167,7 @@ export class Garden {
       this.height,
       (z) => this.floor(z),
       seed * 7 + 3,
-      this.keepClear,
+      this.keepClearColumn ? null : this.keepClear,
     )
     this.buildRidges()
   }
@@ -182,18 +187,24 @@ export class Garden {
         for (let i = 0; i < n; i++) {
           let z = 0
           let x = 0
-          // Like the koi swimming off the text: try spots until one is clear of it.
-          for (let t = 0; t < 40; t++) {
+          let species = this.pickSpecies(rng)
+          if (this.keepClearColumn) {
+            // Under a column of text only a few dandelions, small enough to read over.
             z = lerp(z0, z1, rng())
             x = (this.strips + rng()) * STRIP
-            if (!this.underText(x, z)) break
+            if (this.underText(x, z)) {
+              if (rng() > 0.3) continue
+              species = 'dandelion'
+            }
+          } else {
+            // Like the koi swimming off the text: try spots until one is clear of it.
+            for (let t = 0; t < 40; t++) {
+              z = lerp(z0, z1, rng())
+              x = (this.strips + rng()) * STRIP
+              if (!this.underText(x, z)) break
+            }
           }
-          const plant = this.add(
-            this.pickSpecies(rng),
-            x,
-            z,
-            Math.floor(rng() * 1e9),
-          )
+          const plant = this.add(species, x, z, Math.floor(rng() * 1e9))
           // During the opening they grow in with the rest; later strips arrive grown.
           if (this.intro < INTRO) this.targetAge.set(plant, plant.bloomAge())
           else plant.age = plant.bloomAge()
@@ -206,7 +217,10 @@ export class Garden {
   private underText(x: number, z: number) {
     const b = this.keepClear
     if (!b) return false
-    const margin = this.width * 0.03
+    // A column's text crosses every height, so a near flower's wide head, nodding in from a
+    // root beside it, needs more room than the bio's.
+    const margin =
+      this.width * 0.03 + (this.keepClearColumn ? this.height * 0.2 * z : 0)
     if (x < b.left - margin || x > b.right + margin) return false
     // Rough flower height: shortest stems, at this depth's scale.
     const head =
@@ -585,6 +599,52 @@ export class Garden {
     )
     for (const ridge of this.ridges) top = Math.min(top, ridge[i])
     return top
+  }
+
+  /**
+   * On this screen, the hour the rising sun first stands wholly clear of the ridges, the hour
+   * the setting sun is wholly behind them, and the hour the setting moon is. The ridges are
+   * fixed in x while the sun's path scales with the screen, so these move with its shape.
+   */
+  sunTimes() {
+    const hour = this.hour
+    /** How far the sun's disc stands above the ridges: > 0 wholly clear, < 0 wholly hidden. */
+    const above = (h: number) => {
+      this.hour = h
+      const { cx, cy, R } = this.globeAt()
+      let lo = Infinity
+      let hi = -Infinity
+      for (let dx = -R; dx <= R; dx += RIDGE_STEP) {
+        const half = Math.sqrt(Math.max(0, R * R - dx * dx))
+        const ridge = this.hillTop(cx + dx)
+        lo = Math.min(lo, ridge - (cy + half))
+        hi = Math.max(hi, ridge - (cy - half))
+      }
+      return lo > 0 ? 1 : hi < 0 ? -1 : 0
+    }
+    const STEP = 1 / 60
+    let sunrise = 12
+    for (let h = 6; h < 12; h += STEP)
+      if (above(h) > 0) {
+        sunrise = h
+        break
+      }
+    // The sun leaves the sky at 18:30 whether or not a ridge has hidden it.
+    let sunset = 18.5
+    for (let h = 12; h < 18.5; h += STEP)
+      if (above(h) < 0) {
+        sunset = h
+        break
+      }
+    // Likewise the moon at 06:00.
+    let moonset = 6
+    for (let h = 2; h < 6; h += STEP)
+      if (above(h) < 0) {
+        moonset = h
+        break
+      }
+    this.hour = hour
+    return { sunrise, sunset, moonset }
   }
 
   /** Hill silhouettes painted smooth under the glyphs, as solid as the poster's mountains. */

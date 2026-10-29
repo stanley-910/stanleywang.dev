@@ -16,6 +16,9 @@ import PostsPage from '@/app/writing/page'
 import CdOut from '@/components/ui/cd-out'
 import { ScrollProgress } from '@/components/ui/scroll-progress'
 
+// Unlisted pages that bring their own layout: no post header or comments.
+const UNLISTED = ['/writing/poem']
+
 const VARIANTS_CONTAINER = {
   hidden: { opacity: 0 },
   visible: {
@@ -127,6 +130,8 @@ export default function LayoutBlogPost({
   if (isPostsPage) {
     return <PostsPage />
   }
+
+  if (UNLISTED.includes(pathname)) return children
 
   return (
     <>

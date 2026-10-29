@@ -1,0 +1,130 @@
+/*
+  The poem over the meadow (poem.tsx). The scene holds still behind the page
+  while the poem scrolls over it; the text takes the hour's ink, as home's
+  bio does (mount.ts), in EB Garamond.
+*/
+
+.poem-page {
+  /* As on the home hero: the night page's colours, toned by the hour. */
+  --ink: var(--garden-ink, #e4e2da);
+  --ink-muted: var(--garden-ink-muted, #9d9b94);
+  color: var(--ink);
+}
+
+.poem-page .garden-canvas {
+  position: fixed;
+  inset: 0;
+  height: 100vh;
+  height: 100lvh;
+}
+
+.poem-column {
+  max-width: 36rem;
+}
+
+/* ── The lock ─────────────────────────────────────────────────── */
+
+.poem-lock,
+.poem {
+  position: relative;
+  z-index: 1;
+}
+
+.poem-lock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: min(16rem, 100%);
+  margin-top: calc(55svh - 116px);
+  font-family: var(--font-mono);
+  font-size: var(--text-small);
+}
+
+.poem-password {
+  padding: 6px 0;
+  border: 0;
+  border-bottom: 1px solid var(--ink-muted);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  letter-spacing: 0.08em;
+  outline: none;
+  transition: border-color var(--duration-quick) var(--ease-calm);
+}
+
+.poem-password::placeholder {
+  color: var(--ink-muted);
+  letter-spacing: normal;
+}
+
+.poem-password:focus {
+  border-bottom-color: var(--ink);
+}
+
+.poem-status {
+  min-height: 1.5em;
+  color: var(--ink-muted);
+}
+
+/* ── The poem ─────────────────────────────────────────────────── */
+
+.poem {
+  /* The first line starts below the screen, so the day opens on the scene;
+     poem.tsx sizes the room under the last line. */
+  padding-block: 100lvh 30svh;
+  max-width: 36rem;
+  font-family: var(--font-poem), 'EB Garamond', Garamond, serif;
+  font-size: 1.3125rem;
+  line-height: 1.6;
+  font-feature-settings: 'liga', 'kern', 'onum';
+  /* The hour's dark ground close around each glyph, so the ink holds over a
+     bright sky or a pale petal without a box behind the lines. */
+  --poem-halo: var(--garden-panel, #242422);
+  text-shadow:
+    0 0 1px color-mix(in srgb, var(--poem-halo) 70%, transparent),
+    0 0 4px color-mix(in srgb, var(--poem-halo) 55%, transparent),
+    0 0 12px color-mix(in srgb, var(--poem-halo) 35%, transparent);
+}
+
+.poem-title {
+  margin: 0 0 1.6em;
+  font: inherit;
+  font-size: 1.6em;
+  font-style: italic;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.poem-line {
+  display: flex;
+  margin: 0;
+}
+
+/* The line's own leading spaces and tabs, as wide as they are in the draft. */
+.poem-indent {
+  flex: none;
+  white-space: pre;
+  tab-size: 4;
+}
+
+/* A line too long for the screen wraps under itself, indented, as printed
+   verse does. */
+.poem-text {
+  flex: 1;
+  min-width: 0;
+  padding-left: 1.5em;
+  text-indent: -1.5em;
+  white-space: pre-wrap;
+}
+
+.poem-gap {
+  height: 1.6em;
+  margin: 0;
+}
+
+@media (max-width: 480px) {
+  .poem {
+    font-size: 1.125rem;
+  }
+}

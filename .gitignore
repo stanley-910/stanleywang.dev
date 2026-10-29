@@ -46,3 +46,6 @@ AGENTS.md
 
 # Ignore video files
 
+
+# private plaintext (scripts/encrypt-poem.mjs encrypts it)
+/content/private/
