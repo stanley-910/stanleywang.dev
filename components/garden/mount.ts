@@ -72,6 +72,8 @@ type GardenOptions = {
   onSky?: (sky: { sunrise: number; sunset: number; moonset: number }) => void
   /** Whether the wheel scrubs the hour; off where the page sets it (the poem's scroll). */
   scrub?: boolean
+  /** Who answers a click on a flower: butterflies, or the poem's ladybug and bumblebee. */
+  visitors?: 'butterflies' | 'friends'
   /** Called once the scene is up, with a way to grow the poem's rose, rooted `x` (a share of
    * the screen's width) across. */
   onReady?: (scene: { rose: (x: number) => void }) => void
@@ -90,6 +92,7 @@ export function mountGarden({
   onHour,
   onSky,
   scrub = true,
+  visitors = 'butterflies',
   onReady,
 }: GardenOptions) {
   const html = document.documentElement
@@ -103,6 +106,8 @@ export function mountGarden({
     return Math.max(SCENE_ZOOM, fit) * (quality.coarse ? COARSE_ZOOM : 1)
   }
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)')
+  const coarse = window.matchMedia('(pointer: coarse)')
+  let heartTimer = 0
   const wind = new Wind()
   wind.strength = 0.6
   const raster = new Raster()
@@ -113,6 +118,7 @@ export function mountGarden({
   let hour = start0.hour
   let live = !start0.set
   const garden = new Garden(wind, paletteAt(hour))
+  if (visitors === 'friends') garden.useFriends()
 
   let width = 0
   let height = 0
@@ -510,6 +516,7 @@ export function mountGarden({
 
   const start = () => {
     stop()
+    garden.holdStill(reduced.matches)
     if (!visible || document.hidden) return
     if (reduced.matches) {
       garden.skipIntro()
@@ -582,9 +589,23 @@ export function mountGarden({
     const x = toScene(e.clientX - origin.left)
     const y = toScene(e.clientY - origin.top)
     if (y < 0 || y > height) return
+    // Bugs are small; a fingertip gets a bigger target than a pointer.
+    if (garden.tapVisitor(x, y, toScene(coarse.matches ? 22 : 12))) {
+      if (reduced.matches) {
+        // The heart shows for a while, still, then goes: one frame for each.
+        draw(true)
+        clearTimeout(heartTimer)
+        heartTimer = window.setTimeout(() => {
+          garden.calmVisitors()
+          draw(true)
+        }, 1200)
+      }
+      return
+    }
     const head = garden.headAt(x, y)
     if (head) {
       garden.visit(head)
+      if (reduced.matches) draw(true)
       return
     }
     if (garden.sow(x, y) && reduced.matches) {
@@ -662,6 +683,7 @@ export function mountGarden({
     window.removeEventListener('pointercancel', onPointerUp)
     root.removeEventListener('pointerdown', onPointerDown)
     root.removeEventListener('click', onClick)
+    clearTimeout(heartTimer)
     reduced.removeEventListener('change', start)
     document.removeEventListener('visibilitychange', onVisibility)
     raster.dispose()

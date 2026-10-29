@@ -370,6 +370,7 @@ export function Poem({ className, preview }: PoemProps) {
       root,
       font: mono || 'ui-monospace, Menlo, monospace',
       scrub: false,
+      visitors: 'friends',
       onSky: (sky) => {
         skyRef.current = sky
         remeasureRef.current?.()

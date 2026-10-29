@@ -7,7 +7,7 @@ import { bayer, clamp } from './math'
 import { mix, shade, type Palette, type Rgb } from './palette'
 import { Kind, type Cells } from './rasterize'
 
-import type { Head, Sprite } from './raster'
+import type { Head, Sprite, SpriteKind } from './raster'
 
 // Glyph ramps, sparse to dense, per material.
 const PETAL = " .':-=+*x#%@"
@@ -61,10 +61,8 @@ type Motif = { rows: string[]; mask: string[]; cy: number }
  * on the ground, p a band of pattern colour, e the dark margin with pale dots, b the body.
  */
 type Insect = { rows: string[]; mask: string[] }
-const INSECTS: Record<
-  'butterfly' | 'moth',
-  { big: Insect[]; mid: Insect[]; small: Insect[] }
-> = {
+type Figures = { big: Insect[]; mid: Insect[]; small: Insect[] }
+const INSECTS: Record<SpriteKind, Figures> = {
   butterfly: {
     big: [
       // Forewings with an eyespot at the tip, hindwings with a spot, a coloured band along the hem.
@@ -113,7 +111,136 @@ const INSECTS: Record<
       { rows: ['^'], mask: ['w'] },
     ],
   },
+  // The poem's pair and their heart, side views facing right (MeadowVisitors). Two wing-beat
+  // frames, then perched.
+  ladybug: {
+    big: [
+      {
+        rows: ["\\/o'. ", ' (o.o:', "  ' ' "],
+        mask: ['grswr ', ' ssssp', '  b b '],
+      },
+      {
+        rows: [" /o'. ", '~(o.o:', "/ ' ' "],
+        mask: [' rswr ', 'gssssp', 'g b b '],
+      },
+      {
+        rows: [" ,o'. ", ' (o.o:', "  ''' "],
+        mask: [' rswr ', ' ssssp', '  bbb '],
+      },
+    ],
+    mid: [
+      { rows: ['\\o. ', '(o.:'], mask: ['gsr ', 'sssp'] },
+      { rows: ['/o. ', '~o.:'], mask: ['rsr ', 'gssp'] },
+      { rows: [',o. ', '(o.:'], mask: ['rsr ', 'sssp'] },
+    ],
+    small: [
+      { rows: ['o'], mask: ['s'] },
+      { rows: [':'], mask: ['s'] },
+      { rows: ['o'], mask: ['s'] },
+    ],
+  },
+  bee: {
+    big: [
+      {
+        rows: ['   \\|/ ', " ,%''%/", '(.%..%o'],
+        mask: ['   ggg ', ' rwppwb', 'epwppwp'],
+      },
+      {
+        rows: ['   -=- ', " ,%''%/", '(.%..%o'],
+        mask: ['   ggg ', ' rwppwb', 'epwppwp'],
+      },
+      {
+        rows: [' .__,  ', " ,%''%/", '(.%..%o'],
+        mask: [' gggg  ', ' rwppwb', 'epwppwp'],
+      },
+    ],
+    mid: [
+      { rows: [' \\|/ ', '(.%.o'], mask: [' ggg ', 'epwpp'] },
+      { rows: [' -=- ', '(.%.o'], mask: [' ggg ', 'epwpp'] },
+      { rows: [' .__ ', '(.%.o'], mask: [' ggg ', 'epwpp'] },
+    ],
+    small: [
+      { rows: ['='], mask: ['s'] },
+      { rows: ['#'], mask: ['s'] },
+      { rows: ['='], mask: ['s'] },
+    ],
+  },
+  heart: {
+    big: [
+      {
+        rows: [' ,. ,. ', "('...:)", '  \\./  ', '   v   '],
+        mask: [' ww ww ', 'wswwwww', '  www  ', '   w   '],
+      },
+    ],
+    mid: [
+      {
+        rows: ["('v')", ' \\:/ ', '  v  '],
+        mask: ['wsrww', ' www ', '  w  '],
+      },
+    ],
+    small: [{ rows: ['<3'], mask: ['ww'] }],
+  },
 }
+
+/** Glyphs that turn into each other when a side-view figure is flipped to face left. */
+const MIRROR: Record<string, string> = Object.fromEntries(
+  ['()', '[]', '{}', '<>', '/\\', 'bd', 'pq'].flatMap(([a, b]) => [
+    [a, b],
+    [b, a],
+  ]),
+)
+const mirrorRow = (row: string) =>
+  [...row]
+    .reverse()
+    .map((ch) => MIRROR[ch] ?? ch)
+    .join('')
+
+/** Each figure turned to face left, made once. */
+const MIRRORED = new Map<Insect, Insect>(
+  Object.values(INSECTS).flatMap((set) =>
+    Object.values(set).flatMap((figs: Insect[]) =>
+      figs.map((f): [Insect, Insect] => [
+        f,
+        {
+          rows: f.rows.map(mirrorRow),
+          mask: f.mask.map((m) => [...m].reverse().join('')),
+        },
+      ]),
+    ),
+  ),
+)
+
+export type FigureSize = 'big' | 'mid' | 'small'
+
+/** Cells across and down each kind's figures print at each size. */
+const EXTENT = Object.fromEntries(
+  Object.entries(INSECTS).map(([kind, set]) => [
+    kind,
+    Object.fromEntries(
+      Object.entries(set).map(([size, figs]) => [
+        size,
+        {
+          cols: Math.max(...figs[0].rows.map((r) => r.length)),
+          rows: figs[0].rows.length,
+        },
+      ]),
+    ),
+  ]),
+) as Record<SpriteKind, Record<FigureSize, { cols: number; rows: number }>>
+
+/** The size of a kind's figures that fits `cells` across: one is used once there's room for most of it. */
+export function sizeFor(kind: SpriteKind, cells: number): FigureSize {
+  const e = EXTENT[kind]
+  return cells >= e.big.cols - 1.5
+    ? 'big'
+    : cells >= e.mid.cols - 1.5
+      ? 'mid'
+      : 'small'
+}
+
+/** How many cells across and down a kind's figure prints at a size. */
+export const figureSize = (kind: SpriteKind, size: FigureSize) =>
+  EXTENT[kind][size]
 const MOTIFS: Record<Head['species'], { tiny: Motif; small: Motif }> = {
   poppy: {
     tiny: { rows: ['(@)'], mask: ['ldl'], cy: 0 },
@@ -135,7 +262,7 @@ for (const set of [
   ...Object.values(MOTIFS).flatMap((m) => [m.tiny, m.small]),
   ...Object.values(INSECTS).flatMap((s) => [...s.big, ...s.mid, ...s.small]),
 ])
-  for (const row of set.rows) for (const ch of row) code(ch)
+  for (const row of set.rows) for (const ch of row + mirrorRow(row)) code(ch)
 for (const ch of FOLD) code(ch)
 for (const ch of '@#Oo.+:·') code(ch)
 
@@ -701,12 +828,9 @@ export class Typesetter {
       this
     for (const s of sprites) {
       // As big as its flower's depth allows: a visitor on the horizon prints as one glyph.
-      const cells = s.span / cw
-      const set =
-        INSECTS[s.moth ? 'moth' : 'butterfly'][
-          cells >= 5.5 ? 'big' : cells >= 3.5 ? 'mid' : 'small'
-        ]
-      const f = set[Math.min(2, s.pose)]
+      const set = INSECTS[s.kind][s.size ?? sizeFor(s.kind, s.span / cw)]
+      const fig = set[Math.min(set.length - 1, s.pose)]
+      const f = (s.facing === -1 && MIRRORED.get(fig)) || fig
       const cc = Math.floor(s.x / cw)
       const rr = Math.floor(s.y / ch)
       const { ink } = inkAt(s.x, s.y)
@@ -721,6 +845,10 @@ export class Typesetter {
         p: [pattern, edge],
         e: [edge, pattern],
         b: [null, body],
+        // Glassy wings: no tile, a pale ink that holds on the day sky and the night ground.
+        g: [null, mix(edge, ink, 0.7)],
+        // Rim: the body's colour with no tile, to round off a figure's corners.
+        r: [null, mix(base, ink, 0.2)],
       }
       f.rows.forEach((row, j) => {
         const r = rr - (f.rows.length - 1) + j
