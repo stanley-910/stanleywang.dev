@@ -1,31 +1,19 @@
 import {
   buildPath,
+  Kind,
   Op,
   PathOp,
   Rasterizer,
+  SS,
+  type Cells,
   type RasterJob,
   type RasterResult,
 } from './rasterize'
 
 import type { Rgb } from './palette'
 
-/**
- * What a cell is made of. Each kind is stored as a pure RGB corner in a second canvas, so
- * antialiased edges between two kinds still threshold back to one of them.
- */
-export const enum Kind {
-  Empty = 0,
-  Foliage = 1,
-  Stem = 2,
-  Petal = 3,
-  Disc = 4,
-  Fluff = 5,
-  Land = 6,
-  Sky = 7,
-}
-
-/** Samples per cell along each axis. */
-export const SS = 2
+// Defined beside the rasteriser, which the worker loads without this file.
+export { Kind, SS }
 /** How long a worker may hold a frame before the raster gives up on workers. */
 const WORKER_TIMEOUT = 1000
 
@@ -147,21 +135,19 @@ export class Raster {
   minLine = 1
   /** Multiplies every draw's alpha, so a whole plant can fade out. */
   opacity = 1
-  colorData: Uint8ClampedArray = new Uint8ClampedArray(0)
-  kindData: Uint8ClampedArray = new Uint8ClampedArray(0)
-  metaData: Uint8ClampedArray = new Uint8ClampedArray(0)
+  /** The latest frame, reduced to cells where it was rasterised. */
+  cells: Cells | null = null
   /** True once pixels for the current size have arrived. */
   ready = false
   private sx = 1
   private sy = 1
   /** Bounds of this frame's meta draws in scene pixels, and of the last adopted frame's in raster pixels. */
   private touch: Box = [Infinity, Infinity, -Infinity, -Infinity]
-  private metaBox: Box = [0, 0, -1, -1]
   private cmds = new Float32Array(1 << 16)
   private n = 0
   /** Bumped on resize, so a frame drawn at the old size is dropped when it comes back. */
   private gen = 0
-  /** Two workers take alternate frames, so the plants move at close to the display's rate. */
+  /** Workers take frames in turn, so the plants move at close to the loop's rate: two, or up to four on a machine with cores to spare. */
   private workers: Worker[] = []
   private idle: Worker[] = []
   /** Frames out at the workers, by sequence number, with the heads and sprites drawn in them. */
@@ -179,7 +165,11 @@ export class Raster {
     if (typeof Worker === 'undefined' || typeof OffscreenCanvas === 'undefined')
       return
     try {
-      for (let k = 0; k < 2; k++) {
+      const count = Math.min(
+        4,
+        Math.max(2, (navigator.hardwareConcurrency || 4) - 2),
+      )
+      for (let k = 0; k < count; k++) {
         const w = new Worker(new URL('./raster.worker.ts', import.meta.url), {
           type: 'module',
         })
@@ -259,8 +249,6 @@ export class Raster {
     this.minLine = (cw / SS) * 1.2
     this.sx = SS / cw
     this.sy = SS / ch
-    this.metaData = new Uint8ClampedArray(this.width * this.height * 4)
-    this.metaBox = [0, 0, -1, -1]
     this.gen++
     this.ready = false
   }
@@ -404,26 +392,7 @@ export class Raster {
 
   private adopt(out: RasterResult, heads: Head[], sprites: Sprite[]) {
     this.version++
-    this.colorData = out.color
-    this.kindData = out.kind
-    // Last frame's meta pixels sit in the kept buffer; zero just those, then copy in the new box.
-    const [px0, py0, px1, py1] = this.metaBox
-    for (let y = py0; y < py1; y++)
-      this.metaData.fill(
-        0,
-        (y * this.width + px0) * 4,
-        (y * this.width + px1) * 4,
-      )
-    const [x0, y0, x1, y1] = out.box
-    if (out.meta) {
-      const rowLen = (x1 - x0) * 4
-      for (let y = y0; y < y1; y++)
-        this.metaData.set(
-          out.meta.subarray((y - y0) * rowLen, (y - y0 + 1) * rowLen),
-          (y * this.width + x0) * 4,
-        )
-      this.metaBox = out.box
-    } else this.metaBox = [0, 0, -1, -1]
+    this.cells = out.cells
     this.drawnHeads = heads
     this.drawnSprites = sprites
     this.ready = true

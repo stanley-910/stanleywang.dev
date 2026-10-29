@@ -1,7 +1,7 @@
 import { createCompositor, type Compositor } from './gl'
 import { bayer, clamp, fbm2, hash, smoothstep } from './math'
 import { mix, shade, type Palette, type Rgb } from './palette'
-import { Kind, SS, type Head, type Raster, type Sprite } from './raster'
+import { Kind, type Head, type Raster, type Sprite } from './raster'
 
 export type Rect = { left: number; top: number; right: number; bottom: number }
 
@@ -13,16 +13,6 @@ const FOLIAGE = " .,':;!|"
 const LAND = ' .·:'
 const SLOPE_LIT = '.·:;'
 const CLOUD = ' ·.:-=+*o'
-
-/** Materials that belong to plants, which win a cell over the land behind them. */
-const PLANT_KINDS: number[] = [
-  Kind.Petal,
-  Kind.Disc,
-  Kind.Stem,
-  Kind.Fluff,
-  Kind.Foliage,
-]
-const PLANT_MASK = PLANT_KINDS.reduce((m, k) => m | (1 << k), 0)
 
 // Line glyphs by direction, for stems, blades and the globe's wires.
 const LINES = ['-', '\\', '|', '/']
@@ -354,124 +344,16 @@ export class AsciiRenderer {
     }
   }
 
-  /**
-   * Reduce the raster to per-cell coverage, colour and material. A plant material that covers
-   * a quarter of the cell wins it over the land behind, so thin stems and blades survive, and
-   * the cell then takes its colour and coverage from that material alone.
-   */
-  private sample(raster: Raster) {
-    const { cols, rows, cov, kinds, rgb } = this
-    const W = raster.width
-    const cd = raster.colorData
-    const kd = raster.kindData
-    const md = raster.metaData
-    const { pid, lit, back } = this
-    const n = SS * SS
-    const weight = new Float32Array(8)
-    const kr = new Float32Array(8)
-    const kg = new Float32Array(8)
-    const kb = new Float32Array(8)
-    const ids = new Int32Array(SS * SS)
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const i = r * cols + c
-        // Most of the sky is bare: nothing drawn in any subsample.
-        let any = 0
-        for (let sy = 0; sy < SS; sy++) {
-          let o = ((r * SS + sy) * W + c * SS) * 4 + 3
-          for (let sx = 0; sx < SS; sx++, o += 4) any |= cd[o] | kd[o]
-        }
-        if (!any) {
-          kinds[i] = Kind.Empty
-          cov[i] = 0
-          pid[i] = 0
-          continue
-        }
-        for (let k = 0; k < 8; k++) {
-          weight[k] = 0
-          kr[k] = 0
-          kg[k] = 0
-          kb[k] = 0
-        }
-        let a = 0
-        let nIds = 0
-        let li = 0
-        let bk = 0
-        let pn = 0
-        // Hills carry slope light in the same layer: 0.5 neutral, up toward the light, down in shade.
-        let ll = 0
-        let ln = 0
-        // Fluff marked as a loose petal (LOOSE_PETAL) carries the back flag.
-        let lb = 0
-        for (let sy = 0; sy < SS; sy++) {
-          let o = ((r * SS + sy) * W + c * SS) * 4
-          for (let sx = 0; sx < SS; sx++, o += 4) {
-            const al = cd[o + 3]
-            a += al
-            const kal = kd[o + 3]
-            if (kal === 0) continue
-            const k =
-              (kd[o] > 127 ? 4 : 0) |
-              (kd[o + 1] > 127 ? 2 : 0) |
-              (kd[o + 2] > 127 ? 1 : 0)
-            weight[k] += kal
-            if (k === Kind.Petal && md[o + 3] > 0) {
-              // Petal identity by vote, since antialiased seams blend two ids; light and facing averaged.
-              if (kal > 200) ids[nIds++] = Math.round(md[o] / 24)
-              li += md[o + 1]
-              bk += md[o + 2]
-              pn++
-            } else if ((k === Kind.Land || k === Kind.Fluff) && md[o + 3] > 0) {
-              ll += md[o + 1]
-              lb += md[o + 2]
-              ln++
-            }
-            kr[k] += cd[o] * al
-            kg[k] += cd[o + 1] * al
-            kb[k] += cd[o + 2] * al
-          }
-        }
-        let best = Kind.Empty as number
-        for (const k of PLANT_KINDS) if (weight[k] > weight[best]) best = k
-        if (weight[best] < 0.25 * 255 * n) {
-          best = Kind.Empty
-          for (let k = 1; k < 8; k++) if (weight[k] > weight[best]) best = k
-        }
-        kinds[i] = best
-        let id = 0
-        let votes = 0
-        for (let x = 0; x < nIds; x++) {
-          let m = 0
-          for (let y = 0; y < nIds; y++) if (ids[x] === ids[y]) m++
-          if (m > votes) {
-            votes = m
-            id = ids[x]
-          }
-        }
-        // A cell split between petals goes to the one with more of it, so folds stay unbroken.
-        pid[i] = id
-        lit[i] = pn ? li / (pn * 255) : ln ? ll / (ln * 255) : 0.5
-        back[i] = pn ? +(bk / pn > 127) : ln ? +(lb / ln > 127) : 0
-        const plant = (PLANT_MASK >> best) & 1
-        cov[i] = (plant ? weight[best] : a) / (255 * n)
-        let cr = 0
-        let cg = 0
-        let cb = 0
-        for (let k = 0; k < 8; k++) {
-          if (plant && k !== best) continue
-          cr += kr[k]
-          cg += kg[k]
-          cb += kb[k]
-        }
-        // Colour sums are weighted by alpha, so divide by the alpha they were drawn with.
-        const norm = plant ? weight[best] : a
-        if (norm > 0) {
-          rgb[i * 3] = cr / norm
-          rgb[i * 3 + 1] = cg / norm
-          rgb[i * 3 + 2] = cb / norm
-        }
-      }
-    }
+  /** Takes a frame's cells, reduced from its pixels where it was rasterised. */
+  private take(raster: Raster) {
+    const c = raster.cells
+    if (!c || c.cov.length !== this.cols * this.rows) return
+    this.cov = c.cov
+    this.kinds = c.kinds
+    this.rgb = c.rgb
+    this.pid = c.pid
+    this.lit = c.lit
+    this.back = c.back
   }
 
   /** Direction of the stroke through a cell, from second moments of coverage around it. */
@@ -795,7 +677,7 @@ export class AsciiRenderer {
     }
     // Between worker replies the raster holds the same frame; sampling it again changes nothing.
     if (raster.version !== this.sampled) {
-      this.sample(raster)
+      this.take(raster)
       this.sampled = raster.version
     }
     const { cols, rows, cw, ch, cov, kinds, rgb, glyph, out, tile, dim } = this

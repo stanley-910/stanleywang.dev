@@ -1,5 +1,34 @@
 // Shared by the raster worker and the main thread: turns a frame's recorded draw commands into
-// pixels. Kept free of the DOM so it runs on an OffscreenCanvas in the worker.
+// pixels, then reduces those to cells. Kept free of the DOM so it runs on an OffscreenCanvas in
+// the worker.
+
+/**
+ * What a cell is made of. Each kind is stored as a pure RGB corner in a second canvas, so
+ * antialiased edges between two kinds still threshold back to one of them.
+ */
+export const enum Kind {
+  Empty = 0,
+  Foliage = 1,
+  Stem = 2,
+  Petal = 3,
+  Disc = 4,
+  Fluff = 5,
+  Land = 6,
+  Sky = 7,
+}
+
+/** Samples per cell along each axis. */
+export const SS = 2
+
+/** Materials that belong to plants, which win a cell over the land behind them. */
+const PLANT_KINDS: number[] = [
+  Kind.Petal,
+  Kind.Disc,
+  Kind.Stem,
+  Kind.Fluff,
+  Kind.Foliage,
+]
+const PLANT_MASK = PLANT_KINDS.reduce((m, k) => m | (1 << k), 0)
 
 export const enum Op {
   Fill = 1,
@@ -27,13 +56,19 @@ export type RasterJob = {
   cmds: Float32Array
 }
 
+/** A frame reduced to cells: coverage, material and mean colour, and per petal cell its id, light and facing. */
+export type Cells = {
+  cov: Float32Array<ArrayBuffer>
+  kinds: Uint8Array<ArrayBuffer>
+  rgb: Float32Array<ArrayBuffer>
+  pid: Uint8Array<ArrayBuffer>
+  lit: Float32Array<ArrayBuffer>
+  back: Uint8Array<ArrayBuffer>
+}
+
 export type RasterResult = {
   gen: number
-  color: Uint8ClampedArray
-  kind: Uint8ClampedArray
-  /** The meta layer inside `box` only; null when nothing touched it. */
-  meta: Uint8ClampedArray | null
-  box: [number, number, number, number]
+  cells: Cells
 }
 
 type Ctx = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
@@ -177,15 +212,161 @@ export class Rasterizer {
       } else break
     }
     const [x0, y0, x1, y1] = job.box
+    const md =
+      x1 > x0 && y1 > y0
+        ? meta.getImageData(x0, y0, x1 - x0, y1 - y0).data
+        : null
     return {
       gen: job.gen,
-      color: color.getImageData(0, 0, width, height).data,
-      kind: kind.getImageData(0, 0, width, height).data,
-      meta:
-        x1 > x0 && y1 > y0
-          ? meta.getImageData(x0, y0, x1 - x0, y1 - y0).data
-          : null,
-      box: job.box,
+      cells: sampleCells(
+        color.getImageData(0, 0, width, height).data,
+        kind.getImageData(0, 0, width, height).data,
+        md,
+        job.box,
+        width,
+        width / SS,
+        height / SS,
+      ),
     }
   }
+}
+
+/**
+ * Reduce the raster to per-cell coverage, colour and material. A plant material that covers
+ * a quarter of the cell wins it over the land behind, so thin stems and blades survive, and
+ * the cell then takes its colour and coverage from that material alone. Done where the pixels
+ * are, so only the cells cross to the page. `md` holds the meta layer inside `box` only.
+ */
+function sampleCells(
+  cd: Uint8ClampedArray,
+  kd: Uint8ClampedArray,
+  md: Uint8ClampedArray | null,
+  box: [number, number, number, number],
+  W: number,
+  cols: number,
+  rows: number,
+): Cells {
+  const total = cols * rows
+  const cov = new Float32Array(total)
+  const kinds = new Uint8Array(total)
+  const rgb = new Float32Array(total * 3)
+  const pid = new Uint8Array(total)
+  const lit = new Float32Array(total)
+  const back = new Uint8Array(total)
+  const [bx0, by0, bx1] = box
+  const bw = bx1 - bx0
+  const n = SS * SS
+  const weight = new Float32Array(8)
+  const kr = new Float32Array(8)
+  const kg = new Float32Array(8)
+  const kb = new Float32Array(8)
+  const ids = new Int32Array(SS * SS)
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const i = r * cols + c
+      // Most of the sky is bare: nothing drawn in any subsample.
+      let any = 0
+      for (let sy = 0; sy < SS; sy++) {
+        let o = ((r * SS + sy) * W + c * SS) * 4 + 3
+        for (let sx = 0; sx < SS; sx++, o += 4) any |= cd[o] | kd[o]
+      }
+      if (!any) {
+        lit[i] = 0.5
+        continue
+      }
+      for (let k = 0; k < 8; k++) {
+        weight[k] = 0
+        kr[k] = 0
+        kg[k] = 0
+        kb[k] = 0
+      }
+      let a = 0
+      let nIds = 0
+      let li = 0
+      let bk = 0
+      let pn = 0
+      // Hills carry slope light in the same layer: 0.5 neutral, up toward the light, down in shade.
+      let ll = 0
+      let ln = 0
+      // Fluff marked as a loose petal (LOOSE_PETAL) carries the back flag.
+      let lb = 0
+      for (let sy = 0; sy < SS; sy++) {
+        const py = r * SS + sy
+        let o = (py * W + c * SS) * 4
+        for (let sx = 0; sx < SS; sx++, o += 4) {
+          const al = cd[o + 3]
+          a += al
+          const kal = kd[o + 3]
+          if (kal === 0) continue
+          const k =
+            (kd[o] > 127 ? 4 : 0) |
+            (kd[o + 1] > 127 ? 2 : 0) |
+            (kd[o + 2] > 127 ? 1 : 0)
+          weight[k] += kal
+          // The meta pixel, if this subsample is inside the box that was read back.
+          const px = c * SS + sx
+          const m =
+            md && px >= bx0 && px < bx1 && py >= by0 && py < box[3]
+              ? ((py - by0) * bw + (px - bx0)) * 4
+              : -1
+          if (m >= 0 && md && md[m + 3] > 0) {
+            if (k === Kind.Petal) {
+              // Petal identity by vote, since antialiased seams blend two ids; light and facing averaged.
+              if (kal > 200) ids[nIds++] = Math.round(md[m] / 24)
+              li += md[m + 1]
+              bk += md[m + 2]
+              pn++
+            } else if (k === Kind.Land || k === Kind.Fluff) {
+              ll += md[m + 1]
+              lb += md[m + 2]
+              ln++
+            }
+          }
+          kr[k] += cd[o] * al
+          kg[k] += cd[o + 1] * al
+          kb[k] += cd[o + 2] * al
+        }
+      }
+      let best = Kind.Empty as number
+      for (const k of PLANT_KINDS) if (weight[k] > weight[best]) best = k
+      if (weight[best] < 0.25 * 255 * n) {
+        best = Kind.Empty
+        for (let k = 1; k < 8; k++) if (weight[k] > weight[best]) best = k
+      }
+      kinds[i] = best
+      let id = 0
+      let votes = 0
+      for (let x = 0; x < nIds; x++) {
+        let m = 0
+        for (let y = 0; y < nIds; y++) if (ids[x] === ids[y]) m++
+        if (m > votes) {
+          votes = m
+          id = ids[x]
+        }
+      }
+      // A cell split between petals goes to the one with more of it, so folds stay unbroken.
+      pid[i] = id
+      lit[i] = pn ? li / (pn * 255) : ln ? ll / (ln * 255) : 0.5
+      back[i] = pn ? +(bk / pn > 127) : ln ? +(lb / ln > 127) : 0
+      const plant = (PLANT_MASK >> best) & 1
+      cov[i] = (plant ? weight[best] : a) / (255 * n)
+      let cr = 0
+      let cg = 0
+      let cb = 0
+      for (let k = 0; k < 8; k++) {
+        if (plant && k !== best) continue
+        cr += kr[k]
+        cg += kg[k]
+        cb += kb[k]
+      }
+      // Colour sums are weighted by alpha, so divide by the alpha they were drawn with.
+      const norm = plant ? weight[best] : a
+      if (norm > 0) {
+        rgb[i * 3] = cr / norm
+        rgb[i * 3 + 1] = cg / norm
+        rgb[i * 3 + 2] = cb / norm
+      }
+    }
+  }
+  return { cov, kinds, rgb, pid, lit, back }
 }
