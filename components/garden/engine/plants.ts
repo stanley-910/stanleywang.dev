@@ -166,7 +166,7 @@ export abstract class Plant {
     const bx = s.pts[j * 2]
     const by = s.pts[j * 2 + 1]
     const sway =
-      env.wind.at(bx, by, this.z) * 0.07 + env.wind.push(bx, by) * 0.25
+      env.wind.at(bx, by, this.z) * 0.07 + env.wind.push(bx, by) * 0.12
     const L = leaf.length * grow
     if (L < 2) return
     const a0 = s.abs[Math.min(j, s.n - 1)] + leaf.side * leaf.angle + sway

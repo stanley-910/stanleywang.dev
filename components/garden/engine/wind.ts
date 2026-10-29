@@ -71,6 +71,9 @@ export class Wind {
     const d2 = dx * dx + dy * dy
     if (d2 > r * r * 4) return 0
     const k = Math.exp(-d2 / (r * r))
-    return Math.sign(dx || 1) * k * 0.5
+    // Leans away smoothly through zero, so a cursor resting on a stem doesn't flip it side to
+    // side, and a still cursor only leans plants a little: moving, it brushes them like a breeze.
+    const speed = Math.min(1, Math.hypot(p.vx, p.vy) / 800)
+    return Math.tanh(dx / (r * 0.5)) * k * 0.3 * (0.35 + 0.65 * speed)
   }
 }
