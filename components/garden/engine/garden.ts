@@ -623,28 +623,10 @@ export class Garden {
     this.drawLand(r, p)
     r.endStill()
     const haze = (z: number) => 0.68 * (1 - z) ** 1.6
-    // After dark only the nearest flower clear of the text keeps full brightness; the rest step
-    // back. Where the poem's rose grows, it is that flower, and no other stands out beside it.
+    // After dark every flower steps back toward the ground alike, but the poem's rose.
     const dim = 0.28 * smoothstep(0.5, 1, p.night)
-    const rose = this.plants.some((plant) => plant.species === 'rose')
-    let hero: Plant | null = null
-    for (const plant of this.plants) {
-      plant.dim = dim
-      if (rose) continue
-      const clear =
-        !this.keepClear ||
-        plant.x < this.keepClear.left ||
-        plant.x > this.keepClear.right
-      if (
-        (plant.species === 'poppy' || plant.species === 'cosmos') &&
-        clear &&
-        plant.x < this.width &&
-        (!hero || plant.z > hero.z)
-      )
-        hero = plant
-    }
-    if (hero) hero.dim = 0
-    for (const plant of this.plants) if (plant.species === 'rose') plant.dim = 0
+    for (const plant of this.plants)
+      plant.dim = plant.species === 'rose' ? 0 : dim
     let blade = 0
     for (const plant of this.plants) {
       blade = this.meadow.draw(r, p, blade, plant.z, haze)
