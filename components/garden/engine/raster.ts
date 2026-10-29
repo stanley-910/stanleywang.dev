@@ -201,7 +201,8 @@ export class Raster {
         ) => {
           this.idle.push(w)
           this.replies++
-          if (this.warm)
+          // The first replies after the warm-up ones can still be slow; skip them too.
+          if (this.replies > WARM_REPLIES)
             this.frameMs = this.frameMs
               ? this.frameMs + (e.data.ms - this.frameMs) * 0.1
               : e.data.ms

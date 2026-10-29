@@ -429,8 +429,10 @@ export function Poem({ className, preview }: PoemProps) {
     let sent = NaN
     let raf = 0
     let last = 0
+    // A late callback (fonts loading after the reader has left) mustn't set the next page's hour.
+    let live = true
     const frame = (now: number) => {
-      const dt = Math.min(0.1, (now - last) / 1000)
+      const dt = Math.max(0, Math.min(0.1, (now - last) / 1000))
       last = now
       const target = hourAt(anchors, window.scrollY)
       const next = reduced.matches
@@ -443,7 +445,7 @@ export function Poem({ className, preview }: PoemProps) {
       raf = shown === target ? 0 : requestAnimationFrame(frame)
     }
     const stir = () => {
-      if (raf) return
+      if (raf || !live) return
       last = performance.now()
       raf = requestAnimationFrame(frame)
     }
@@ -466,6 +468,7 @@ export function Poem({ className, preview }: PoemProps) {
     window.addEventListener('scroll', bloom, { passive: true })
     window.addEventListener('scroll', stir, { passive: true })
     return () => {
+      live = false
       cancelAnimationFrame(raf)
       window.removeEventListener('scroll', bloom)
       window.removeEventListener('scroll', stir)

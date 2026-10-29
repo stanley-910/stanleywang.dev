@@ -55,6 +55,14 @@ const AWAY_FPS = 30
  */
 const PLANT_BUDGET = 1000
 const MIN_PLANTS = 20
+/**
+ * A worker's time on a frame, in ms, past which the budget holds the plants at MIN_PLANTS and the
+ * next visit takes the coarse grid; and under which, scaled to the fine grid, it goes back.
+ */
+const SLOW_FRAME = PLANT_BUDGET / MIN_PLANTS
+const FAST_FRAME = SLOW_FRAME * 0.7
+/** How much more a frame costs on the fine grid than the coarse: COARSE_ZOOM (mount.ts), squared. */
+const COARSE_COST = 1.25 ** 2
 /** Plant redraws per second once nobody has touched the page for a while. */
 const IDLE_PLANTS = 30
 /** Refresh rates displays run at, for the measured one to snap to. */
@@ -127,6 +135,8 @@ export class Quality {
   idle = false
   /** A worker's time on one plant frame, in ms (raster.ts); 0 until known. */
   frameMs = 0
+  /** Display frames per plant frame under the budget, held until the budget moves well past it. */
+  private budgetBeat = 0
 
   constructor() {
     const saved = load()
@@ -147,12 +157,25 @@ export class Quality {
    */
   plantRate() {
     if (this.away) return AWAY_PLANTS
-    let cap = PLANT_CAPS[this.level]
-    if (this.idle) cap = Math.min(cap, IDLE_PLANTS)
-    if (this.frameMs > 0)
-      cap = Math.min(cap, Math.max(MIN_PLANTS, PLANT_BUDGET / this.frameMs))
     const hz = this.hz || 60
-    return hz / Math.ceil(hz / cap - 0.01)
+    const beat = (cap: number) => Math.max(1, Math.ceil(hz / cap - 0.01))
+    const cap = this.idle
+      ? Math.min(PLANT_CAPS[this.level], IDLE_PLANTS)
+      : PLANT_CAPS[this.level]
+    if (this.frameMs > 0) {
+      // A frame time near a step would flip the beat back and forth as it wavers, so the budget's
+      // beat moves only once it's a tenth of a frame past the next.
+      const x = hz / Math.max(MIN_PLANTS, PLANT_BUDGET / this.frameMs)
+      const n = this.budgetBeat
+      if (!n || x > n + 0.1 || x < n - 1.1) this.budgetBeat = beat(hz / x)
+    } else this.budgetBeat = 0
+    return hz / Math.max(beat(cap), this.budgetBeat)
+  }
+
+  /** The plants' rate at this level, on this display, with no budget, idle or away. */
+  private levelRate() {
+    const hz = this.hz || 60
+    return hz / Math.max(1, Math.ceil(hz / PLANT_CAPS[this.level] - 0.01))
   }
 
   /** Whether the plants may be recorded again now, under plantRate. */
@@ -178,7 +201,7 @@ export class Quality {
     this.gaps = []
     this.behind = []
     this.spare = 0
-    this.settle = 2
+    this.settle = Math.max(this.settle, 2)
   }
 
   /** Forgets the current windows, after a pause or while something else loads the page. */
@@ -279,12 +302,16 @@ export class Quality {
     if (this.plantRates.length > PLANT_WINDOWS) this.plantRates.shift()
     const mean = this.plantRates.reduce((a, b) => a + b, 0) / PLANT_WINDOWS
     const cap = this.plantRate()
-    // Well under the cap, the workers are what holds the plants back. Only the finest level's
-    // cap can show them keeping up.
+    // Well under the rate asked of them, or slow enough that the budget holds them at its floor,
+    // the workers want a coarser grid. Back to the fine grid only at the finest level, keeping
+    // up, with frames that would fit the budget there.
+    const fineMs = this.coarse ? this.frameMs * COARSE_COST : this.frameMs
     const want =
-      mean < Math.min(SLOW_PLANTS, cap * 0.6)
+      mean < Math.min(SLOW_PLANTS, cap * 0.6) || this.frameMs > SLOW_FRAME
         ? true
-        : this.level === 0 && mean >= cap * FAST_PLANTS
+        : this.level === 0 &&
+            mean >= Math.min(cap, this.levelRate()) * FAST_PLANTS &&
+            fineMs < FAST_FRAME
           ? false
           : this.wantCoarse
     if (want === this.wantCoarse) return
