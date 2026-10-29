@@ -9,6 +9,7 @@ import { ThemeProvider } from 'next-themes'
 
 import { ProgressBar } from '@/components/ui/progress-bar'
 import { THEME_SCRIPT } from '@/lib/circadian'
+import { WEBSITE_URL } from '@/lib/constants'
 
 import { Header } from './header'
 
@@ -29,6 +30,8 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
+  // Makes the link-preview image's URL absolute (app/opengraph-image.tsx).
+  metadataBase: new URL(WEBSITE_URL),
   title: 'stanleywang.dev',
   description: 'By Stanley Wang',
   icons: {
