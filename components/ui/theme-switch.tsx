@@ -51,6 +51,8 @@ const DIP_OUT = 90
 
 /** Scroll distance, in px, per quarter hour. */
 const WHEEL_STEP = 20
+/** A pause in the wheel this long, in ms, ends a scroll gesture. */
+const WHEEL_REST = 200
 
 export function ThemeSwitch({ className }: { className?: string }) {
   const [mounted, setMounted] = useState(false)
@@ -133,9 +135,16 @@ export function ThemeSwitch({ className }: { className?: string }) {
     const pop = popRef.current
     if (!open || !pop) return
     let carry = 0
+    let axis: 'x' | 'y' | null = null
+    let last = 0
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
-      const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
+      // A gesture keeps the axis it started on: a slow sideways swipe drifts
+      // up and down too, and read per event that drift steps the wrong way.
+      if (e.timeStamp - last > WHEEL_REST) axis = null
+      last = e.timeStamp
+      axis ??= Math.abs(e.deltaX) > Math.abs(e.deltaY) ? 'x' : 'y'
+      const d = axis === 'x' ? e.deltaX : e.deltaY
       // Line-mode wheels report lines; count each as 40px.
       const px = e.deltaMode === 1 ? d * 40 : d
       // A turn the other way starts fresh: what was left over from the last
