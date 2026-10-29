@@ -280,7 +280,6 @@ export class Poppy extends Plant {
   private B: number
   private P: number
   private stem: Stem
-  private sepalsDropped = false
   private shed = 0
   private head = 0
 
@@ -349,26 +348,6 @@ export class Poppy extends Plant {
 
     const tx = s.tipX()
     const ty = s.tipY()
-    if (!this.sepalsDropped && ph.open > 0.15) {
-      this.sepalsDropped = true
-      if (!env.quiet) {
-        for (const sd of [-1, 1]) {
-          env.particles.add(
-            particle({
-              type: 'sepal',
-              x: tx + sd * this.head * 0.2,
-              y: ty,
-              vx: sd * 20,
-              size: this.head * 0.28,
-              color: this.hazed(env.palette.stem, env.palette),
-              floor: env.floor(this.z),
-              depth: this.z,
-              life: 30,
-            }),
-          )
-        }
-      }
-    }
     const fallen = Math.floor(ph.shed * 4.999)
     while (this.shed < fallen) {
       this.shed++

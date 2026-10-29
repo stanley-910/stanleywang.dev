@@ -1,16 +1,10 @@
 import { clamp, noise1, TAU } from './math'
-import { Kind, LOOSE_PETAL, type Raster, Shape } from './raster'
+import { Kind, LANDED_PETAL, LOOSE_PETAL, type Raster, Shape } from './raster'
 
 import type { Rgb } from './palette'
 import type { Wind } from './wind'
 
-export type ParticleType =
-  | 'petal'
-  | 'sepal'
-  | 'pappus'
-  | 'seed'
-  | 'firefly'
-  | 'mote'
+export type ParticleType = 'petal' | 'pappus' | 'seed' | 'firefly' | 'mote'
 
 export type Particle = {
   type: ParticleType
@@ -84,11 +78,9 @@ export class Particles {
       const w = wind.at(p.x, p.y, p.depth)
       const push = wind.push(p.x, p.y)
       switch (p.type) {
-        case 'petal':
-        case 'sepal': {
+        case 'petal': {
           const broad = Math.abs(Math.sin(p.rot))
-          const fall =
-            (p.type === 'sepal' ? 55 : 26) * (0.35 + 0.9 * (1 - broad))
+          const fall = 26 * (0.35 + 0.9 * (1 - broad))
           p.vx += (w * 55 + push * 160 - p.vx) * dt * 1.6
           p.vy += (fall + Math.cos(p.rot * 2) * 10 - p.vy) * dt * 2.5
           p.rot += p.spin * dt * (1 + Math.abs(w))
@@ -148,29 +140,37 @@ export class Particles {
       const fade = clamp((p.life - p.age) / 3, 0, 1) * clamp(p.age * 4, 0, 1)
       if (fade <= 0) continue
       switch (p.type) {
-        case 'petal':
-        case 'sepal': {
+        case 'petal': {
           const path = new Shape()
-          const flat = p.landed ? 0.35 : Math.abs(Math.cos(p.rot))
           // A loose petal is a little smaller than the one it fell from.
-          const s = p.type === 'petal' ? p.size * 0.7 : p.size
-          path.ellipse(
-            p.x,
-            p.y,
-            s * (0.25 + 0.75 * flat),
-            s * 0.6,
-            p.rot * 0.5,
-            0,
-            TAU,
+          const s = p.size * 0.7
+          if (p.landed) {
+            // Lying on the ground, seen from low down: wide, flat and nearly level.
+            const tilt = (((p.seed * 0.618) % 1) - 0.5) * 0.5
+            path.ellipse(p.x, p.y, s, s * 0.38, tilt, 0, TAU)
+          } else {
+            const flat = Math.abs(Math.cos(p.rot))
+            path.ellipse(
+              p.x,
+              p.y,
+              s * (0.25 + 0.75 * flat),
+              s * 0.6,
+              p.rot * 0.5,
+              0,
+              TAU,
+            )
+          }
+          // Fluff marked as a loose petal: ascii.ts prints it like the petals on the flower, an
+          // outline over a tile in its colour, thin in the air and solid once it has landed.
+          r.touchMeta(p.x - s, p.y - s)
+          r.touchMeta(p.x + s, p.y + s)
+          r.fill(
+            path,
+            p.color,
+            Kind.Fluff,
+            fade,
+            p.landed ? LANDED_PETAL : LOOSE_PETAL,
           )
-          if (p.type === 'petal') {
-            // Fluff marked as a loose petal: its edge prints in the fluff ramp and its inside in
-            // sparse light glyphs (ascii.ts), so it reads as a petal without blotting out what's
-            // behind. As petal material it had no outline or seams and read as a flat tile.
-            r.touchMeta(p.x - s, p.y - s)
-            r.touchMeta(p.x + s, p.y + s)
-            r.fill(path, p.color, Kind.Fluff, fade, LOOSE_PETAL)
-          } else r.fill(path, p.color, Kind.Foliage, fade)
           break
         }
         case 'pappus': {

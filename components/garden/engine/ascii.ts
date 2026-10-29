@@ -26,6 +26,8 @@ const PLANT_MASK = PLANT_KINDS.reduce((m, k) => m | (1 << k), 0)
 
 // Line glyphs by direction, for stems, blades and the globe's wires.
 const LINES = ['-', '\\', '|', '/']
+// One glyph per petal flap, by its light: lit, half-lit, turned away, seen from behind.
+const FOLD = ['.', ':', '=', '#']
 
 const GLYPHS: string[] = []
 const codeOf = new Map<string, number>()
@@ -418,8 +420,8 @@ export class AsciiRenderer {
             id = ids[x]
           }
         }
-        // A cell split between petals has no clear owner and gets no seam.
-        pid[i] = votes * 2 > nIds ? id : 0
+        // A cell split between petals goes to the one with more of it, so folds stay unbroken.
+        pid[i] = id
         lit[i] = pn ? li / (pn * 255) : ln ? ll / (ln * 255) : 0.5
         back[i] = pn ? +(bk / pn > 127) : ln ? +(lb / ln > 127) : 0
         const plant = (PLANT_MASK >> best) & 1
@@ -500,30 +502,37 @@ export class AsciiRenderer {
   }
 
   /**
-   * Line glyph for a seam between two petals of a head, or -1. A seam prints on its darker side
-   * only, so it stays one cell wide.
+   * Line glyph for the fold between two petals of a head, or -1. The fold prints on its lit
+   * side only, so it stays one cell wide and sits where dark ink shows; its direction follows
+   * the run of the boundary, so the folds of a head facing the viewer print as diagonals.
    */
   private petalSeam(c: number, r: number) {
     const i = r * this.cols + c
     const me = this.pid[i]
     if (!me) return -1
+    // Only big heads have room for folds; on smaller ones they turn the head into a tangle.
+    if (this.cov[i] < 0.5 || this.headCells(c, r) < 26) return -1
     const mine = this.lit[i]
-    // Only big heads have room for seams; on smaller ones they turn the head into a tangle.
-    if (this.cov[i] < 0.7 || this.headCells(c, r) < 26) return -1
-    const checks: [number, number, number][] = [
-      [-1, 0, 2],
-      [1, 0, 2],
-      [0, -1, 0],
-      [0, 1, 0],
-    ]
-    for (const [dx, dy, line] of checks) {
-      const other = this.pidAt(c + dx, r + dy)
-      if (other && this.cov[(r + dy) * this.cols + c + dx] < 0.7) continue
-      if (!other || other === me) continue
-      const theirs = this.lit[(r + dy) * this.cols + c + dx]
-      if (theirs > mine || (theirs === mine && other > me)) return line
-    }
-    return -1
+    let gx = 0
+    let gy = 0
+    for (let dy = -1; dy <= 1; dy++)
+      for (let dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) continue
+        const other = this.pidAt(c + dx, r + dy)
+        if (!other || other === me) continue
+        const j = (r + dy) * this.cols + c + dx
+        if (this.cov[j] < 0.5) continue
+        const theirs = this.lit[j]
+        // The darker petal is the one behind the fold; the line goes on the lighter one.
+        if (theirs > mine || (theirs === mine && other > me)) continue
+        gx += dx * this.cw
+        gy += dy * this.ch
+      }
+    if (gx === 0 && gy === 0) return -1
+    // The fold runs at right angles to the way the petal behind it lies.
+    let a = Math.atan2(gy, gx) + Math.PI / 2
+    a = ((a % Math.PI) + Math.PI) % Math.PI
+    return Math.round(a / (Math.PI / 4)) % 4
   }
 
   /** Clears far heads' sampled cells and lays their motif in, ink chosen against what's behind. */
@@ -671,15 +680,29 @@ export class AsciiRenderer {
     return n
   }
 
+  private readonly petalCov = (c: number, r: number) => this.petal(c, r)
+
+  /** Cover of a loose petal (fluff carrying the back flag) at a cell, 0 elsewhere. */
+  private readonly looseCov = (c: number, r: number) => {
+    if (c < 0 || r < 0 || c >= this.cols || r >= this.rows) return 0
+    const i = r * this.cols + c
+    return this.kinds[i] === Kind.Fluff && this.back[i] ? this.cov[i] : 0
+  }
+
   /**
    * Line glyph tracing the petal's outline through this cell, or -1 inside the flower. Edges
    * print as strokes so each head reads by its silhouette, not as a blot of colour.
    */
   private petalEdge(c: number, r: number) {
-    const l = this.petal(c - 1, r)
-    const rt = this.petal(c + 1, r)
-    const u = this.petal(c, r - 1)
-    const d = this.petal(c, r + 1)
+    return this.edgeOf(c, r, this.petalCov)
+  }
+
+  /** The outline of whatever `at` measures the cover of, as a line glyph, or -1 inside it. */
+  private edgeOf(c: number, r: number, at: (c: number, r: number) => number) {
+    const l = at(c - 1, r)
+    const rt = at(c + 1, r)
+    const u = at(c, r - 1)
+    const d = at(c, r + 1)
     if (Math.min(l, rt, u, d) > 0.2) return -1
     const gx = (rt - l) / this.cw
     const gy = (d - u) / this.ch
@@ -853,63 +876,64 @@ export class AsciiRenderer {
           alpha = clamp(v * 1.6, 0.25, 1)
           switch (k) {
             case Kind.Petal: {
-              // The tile carries the body in the petal's own colour, under every petal cell so lines
+              // The tile is the petal's body, in its own colour, under every petal cell so lines
               // don't punch holes in the head; outline cells take a little less so the edge stays soft.
               const lit = this.lit[i]
               // After dark cream ink glows against the dim petals; pull it back toward the petal's own colour.
               const reach = darkInk ? 1 : 1 - 0.5 * p.night
               // Mostly opaque, so what's behind (a hill's edge, the sky) doesn't show through
-              // the head as a line across it. The light is in the tile's colour instead: lit
-              // folds brighter, shaded and back-facing ones darker, so the petals read apart.
+              // the head as a line across it. By day it keeps the light the raster gave the petal
+              // (bloom.ts shades each flap by 0.62..1.17). After dark that shading is undone, so
+              // the flowers stay full colour and the glyphs alone carry the light.
               const body = darkInk ? 0.75 + 0.1 * lit : 0.7 + 0.15 * lit
-              // Shallower after dark, where the flowers are the brightest thing in the scene.
-              const shadeBy =
-                0.62 +
-                0.25 * p.night +
-                (0.55 - 0.2 * p.night) * lit -
-                0.12 * this.back[i]
-              tileCol[i * 3] = Math.min(255, tileCol[i * 3] * shadeBy)
-              tileCol[i * 3 + 1] = Math.min(255, tileCol[i * 3 + 1] * shadeBy)
-              tileCol[i * 3 + 2] = Math.min(255, tileCol[i * 3 + 2] * shadeBy)
-              // Lines carry the drawing: the head's outline and the seams between its petals, in ink
-              // that contrasts with what's behind.
+              const flat = 1 + p.night * (1 / (0.62 + 0.55 * lit) - 1)
+              tileCol[i * 3] = Math.min(255, tileCol[i * 3] * flat)
+              tileCol[i * 3 + 1] = Math.min(255, tileCol[i * 3 + 1] * flat)
+              tileCol[i * 3 + 2] = Math.min(255, tileCol[i * 3 + 2] * flat)
+              // Lines carry the drawing: the head's outline, in ink that contrasts with what's
+              // behind, and the folds between its petals, in the petal's own dark ink.
               // On a head only a few cells across nearly every cell touches the edge; keep lines for
               // the cells the petal only partly covers, the true rim, and fill the rest.
               const rim = this.petalEdge(c, r)
               const edge =
                 rim >= 0 && v >= 0.7 && this.headCells(c, r) < 22 ? -1 : rim
-              const line = edge >= 0 ? edge : this.petalSeam(c, r)
-              if (line >= 0) {
-                g = code(LINES[line])
-                alpha = 1
-                tile[i] = body * (edge >= 0 ? 0.7 : 1) * Math.min(1, v * 1.4)
+              alpha = 1
+              if (edge >= 0) {
+                g = code(LINES[edge])
+                tile[i] = body * 0.7 * Math.min(1, v * 1.4)
                 ;[cr, cg, cb] = mix([cr, cg, cb], ink, 0.7 * reach)
                 break
               }
-              // Glyph density carries light: dense where the ink should read (shadow on a bright
-              // sky, light on a dark ground).
-              const amp = clamp((this.headCells(c, r) - 10) / 30, 0, 0.35)
-              const dens = clamp(
-                (darkInk ? 1 - lit : lit) +
-                  0.3 * this.back[i] +
-                  amp * (bayer(c, r) - 0.5),
-                0,
-                0.999,
-              )
-              g = code(PETAL[1 + Math.floor(dens * (PETAL.length - 1))])
-              alpha = 1
               tile[i] = body
-              ;[cr, cg, cb] = mix([cr, cg, cb], ink, 0.4 * reach)
+              const seam = this.petalSeam(c, r)
+              if (seam >= 0) {
+                g = code(LINES[seam])
+                ;[cr, cg, cb] = mix([cr, cg, cb], p.ground, 0.85)
+                break
+              }
+              // One glyph per flap, in ink darker than its tile: more ink where the petal turns
+              // from the light, most on one seen from behind. After dark, one step lighter.
+              const step = this.back[i]
+                ? 3
+                : lit >= 0.6
+                  ? 0
+                  : lit >= 0.3
+                    ? 1
+                    : 2
+              g = code(FOLD[Math.max(0, step - (p.night > 0.5 ? 1 : 0))])
+              ;[cr, cg, cb] = mix([cr, cg, cb], p.ground, 0.7)
               break
             }
             case Kind.Disc: {
               // The centre is the heaviest ink in the head: a dark eye, or a bright disc on its own tile.
-              if (L < 0.35) {
+              // The eye is only what is truly dark (a poppy's stamens and blotch, at L .03): a
+              // yellow cosmos centre dimmed by haze and night (L .3-.45) is still a pale disc.
+              if (L < 0.25) {
                 g = code(v > 0.6 ? '@' : '#')
                 alpha = 1
-                // On a tile of its own colour lifted toward the haze, so a dark centre (a poppy's
-                // green stigma) reads solid rather than as a hole, without going near-black.
-                const lift = mix([cr, cg, cb], p.haze, 0.4)
+                // On a tile of its own colour, lifted toward the haze by day so a dark centre
+                // reads solid rather than as a hole; after dark the haze is black, so no lift.
+                const lift = mix([cr, cg, cb], p.haze, 0.4 * (1 - p.night))
                 tileCol[i * 3] = lift[0] * p.ink
                 tileCol[i * 3 + 1] = lift[1] * p.ink
                 tileCol[i * 3 + 2] = lift[2] * p.ink
@@ -941,10 +965,26 @@ export class AsciiRenderer {
               break
             }
             case Kind.Fluff:
-              if (this.back[i] && v > 0.8) {
-                // A loose petal's inside: sparse light glyphs in its own colour.
-                g = code(bayer(c, r) < 0.5 ? '.' : "'")
+              if (this.back[i]) {
+                // A loose petal (LOOSE_PETAL in the air, LANDED_PETAL on the ground), printed like
+                // the petals it fell from: a line outline over a tile in its colour, sparse dark
+                // glyphs inside. In the air the tile is thin, so a flower it crosses still shows;
+                // on the ground it's a body, so the petal reads as lying there.
+                const landed = this.lit[i] > 0.5
+                tile[i] = (landed ? 0.7 : 0.35) * Math.min(1, v * 1.4)
+                const rim = this.edgeOf(c, r, this.looseCov)
                 alpha = 1
+                if (rim >= 0) {
+                  g = code(LINES[rim])
+                  ;[cr, cg, cb] = mix(
+                    [cr, cg, cb],
+                    inkAt(x, y).ink,
+                    0.7 * (1 - 0.5 * p.night),
+                  )
+                } else {
+                  g = code('.')
+                  ;[cr, cg, cb] = mix([cr, cg, cb], p.ground, 0.5)
+                }
                 break
               }
               g = code(
