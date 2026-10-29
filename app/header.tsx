@@ -23,8 +23,9 @@ export function Header() {
   const pathname = usePathname() ?? '/'
 
   return (
-    <header className="site-header" data-avoid>
-      <nav aria-label="Site">
+    <header className="site-header">
+      {/* The garden fades behind the links only, not the bar's full width (garden/mount.ts). */}
+      <nav aria-label="Site" data-avoid>
         <ul>
           {NAV.map(({ href, label }) => (
             <li key={href}>
