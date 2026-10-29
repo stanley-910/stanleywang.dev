@@ -181,7 +181,7 @@ export const PROJECTS: Project[] = [
     },
     github: 'https://github.com/stanley-910/chani',
     id: 'chani',
-    category: 'Systems',
+    category: 'Networks',
   },
   {
     name: 'Trading Fours',
