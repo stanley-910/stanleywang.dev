@@ -228,6 +228,11 @@ export class Garden {
     return head > b.top - this.height * 0.08
   }
 
+  /** Whether the first load's grow-in is still to finish. */
+  get growing() {
+    return this.intro < INTRO
+  }
+
   /** Jump straight to the grown garden, for reduced motion. */
   skipIntro() {
     this.intro = INTRO
