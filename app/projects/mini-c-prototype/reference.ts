@@ -1,82 +1,102 @@
 // Generated from the real Mini-C compiler (Java, McGill COMP 520 coursework) on 2026-09-21.
 // See reference/README.md for the exact commands. Only artifacts are stored here, never compiler source.
-import breakContinueTrace from './reference/break-continue.trace.json'
-import classesTrace from './reference/classes.trace.json'
-import fibonacciTrace from './reference/fibonacci.trace.json'
-import functionCallTrace from './reference/function-call.trace.json'
 import helloWorldTrace from './reference/hello-world.trace.json'
-import loopTrace from './reference/loop.trace.json'
-import missingSemicolonTrace from './reference/missing-semicolon.trace.json'
-import pointerTrace from './reference/pointer.trace.json'
-import precedenceTrace from './reference/precedence.trace.json'
-import shadowingTrace from './reference/shadowing.trace.json'
-import spillingTrace from './reference/spilling.trace.json'
-import structFieldsTrace from './reference/struct-fields.trace.json'
-import unresolvedNameTrace from './reference/unresolved-name.trace.json'
-import wrongTypeTrace from './reference/wrong-type.trace.json'
+import presets from './reference/presets.json'
 
 import type { Trace } from './trace'
 
-type Reference = {
+/** An example, before its trace loads (reference/presets.json). */
+export type Preset = {
   name: string
   file: string
   source: string
-  ast: string
-  // Frames emitted by the compiler itself (util.ParseTrace); the animation
-  // plays these instead of the toy recorder when the source matches.
-  trace: Trace
   /** The register allocator's palette capped at this many, to show it
    * running out (GraphColouringRegAlloc.registerLimit); all 18 if unset. */
   registers?: number
+  /** Whether the compiler stops at an error. */
+  error: boolean
 }
 
 // The JSON is written by ParseTrace in exactly the Trace shape; the cast only
 // narrows the string unions (phase, kind) that JSON cannot express.
 const asTrace = (json: unknown) => json as Trace
 
-const entry = (
-  name: string,
-  file: string,
-  json: unknown,
-  registers?: number,
-): Reference => {
-  const trace = asTrace(json)
-  return {
-    registers,
-    name,
-    file,
-    source: (trace.text ?? '').replace(/\s+$/, ''),
-    ast: trace.ast ?? '',
-    trace,
+// Programs first, simplest to showiest; then the errors, one per phase
+// they stop in, and classes, which the code generator can't compile. The
+// lineup and where each trace came from are in reference/presets.cjs,
+// which writes presets.json from the traces.
+export const PRESETS: Preset[] = presets
+// Where the errors start in the picker (a rule above them).
+export const FIRST_ERROR = PRESETS.findIndex((p) => p.error)
+
+// The traces are most of the page's script, so only the one it opens on
+// ships with it; the rest load when they're asked for (the picker opened,
+// an example linked), each in its own chunk.
+const traces = new Map<string, Trace>([
+  ['hello-world', asTrace(helloWorldTrace)],
+])
+const LOAD: Record<string, () => Promise<{ default: unknown }>> = {
+  precedence: () => import('./reference/precedence.trace.json'),
+  'function-call': () => import('./reference/function-call.trace.json'),
+  loop: () => import('./reference/loop.trace.json'),
+  shadowing: () => import('./reference/shadowing.trace.json'),
+  fibonacci: () => import('./reference/fibonacci.trace.json'),
+  'break-continue': () => import('./reference/break-continue.trace.json'),
+  pointer: () => import('./reference/pointer.trace.json'),
+  'struct-fields': () => import('./reference/struct-fields.trace.json'),
+  spilling: () => import('./reference/spilling.trace.json'),
+  'missing-semicolon': () => import('./reference/missing-semicolon.trace.json'),
+  'unresolved-name': () => import('./reference/unresolved-name.trace.json'),
+  'wrong-type': () => import('./reference/wrong-type.trace.json'),
+  classes: () => import('./reference/classes.trace.json'),
+}
+const loading = new Map<string, Promise<Trace>>()
+const listeners = new Set<() => void>()
+let loaded = 0
+
+/** For useSyncExternalStore: changes whenever another trace arrives. */
+export const tracesLoaded = () => loaded
+export const onTraceLoaded = (listener: () => void) => {
+  listeners.add(listener)
+  return () => {
+    listeners.delete(listener)
   }
 }
 
-// Programs first, simplest to showiest; then the errors, one per phase
-// they stop in, and classes, which the code generator can't compile. The new ones are trimmed from the compiler's own
-// tests (docs/handoffs/2026-09-28-example-candidates.md; lineup with GPT-6
-// Astra, 2026-09-28-example-lineup-astra-answer.md). Traces recorded with
-// the page's compiler bundle, as trace.sh would with the JVM.
-export const REFERENCES: Reference[] = [
-  // The page opens on it (Stanley, 2026-10-02); recorded with compiler.js.
-  entry('Hello world', 'hello-world', helloWorldTrace),
-  entry('Precedence', 'precedence', precedenceTrace),
-  entry('Function call', 'function-call', functionCallTrace),
-  entry('Loop', 'loop', loopTrace),
-  entry('Shadowing', 'shadowing', shadowingTrace),
-  entry('Fibonacci', 'fibonacci', fibonacciTrace),
-  entry('Break and continue', 'break-continue', breakContinueTrace),
-  entry('Pointer', 'pointer', pointerTrace),
-  entry('Struct fields', 'struct-fields', structFieldsTrace),
-  // Compiled with four registers, so a five-term sum runs out (Stanley,
-  // 2026-10-06); recorded with compiler.js, trace(source, 4).
-  entry('Spilling', 'spilling', spillingTrace, 4),
-  entry('Missing semicolon', 'missing-semicolon', missingSemicolonTrace),
-  entry('Unresolved name', 'unresolved-name', unresolvedNameTrace),
-  entry('Wrong type', 'wrong-type', wrongTypeTrace),
-  entry('Classes', 'classes', classesTrace),
-]
-// Where the errors start in the picker (a rule above them).
-export const FIRST_ERROR = REFERENCES.findIndex((r) => r.trace.error)
+/** Loads an example's recorded trace (at once if it's here already). */
+export function loadTrace(file: string): Promise<Trace> {
+  const have = traces.get(file)
+  if (have) return Promise.resolve(have)
+  const load = LOAD[file]
+  if (!load) return Promise.reject(new Error(`no trace for ${file}`))
+  let pending = loading.get(file)
+  if (!pending) {
+    pending = load().then(
+      (module) => {
+        const trace = asTrace(module.default)
+        traces.set(file, trace)
+        loaded++
+        for (const listener of listeners) listener()
+        return trace
+      },
+      (error: Error) => {
+        // (a later ask tries again: a dropped connection isn't for good)
+        loading.delete(file)
+        throw error
+      },
+    )
+    loading.set(file, pending)
+  }
+  return pending
+}
+
+/** Starts loading every example's trace, as the picker opens. */
+export function prefetchTraces() {
+  for (const file of Object.keys(LOAD))
+    loadTrace(file).catch((error: Error) =>
+      console.warn('example trace:', error.message),
+    )
+}
 
 // Mini-C lexemes, coarse but enough to tell a whitespace-only edit from a real
 // one: "i+1" and "i + 1" split the same, "int x" and "intx" do not. A string
@@ -158,20 +178,28 @@ const online = <T extends { start: number; message: string }>(
   ),
 })
 
-/** The preset `source` is, ignoring whitespace, with spans moved to match. */
-export function findReference(source: string): Reference | undefined {
+/** The example `source` is, ignoring whitespace, with its source. */
+export function findPreset(source: string): Preset | undefined {
   const key = source.replace(/\s+$/, '')
-  const exact = REFERENCES.find((r) => r.source === key)
+  const exact = PRESETS.find((p) => p.source === key)
   if (exact) return exact
   const words = lexemes(key).join('\u0000')
-  const same = REFERENCES.find(
-    (r) => lexemes(r.source).join('\u0000') === words,
-  )
-  return (
-    same && {
-      ...same,
-      source: key,
-      trace: reflow(same.trace, same.source, key),
-    }
-  )
+  const same = PRESETS.find((p) => lexemes(p.source).join('\u0000') === words)
+  return same && { ...same, source: key }
+}
+
+// Traces moved onto a whitespace edit of their example, per findPreset
+// result, so a render can ask again for free.
+const moved = new WeakMap<Preset, Trace>()
+
+/** `preset`'s recorded trace, its spans moved onto `preset.source`;
+ * undefined until it has loaded (loadTrace). */
+export function presetTrace(preset: Preset): Trace | undefined {
+  const trace = traces.get(preset.file)
+  if (!trace) return undefined
+  const text = (trace.text ?? '').replace(/\s+$/, '')
+  if (text === preset.source) return trace
+  let out = moved.get(preset)
+  if (!out) moved.set(preset, (out = reflow(trace, text, preset.source)))
+  return out
 }

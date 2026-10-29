@@ -2,7 +2,8 @@
 
 Artifacts only. Each example on the page is a `.c` program and the
 `.trace.json` the compiler in `~/Developer/mcgill/mini-c-compiler` writes for it;
-`../reference.ts` lists them. No compiler source is copied here.
+`presets.cjs` lists them and writes `presets.json` (rerun it after recording
+a trace). No compiler source is copied here.
 
 The `parentheses` and `local-variable` examples, every `.asm` and every
 `.regalloc.json` were deleted on 2026-09-28, and the older `.ast`, `.sem.txt`,

@@ -59,11 +59,26 @@ type Light = {
 }
 type Rail = ReturnType<typeof railOf>
 
-const hex = (s: string) => {
-  const m = /^#?([0-9a-f]{6})$/i.exec(s.trim())
-  const n = m ? parseInt(m[1], 16) : 0x808080
-  return [n >> 16, (n >> 8) & 255, n & 255]
+// A CSS colour as [r, g, b], whatever its syntax (hex, rgb(), oklch(),
+// color-mix()): painted on one pixel and read back.
+let swatch: CanvasRenderingContext2D | null | undefined
+const rgbOf = (colour: string) => {
+  swatch ??= Object.assign(document.createElement('canvas'), {
+    width: 1,
+    height: 1,
+  }).getContext('2d', { willReadFrequently: true })
+  if (!swatch || !colour.trim()) return [128, 128, 128]
+  swatch.clearRect(0, 0, 1, 1)
+  swatch.fillStyle = '#808080'
+  swatch.fillStyle = colour.trim()
+  swatch.fillRect(0, 0, 1, 1)
+  const [r, g, b] = swatch.getImageData(0, 0, 1, 1).data
+  return [r, g, b]
 }
+// How long the rail's colours are trusted before they're read again (the
+// page's colours change with the hour); reading them every frame cost a
+// style recalculation each.
+const COLOUR_MS = 500
 
 // What of a pane shows: its box cut by every ancestor that clips (the
 // stage, when the canvas is zoomed or panned past it).
@@ -222,6 +237,9 @@ export function startRailCurve(root: HTMLElement): (() => void) | null {
   } | null = null
   let frame = 0
   let then = 0
+  let line = [128, 128, 128]
+  let ink = line
+  let coloured = -Infinity
 
   const run = () => {
     if (!frame) {
@@ -569,9 +587,12 @@ export function startRailCurve(root: HTMLElement): (() => void) | null {
     size()
     place()
     ctx.clearRect(0, 0, innerWidth, innerHeight)
-    const style = getComputedStyle(root)
-    const line = hex(style.getPropertyValue('--line'))
-    const ink = hex(style.getPropertyValue('--ink'))
+    if (now - coloured > COLOUR_MS) {
+      const style = getComputedStyle(root)
+      line = rgbOf(style.getPropertyValue('--hairline'))
+      ink = rgbOf(style.getPropertyValue('--ink'))
+      coloured = now
+    }
     const note = root.querySelector<HTMLElement>('.ac-window')
     // Whether anything is still moving; once nothing is, the loop stops
     // with the last frame drawn, until a scroll or the pointer wakes it.
