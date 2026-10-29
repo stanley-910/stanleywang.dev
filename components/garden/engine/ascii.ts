@@ -858,7 +858,9 @@ export class AsciiRenderer {
               const lit = this.lit[i]
               // After dark cream ink glows against the dim petals; pull it back toward the petal's own colour.
               const reach = darkInk ? 1 : 1 - 0.5 * p.night
-              const body = darkInk ? 0.35 + 0.3 * lit : 0.25 + 0.45 * lit
+              // Mostly opaque, so what's behind (a hill's edge, the sky) doesn't show through
+              // the head as a line across it.
+              const body = darkInk ? 0.6 + 0.25 * lit : 0.55 + 0.3 * lit
               // Lines carry the drawing: the head's outline and the seams between its petals, in ink
               // that contrasts with what's behind.
               // On a head only a few cells across nearly every cell touches the edge; keep lines for
@@ -895,6 +897,9 @@ export class AsciiRenderer {
               if (L < 0.35) {
                 g = code(v > 0.6 ? '@' : '#')
                 alpha = 1
+                // On a tile of its own colour, so a dark centre (a poppy's green stigma) reads
+                // solid rather than as a hole in the head.
+                tile[i] = 0.85 * Math.min(1, v * 1.4)
                 ;[cr, cg, cb] = mix([cr, cg, cb], p.ground, 0.5)
               } else if (
                 this.petal(c - 1, r) +
