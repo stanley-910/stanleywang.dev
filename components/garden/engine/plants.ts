@@ -1382,12 +1382,12 @@ export class Dandelion extends Plant {
 }
 
 // ── Rose ────────────────────────────────────────────────────────────────────
-// The poem's one flower, never sown or seeded: a single woody stem with a few thorns and
-// compound, toothed leaves comes up slowly; the bud swells inside its five sepals, they part
-// and fold back, and the petals open ring by ring, outer first, around a heart that stays
-// furled. It holds in flower for as long as the page is open.
+// The poem's one flower, never sown or seeded, rooted in the meadow and grown by the reader's
+// scroll: a single stem with compound, toothed leaves comes up; the bud swells inside its five
+// sepals, they part and fold back, and the petals open ring by ring, outer first, each traced
+// in deep red so they read apart, around a heart that stays furled. It never grows back down.
 
-/** Seconds from the stem breaking ground to the rose in full flower. */
+/** Ages through the rose's growth, from breaking ground to full flower; the scroll sets the age. */
 const ROSE = {
   /** The stem rises. */
   stem: 5,
@@ -1422,20 +1422,21 @@ export class Rose extends Plant {
   readonly species = 'rose'
   private stem: Stem
   private head: number
-  /** Where thorns stand on the stem, as a share of its length, and which side. */
-  private thorns: { at: number; side: number }[] = []
+  /** The age the page has scrolled it to (Garden.rose); the rose eases toward it. */
+  goal = 0
 
   constructor(x: number, z: number, seed: number, env: Env) {
     super(x, z, seed)
     const r = this.rng
     this.cycle = Infinity
-    // Rooted at the foot of the screen, its head comes to rest a third of the way up it.
-    const length = env.unit * 0.38
+    // Rooted in the meadow like the rest; the stem reaches up to hold the head a little below
+    // the middle of the screen, where the poem leaves room for it.
+    const length = Math.max(env.unit * 0.12, env.floor(z) - env.unit * 0.6)
     this.stem = this.makeStem(12, length, env)
     this.stem.stiffness = 1.7
     this.stem.drag = 0.7
     this.stem.baseAngle = this.side * 0.03
-    this.head = length * 0.15
+    this.head = env.unit * 0.064
     this.stems.push(this.stem)
     for (const [joint, side] of [
       [4, -1],
@@ -1446,19 +1447,21 @@ export class Rose extends Plant {
         joint,
         side: side * this.side,
         angle: lerp(0.75, 0.95, r()),
-        length: length * lerp(0.2, 0.24, r()) * (joint === 8 ? 0.8 : 1),
+        length: length * lerp(0.26, 0.3, r()) * (joint === 8 ? 0.8 : 1),
         seed: r() * 10,
       })
     }
-    for (const at of [0.16, 0.29, 0.43, 0.55, 0.68, 0.8])
-      this.thorns.push({
-        at: at + (r() - 0.5) * 0.04,
-        side: r() < 0.5 ? -1 : 1,
-      })
   }
 
   bloomAge() {
     return ROSE.full
+  }
+
+  update(dt: number, env: Env) {
+    // The scroll sets its age, eased so a flick still reads as growth; Plant.update adds dt.
+    const k = 1 - Math.exp(-3 * dt)
+    this.age += (this.goal - this.age) * k - dt
+    super.update(dt, env)
   }
 
   protected live() {
@@ -1482,15 +1485,9 @@ export class Rose extends Plant {
     const stemColor = mix(leafColor, p.grassLight, 0.2)
     const unfurl = span(t, ROSE.leaves)
     for (const leaf of this.leaves)
-      this.drawRoseLeaf(r, leaf, leafColor, env, unfurl)
-    this.drawCane(
-      r,
-      s.pts,
-      s.n,
-      stemColor,
-      Math.max(r.minLine, 6.5 * this.scale),
-    )
-    this.drawThorns(r, mix(stemColor, p.roseDeep, 0.45))
+      this.drawRoseLeaf(r, leaf, leafColor, stemColor, env, unfurl)
+    // A cell wide: thin as stalks go here, but solid, as the night dims stalk lines.
+    this.drawCane(r, s.pts, s.n, stemColor, r.minLine)
 
     const bud = lerp(0.25, 1, span(t, ROSE.bud))
     const H = this.head * bud
@@ -1500,7 +1497,8 @@ export class Rose extends Plant {
     const tip = s.tipAngle()
     const open = ROSE.rings.map((ring) => span(t, ring))
     // Turned a little toward the viewer as it opens, so the furled heart shows.
-    const axis = headAxis(tip, 0.3 + 0.2 * open[0])
+    // Side-on as a bud, then turned toward the viewer as it opens, so the rings read as rings.
+    const axis = headAxis(tip, 0.4 + 0.45 * open[0])
     const rose = this.bloomed(p.rose, p)
     const deep = this.bloomed(p.roseDeep, p)
     const list: { depth: number; draw: () => void }[] = []
@@ -1573,9 +1571,10 @@ export class Rose extends Plant {
           cup: (u) => lerp(ring.closed, ring.opened, o) - ring.roll * o * u * u,
           crinkle: 0.12,
           rotation: this.seed + (i * Math.PI) / 5,
-          seed: this.seed + i * 17,
-          front: i === 2 ? mix(rose, deep, 0.3) : rose,
-          back: mix(rose, deep, 0.6),
+          seed: this.seed + i * 5,
+          front: mix(rose, deep, [0, 0.22, 0.42][i]),
+          back: mix(rose, deep, 0.75),
+          edge: deep,
           haze: p.haze,
           hazeAmount: 0,
         },
@@ -1628,85 +1627,6 @@ export class Rose extends Plant {
     })
   }
 
-  /** A compound leaf: a stalk off the stem with a pair or two of toothed oval leaflets and one at the end. */
-  private drawRoseLeaf(
-    r: Raster,
-    leaf: Leaf,
-    color: Rgb,
-    env: Env,
-    grow: number,
-  ) {
-    const s = this.stem
-    const j = Math.min(leaf.joint, s.n)
-    const bx = s.pts[j * 2]
-    const by = s.pts[j * 2 + 1]
-    const L = leaf.length * grow
-    if (L < 3 || s.growth * s.n < leaf.joint) return
-    const sway =
-      env.wind.at(bx, by, this.z) * 0.06 + env.wind.push(bx, by) * 0.1
-    // Opens out from along the stem as it unfurls.
-    const a0 =
-      s.abs[Math.min(j, s.n - 1)] +
-      leaf.side * leaf.angle * lerp(0.3, 1, grow) +
-      sway
-    const pts: [number, number, number][] = []
-    let x = bx
-    let y = by
-    let a = a0
-    const N = 6
-    for (let i = 1; i <= N; i++) {
-      a += leaf.side * 0.06
-      x += (Math.sin(a) * L) / N
-      y -= (Math.cos(a) * L) / N
-      pts.push([x, y, a])
-    }
-    const ribPts = [bx, by, ...pts.flatMap(([px, py]) => [px, py])]
-    this.drawCane(
-      r,
-      ribPts,
-      N,
-      color,
-      Math.max(r.minLine * 0.8, 3.2 * this.scale),
-    )
-    const leaflet = (cx: number, cy: number, ang: number, len: number) => {
-      const w = len * 0.42
-      const sh = new Shape()
-      const M = 10
-      const side = (sign: number) => {
-        for (let i = 0; i <= M; i++) {
-          const k = sign > 0 ? i : M - i
-          const u = k / M
-          // Toothed: every other point stands a little proud of the outline.
-          const tooth = k % 2 && k > 1 && k < M - 1 ? 1.18 : 1
-          const half =
-            w *
-            Math.sin(Math.PI * Math.min(1, u * 0.95 + 0.05)) *
-            (1 - 0.25 * u) *
-            tooth
-          const px = cx + Math.sin(ang) * len * u + Math.cos(ang) * half * sign
-          const py = cy - Math.cos(ang) * len * u + Math.sin(ang) * half * sign
-          if (i === 0 && sign > 0) sh.moveTo(px, py)
-          else sh.lineTo(px, py)
-        }
-      }
-      side(1)
-      side(-1)
-      sh.closePath()
-      r.fill(sh, color, Kind.Petal, 1, LEAF_BODY)
-    }
-    const size = L * 0.34 * grow
-    for (const [k, off] of [
-      [2, 0.95],
-      [4, 0.8],
-    ] as const) {
-      const [px, py, pa] = pts[k]
-      for (const sd of [-1, 1])
-        leaflet(px, py, pa + sd * off, size * (k === 2 ? 0.8 : 0.9))
-    }
-    const [ex, ey, ea] = pts[N - 1]
-    leaflet(ex, ey, ea, size * 1.05)
-  }
-
   /** A stalk as a thin body rather than a line, so it prints as solidly as the leaves it holds. */
   private drawCane(
     r: Raster,
@@ -1736,31 +1656,79 @@ export class Rose extends Plant {
     r.fill(sh, color, Kind.Petal, 1, LEAF_BODY)
   }
 
-  /** Small hooked thorns, pointing a little down the stem. */
-  private drawThorns(r: Raster, color: Rgb) {
+  /** A compound leaf: a stalk off the stem with a pair or two of toothed oval leaflets and one at the end. */
+  private drawRoseLeaf(
+    r: Raster,
+    leaf: Leaf,
+    color: Rgb,
+    stalk: Rgb,
+    env: Env,
+    grow: number,
+  ) {
     const s = this.stem
-    const size = Math.max(r.minLine * 1.6, this.head * 0.09)
-    const p = new Shape()
-    for (const th of this.thorns) {
-      if (th.at > s.growth * 0.95) continue
-      const i = Math.floor(th.at * s.n)
-      const k = th.at * s.n - i
-      const x = lerp(s.pts[i * 2], s.pts[i * 2 + 2], k)
-      const y = lerp(s.pts[i * 2 + 1], s.pts[i * 2 + 3], k)
-      const a = s.abs[Math.min(i, s.n - 1)]
-      const nx = Math.cos(a) * th.side
-      const ny = Math.sin(a) * th.side
-      const dx = Math.sin(a)
-      const dy = -Math.cos(a)
-      p.moveTo(x + dx * size * 0.5, y + dy * size * 0.5)
-      p.lineTo(
-        x + nx * size - dx * size * 0.35,
-        y + ny * size - dy * size * 0.35,
-      )
-      p.lineTo(x - dx * size * 0.3, y - dy * size * 0.3)
-      p.closePath()
+    const j = Math.min(leaf.joint, s.n)
+    const bx = s.pts[j * 2]
+    const by = s.pts[j * 2 + 1]
+    const L = leaf.length * grow
+    if (L < 3 || s.growth * s.n < leaf.joint) return
+    const sway =
+      env.wind.at(bx, by, this.z) * 0.06 + env.wind.push(bx, by) * 0.1
+    // Opens out from along the stem as it unfurls.
+    const a0 =
+      s.abs[Math.min(j, s.n - 1)] +
+      leaf.side * leaf.angle * lerp(0.3, 1, grow) +
+      sway
+    const pts: [number, number, number][] = []
+    let x = bx
+    let y = by
+    let a = a0
+    const N = 6
+    for (let i = 1; i <= N; i++) {
+      a += leaf.side * 0.06
+      x += (Math.sin(a) * L) / N
+      y -= (Math.cos(a) * L) / N
+      pts.push([x, y, a])
     }
-    r.fill(p, color, Kind.Petal, 1, LEAF_BODY)
+    // The leaf's stalk, thinner than the stem it comes off.
+    const rib = [bx, by, ...pts.flatMap(([px, py]) => [px, py])]
+    this.drawCane(r, rib, N, stalk, r.minLine * 0.7)
+    const leaflet = (cx: number, cy: number, ang: number, len: number) => {
+      const w = len * 0.42
+      const sh = new Shape()
+      const M = 10
+      const side = (sign: number) => {
+        for (let i = 0; i <= M; i++) {
+          const k = sign > 0 ? i : M - i
+          const u = k / M
+          // Toothed: every other point stands a little proud of the outline.
+          const tooth = k % 2 && k > 1 && k < M - 1 ? 1.18 : 1
+          const half =
+            w *
+            Math.sin(Math.PI * Math.min(1, u * 0.95 + 0.05)) *
+            (1 - 0.25 * u) *
+            tooth
+          const px = cx + Math.sin(ang) * len * u + Math.cos(ang) * half * sign
+          const py = cy - Math.cos(ang) * len * u + Math.sin(ang) * half * sign
+          if (i === 0 && sign > 0) sh.moveTo(px, py)
+          else sh.lineTo(px, py)
+        }
+      }
+      side(1)
+      side(-1)
+      sh.closePath()
+      r.fill(sh, color, Kind.Petal, 1, LEAF_BODY)
+    }
+    const size = L * 0.26 * grow
+    for (const [k, off] of [
+      [2, 0.95],
+      [4, 0.8],
+    ] as const) {
+      const [px, py, pa] = pts[k]
+      for (const sd of [-1, 1])
+        leaflet(px, py, pa + sd * off, size * (k === 2 ? 0.8 : 0.9))
+    }
+    const [ex, ey, ea] = pts[N - 1]
+    leaflet(ex, ey, ea, size * 1.05)
   }
 }
 

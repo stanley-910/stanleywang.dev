@@ -75,8 +75,8 @@ type GardenOptions = {
   /** Who answers a click on a flower: butterflies, or the poem's ladybug and bumblebee. */
   visitors?: 'butterflies' | 'friends'
   /** Called once the scene is up, with a way to grow the poem's rose, rooted `x` (a share of
-   * the screen's width) across. */
-  onReady?: (scene: { rose: (x: number) => void }) => void
+   * the screen's width) across, to `grown` (0 to 1, full flower). */
+  onReady?: (scene: { rose: (x: number, grown: number) => void }) => void
 }
 
 function localHour() {
@@ -646,11 +646,12 @@ export function mountGarden({
   resize()
   start()
   onReady?.({
-    rose: (x) => {
-      const rose = garden.rose(width * x)
-      // With reduced motion it's there, grown, rather than growing.
-      if (!rose || !reduced.matches) return
-      rose.age = rose.bloomAge()
+    rose: (x, grown) => {
+      const rose = garden.rose(width * x, grown)
+      // With reduced motion it stands at the stage scrolled to rather than easing there.
+      if (!reduced.matches) return
+      rose.age = rose.goal
+      for (let i = 0; i < 30; i++) garden.step(STEP, paletteAt(hour))
       draw(true)
     },
   })

@@ -35,7 +35,9 @@ import './poem.css'
 // it; on a screen too short for both, the last line wins.
 //
 // `@ rose` before a line grows the meadow's one rose, in the middle of the
-// screen, as that line comes up from the bottom.
+// screen, as the reader scrolls through the room above that line: it breaks
+// ground as the room comes up from the bottom and is in full flower once the
+// line has risen a third of the way up the screen.
 
 /** Where the day starts and ends when the poem pins neither. */
 const DEFAULT_START = 5
@@ -349,8 +351,8 @@ export function Poem({ className, preview }: PoemProps) {
   // re-measure, which needs it.
   const skyRef = useRef<Sky>({ sunrise: 6.5, sunset: 18, moonset: 5.5 })
   const remeasureRef = useRef<() => void>(undefined)
-  // Plants the rose (mount.ts), once the meadow is up.
-  const roseRef = useRef<(x: number) => void>(undefined)
+  // Grows the rose (mount.ts), once the meadow is up.
+  const roseRef = useRef<(x: number, grown: number) => void>(undefined)
 
   // The meadow, for the whole visit. The hour the visitor had set comes back
   // when they leave, since the poem's scroll sets it as they read.
@@ -427,11 +429,18 @@ export function Poem({ className, preview }: PoemProps) {
     }
     raf = requestAnimationFrame(frame)
 
-    // The rose comes up as its line does, and stays.
+    // The rose grows as the room above its line scrolls by, and stays.
     const cue = el.querySelector<HTMLElement>('[data-rose]')
+    let room: Element | null = cue?.previousElementSibling ?? null
+    while (room && !room.classList.contains('poem-room'))
+      room = room.previousElementSibling
     const bloom = () => {
-      if (cue && cue.getBoundingClientRect().top < window.innerHeight)
-        roseRef.current?.(0.5)
+      if (!cue) return
+      const h = window.innerHeight
+      const from = (room ?? cue).getBoundingClientRect().top - h
+      const to = cue.getBoundingClientRect().top - h * 0.66
+      const grown = Math.min(1, Math.max(0, -from / Math.max(1, to - from)))
+      if (grown > 0) roseRef.current?.(0.5, grown)
     }
     bloom()
     window.addEventListener('scroll', bloom, { passive: true })

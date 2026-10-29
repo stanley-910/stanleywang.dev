@@ -4,12 +4,13 @@ One red rose, one stem, one head. It grows once, at the centre of the screen, on
 
 ## As built
 
-The rose shipped in `plants.ts` (`Rose`) keeps this spec's colours, sepals, thorns, compound leaves and ring-by-ring opening, and differs where checking it on a phone at night called for it:
+The rose shipped in `plants.ts` (`Rose`) keeps this spec's colours, sepals, compound leaves and ring-by-ring opening, and differs where checking it on a phone at night called for it:
 
-- **Placement:** the head comes to rest about 0.64 H down, in the gap between the stanzas, where Stanley placed it, not 0.45 H. Stem `0.38 H`, head radius `0.15 ×` stem length, so about 32 cells across on a phone.
-- **Leaves, sepals, stem and thorns print as bodies** (`Kind.Petal` with a fixed back-facing meta), not `Kind.Foliage` and `Kind.Stem`. As foliage and stalk they printed as faint grass at night and the rose read as a floating head. Their green is `roseLeaf` lifted toward `[112, 150, 92]`, more so after dark.
-- **Rings:** three (outer 5, middle 5, inner 4), opening outer first over 7.5–13 s, with a dark heart disc and a spiral stroke in place of the core ring. Growth takes 13 s in all.
-- **Trigger:** `poem.tsx` calls `rose(0.5)` from `mountGarden`'s `onReady` once the line's top enters the screen; flowers already near the centre fade out. A regrow (a big resize) loses it, and the next scroll grows it again.
+- **Placement:** rooted in the meadow at `z = 0.72` (about 0.86 H down), centred, like the other flowers rather than from the screen's foot. The stem reaches up to hold the head about 0.6 H down, in the gap between the stanzas, where Stanley placed it. Head radius `0.064 H`.
+- **Growth follows the scroll**, not a clock: it breaks ground as the room (`@ gap`) above the `@ rose` line comes up from the bottom, and is in full flower once that line stands a third of the way up the screen. The age eases toward the scrolled stage and never goes back down.
+- **Petals are traced** in `rose-deep` (`PetalSpec.edge`, a stalk-kind line round each petal), so overlapping red petals read apart; rings step from `rose` toward `rose-deep`, inside out, with backs at 75% deep.
+- **Stem and leaf stalks print as thin bodies** (one cell, and 0.7 cell), and leaflets and sepals as bodies too (`Kind.Petal` with a back-facing meta), not `Kind.Stem` and `Kind.Foliage`, which the night prints as faint grass. Their green is `roseLeaf` lifted toward `[112, 150, 92]`, more so after dark. No thorns: at this grid they printed as stray dots.
+- **Rings:** three (outer 5, middle 5, inner 4), opening outer first, with a dark heart disc and a spiral stroke in place of the core ring.
 
 ## Problem and related species
 

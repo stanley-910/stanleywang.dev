@@ -60,6 +60,8 @@ export type PetalSpec = {
   veins?: Rgb
   /** Dark spot at the petal base, as in corn poppies. */
   blotch?: Rgb
+  /** A line traced round each petal, so overlapping petals of one colour stay apart (the rose). */
+  edge?: Rgb
   haze: Rgb
   hazeAmount: number
   /** Which petals are still attached. */
@@ -171,6 +173,13 @@ export function drawPetals(
           for (let i = 0; i < pts.length; i += 2)
             r.touchMeta(pts[i], pts[i + 1])
         r.fill(p, color, spec.kind ?? Kind.Petal, 1, meta)
+        if (spec.edge)
+          r.stroke(
+            p,
+            mix(spec.edge, spec.haze, spec.hazeAmount),
+            Kind.Stem,
+            r.minLine,
+          )
         if (spec.blotch) {
           const b = new Shape()
           const j = 2 * 2

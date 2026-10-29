@@ -13,7 +13,14 @@ import {
 import { Meadow, STRIP } from './meadow'
 import { mix, type Palette, type Rgb } from './palette'
 import { particle, Particles } from './particles'
-import { createPlant, RUSH, type Env, type Plant, type Species } from './plants'
+import {
+  createPlant,
+  Rose,
+  RUSH,
+  type Env,
+  type Plant,
+  type Species,
+} from './plants'
 import { type Head, Kind, type Raster, Shape } from './raster'
 
 import type { Rect } from './ascii'
@@ -30,6 +37,9 @@ const SPECIES: [Species, number][] = [
   ['lace', 0.05],
   ['dandelion', 0.18],
 ]
+
+/** Where the poem's rose roots: the near meadow, well up from the screen's foot. */
+const ROSE_Z = 0.72
 
 /** Seconds the opening time-lapse takes to grow the garden in. */
 const INTRO = 4.5
@@ -302,10 +312,18 @@ export class Garden {
     return this.visitors.tap?.(x, y, reach) ?? false
   }
 
-  /** Grows the one rose up front at x (the poem's), unless it's already up; the new plant, or null. */
-  rose(x: number) {
-    if (this.plants.some((p) => p.species === 'rose')) return null
-    const rose = this.add('rose', x, 1)
+  /**
+   * Grows the poem's one rose, rooted in the meadow at x, to `grown` (0 seed to 1 in full
+   * flower), and returns it. It never grows back down.
+   */
+  rose(x: number, grown: number) {
+    const have = this.plants.find((p): p is Rose => p instanceof Rose)
+    if (have) {
+      have.goal = Math.max(have.goal, grown * have.bloomAge())
+      return have
+    }
+    const rose = this.add('rose', x, ROSE_Z) as Rose
+    rose.goal = grown * rose.bloomAge()
     // Whatever flowers near it fades back into the grass, to leave it alone.
     const room = this.width * 0.22
     for (const p of this.plants)
