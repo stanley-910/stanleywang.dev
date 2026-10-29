@@ -5,12 +5,12 @@ import {
   PathOp,
   Rasterizer,
   SS,
-  type Cells,
   type RasterJob,
   type RasterResult,
 } from './rasterize'
 
 import type { Rgb } from './palette'
+import type { Material, Style } from './typeset'
 
 // Defined beside the rasteriser, which the worker loads without this file.
 export { Kind, SS }
@@ -126,17 +126,14 @@ export class Raster {
   /** Heads and sprites recorded this frame, for the simulation (butterflies, clicks). */
   heads: Head[] = []
   sprites: Sprite[] = []
-  /** Heads and sprites of the frame the pixels below came from, for the ASCII pass. */
-  drawnHeads: Head[] = []
-  drawnSprites: Sprite[] = []
   width = 0
   height = 0
   /** Narrowest stroke that still wins its cell: a little over one subsample across. */
   minLine = 1
   /** Multiplies every draw's alpha, so a whole plant can fade out. */
   opacity = 1
-  /** The latest frame, reduced to cells where it was rasterised. */
-  cells: Cells | null = null
+  /** The latest frame, set in type where it was rasterised. */
+  material: Material | null = null
   /** True once pixels for the current size have arrived. */
   ready = false
   private sx = 1
@@ -145,16 +142,15 @@ export class Raster {
   private touch: Box = [Infinity, Infinity, -Infinity, -Infinity]
   private cmds = new Float32Array(1 << 16)
   private n = 0
+  /** Where this frame's still layer (the land) starts and ends among its commands. */
+  private still: [number, number] = [0, 0]
   /** Bumped on resize, so a frame drawn at the old size is dropped when it comes back. */
   private gen = 0
   /** Workers take frames in turn, so the plants move at close to the loop's rate: two, or up to four on a machine with cores to spare. */
   private workers: Worker[] = []
   private idle: Worker[] = []
-  /** Frames out at the workers, by sequence number, with the heads and sprites drawn in them. */
-  private inFlight = new Map<
-    number,
-    { gen: number; heads: Head[]; sprites: Sprite[]; sent: number }
-  >()
+  /** Frames out at the workers, by sequence number. */
+  private inFlight = new Map<number, { gen: number; sent: number }>()
   private seq = 0
   private shownSeq = -1
   private local: Rasterizer | null = null
@@ -185,7 +181,7 @@ export class Raster {
             e.data.seq > this.shownSeq
           ) {
             this.shownSeq = e.data.seq
-            this.adopt(e.data, job.heads, job.sprites)
+            this.adopt(e.data)
           }
         }
         w.onerror = (e) =>
@@ -257,7 +253,20 @@ export class Raster {
     this.heads = []
     this.sprites = []
     this.n = 0
+    this.still = [0, 0]
     this.touch = [Infinity, Infinity, -Infinity, -Infinity]
+  }
+
+  /**
+   * Brackets the draws of the still layer: shapes that come out the same frame after frame, so
+   * the rasteriser can keep them filled and lay them in whole. One per frame.
+   */
+  beginStill() {
+    this.still = [this.n, this.n]
+  }
+
+  endStill() {
+    this.still[1] = this.n
   }
 
   private room(k: number) {
@@ -349,8 +358,11 @@ export class Raster {
     if (y > b[3]) b[3] = y
   }
 
-  /** Sends this frame's draws off to be rasterised; `now` rasterises them here, before returning. */
-  submit(now: boolean) {
+  /**
+   * Sends this frame's draws off to be rasterised and set in type, in the colours of `look`;
+   * `now` does it here, before returning.
+   */
+  submit(now: boolean, look: Pick<Style, 'palette' | 'horizon' | 'hill'>) {
     const t = this.touch
     const box: Box = [
       Math.max(0, Math.floor(t[0] * this.sx) - 2),
@@ -366,16 +378,28 @@ export class Raster {
       sy: this.sy,
       box,
       cmds: this.cmds.slice(0, this.n),
+      still: this.still,
+      style: {
+        ...look,
+        cw: SS / this.sx,
+        ch: SS / this.sy,
+        // The owner stays behind: a plant can't cross to a worker, and the type doesn't need it.
+        heads: this.heads.map((h) => ({
+          x: h.x,
+          y: h.y,
+          r: h.r,
+          species: h.species,
+          petal: h.petal,
+          disc: h.disc,
+          alpha: h.alpha,
+        })),
+        sprites: this.sprites,
+      },
     }
     const worker = !now && this.ready ? this.idle.pop() : undefined
     if (worker) {
       const seq = ++this.seq
-      this.inFlight.set(seq, {
-        gen: this.gen,
-        heads: this.heads,
-        sprites: this.sprites,
-        sent: performance.now(),
-      })
+      this.inFlight.set(seq, { gen: this.gen, sent: performance.now() })
       worker.postMessage({ ...job, seq }, [job.cmds.buffer])
       return
     }
@@ -387,14 +411,12 @@ export class Raster {
       return ctx
     })
     this.shownSeq = ++this.seq
-    this.adopt(this.local.run(job), this.heads, this.sprites)
+    this.adopt(this.local.run(job))
   }
 
-  private adopt(out: RasterResult, heads: Head[], sprites: Sprite[]) {
+  private adopt(out: RasterResult) {
     this.version++
-    this.cells = out.cells
-    this.drawnHeads = heads
-    this.drawnSprites = sprites
+    this.material = out.material
     this.ready = true
   }
 }
