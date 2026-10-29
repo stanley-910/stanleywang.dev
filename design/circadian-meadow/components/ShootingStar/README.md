@@ -10,7 +10,7 @@ Approved: stars at night only, as recommended below. Built in `engine/meteors.ts
 
 ## Units
 
-As in Ridgeline: lengths are in scene px, the engine's own units (scene px = CSS px / 0.64 on home; the poem's finer zoom gives more scene px per screen, and everything here scales with `W` and `H`, so it holds there too). `W` and `H` are the scene's width and height, the horizon is at `0.55 H`, and cells are 5×7 scene px. A 1440×762 window is 2250×1190 scene px; a 375×812 phone is 586×1269. `night`, `ink` and the colour fields are the current `Palette`'s. Times are real seconds (the frame's `now`), not scene time, so a streak never speeds up with the hour.
+As in Ridgeline: lengths are in scene px, the engine's own units (scene px = CSS px / 0.64, on home and the poem alike; everything here scales with `W` and `H`, so it holds at any zoom). `W` and `H` are the scene's width and height, the horizon is at `0.55 H`, and cells are 5×7 scene px. A 1440×762 window is 2250×1190 scene px; a 375×812 phone is 586×1269. `night`, `ink` and the colour fields are the current `Palette`'s. Times are real seconds (the frame's `now`), not scene time, so a streak never speeds up with the hour.
 
 ## Would it light the mountains?
 
@@ -217,7 +217,7 @@ Decoration. The canvas stays `aria-hidden` and gets no focus stop; there's no ke
 - **Behind the land:** a click low in the sky above a peak gives a streak that disappears behind the ridge.
 - **Clouds:** a streak dims as it passes behind a cloud and doesn't vanish.
 - **Desktop and 375 px wide:** about 14% of the width on desktop, about 30% on a phone; a tap makes one; a scrub doesn't.
-- **The poem:** same behaviour at its finer grid; clicking the poem's text never makes a star.
+- **The poem:** same behaviour, on home's grid; clicking the poem's text never makes a star.
 - **Reduced motion:** a still streak for 0.8 s, then nothing; no glint.
 - **Day:** a sky click sends a bird (Bird); no streak.
 - **Cost:** a performance trace while spamming shows no new long tasks and no worker traffic from streaks.
