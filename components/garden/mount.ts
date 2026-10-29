@@ -23,12 +23,16 @@ const PAGE: Record<'dark' | 'light', Rgb> = {
   light: [235, 234, 230],
 }
 
-// The scene is laid out as if the page were zoomed out to 80%: a finer grid
-// and smaller marks at full device resolution. Text keeps its size.
-const SCENE_ZOOM = 0.8
+// The scene is laid out as if the page were zoomed out to 64%: a finer grid,
+// smaller marks and a wider meadow at full device resolution, so flowers read
+// as flowers rather than filling the screen. Text keeps its size. Phones stay
+// at 80%: their cells would get too small to read, and they'd pay the most for
+// the extra cells.
+const SCENE_ZOOM = 0.64
+const PHONE_ZOOM = 0.8
+const PHONE_WIDTH = 768
 /** Cell width in scene px: the prototype's finest grid. */
 const CELL = 5
-const toScene = (v: number) => v / SCENE_ZOOM
 
 /** Hours of scene time per pixel of sideways scroll: a day is about three screen-widths. */
 const HOURS_PER_PX = 1 / 120
@@ -57,6 +61,8 @@ function localHour() {
 /** Starts the scene; the returned function stops it and removes its listeners. */
 export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
   const html = document.documentElement
+  let zoom = SCENE_ZOOM
+  const toScene = (v: number) => v / zoom
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)')
   const wind = new Wind()
   wind.strength = 0.6
@@ -203,15 +209,11 @@ export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
 
   const resize = () => {
     const box = canvas.getBoundingClientRect()
+    zoom = window.innerWidth < PHONE_WIDTH ? PHONE_ZOOM : SCENE_ZOOM
     const w = toScene(box.width)
     const h = toScene(box.height)
     if (w === 0 || h === 0) return
-    ascii.resize(
-      w,
-      h,
-      Math.min(window.devicePixelRatio || 1, 2) * SCENE_ZOOM,
-      CELL,
-    )
+    ascii.resize(w, h, Math.min(window.devicePixelRatio || 1, 2) * zoom, CELL)
     raster.resize(ascii.cols, ascii.rows, ascii.cw, ascii.ch)
     if (w !== width || h !== height) {
       width = w
