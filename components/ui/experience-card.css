@@ -71,7 +71,9 @@
 
 .xp-top {
   display: flex;
-  align-items: baseline;
+  /* Centre, not baseline: the logo leading the name would set its
+     baseline at the logo's foot and drop the date below the name. */
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
 }
