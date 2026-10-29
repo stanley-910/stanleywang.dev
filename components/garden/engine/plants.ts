@@ -111,6 +111,15 @@ export abstract class Plant {
     for (const s of this.stems) if (!s.parent) s.baseY = env.floor(this.z)
   }
 
+  /** Pressed: the stalk swings a little toward `dir` (-1 left, 1 right) and springs back. */
+  nudge(dir: number) {
+    for (const s of this.stems) {
+      if (s.parent) continue
+      // Stronger toward the top, as if the head were pushed.
+      for (let i = 0; i < s.n; i++) s.vel[i] += dir * 0.9 * ((i + 1) / s.n)
+    }
+  }
+
   /** Sown by a click: grow straight to full flower over RUSH seconds instead of half a minute. */
   hurry() {
     this.rush = { from: this.age, to: this.bloomAge(), t: 0 }

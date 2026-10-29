@@ -362,11 +362,27 @@ export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
   }
   const leave = () => {
     wind.pointer.active = false
+    wind.pointer.pressed = false
     wind.pointer.vx = 0
     wind.pointer.vy = 0
   }
   const onPointerUp = (e: PointerEvent) => {
+    wind.pointer.pressed = false
     if (e.pointerType === 'touch') leave()
+  }
+
+  // Pressing on the garden lets the cursor stir it while held; pressing a flower bends it a
+  // little, away from where it was pressed.
+  const onPointerDown = (e: PointerEvent) => {
+    if (e.button !== 0) return
+    onMove(e)
+    wind.pointer.pressed = true
+    const origin = canvas.getBoundingClientRect()
+    const x = toScene(e.clientX - origin.left)
+    const y = toScene(e.clientY - origin.top)
+    const head = garden.headAt(x, y)
+    const plant = head?.owner as { nudge?: (dir: number) => void } | undefined
+    if (head && plant?.nudge) plant.nudge(x > head.x ? -1 : 1)
   }
 
   const onClick = (e: MouseEvent) => {
@@ -409,6 +425,8 @@ export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
   html.addEventListener('pointerleave', leave)
   window.addEventListener('blur', leave)
   window.addEventListener('pointerup', onPointerUp)
+  window.addEventListener('pointercancel', onPointerUp)
+  root.addEventListener('pointerdown', onPointerDown)
   root.addEventListener('click', onClick)
   reduced.addEventListener('change', start)
   document.addEventListener('visibilitychange', onVisibility)
@@ -439,6 +457,8 @@ export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
     html.removeEventListener('pointerleave', leave)
     window.removeEventListener('blur', leave)
     window.removeEventListener('pointerup', onPointerUp)
+    window.removeEventListener('pointercancel', onPointerUp)
+    root.removeEventListener('pointerdown', onPointerDown)
     root.removeEventListener('click', onClick)
     reduced.removeEventListener('change', start)
     document.removeEventListener('visibilitychange', onVisibility)

@@ -6,6 +6,8 @@ export type Pointer = {
   vx: number
   vy: number
   active: boolean
+  /** Held down: only then does the cursor stir the plants. Hovering leaves them to the wind. */
+  pressed: boolean
 }
 
 /**
@@ -18,7 +20,14 @@ export class Wind {
   strength = 1
   time = 0
   width = 1
-  pointer: Pointer = { x: -9999, y: -9999, vx: 0, vy: 0, active: false }
+  pointer: Pointer = {
+    x: -9999,
+    y: -9999,
+    vx: 0,
+    vy: 0,
+    active: false,
+    pressed: false,
+  }
   /** Gust speed across the screen, px/s. */
   readonly travel = 170
 
@@ -47,7 +56,7 @@ export class Wind {
     let w = this.base() + s * (gust * envelope * 1.25 + flutter)
 
     const p = this.pointer
-    if (p.active) {
+    if (p.active && p.pressed) {
       const dx = x - p.x
       const dy = y - p.y
       const d2 = dx * dx + dy * dy * 0.6
@@ -64,7 +73,7 @@ export class Wind {
   /** How strongly the cursor shoves a plant point sideways, by distance. */
   push(x: number, y: number) {
     const p = this.pointer
-    if (!p.active) return 0
+    if (!p.active || !p.pressed) return 0
     const dx = x - p.x
     const dy = y - p.y
     const r = 46
