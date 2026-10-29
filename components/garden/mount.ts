@@ -130,6 +130,9 @@ export function mountGarden({
   let live = !start0.set
   const garden = new Garden(wind, paletteAt(hour))
   if (visitors === 'friends') garden.useFriends()
+  // `?seed=` pins the meadow, so a measurement or a screenshot can be repeated.
+  const pinned = Number(new URLSearchParams(location.search).get('seed'))
+  if (Number.isInteger(pinned) && pinned > 0) garden.useSeed(pinned)
 
   let width = 0
   let height = 0

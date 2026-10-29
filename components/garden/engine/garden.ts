@@ -50,6 +50,14 @@ const RIDGE_STEP = 6
 const SNOW_MIN = 0.08
 /** Spacing of the relief field on the far range, in px; finer than a glyph cell. */
 const FACE_STEP = 5
+/**
+ * Meadows picked by hand: laid out headlessly for 1,200 seeds at 1440×900, 1280×800 and
+ * 1000×620, scored for feature flowers framing the bio on both sides, both species among them,
+ * no head on the text, no clumps and no bare stretch, then chosen from sketches of the best.
+ */
+const GOOD_SEEDS = [
+  1715089390, 1332910544, 1873212057, 171079793, 2115706067, 1349393922,
+]
 /** The land's seed, fixed: its roughness and tree heights stay as composed on every visit. */
 const LAND_SEED = 1
 /**
@@ -164,10 +172,15 @@ export class Garden {
   heads: Head[] = []
   private rng = mulberry32(1)
   /**
-   * The meadow's seed: a new one every load, so each visit grows its own garden. The land (range,
-   * snow, faces, trees) is placed by hand and keeps LAND_SEED for its small noise.
+   * The meadow's seed: one of the picked meadows (GOOD_SEEDS) each load, so a visit never gets a
+   * poor one. The land (range, snow, faces, trees) is placed by hand and keeps LAND_SEED.
    */
-  private seed = 1 + Math.floor(Math.random() * 0x7fffffff)
+  private seed = GOOD_SEEDS[Math.floor(Math.random() * GOOD_SEEDS.length)]
+
+  /** Grows this meadow instead, from the next layout on: `?seed=` pins one, for measuring. */
+  useSeed(seed: number) {
+    this.seed = seed
+  }
   private targetAge = new Map<Plant, number>()
   private intro = 0
   private ridges: Float32Array[] = []
@@ -340,21 +353,49 @@ export class Garden {
               if (rng() > 0.12) continue
               species = 'dandelion'
             }
-          } else {
-            // Like the koi swimming off the text: try spots until one is clear of it.
-            for (let t = 0; t < 40; t++) {
+          }
+          const seed = Math.floor(rng() * 1e9)
+          let plant: Plant | null = null
+          if (this.keepClearColumn)
+            plant = createPlant(species, x, z, seed, this.env)
+          else {
+            // Like the koi swimming off the text: try spots until one whose head is clear of it.
+            // None after 40 tries, and the strip goes without rather than cover the bio.
+            for (let t = 0; t < 40 && !plant; t++) {
               z = lerp(z0, z1, rng())
               x = (this.strips + rng()) * STRIP
-              if (!this.underText(x, z)) break
+              const p = createPlant(species, x, z, seed, this.env)
+              if (!this.covers(p)) plant = p
             }
+            if (!plant) continue
           }
-          const plant = this.add(species, x, z, Math.floor(rng() * 1e9))
+          this.place(plant)
           // During the opening they grow in with the rest; later strips arrive grown.
           if (this.intro < INTRO) this.targetAge.set(plant, plant.bloomAge())
           else plant.age = plant.bloomAge()
         }
       }
     }
+  }
+
+  /**
+   * True when this plant's head, full grown, would land on the bio. Stems may pass behind it.
+   * It reads the plant's own stem, so it holds now stems stop under the tree line: a guess from
+   * an uncapped stem put most gardens' heads on the text.
+   */
+  private covers(plant: Plant) {
+    const b = this.keepClear
+    if (!b) return false
+    const y = this.floor(plant.z) - plant.stems[0].length
+    const r = plant.crown
+    // A head nods in from a root beside the text, so it needs a little room sideways.
+    const m = this.width * 0.03 + r
+    return (
+      plant.x > b.left - m &&
+      plant.x < b.right + m &&
+      y + r > b.top - this.height * 0.02 &&
+      y - r < b.bottom
+    )
   }
 
   /** True when a plant rooted here would hold its flower over the bio. Stems may pass behind it. */
@@ -401,10 +442,13 @@ export class Garden {
     z: number,
     seed = Math.floor(this.rng() * 1e9),
   ) {
-    const plant = createPlant(species, x, z, seed, this.env)
-    // Keep plants sorted far to near, so nearer ones draw over.
+    return this.place(createPlant(species, x, z, seed, this.env))
+  }
+
+  /** Keeps plants sorted far to near, so nearer ones draw over. */
+  private place(plant: Plant) {
     let i = this.plants.length
-    while (i > 0 && this.plants[i - 1].z > z) i--
+    while (i > 0 && this.plants[i - 1].z > plant.z) i--
     this.plants.splice(i, 0, plant)
     return plant
   }

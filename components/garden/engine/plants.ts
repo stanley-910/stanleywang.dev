@@ -76,6 +76,8 @@ export abstract class Plant {
   readonly scale: number
   stems: Stem[] = []
   leaves: Leaf[] = []
+  /** Head radius at full flower, so the garden can keep heads off the text. */
+  crown = 0
   /** Which way the bud nods: -1 left, 1 right. */
   readonly side: number
   readonly facing: number
@@ -335,6 +337,7 @@ export class Poppy extends Plant {
     this.stem = this.makeStem(10, length, env)
     this.stem.stiffness = lerp(0.8, 1.1, r())
     this.head = length * lerp(0.12, 0.15, r()) * HEAD
+    this.crown = this.head
     this.stems.push(this.stem)
     const leaves = 2 + Math.floor(r() * 3)
     for (let i = 0; i < leaves; i++) {
@@ -709,6 +712,7 @@ export class Cosmos extends Plant {
     this.main.drag = 1.2
     this.stems.push(this.main)
     const head = length * lerp(0.1, 0.13, r()) * HEAD
+    this.crown = head
     this.heads.push({
       stem: this.main,
       offset: 0,
@@ -976,6 +980,7 @@ export class Lace extends Plant {
     this.stem.stiffness = lerp(1, 1.3, r())
     this.stems.push(this.stem)
     this.head = length * lerp(0.13, 0.17, r())
+    this.crown = this.head
     const n = 16 + Math.floor(r() * 8)
     for (let i = 0; i < n; i++) {
       this.rays.push({
@@ -1193,6 +1198,7 @@ export class Dandelion extends Plant {
     this.stem.stiffness = lerp(0.9, 1.2, r())
     this.stems.push(this.stem)
     this.head = length * lerp(0.36, 0.42, r()) * HEAD
+    this.crown = this.head
     // Fibonacci sphere of seeds.
     const n = 64
     for (let i = 0; i < n; i++) {
@@ -1477,6 +1483,7 @@ export class Rose extends Plant {
     this.stem.drag = 0.7
     this.stem.baseAngle = this.side * 0.03
     this.head = env.unit * 0.064
+    this.crown = this.head
     this.stems.push(this.stem)
     for (const [joint, side] of [
       [4, -1],
