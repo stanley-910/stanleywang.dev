@@ -99,6 +99,7 @@ A plant wins a cell over the land behind it once it covers a quarter of the cell
 - **Wind:** a base breeze plus travelling gusts. Blades turn their pale undersides as they bend, so gusts show as bright bands rolling across. Flower stems are hinged springs with heavy heads.
 - **The cursor** is a wake that parts the grass, and a little light, more after dark.
 - **Growth:** the garden grows in over 4.5s on first load only. Poppies go from nodding bud to cup to seed capsule; dandelions close, then open as clocks that shed seed on the wind.
+- **Opening:** on a fresh load of home, the meadow shows first, then the top bar drops in from above (0.35s delay, 0.6s), then the bio fades up (1.1s delay, 0.7s). Coming back to home within the site skips both the opening and the growth: the text is there and the garden is grown. With reduced motion there is no opening.
 - **Reduced motion:** the garden is drawn grown and still.
 
 ## Iconography

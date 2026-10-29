@@ -159,6 +159,25 @@ render targets.
 WebGPU doesn't change the plan. Support is now broad but not universal, so a WebGL2 path would
 still be needed.
 
+## Noticed, not yet looked at
+
+- **The opening stutters** while the flowers sprout on a fresh load. During growth every plant
+  changes shape each frame, so no raster can be reused, and the page is also still loading. Profile
+  this before deciding whether there are too many plants. `maxPlants` is one per 26 scene px of width.
+- **Large monitors cost more.** The cell grid scales with the window's area in CSS pixels: columns
+  are width / 0.64 / 5 and rows are height / 0.64 / 7.
+
+  | Window (CSS px) | Cells | vs 1440×900 |
+  |---|---|---|
+  | 1440×900 | 450×201 ≈ 90k | 1× |
+  | 1920×1080 (4K at 2×, or a 1080p monitor) | 600×241 ≈ 145k | 1.6× |
+  | 2560×1440 (27" at 1×) | 800×321 ≈ 257k | 2.8× |
+  | 3440×1440 (ultrawide) | 1075×321 ≈ 345k | 3.8× |
+
+  Browser zoom shrinks CSS pixels too: at 80% browser zoom a 1440×900 window lays out as
+  1800×1125, about 1.6× the cells. A cap on the grid, such as letting the scene zoom grow past 0.64
+  above about 600 columns, would bound this. It belongs with the adaptive-quality levels.
+
 ## Sources
 
 The two research passes read source code where possible. Unconfirmed points are marked above:

@@ -9,6 +9,7 @@ import { smoothstep } from './engine/math'
 import { mix, paletteAt, type Palette, type Rgb } from './engine/palette'
 import { Raster } from './engine/raster'
 import { Wind } from './engine/wind'
+import { playIntro } from './intro'
 
 // Stepped at 120 Hz so a 120 Hz display gets a new pose every frame; the stems' springs scale
 // with the step, so their motion is the same at any rate.
@@ -41,6 +42,12 @@ const WHEEL_REST = 200
 const GLIDE_DECAY = 8
 /** Fastest glide, px/s, so a hard flick only drifts on a little after release. */
 const GLIDE_MAX = 1200
+
+/**
+ * Set once the garden has run in this page session. Client-side navigation keeps this module, so
+ * coming back to home shows the meadow grown; a reload starts it over and it grows in again.
+ */
+let grownBefore = false
 
 type GardenOptions = {
   canvas: HTMLCanvasElement
@@ -209,6 +216,7 @@ export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
       backdrop: (ctx) => garden.backdrop(ctx, palette),
       backdropKey: garden.backdropKey(palette),
     })
+    playIntro()
   }
 
   const resize = () => {
@@ -227,7 +235,7 @@ export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
         ? sceneRect(bio.getBoundingClientRect(), box)
         : null
       garden.resize(w, h)
-      if (reduced.matches) garden.skipIntro()
+      if (reduced.matches || grownBefore) garden.skipIntro()
     }
     measure()
     // Rasterise this size's first frame here: a worker's first reply can be
@@ -300,6 +308,9 @@ export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
   // ── loop ──────────────────────────────────────────────────────────
 
   const frame = (now: number) => {
+    // Set here rather than on mount: React's dev double-mount tears the first one down before
+    // any frame runs.
+    grownBefore = true
     const dt = Math.min(0.1, (now - last) / 1000)
     last = now
     acc += dt
