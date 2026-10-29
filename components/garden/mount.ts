@@ -56,7 +56,7 @@ export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
   const html = document.documentElement
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)')
   const wind = new Wind()
-  wind.strength = 0.92
+  wind.strength = 0.6
   const raster = new Raster()
   const ascii = new AsciiRenderer(canvas, font)
   // The page's hour (lib/circadian.ts): the clock's, or one set on the time

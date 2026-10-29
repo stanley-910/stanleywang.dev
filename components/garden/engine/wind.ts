@@ -54,7 +54,8 @@ export class Wind {
       const r = 130
       if (d2 < r * r * 4) {
         const k = Math.exp(-d2 / (r * r))
-        w += clamp(p.vx / 1100, -1.2, 1.2) * k
+        // A gentle wake: the cursor stirs the meadow, it doesn't blow it flat.
+        w += clamp(p.vx / 2200, -0.6, 0.6) * k
       }
     }
     return w
@@ -70,6 +71,6 @@ export class Wind {
     const d2 = dx * dx + dy * dy
     if (d2 > r * r * 4) return 0
     const k = Math.exp(-d2 / (r * r))
-    return Math.sign(dx || 1) * k
+    return Math.sign(dx || 1) * k * 0.5
   }
 }

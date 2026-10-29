@@ -288,7 +288,8 @@ export class Poppy extends Plant {
     super(x, z, seed)
     const r = this.rng
     this.G = lerp(8, 12, r())
-    this.B = lerp(70, 140, r())
+    // Blooms hold a good while, so shedding stays occasional across the meadow.
+    this.B = lerp(140, 280, r())
     this.P = lerp(30, 50, r())
     this.cycle = this.G + 20 + this.B + 6 + this.P + 6
     const length = env.unit * lerp(0.24, 0.46, r()) * this.scale
@@ -371,7 +372,8 @@ export class Poppy extends Plant {
     const fallen = Math.floor(ph.shed * 4.999)
     while (this.shed < fallen) {
       this.shed++
-      if (env.quiet) continue
+      // Only every other petal drifts down; the rest just leave the head.
+      if (env.quiet || this.shed % 2) continue
       const a = this.rng() * TAU
       env.particles.add(
         particle({
@@ -672,7 +674,7 @@ export class Cosmos extends Plant {
     super(x, z, seed)
     const r = this.rng
     this.G = lerp(10, 14, r())
-    this.B = lerp(80, 140, r())
+    this.B = lerp(160, 280, r())
     const length = env.unit * lerp(0.3, 0.55, r()) * this.scale
     this.main = this.makeStem(10, length, env)
     this.main.stiffness = lerp(0.55, 0.75, r())
@@ -754,7 +756,8 @@ export class Cosmos extends Plant {
       const fallen = Math.floor(ph.shed * 8.999)
       while (h.shed < fallen) {
         h.shed++
-        if (env.quiet) continue
+        // Only every other petal drifts down; the rest just leave the head.
+        if (env.quiet || h.shed % 2) continue
         const tx = h.stem.tipX()
         const ty = h.stem.tipY()
         env.particles.add(
