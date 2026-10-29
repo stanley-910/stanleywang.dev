@@ -20,6 +20,10 @@ export interface Palette {
   stem: Rgb
   poppy: Rgb
   poppyDeep: Rgb
+  /** The poem's rose: its petals, their shadowed insides and heart, and its leaves. */
+  rose: Rgb
+  roseDeep: Rgb
+  roseLeaf: Rgb
   cosmos: Rgb
   cosmosVein: Rgb
   lace: Rgb
@@ -59,6 +63,9 @@ const DAY: Palette = {
   stem: hex('#8f957c'),
   poppy: hex('#c95a32'),
   poppyDeep: hex('#7a2c1c'),
+  rose: hex('#b3202f'),
+  roseDeep: hex('#5c0d1a'),
+  roseLeaf: hex('#4d5a3c'),
   cosmos: hex('#e4dccb'),
   cosmosVein: hex('#b9a9b8'),
   lace: hex('#ece6cf'),
@@ -88,6 +95,9 @@ const GOLDEN: Palette = {
   stem: hex('#a0957a'),
   poppy: hex('#d9531f'),
   poppyDeep: hex('#7e2414'),
+  rose: hex('#c2262c'),
+  roseDeep: hex('#621016'),
+  roseLeaf: hex('#565b37'),
   cosmos: hex('#f6dcc0'),
   cosmosVein: hex('#d39a8c'),
   lace: hex('#f8e2bf'),
@@ -114,6 +124,9 @@ const DUSK: Palette = {
   stem: hex('#9a6c50'),
   poppy: hex('#ff5a36'),
   poppyDeep: hex('#7d1f2a'),
+  rose: hex('#cf2a38'),
+  roseDeep: hex('#5e0f1e'),
+  roseLeaf: hex('#4a4f36'),
   cosmos: hex('#f7c2b0'),
   cosmosVein: hex('#b05a7a'),
   lace: hex('#ffcfae'),
@@ -141,6 +154,9 @@ const TWILIGHT: Palette = {
   stem: hex('#6e5468'),
   poppy: hex('#e0507a'),
   poppyDeep: hex('#4f1d47'),
+  rose: hex('#c02842'),
+  roseDeep: hex('#4c0e24'),
+  roseLeaf: hex('#363f34'),
   cosmos: hex('#e8c3dc'),
   cosmosVein: hex('#8a5aa6'),
   lace: hex('#efd0e6'),
@@ -165,6 +181,9 @@ const NIGHT: Palette = {
   stem: hex('#56685a'),
   poppy: hex('#7a68a4'),
   poppyDeep: hex('#3f3160'),
+  rose: hex('#b02540'),
+  roseDeep: hex('#420c20'),
+  roseLeaf: hex('#2b3a30'),
   cosmos: hex('#a9b1cf'),
   cosmosVein: hex('#6a6fa6'),
   lace: hex('#d7dcf0'),
@@ -194,6 +213,9 @@ const MIDNIGHT: Palette = {
   stem: hex('#2c3a31'),
   poppy: hex('#ff5470'),
   poppyDeep: hex('#7a1834'),
+  rose: hex('#c22a48'),
+  roseDeep: hex('#4a0d24'),
+  roseLeaf: hex('#26352c'),
   cosmos: hex('#d6c2ff'),
   cosmosVein: hex('#8a5cff'),
   lace: hex('#eef1ff'),
@@ -220,6 +242,7 @@ const DAWN: Palette = {
   grassDark: hex('#464a48'),
   grassLight: hex('#b0b2a6'),
   poppy: hex('#c4604a'),
+  rose: hex('#ae2533'),
   globe: hex('#f2e4dc'),
   panelBg: hex('#1e2a2c'),
   panelInk: hex('#e4dccd'),

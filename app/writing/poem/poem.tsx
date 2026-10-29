@@ -33,6 +33,9 @@ import './poem.css'
 // `@ end top` (or any <where>) before a line ends the scroll with that line
 // there, so long as the last line still shows no lower than the end pin puts
 // it; on a screen too short for both, the last line wins.
+//
+// `@ rose` before a line grows the meadow's one rose, in the middle of the
+// screen, as that line comes up from the bottom.
 
 /** Where the day starts and ends when the poem pins neither. */
 const DEFAULT_START = 5
@@ -50,6 +53,8 @@ type Line = {
   gap?: number | 'auto'
   /** Where `@ end` asks this line to stand when the scroll runs out. */
   rest?: number
+  /** Whether `@ rose` grows the rose as this line comes into view. */
+  rose?: boolean
 }
 type Parsed = { title?: string; lines: Line[]; end?: Pin }
 type Sky = { sunrise: number; sunset: number; moonset: number }
@@ -130,6 +135,7 @@ const WHEN =
 
 const GAP = /^@\s*gap(?:\s+(\d+(?:\.\d+)?)%)?\s*$/
 const END = /^@\s*end(?:\s+(\S+))?\s*$/
+const ROSE = /^@\s*rose\s*$/
 
 /** A <where> as a share of the screen, or null when it isn't one. */
 function whereOf(where: string | undefined): number | null {
@@ -170,7 +176,12 @@ function parse(src: string): Parsed {
   const lines: Line[] = []
   let pin: Pin | undefined
   let rest: number | undefined
+  let rose = false
   for (const row of rows) {
+    if (ROSE.test(row.trim())) {
+      rose = true
+      continue
+    }
     const e = END.exec(row.trim())
     const at = e ? whereOf(e[1]) : null
     if (at !== null) {
@@ -201,6 +212,10 @@ function parse(src: string): Parsed {
     if (text && rest !== undefined) {
       line.rest = rest
       rest = undefined
+    }
+    if (text && rose) {
+      line.rose = true
+      rose = false
     }
     lines.push(line)
   }
@@ -334,6 +349,8 @@ export function Poem({ className, preview }: PoemProps) {
   // re-measure, which needs it.
   const skyRef = useRef<Sky>({ sunrise: 6.5, sunset: 18, moonset: 5.5 })
   const remeasureRef = useRef<() => void>(undefined)
+  // Plants the rose (mount.ts), once the meadow is up.
+  const roseRef = useRef<(x: number) => void>(undefined)
 
   // The meadow, for the whole visit. The hour the visitor had set comes back
   // when they leave, since the poem's scroll sets it as they read.
@@ -358,12 +375,14 @@ export function Poem({ className, preview }: PoemProps) {
         skyRef.current = sky
         remeasureRef.current?.()
       },
+      onReady: ({ rose }) => (roseRef.current = rose),
     })
     const restore = () => setHour(before === null ? null : Number(before))
     // A reload or a closed tab skips React's cleanup.
     window.addEventListener('pagehide', restore)
     return () => {
       window.removeEventListener('pagehide', restore)
+      roseRef.current = undefined
       unmount()
       restore()
     }
@@ -407,8 +426,18 @@ export function Poem({ className, preview }: PoemProps) {
       raf = requestAnimationFrame(frame)
     }
     raf = requestAnimationFrame(frame)
+
+    // The rose comes up as its line does, and stays.
+    const cue = el.querySelector<HTMLElement>('[data-rose]')
+    const bloom = () => {
+      if (cue && cue.getBoundingClientRect().top < window.innerHeight)
+        roseRef.current?.(0.5)
+    }
+    bloom()
+    window.addEventListener('scroll', bloom, { passive: true })
     return () => {
       cancelAnimationFrame(raf)
+      window.removeEventListener('scroll', bloom)
       sized.disconnect()
       window.removeEventListener('resize', remeasure)
       remeasureRef.current = undefined
@@ -466,8 +495,14 @@ export function Poem({ className, preview }: PoemProps) {
       {/* The same column locked and open, so only small flowers grow under the text. */}
       <div className="poem-column" data-clear-column>
         {poem ? (
-          <article ref={poemRef} className="poem" data-no-sow>
-            {poem.title ? <h1 className="poem-title">{poem.title}</h1> : null}
+          // Only the lines themselves keep a tap from sowing; the room around
+          // them is the meadow's, as on home.
+          <article ref={poemRef} className="poem">
+            {poem.title ? (
+              <h1 className="poem-title" data-no-sow>
+                {poem.title}
+              </h1>
+            ) : null}
             {poem.lines.map((line, i) =>
               line.gap ? (
                 <div
@@ -480,6 +515,8 @@ export function Poem({ className, preview }: PoemProps) {
                 <p
                   key={i}
                   className="poem-line"
+                  data-no-sow
+                  data-rose={line.rose || undefined}
                   data-when={line.pin?.when}
                   data-at={line.pin?.at}
                   data-rest={line.rest}
