@@ -135,8 +135,15 @@
 }
 
 .film-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
-  gap: var(--space-4) var(--space-3);
+  /* Masonry: photos keep their shapes in narrow columns, so a landscape and
+     a portrait read at about the same size and the columns end unevenly. */
+  columns: 3 14rem;
+  column-gap: var(--space-3);
   max-width: var(--measure);
+  margin-inline: auto;
+}
+
+.film-grid > * {
+  break-inside: avoid;
+  margin-bottom: var(--space-3);
 }

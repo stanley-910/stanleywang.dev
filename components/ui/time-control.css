@@ -31,9 +31,9 @@
   padding: var(--space-2);
   /* Glass: a thin tint of the colour opposite the ink, blurred, so what's
      under it shows through muddled and the text still reads. */
-  background: color-mix(in srgb, var(--glass, var(--page)) 42%, transparent);
-  -webkit-backdrop-filter: blur(14px) saturate(1.15);
-  backdrop-filter: blur(14px) saturate(1.15);
+  background: color-mix(in srgb, var(--glass, var(--page)) 28%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  backdrop-filter: blur(18px) saturate(1.3);
   border: 1px solid color-mix(in srgb, var(--ink) 18%, transparent);
   border-radius: var(--radius-card);
   color: var(--ink);

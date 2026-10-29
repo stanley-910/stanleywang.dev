@@ -49,6 +49,9 @@ const TRACK = `linear-gradient(to right, ${Array.from(
 /** Text fades out for this long before a family switch (time-control.css fades it back). */
 const DIP_OUT = 90
 
+/** Scroll distance, in px, per quarter hour. */
+const WHEEL_STEP = 20
+
 export function ThemeSwitch({ className }: { className?: string }) {
   const [mounted, setMounted] = useState(false)
   const [hour, setHourState] = useState(12)
@@ -122,6 +125,28 @@ export function ThemeSwitch({ className }: { className?: string }) {
       document.removeEventListener('pointerdown', onDown)
       document.removeEventListener('keydown', onKey)
     }
+  }, [open])
+
+  // While open, a scroll inside the popover, sideways or up and down, moves
+  // the hour: no need to grab the thumb. Down and right run later.
+  useEffect(() => {
+    const pop = popRef.current
+    if (!open || !pop) return
+    let carry = 0
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
+      // Line-mode wheels report lines; count each as 40px.
+      carry += e.deltaMode === 1 ? d * 40 : d
+      const steps = Math.trunc(carry / WHEEL_STEP)
+      if (!steps) return
+      carry -= steps * WHEEL_STEP
+      const now = currentHour().hour
+      const next = Math.round((now + steps * 0.25) * 4) / 4
+      setHour(Math.min(24, Math.max(0, next)))
+    }
+    pop.addEventListener('wheel', onWheel, { passive: false })
+    return () => pop.removeEventListener('wheel', onWheel)
   }, [open])
 
   if (!mounted) {
