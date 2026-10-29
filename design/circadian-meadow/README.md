@@ -85,6 +85,7 @@ A plant wins a cell over the land behind it once it covers a quarter of the cell
 
 - A flower head that should read as a flower spans at least `specimen-head` (14) cells. Smaller ones are texture, and that's fine far back.
 - Compose rather than scatter: a few large feature flowers in front, beside and above the text; small ones near the horizon. Wild carrot stays rare, because at a distance an umbel prints as a block.
+- Flowers grow under the trees, never up into the range: no stem tip rises past 2% of the screen height above the horizon, where the near ridge's trees start. A stem eases toward that ceiling past 60% of its room rather than stopping at it, so tall flowers still differ in height. A far flower has little room, so near the horizon it stays low, as it would in perspective. Uncapped, mid-meadow heads stood in front of the snow and the stands, and the scene above the bio read as crowded.
 - Grass grows in tufts: three to seven blades fanned from one root, the outer ones leaning out and curling at the tip, with bare ground between. It prints as `\|/` clumps, a little quieter than the flowers. There is no dense foreground row.
 - No flowers on the hills. The hills carry a forest (TreeLine) and snow (SnowCap); the farthest flowers sit on the meadow's back edge, small.
 - Butterflies scale with the depth of the flower they visit.

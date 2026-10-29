@@ -33,6 +33,8 @@ export interface Env {
   unit: number
   /** Ground line for a depth. */
   floor: (z: number) => number
+  /** Screen y no stem tip rises past: just under where the trees on the near ridge start. */
+  ceiling: number
   /** True while the garden grows in, so it doesn't shed a season's petals in four seconds. */
   quiet: boolean
 }
@@ -108,6 +110,20 @@ export abstract class Plant {
 
   /** Age at which the plant is in full flower, to start the garden mostly blooming. */
   abstract bloomAge(): number
+
+  /**
+   * A stem's length held under the ceiling. Short stems keep theirs; past 60% of the room they
+   * ease toward it, so tall flowers still differ in height instead of lining up like a hedge.
+   * A far flower has little room, so near the horizon it stays low, as it would in perspective.
+   */
+  protected reach(length: number, env: Env) {
+    const room = Math.max(env.unit * 0.02, env.floor(this.z) - env.ceiling)
+    const knee = room * 0.6
+    if (length <= knee) return length
+    return (
+      knee + (room - knee) * (1 - Math.exp(-(length - knee) / (room - knee)))
+    )
+  }
 
   protected makeStem(n: number, length: number, env: Env) {
     const s = new Stem(n)
@@ -312,7 +328,10 @@ export class Poppy extends Plant {
     this.B = lerp(140, 280, r())
     this.P = lerp(30, 50, r())
     this.cycle = this.G + 20 + this.B + 6 + this.P + 6
-    const length = env.unit * lerp(0.24, 0.46, r()) * this.scale
+    const length = this.reach(
+      env.unit * lerp(0.24, 0.46, r()) * this.scale,
+      env,
+    )
     this.stem = this.makeStem(10, length, env)
     this.stem.stiffness = lerp(0.8, 1.1, r())
     this.head = length * lerp(0.12, 0.15, r()) * HEAD
@@ -684,7 +703,7 @@ export class Cosmos extends Plant {
     const r = this.rng
     this.G = lerp(10, 14, r())
     this.B = lerp(160, 280, r())
-    const length = env.unit * lerp(0.3, 0.55, r()) * this.scale
+    const length = this.reach(env.unit * lerp(0.3, 0.55, r()) * this.scale, env)
     this.main = this.makeStem(10, length, env)
     this.main.stiffness = lerp(0.55, 0.75, r())
     this.main.drag = 1.2
@@ -949,7 +968,10 @@ export class Lace extends Plant {
     this.G = lerp(12, 16, r())
     this.B = lerp(110, 170, r())
     this.cycle = this.G + 30 + this.B + 30 + 6
-    const length = env.unit * lerp(0.32, 0.58, r()) * this.scale
+    const length = this.reach(
+      env.unit * lerp(0.32, 0.58, r()) * this.scale,
+      env,
+    )
     this.stem = this.makeStem(9, length, env)
     this.stem.stiffness = lerp(1, 1.3, r())
     this.stems.push(this.stem)

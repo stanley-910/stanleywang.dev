@@ -23,12 +23,16 @@ The old `drawSnow` filled everything above one ragged height as plain land in a 
 
 ## Design
 
-**Where snow lies.** On the far range only, on each massif (one per 1500px of range).
+**The range, composed.** The far range is drawn by hand, not generated (`FAR_RANGE`): about two dozen points, each a share of the range's width and a height as a share of the screen height above the horizon, joined in straight runs so the peaks stay pointed, with a little ridged noise (about 1% of the height) to roughen the crest. Two snowy massifs (`SNOW_PEAKS`): the main summit a little left of a third of the way across, 27% of the height up, and a second at 85%, 21.5% up, with a low saddle between. It is the range the old generator showed at 80% browser zoom, fitted into the window at 100%; the cell grid and the flowers are unchanged.
 
-- The snowline is measured from the massif's true summit, its highest point within 200px of its centre: snow covers the top quarter of its height, with a gentle wobble (about ±10px). Measuring from a sliding local maximum instead let the cap's outline creep down the whole flank as a thin grey line; don't.
+- From 900px wide the whole range spans the screen. Narrower, the screen shows a 900px stretch of it around the main summit, so a phone gets one snowy peak at full size instead of the whole range crowded together, and the near spruce stands are placed along the same stretch.
+
+**Where snow lies.** On the two snowy massifs only.
+
+- The snowline is measured from each massif's summit, its highest point within 40px of where it's placed: snow covers the top quarter of its height, with a gentle wobble (about ±10px). Measuring from a sliding local maximum instead let the cap's outline creep down the whole flank as a thin grey line; don't.
 - The cap runs out from the summit each way until the ridge has dropped clear of the line, so it ends where the mountain does. A fixed window cut it off in a vertical edge on tall screens.
 - Peaks below `SNOW_MIN` (8% of the screen height above the horizon) stay bare.
-- Snow holds on slopes gentler than about 60°. Steeper points print as rock, so cliffs show dark ribs through the white.
+- Snow holds on slopes gentler than about 60° as seen on a 1440 × 900 screen, measured in the range's own units so a phone, which magnifies its stretch of range, keeps the same cap. Measured in screen pixels, the phone's peaks were 2.4× steeper and the cap broke into vertical stripes. Steeper points print as rock, so cliffs show dark ribs through the white.
 - The lower edge dithers into the rock where the cap only partly covers a cell, never a hard line. No streaks below the snowline: tried as vertical couloir fingers, they hung off the cap like drips.
 
 **How it prints.** The material channel already holds eight kinds, its full three bits, so snow and forest ride under `Kind.Land` with a material id in the meta layer (`LandMat`). Snow is drawn after the rock and its slope light.
@@ -41,12 +45,14 @@ The old `drawSnow` filled everything above one ragged height as plain land in a 
 
 The lit flank faces the sun or moon. The split between the flanks runs down from the summit on a diagonal (0.8px across per px down), leaning away from the light, the way a ridge parts a peak's two faces. Split column by column, the edge fell straight down from the summit and the change read as abrupt. With the sun low behind the range (golden hour and sunset), only a rim along the crest is lit and the rest is shade, as the rock does.
 
+Every change in the light eases; none switches. As the sun sinks the lit flank narrows into the crest rim, and as its light goes (17:45–18:30) the rim thins to nothing, so the cap is all shade before the moon's lit flank grows back in. As the sun or moon passes over a summit, the split's lean eases through upright. A first version switched at one moment, and at 18:30 the cap jumped from a thin rim to a full lit flank with nothing yet lighting it.
+
 **Faces.** The far range's terrain, after the halftone mountain photo: the rock is split into broad lit and shaded faces, shaded the way the snow's two flanks are, so the mountain reads as folded planes rather than one flat shape.
 
-- Hidden ridgelines set the faces. Only prominent peaks send one: more than 10% of the screen height above the horizon, standing at least 3.5% of it above the saddle to anything higher, and at least 90px apart. Counting every local top of the jagged far ridge gave about thirty near-vertical ridgelines side by side, and the faces printed as stripes, a pattern rather than terrain. A summit, or a peak standing 8% clear, sends a ridgeline down each side; a lesser peak sends one down its own flank, away from the nearest summit. Each runs down on a diagonal (0.65–1px across per px down) in 5px steps with a small wobble, and branches once, steeper, a little under halfway down.
+- Hidden ridgelines set the faces, placed by hand with the range (`RIDGELINES`): ten, each naming the peak it runs down from, which way, how far (half to 85% of the peak's height) and its lean (0.65–0.9px across per px down). Each summit sends one down each side; the shoulders send one down their own outer flank. They run in 5px steps with a small wobble and branch once, steeper, a little under halfway down. Detecting them from the jagged ridge first gave about thirty near-vertical ridgelines side by side, and the faces printed as stripes, a pattern rather than terrain.
 - The ridgelines are never drawn. Within 80px of one, rock cells on the light's side get a light tile (the light colour at up to 8% by day, 2.5% at night). The other side gets a soft shadow only 36px wide: a `*-ground` tile at up to 8%. Tiles only: nudging the dithered slope glyphs as well printed them in vertical streaks. Both ease to nothing at their outer edge. At night a 5% lit tile showed every cell's edge as a stair step down the flank, so it's halved. A 10–20% shadow across the full 80px read as a thick dark line; keep it light. With a floor, each face stopped in a hard edge and read as a slab.
 - Faces ease in over the 30px below the snowline and never touch the cap. At full strength from the first rock cell, a ridge's shadow notched up into the cap's ragged lower edge.
-- With the sun behind the range (golden hour, sunset) every face takes the shaded side: the range goes to silhouette.
+- With the sun behind the range (golden hour, sunset), or as the light fades, every face eases to the shaded side: the range goes to silhouette. A face's turn toward the light also eases over 150px as the light crosses its ridgeline, rather than flipping.
 - Light lives in the cells: the faces are tiles and glyph density, never a gradient painted on the silhouette.
 - Rejected: drawing the ridgelines as one-cell `| / \` lines with lit dots beside them (too thin to read as terrain), random dark dots from a noise height field (read as specks), and faces by glyph density alone (smooth, but the planes disappear).
 
@@ -88,4 +94,4 @@ Decorative, like the rest of the scene. No text sits over the range, so contrast
 
 ## Open questions
 
-- At 375px wide no massif is on screen (the tallest peak there is 16% of the height, the massifs 26%), so the phone shows no snow, as it didn't before. Move a massif into the phone's view, or leave the phone bare?
+None. (Resolved: the phone shows the main summit, now that the range is composed and a narrow screen shows the stretch around it.)

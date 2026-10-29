@@ -21,12 +21,12 @@ The three ridges (`buildRidges`) were bare halftone silhouettes. They differed b
 **Where trees grow.**
 
 - **Middle ridge (layer 1):** a low, gently rolling band, forested along its crest, so its outline is a line of treetops. The old cliff-and-shelf profile read as a giant hump between the peaks; ridged knolls made the rows pile up on each one into a dark spiked pyramid.
-- **Near ridge (layer 2):** five stands of tall spruce, at 5%, 31%, 55%, 66% and 90% of the screen width, of 4, 3, 5, 3 and 5 trees, four and a half to ten cells tall, tallest in the middle of each stand. At up to thirteen the tallest stood too close. A stand is left out only where it would stand over the text itself; keeping them out of the text's whole column left none at all. Each tree is a narrow tiered silhouette (three or more branch tiers, each flaring out then stepping in). Only stands, never a continuous row, so the flowers keep open sky behind most of them.
+- **Near ridge (layer 2):** five stands of tall spruce, at 5%, 31%, 55%, 66% and 90% of the range's width (the screen's, from 900px wide; on a phone, the stretch of range it shows, so one or two stands), of 4, 3, 5, 3 and 5 trees, four and a half to ten cells tall, tallest in the middle of each stand. At up to thirteen the tallest stood too close. A stand is left out only where it would stand over the text itself; keeping them out of the text's whole column left none at all. Each tree is a narrow tiered silhouette (three or more branch tiers, each flaring out then stepping in). Only stands, never a continuous row, so the flowers keep open sky behind most of them.
 - **Far range (layer 0):** no forest. A thin band was tried; in the gaps between clearings it printed as flat-topped dark slabs standing on the middle ridge.
 
-**Placed, not generated.** Where each row grows and where each stand stands are set by hand, as shares of the screen width (`FOREST_ROWS`, `SPRUCE_STANDS`). Noise-driven gaps put clumps in odd places.
+**Placed, not generated.** Where each row grows and where each stand stands are set by hand, as shares of the screen and range width (`FOREST_ROWS`, `SPRUCE_STANDS`). Noise-driven gaps put clumps in odd places.
 
-**How it prints.** Forests are a painted silhouette like the ridges, with sparse glyphs over it. A first try with glyphs alone (one `^` per tree) was nearly invisible: a 7px caret in a colour close to the ridge's. Trees size to about one glyph cell per 1.25% of the screen height.
+**How it prints.** Forests are a painted silhouette like the ridges, with sparse glyphs over it. A first try with glyphs alone (one `^` per tree) was nearly invisible: a 7px caret in a colour close to the ridge's. Trees size to about one glyph cell per 1.25% of the screen height, or of 0.62 × the range's width when that's smaller, so a stand doesn't tower over a tall phone's peaks.
 
 | Where | Painted | Glyphs |
 |---|---|---|
@@ -73,4 +73,4 @@ Decorative. No motion, so nothing changes under reduced motion.
 
 ## Open questions
 
-- Near stands sit right behind the flowers. Do flower heads ever overlap them, or do stands only go where the composition leaves the back edge clear?
+- Near stands sit right behind the flowers. Flower stems now stop under where the trees start (see README, the garden's composition), but a near flower's head can still overlap a stand's base. Is that the right amount of overlap?
