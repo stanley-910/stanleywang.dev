@@ -539,7 +539,10 @@ export class Garden {
   draw(r: Raster, p: Palette) {
     // The sun and moon go down behind the hills, so the land is drawn over them.
     this.drawGlobe(r, p)
+    // The land changes only with the hour; marked so the rasteriser can keep it filled.
+    r.beginStill()
     this.drawLand(r, p)
+    r.endStill()
     const haze = (z: number) => 0.68 * (1 - z) ** 1.6
     // After dark only the nearest flower clear of the text keeps full brightness; the rest step back.
     const dim = 0.28 * smoothstep(0.5, 1, p.night)

@@ -10,12 +10,11 @@ import { mix, paletteAt, type Palette, type Rgb } from './engine/palette'
 import { Raster } from './engine/raster'
 import { Wind } from './engine/wind'
 
-const STEP = 1 / 60
-const MAX_STEPS = 3
+// Stepped at 120 Hz so a 120 Hz display gets a new pose every frame; the stems' springs scale
+// with the step, so their motion is the same at any rate.
+const STEP = 1 / 120
+const MAX_STEPS = 6
 const MEASURE_EVERY = 30
-/** The loop runs at most this often, ms: the meadow's motion gains nothing above 60 fps, and a
- * 120 Hz display would otherwise do twice the work. A little under 1000/60 so 60 Hz never skips. */
-const MIN_FRAME = 12
 
 // The site's page colours (tokens.css); the scene fades into them.
 const PAGE: Record<'dark' | 'light', Rgb> = {
@@ -172,6 +171,9 @@ export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
     ascii.setDimBoxes(boxes)
   }
 
+  // Top of the painted hills per cell column, sent with each frame for the ink to contrast with.
+  let hill = new Float32Array(0)
+
   /**
    * Records the scene and draws the latest rasterised frame. In the loop the
    * raster workers fill this frame's shapes while the page shows the one
@@ -190,7 +192,10 @@ export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
     if (now || !raster.busy) {
       raster.clear()
       garden.draw(raster, palette)
-      raster.submit(now)
+      if (hill.length !== ascii.cols) hill = new Float32Array(ascii.cols)
+      for (let c = 0; c < hill.length; c++)
+        hill[c] = garden.hillTop((c + 0.5) * ascii.cw)
+      raster.submit(now, { palette, horizon: garden.horizon, hill })
     }
     if (!raster.ready) return
     ascii.render({
@@ -203,7 +208,6 @@ export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
       pointer: wind.pointer,
       backdrop: (ctx) => garden.backdrop(ctx, palette),
       backdropKey: garden.backdropKey(palette),
-      hillTop: (x) => garden.hillTop(x),
     })
   }
 
@@ -296,10 +300,6 @@ export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
   // ── loop ──────────────────────────────────────────────────────────
 
   const frame = (now: number) => {
-    if (now - last < MIN_FRAME) {
-      raf = requestAnimationFrame(frame)
-      return
-    }
     const dt = Math.min(0.1, (now - last) / 1000)
     last = now
     acc += dt
@@ -333,7 +333,7 @@ export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
     if (reduced.matches) {
       garden.skipIntro()
       // Let the stems settle into the breeze, then hold still.
-      for (let i = 0; i < 120; i++) {
+      for (let i = 0; i < 2 / STEP; i++) {
         wind.step(STEP)
         garden.step(STEP, paletteAt(hour))
       }
