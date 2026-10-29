@@ -152,23 +152,22 @@ export class Particles {
         case 'sepal': {
           const path = new Shape()
           const flat = p.landed ? 0.35 : Math.abs(Math.cos(p.rot))
+          // A loose petal is a little smaller than the one it fell from.
+          const s = p.type === 'petal' ? p.size * 0.7 : p.size
           path.ellipse(
             p.x,
             p.y,
-            p.size * (0.25 + 0.75 * flat),
-            p.size * 0.6,
+            s * (0.25 + 0.75 * flat),
+            s * 0.6,
             p.rot * 0.5,
             0,
             TAU,
           )
-          // A loose petal prints as bare glyphs in its own colour, like fluff. As petal material it
-          // had no outline or seams, so it read as a flat tile and blotted out flowers it crossed.
-          r.fill(
-            path,
-            p.color,
-            p.type === 'petal' ? Kind.Fluff : Kind.Foliage,
-            fade,
-          )
+          if (p.type === 'petal') {
+            // Its outline only, in light glyphs of its own colour. Filled, it printed as a solid
+            // blob of '#' (or, as petal material, a flat tile) that blotted out flowers it crossed.
+            r.stroke(path, p.color, Kind.Fluff, 2.6, fade)
+          } else r.fill(path, p.color, Kind.Foliage, fade)
           break
         }
         case 'pappus': {
