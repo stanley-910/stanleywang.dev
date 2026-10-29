@@ -7,6 +7,7 @@ import { Analytics } from '@vercel/analytics/react'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { ThemeProvider } from 'next-themes'
 
+import { INTRO_SCRIPT } from '@/components/garden/intro'
 import { ProgressBar } from '@/components/ui/progress-bar'
 import { THEME_SCRIPT } from '@/lib/circadian'
 import { WEBSITE_URL } from '@/lib/constants'
@@ -58,6 +59,8 @@ export default function RootLayout({
       <head>
         {/* Picks the hour's theme before next-themes applies it. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        {/* Holds home's text back for its opening, on a fresh load only. */}
+        <script dangerouslySetInnerHTML={{ __html: INTRO_SCRIPT }} />
       </head>
       <body className="antialiased">
         <ProgressBar />
