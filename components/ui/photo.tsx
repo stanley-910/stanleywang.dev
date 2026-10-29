@@ -57,7 +57,7 @@ export function Photo({ photo }: { photo: PhotoData }) {
           alt={photo.alt}
           width={photo.width}
           height={photo.height}
-          sizes="(min-width: 640px) 18rem, 100vw"
+          sizes="(min-width: 640px) 32rem, 100vw"
         />
       ) : (
         <div className="photo-pending" role="img" aria-label={photo.alt} />

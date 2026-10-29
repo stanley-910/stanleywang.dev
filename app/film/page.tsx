@@ -15,7 +15,20 @@ export default function FilmPage() {
       <h1 className="sr-only">Film</h1>
       <div className="film-grid">
         {PHOTOS.map((photo) => (
-          <Photo key={photo.id} photo={photo} />
+          <div
+            key={photo.id}
+            className="film-item"
+            // Width grows with the square root of the shape, so every photo
+            // covers about the same area: landscapes run wider, portraits
+            // taller.
+            style={
+              {
+                '--shape': Math.sqrt(photo.width / photo.height),
+              } as React.CSSProperties
+            }
+          >
+            <Photo photo={photo} />
+          </div>
         ))}
       </div>
     </section>

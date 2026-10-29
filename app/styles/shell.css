@@ -135,15 +135,23 @@
 }
 
 .film-grid {
-  /* Masonry: photos keep their shapes in narrow columns, so a landscape and
-     a portrait read at about the same size and the columns end unevenly. */
-  columns: 3 14rem;
-  column-gap: var(--space-3);
-  max-width: var(--measure);
-  margin-inline: auto;
+  /* Photos share the row by shape (film/page.tsx sets --shape), so a
+     landscape and a portrait cover about the same area and their bottoms
+     end unevenly. The grid breaks out of the gutter to the window's
+     width, centred under the top bar. */
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-start;
+  gap: var(--space-3);
+  width: min(80rem, 100vw - 48px);
+  margin-left: 50%;
+  transform: translateX(-50%);
 }
 
-.film-grid > * {
-  break-inside: avoid;
-  margin-bottom: var(--space-3);
+.film-item {
+  flex: var(--shape) 1 calc(var(--shape) * 12rem);
+  min-width: 0;
+  /* A photo alone on a row doesn't fill it. */
+  max-width: calc(var(--shape) * 28rem);
 }
