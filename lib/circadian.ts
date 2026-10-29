@@ -34,9 +34,11 @@ export function readingColours(hour: number): ReadingColours {
   // Keyframes: [hour, page, ink, ink-muted, hairline]. The dark family's
   // hours run past 24 so it reads in order across midnight.
   const LIGHT: [number, string, string, string, string][] = [
-    // Dawn starts dim and grey, easy on waking eyes, and brightens to day.
-    [5.5, '#c3c2bf', '#1d1d20', '#48474b', '#6a696d'],
-    [7, '#d6d4d1', '#212124', '#515054', '#77767a'],
+    // Dawn starts a dark, muted grey, easy on waking eyes, and brightens to
+    // day; its ink deepens to keep the contrast.
+    [5.5, '#8e8d8a', '#0e0e10', '#232226', '#3f3e42'],
+    [7, '#b6b4b1', '#18181b', '#3a393d', '#58575b'],
+    [8, '#d4d2cf', '#202023', '#4e4d51', '#727175'],
     [9, '#ebeae6', '#252522', '#63625e', '#868580'],
     [16, '#ebeae6', '#252522', '#63625e', '#868580'],
     [17.5, '#ece5da', '#2a251f', '#665e55', '#888077'],
@@ -49,6 +51,10 @@ export function readingColours(hour: number): ReadingColours {
     [19.25, '#1c1619', '#ebe1da', '#a1958f', '#6d6361'],
     [20.15, '#15131c', '#e5e0ea', '#9a94a3', '#66616e'],
     [21.4, '#10151d', '#dde2ea', '#8f97a3', '#5d646f'],
+    // The middle of the night goes to black; the blue holds either side.
+    [23.5, '#000000', '#d8dade', '#8a8d93', '#5b5e64'],
+    [24.5, '#000000', '#d8dade', '#8a8d93', '#5b5e64'],
+    [26.5, '#10151d', '#dde2ea', '#8f97a3', '#5d646f'],
     [28.5, '#10151d', '#dde2ea', '#8f97a3', '#5d646f'],
     // Before dawn the night lifts a little.
     [29.5, '#1a2230', '#e2e6ec', '#98a1ad', '#677080'],
@@ -169,7 +175,10 @@ export function applyColours(c: ReadingColours) {
 }
 
 // Runs in <head> before paint, ahead of next-themes' own script, so the first
-// frame already has the hour's colours and family.
+// frame already has the hour's colours and family. It also keeps another
+// tab's theme out: next-themes syncs the stored theme across tabs, but each
+// tab's family follows its own hour, which a tab can set for itself. Added
+// first, this listener stops the sync before next-themes hears it.
 export const THEME_SCRIPT = `(function(){try{
 var o=null;try{o=sessionStorage.getItem('${HOUR_KEY}')}catch(e){}
 var n=new Date(),h=o!==null&&!isNaN(+o)?+o:n.getHours()+n.getMinutes()/60;
@@ -179,4 +188,5 @@ s.setProperty('--page',c.page);s.setProperty('--ink',c.ink);s.setProperty('--ink
 s.setProperty('--hairline',c.hairline);s.setProperty('--surface',c.surface);
 localStorage.setItem('${THEME_KEY}',c.theme);
 var m=document.createElement('meta');m.name='theme-color';m.content=c.page;document.head.appendChild(m);
+addEventListener('storage',function(e){if(e.key==='${THEME_KEY}')e.stopImmediatePropagation()});
 }catch(e){}})()`

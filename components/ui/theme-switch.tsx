@@ -37,12 +37,15 @@ const label = (h: number) => {
   return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
 }
 
-// The track: the horizon's colour through the day, sampled every hour.
+// The track: the horizon's colour through the day, sampled every hour, run
+// down to black at midnight like the page.
 const TRACK = `linear-gradient(to right, ${Array.from(
   { length: 25 },
   (_, i) => {
-    const [r, g, b] = paletteAt(i % 24).skyHorizon
-    return `rgb(${r | 0} ${g | 0} ${b | 0}) ${(i / 24) * 100}%`
+    const toMidnight = Math.min(i, 24 - i)
+    const lit = toMidnight === 0 ? 0 : toMidnight === 1 ? 0.5 : 1
+    const [r, g, b] = paletteAt(i % 24).skyHorizon.map((v) => (v * lit) | 0)
+    return `rgb(${r} ${g} ${b}) ${(i / 24) * 100}%`
   },
 ).join(', ')})`
 
