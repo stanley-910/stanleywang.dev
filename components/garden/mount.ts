@@ -376,23 +376,47 @@ export function mountGarden({
     scrubBy(e.deltaMode === 1 ? d * 16 : d, e.timeStamp)
   }
 
-  // A finger on a phone scrubs as the wheel does: a swipe up or left runs
-  // later. Like the wheel, a gesture keeps the axis it started on.
+  // A finger on a phone scrubs up and down only: a swipe up runs later. A
+  // sideways swipe leaves the hour alone, as it reads more like a pan than a
+  // dial. A gesture keeps the axis it started on.
   let touch: { x: number; y: number; axis: 'x' | 'y' | null } | null = null
+  // A finger that lands on a flower is holding it, to push it about: it
+  // neither scrubs nor scrolls the page (whose scroll sets the poem's hour).
+  let holding = false
 
   const onTouchStart = (e: TouchEvent) => {
     touch = null
-    if (!scrub || !visible || e.touches.length !== 1) return
+    holding = false
+    if (!visible || e.touches.length !== 1) return
     const t = e.target
     // The time slider takes its own drags.
     if (t instanceof Element && t.closest('.time-control-pop, input')) return
     const { clientX: x, clientY: y } = e.touches[0]
+    if (
+      t instanceof Element &&
+      root.contains(t) &&
+      // The poem's text doesn't sow, but a flower under it can still be held.
+      !t.closest('a, button, label, form')
+    ) {
+      const origin = canvas.getBoundingClientRect()
+      if (garden.headAt(toScene(x - origin.left), toScene(y - origin.top))) {
+        holding = true
+        scrubVel = 0
+        return
+      }
+    }
+    if (!scrub) return
     touch = { x, y, axis: null }
     // Putting a finger down catches a glide, as it would a page's momentum.
     scrubVel = 0
   }
 
   const onTouchMove = (e: TouchEvent) => {
+    if (holding) {
+      if (e.touches.length !== 1) holding = false
+      else if (e.cancelable) e.preventDefault()
+      return
+    }
     if (!touch) return
     if (e.touches.length !== 1) {
       touch = null
@@ -408,7 +432,7 @@ export function mountGarden({
       if (!scrolls && e.cancelable) e.preventDefault()
       if (Math.hypot(dx, dy) < TOUCH_SLOP) return
       touch.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y'
-      if (touch.axis === 'y' && scrolls) {
+      if (touch.axis === 'x' || scrolls) {
         touch = null
         return
       }
@@ -416,11 +440,12 @@ export function mountGarden({
     if (e.cancelable) e.preventDefault()
     touch.x = x
     touch.y = y
-    scrubBy(-(touch.axis === 'x' ? dx : dy) * TOUCH_GAIN, e.timeStamp)
+    scrubBy(-dy * TOUCH_GAIN, e.timeStamp)
   }
 
   const onTouchEnd = () => {
     touch = null
+    holding = false
   }
 
   /** After the wheel goes quiet or the finger lifts, the scrub keeps a little speed and eases to a stop. */
