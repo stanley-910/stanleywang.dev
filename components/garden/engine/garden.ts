@@ -374,13 +374,14 @@ export class Garden {
   }
 
   /**
-   * Strips under a ridge's crest, split into slopes that face the light at x = `toward` and slopes
-   * that face away. `reach` scales how far down from the crest they run.
+   * Strips under a ridge's crest, split into slopes that face the light at (`toward`, `above`) and
+   * slopes that face away. `reach` scales how far down from the crest they run.
    */
   private slopes(
     ridge: Float32Array,
     layer: number,
     toward: number,
+    above: number,
     reach: number,
     clear: number,
   ) {
@@ -392,15 +393,17 @@ export class Garden {
     // instead of flickering with every crease: down toward the light faces it.
     const W = 6
     const face = (i: number) => {
-      // Right under the sun or moon the ridge stands in front of it, its near face turned away:
-      // lit there, the slope would print as the globe showing through the hill.
-      if (Math.abs(i * RIDGE_STEP - toward) < clear) return 0
+      const x = i * RIDGE_STEP
+      // Where the sun or moon sits behind the ridge, the ridge stands in front of it, its near
+      // face turned away: lit there, the slope would print as the globe showing through the hill.
+      if (Math.abs(x - toward) < clear && above + clear > ridge[i]) return 0
       const dy = ridge[Math.min(n - 1, i + W)] - ridge[Math.max(0, i - W)]
-      return Math.abs(dy) < 2
-        ? 0
-        : Math.sign(dy) === Math.sign(toward - i * RIDGE_STEP)
-          ? 1
-          : -1
+      if (Math.abs(dy) < 2) return 0
+      if (Math.sign(dy) === Math.sign(toward - x)) return 1
+      // A slope turned away still catches a light standing well above it, as both flanks of a
+      // peak do under a high moon; only a light lower than about twice its pitch leaves it in shade.
+      const pitch = Math.abs(dy) / (2 * W * RIDGE_STEP)
+      return ridge[i] - above > 2 * pitch * Math.abs(toward - x) ? 1 : -1
     }
     let i = 0
     while (i < n) {
@@ -761,7 +764,7 @@ export class Garden {
     const colors = this.ridgeColors(p)
     // Slopes facing the sun (or moon) catch light under the crest and the far sides fall into
     // shade. Only the glyphs carry it: lit slopes print a denser, brighter halftone.
-    const { cx, R } = this.globeAt()
+    const { cx, cy, R } = this.globeAt()
     const { light, color: lightCol } = this.slopeLight(p)
     // A low sun sits behind the range, so the slopes we see face away from it: the light only
     // catches a rim along the crest and the shade side deepens.
@@ -776,7 +779,7 @@ export class Garden {
       ).entries()) {
         const s = q * (0.35 + 0.65 * (k / 3))
         const sl = s * (1 - rim * (1 - k / 3))
-        const { lit, shade } = this.slopes(ridge, layer, cx, reach, R * 1.5)
+        const { lit, shade } = this.slopes(ridge, layer, cx, cy, reach, R * 1.5)
         r.fill(
           lit,
           mix(colors[layer], lightCol, Math.min(1, 1.6 * light * sl)),
