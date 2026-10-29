@@ -48,4 +48,18 @@ export const PHOTOS: Photo[] = [
     date: '2026-10-09',
     ...PEN_EE3,
   },
+  {
+    id: 'XT304576',
+    src: '/images/film/zhangjiajie-XT304576.jpg',
+    width: 6240,
+    height: 4160,
+    alt: 'Zhangjiajie, China.',
+    location: 'Zhangjiajie, China',
+    camera: 'Fujifilm X-T30 III',
+    lens: 'XF 23mm f/2.8 R WR',
+    iso: 400,
+    shutter: '1/60',
+    aperture: 'f/4',
+    date: '2026-09-27',
+  },
 ]
