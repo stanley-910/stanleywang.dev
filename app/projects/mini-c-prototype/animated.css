@@ -2924,11 +2924,6 @@
   .ac .ac-more-keys {
     display: none;
   }
-  /* The site's scroll buttons (ScrollToTop.tsx) would sit on the dock's
-     `?`; the tool is the page here. */
-  body:has(.ac-dock) .scroll-buttons {
-    display: none;
-  }
 }
 /* A finger can't find a 2px thumb: the same line, in a wider grip. */
 @media (pointer: coarse) {

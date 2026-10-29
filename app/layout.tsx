@@ -8,7 +8,6 @@ import { Analytics } from '@vercel/analytics/react'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { ThemeProvider } from 'next-themes'
 
-import { ScrollToTop } from '@/components/ScrollToTop'
 import { ProgressBar } from '@/components/ui/progress-bar'
 import { THEME_SCRIPT } from '@/lib/circadian'
 
@@ -73,7 +72,6 @@ export default function RootLayout({
                 {children}
                 <Analytics />
               </main>
-              <ScrollToTop />
             </div>
           </div>
         </ThemeProvider>

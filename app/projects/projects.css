@@ -4,6 +4,7 @@
   display: flex;
   flex-direction: column;
   max-width: var(--measure);
+  margin-inline: auto;
 }
 
 /* A row: what it is on the left, the glimpse and words on the right. */
