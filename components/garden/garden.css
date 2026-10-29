@@ -32,13 +32,16 @@
 /* Past the canvas (under a phone's toolbar, or in an overscroll) the page
    carries on in the scene's colours: the sky's above it, the floor's below.
    mount.ts sets both with the hour; the scrub moves them every frame, so no
-   transition. */
-html:has(.garden-home) {
+   transition. The poem's page (app/writing/poem) does the same. */
+html:has(.garden-home, .poem-page) {
   background-color: var(--garden-top, var(--page));
+}
+
+html:has(.garden-home) {
   overscroll-behavior: none;
 }
 
-html:has(.garden-home) body {
+html:has(.garden-home, .poem-page) body {
   background-color: var(--garden-edge, var(--page));
   transition: none;
 }

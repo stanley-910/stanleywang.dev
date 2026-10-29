@@ -458,6 +458,9 @@ export function Poem({ className, preview }: PoemProps) {
   return (
     <div ref={rootRef} className={`poem-page ${className ?? ''}`}>
       <canvas ref={canvasRef} className="garden-canvas" aria-hidden="true" />
+      {/* Safari tints its bars from fixed elements at the window's edges. */}
+      <div className="garden-tint garden-tint-top" aria-hidden="true" />
+      <div className="garden-tint garden-tint-bottom" aria-hidden="true" />
       {/* The same column locked and open, so only small flowers grow under the text. */}
       <div className="poem-column" data-clear-column>
         {poem ? (
