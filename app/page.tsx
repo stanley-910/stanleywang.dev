@@ -55,7 +55,7 @@ export default function Personal() {
   return (
     <GardenHome>
       <div className="bio prose" data-avoid>
-        <span className="block">你好, I&apos;m Stanley Wang.</span>
+        <span className="block">你好, I&apos;m Stanley.</span>
         Currently studying Computer Science at{' '}
         <a
           href="https://www.mcgill.ca"
