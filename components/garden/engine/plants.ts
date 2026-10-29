@@ -853,7 +853,11 @@ export class Cosmos extends Plant {
       const open = ph.open
       const night = p.night
       const axis = headAxis(tip, h.facing * open)
-      const cosmos = this.bloomed(p.cosmos, p)
+      // Each head a shade of its own, so where one covers another the two still read apart.
+      const cosmos = this.bloomed(
+        shade(p.cosmos, 0.86 + 0.14 * (h.rot / TAU)),
+        p,
+      )
       r.heads.push({
         x: tx,
         y: ty,
@@ -888,8 +892,11 @@ export class Cosmos extends Plant {
         },
         list,
       )
+      // The petals start under the disc, but a front petal's average depth sorts it nearer than
+      // the disc, and it would cover the centre. Once the head is near flat and faces the
+      // viewer, the disc goes on top; a half-open cup still hides it behind its front petals.
       list.push({
-        depth: axis[2] * H * 0.08,
+        depth: axis[2] > 0 && open > 0.6 ? Infinity : axis[2] * H * 0.08,
         draw: () => {
           r.fill(
             disc(tx, ty, axis, Math.max(H * 0.2, 1.6 * r.minLine), H * 0.05),
