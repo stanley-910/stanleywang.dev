@@ -81,6 +81,8 @@ export class Garden {
   private ridges: Float32Array[] = []
   /** Where snow starts on the far range at each ridge point, as a screen y; NaN where there's none. */
   private snowline = new Float32Array(0)
+  /** Each snowy massif's true summit, on screen. */
+  private summits: { x: number; y: number }[] = []
   /**
    * The far range's faces: for each point of a coarse grid, the distance to the nearest hidden
    * ridgeline, which side of it the point lies on, and where the ridgeline is.
@@ -464,7 +466,7 @@ export class Garden {
     for (let j = -1; j <= Math.ceil(this.width / 1500) + 1; j++)
       massifs.push(j * 1500 + lerp(700, 1100, hash(j, 1, this.seed)))
     this.buildSnowline(massifs)
-    this.buildFaces(massifs)
+    this.buildFaces()
     this.buildForest(midAt, nearAt)
   }
 
@@ -483,6 +485,7 @@ export class Garden {
     const far = this.ridges[0]
     const n = far.length
     const line = new Float32Array(n).fill(NaN)
+    this.summits = []
     const lineAt = (i: number, pk: number) => {
       const x = i * RIDGE_STEP
       return (
@@ -502,6 +505,7 @@ export class Garden {
       if (si < 0) continue
       const pk = this.horizon - far[si]
       if (pk < this.height * SNOW_MIN) continue
+      this.summits.push({ x: si * RIDGE_STEP, y: far[si] })
       // The cap runs out from the summit each way until the ridge has dropped clear of the line,
       // so it ends where the mountain does, never at a cut.
       for (const dir of [-1, 1]) {
@@ -521,7 +525,7 @@ export class Garden {
    * side and every other sub-peak one down its own flank, away from the summit; each runs down in
    * 5px steps and branches once, steeper. They're never drawn: only the faces either side are.
    */
-  private buildFaces(massifs: number[]) {
+  private buildFaces() {
     const far = this.ridges[0]
     const hz = this.horizon
     const W = this.width
@@ -533,46 +537,75 @@ export class Garden {
       dir: number,
       len: number,
       sd: number,
+      lean: number,
       branch: boolean,
     ) => {
-      const lean = 0.3 + 0.35 * hash(sd, 1, this.seed) + (branch ? 0 : 0.45)
       const steps = Math.ceil(len / 5)
       for (let k = 0; k < steps; k++) {
         const nx = x + dir * lean * 5 + (noise1(k * 0.45, sd) - 0.5) * 4
         const ny = Math.max(y + 5, at(nx) + 3)
         if (ny > hz - 8) break
         segs.push(x, y, nx, ny)
-        if (branch && k === Math.floor(steps * 0.4))
-          grow(nx, ny, dir, len * 0.45, sd * 7 + 1, false)
+        // One branch, steeper, peeling off a little under halfway down.
+        if (branch && k === Math.floor(steps * 0.45))
+          grow(nx, ny, dir, len * 0.5, sd * 7 + 1, lean * 0.45, false)
         x = nx
         y = ny
       }
     }
-    const peaks: number[] = []
-    for (let x = -150; x < W + 150; x += 3) {
-      const y = at(x)
-      if (
-        hz - y > this.height * 0.1 &&
-        y <= at(x - 6) &&
-        y <= at(x + 6) &&
-        y < at(x - 16) &&
-        y < at(x + 16) &&
-        (!peaks.length || x - peaks[peaks.length - 1] > 42)
-      )
-        peaks.push(x)
+    // Only peaks that stand well clear of the saddle to anything higher: on a ridge this jagged,
+    // every local top made a ridgeline, and thirty of them side by side printed as stripes.
+    const STEP = 3
+    const xs: number[] = []
+    const hs: number[] = []
+    for (let x = -300; x < W + 300; x += STEP) {
+      xs.push(x)
+      hs.push(hz - at(x))
     }
-    peaks.forEach((px, pi) => {
-      const top = at(px)
-      let sm = massifs[0]
-      for (const m of massifs) if (Math.abs(px - m) < Math.abs(px - sm)) sm = m
-      const dirs = Math.abs(px - sm) < 30 ? [-1, 1] : [px < sm ? -1 : 1]
+    const found: { x: number; h: number; prom: number }[] = []
+    for (let p = 2; p < hs.length - 2; p++) {
+      const h = hs[p]
+      if (
+        h < this.height * 0.1 ||
+        h < hs[p - 1] ||
+        h < hs[p + 1] ||
+        h <= hs[p - 2] ||
+        h <= hs[p + 2]
+      )
+        continue
+      let col = -Infinity
+      for (const dir of [-1, 1]) {
+        let low = h
+        let q = p + dir
+        for (; q >= 0 && q < hs.length && hs[q] <= h; q += dir)
+          low = Math.min(low, hs[q])
+        col = Math.max(col, low)
+      }
+      const prom = h - col
+      if (prom > this.height * 0.035) found.push({ x: xs[p], h, prom })
+    }
+    // At least 90px apart, the higher peak winning.
+    found.sort((a, b) => b.h - a.h)
+    const peaks: typeof found = []
+    for (const f of found)
+      if (peaks.every((q) => Math.abs(q.x - f.x) > 90)) peaks.push(f)
+    peaks.forEach((pk, pi) => {
+      const top = hz - pk.h
+      // The main summit, or a peak standing far enough on its own, sends a ridgeline down each
+      // side; a lesser one sends one down its own flank, away from the summit nearest it.
+      let sm = this.summits[0]?.x ?? pk.x
+      for (const m of this.summits)
+        if (Math.abs(pk.x - m.x) < Math.abs(pk.x - sm)) sm = m.x
+      const both = Math.abs(pk.x - sm) < 30 || pk.prom > this.height * 0.08
+      const dirs = both ? [-1, 1] : [pk.x < sm ? -1 : 1]
       dirs.forEach((dir, di) =>
         grow(
-          px + dir * 2,
+          pk.x + dir * 2,
           top + 3,
           dir,
-          (hz - top) * (0.4 + 0.3 * hash(pi, di + 3, this.seed)),
+          pk.h * (0.55 + 0.25 * hash(pi, di + 3, this.seed)),
           pi * 13 + di + 2,
+          0.65 + 0.35 * hash(pi, di + 5, this.seed),
           true,
         ),
       )
@@ -1173,9 +1206,11 @@ export class Garden {
   }
 
   /**
-   * Snow on the massifs' tops, its own material: a lit flank facing the sun or moon and a shaded
-   * one, in their own colours. Slopes steeper than about 60° hold none, so cliffs show dark ribs.
-   * With the sun low behind the range only a rim along the crest is lit.
+   * Snow on the massifs' tops, its own material, in two flanks. The lit flank faces the sun or
+   * moon; the split between the flanks runs down from the summit on a diagonal, leaning away from
+   * the light, the way a ridge parts a peak's two faces. Split column by column, the edge fell
+   * straight down from the summit. Slopes steeper than about 60° hold no snow, so cliffs show
+   * dark ribs. With the sun low behind the range only a rim along the crest is lit.
    */
   private drawSnow(
     r: Raster,
@@ -1187,58 +1222,76 @@ export class Garden {
     const line = this.snowline
     const n = ridge.length
     const CH = this.height * 0.0125
-    const kind = (i: number) => {
-      if (!(ridge[i] < line[i])) return 0
-      // Steepness from the next points either side, which catches cliffs; which way the flank
-      // faces from a wider window, so it doesn't flicker with every crease of the crest.
+    const inCap = (i: number) => {
+      if (!(ridge[i] < line[i])) return false
       const steep =
         (ridge[Math.min(n - 1, i + 1)] - ridge[Math.max(0, i - 1)]) /
         (2 * RIDGE_STEP)
-      if (Math.abs(steep) > 1.7) return 0
-      const s =
-        (ridge[Math.min(n - 1, i + 3)] - ridge[Math.max(0, i - 3)]) /
-        (6 * RIDGE_STEP)
-      if (rim > 0.5) return LandMat.SnowShade
-      const x = i * RIDGE_STEP
-      const lit = Math.abs(s) < 0.15 || (s < 0 ? toward < x : toward > x)
-      return lit ? LandMat.SnowLit : LandMat.SnowShade
+      return Math.abs(steep) <= 1.7
     }
-    const shapes = [new Shape(), new Shape(), new Shape()]
+    // Where the lit flank starts at x: the diagonal from the nearest summit, 0.8px across per px down.
+    const litFrom = (x: number) => {
+      let sm = this.summits[0]
+      for (const q of this.summits)
+        if (Math.abs(x - q.x) < Math.abs(x - sm.x)) sm = q
+      if (rim > 0.5) return Infinity
+      const away = toward < sm.x ? 1 : -1
+      return sm.y + Math.max(0, away * (x - sm.x)) / 0.8
+    }
+    const shade = new Shape()
+    const lit = new Shape()
+    // One polygon per stretch of cap: along its top edge, then back along its bottom.
+    const band = (
+      shape: Shape,
+      i: number,
+      j: number,
+      upper: (q: number) => number,
+      lower: (q: number) => number,
+    ) => {
+      shape.moveTo(i * RIDGE_STEP, upper(i))
+      for (let q = i + 1; q <= j; q++) shape.lineTo(q * RIDGE_STEP, upper(q))
+      for (let q = j; q >= i; q--) shape.lineTo(q * RIDGE_STEP, lower(q))
+      shape.closePath()
+    }
     let top = this.horizon
     let i = 0
     while (i < n) {
-      const k = kind(i)
-      let j = i
-      while (j + 1 < n && kind(j + 1) === k) j++
-      if (k) {
-        // Each run of one flank: along the crest, then back along the snowline.
-        const cap = shapes[k]
-        cap.moveTo(i * RIDGE_STEP, ridge[i])
-        for (let q = i + 1; q <= j; q++) cap.lineTo(q * RIDGE_STEP, ridge[q])
-        for (let q = j; q >= i; q--) cap.lineTo(q * RIDGE_STEP, line[q])
-        cap.closePath()
-        if (rim > 0.5) {
-          const edge = shapes[LandMat.SnowLit]
-          edge.moveTo(i * RIDGE_STEP, ridge[i])
-          for (let q = i + 1; q <= j; q++) edge.lineTo(q * RIDGE_STEP, ridge[q])
-          for (let q = j; q >= i; q--)
-            edge.lineTo(q * RIDGE_STEP, Math.min(line[q], ridge[q] + 2.2 * CH))
-          edge.closePath()
-        }
-        for (let q = i; q <= j; q++) top = Math.min(top, ridge[q])
+      if (!inCap(i)) {
+        i++
+        continue
       }
+      let j = i
+      while (j + 1 < n && inCap(j + 1)) j++
+      band(
+        shade,
+        i,
+        j,
+        (q) => ridge[q],
+        (q) => line[q],
+      )
+      if (rim > 0.5)
+        band(
+          lit,
+          i,
+          j,
+          (q) => ridge[q],
+          (q) => Math.min(line[q], ridge[q] + 2.2 * CH),
+        )
+      else
+        band(
+          lit,
+          i,
+          j,
+          (q) => Math.min(line[q], Math.max(ridge[q], litFrom(q * RIDGE_STEP))),
+          (q) => line[q],
+        )
+      for (let q = i; q <= j; q++) top = Math.min(top, ridge[q])
       i = j + 1
     }
     if (top === this.horizon) return
     const meta = (id: number) => ({ id, light: 0.5, back: false })
-    r.fill(
-      shapes[LandMat.SnowShade],
-      p.snowShade,
-      Kind.Land,
-      1,
-      meta(LandMat.SnowShade),
-    )
-    r.fill(shapes[LandMat.SnowLit], p.snow, Kind.Land, 1, meta(LandMat.SnowLit))
+    r.fill(shade, p.snowShade, Kind.Land, 1, meta(LandMat.SnowShade))
+    r.fill(lit, p.snow, Kind.Land, 1, meta(LandMat.SnowLit))
   }
 
   private drawLand(r: Raster, p: Palette) {
