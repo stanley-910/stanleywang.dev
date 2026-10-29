@@ -21,8 +21,8 @@ const SPARE = 0.5
 const MAX_FLIPS = 2
 /** Plant redraws per second below which the workers can't keep up at this grid. */
 const SLOW_PLANTS = 20
-/** Plant redraws per second at the finest level that show a coarse grid isn't needed. */
-const FAST_PLANTS = 45
+/** Share of the finest level's cap the plants keep up with that shows a coarse grid isn't needed. */
+const FAST_PLANTS = 0.9
 /** Windows the plant rate is averaged over before it decides the grid: 5 s. */
 const PLANT_WINDOWS = 20
 /**
@@ -37,13 +37,24 @@ const SETTLE = 8
 /**
  * The ladder, cheapest loss first. Each step caps how often the plants redraw (per second); the
  * last also draws the page every other frame on a display over 90 Hz.
+ *
+ * Even full quality caps them. A plant redraw costs about 40 ms of CPU across the page, the workers
+ * and the GPU process on an M4; uncapped, they ran 60 to 80 a second and kept four cores busy.
+ * 40 a second is every third frame at 120 Hz and every other at 60, an even beat.
  */
-const PLANT_CAPS = [Infinity, 60, 30, 30]
+const PLANT_CAPS = [40, 30, 20, 20]
+/**
+ * Plant redraws per second, and the page's frame rate, while the window is on screen but not the
+ * one in use: the meadow keeps moving, slowly, for a fraction of the cost.
+ */
+const AWAY_PLANTS = 12
+const AWAY_FPS = 30
 /** Refresh rates displays run at, for the measured one to snap to. */
 const RATES = [30, 48, 50, 60, 72, 75, 90, 100, 120, 144, 165, 240]
 const HALF_RATE = 3
 
-const KEY = 'garden-quality'
+// Renamed when the ladder changes, so a level saved against the old one isn't read as the new.
+const KEY = 'garden-quality-2'
 
 type Saved = { level: number; coarse: boolean }
 
@@ -96,6 +107,14 @@ export class Quality {
   private pinned = false
   private lastRecord = -Infinity
   private wantCoarse: boolean
+  /** Whether the window is out of use: on screen, but another app or window is in front. */
+  away = false
+  /**
+   * Whether nothing is moving the scene (the cursor still, no scrub). Between plant redraws only
+   * the clouds, the stars' twinkle and the light around the cursor change, so a calm page draws on
+   * the plants' beat rather than every display frame.
+   */
+  calm = false
 
   constructor() {
     const saved = load()
@@ -112,15 +131,22 @@ export class Quality {
 
   /** Whether the plants may be recorded again now, under this level's cap. */
   mayRecord(now: number) {
-    const cap = PLANT_CAPS[this.level]
+    const cap = this.away ? AWAY_PLANTS : PLANT_CAPS[this.level]
     // A tenth of slack so a cap that lands on the display's rate isn't missed by rAF jitter.
     if (now - this.lastRecord < (1000 / cap) * 0.9) return false
     this.lastRecord = now
     return true
   }
 
-  /** Whether this frame should skip drawing, to run the page at half the display's rate. */
+  /**
+   * Whether this frame should skip drawing: to run the page at AWAY_FPS, on the plants' beat while
+   * calm, or at half the display's rate.
+   */
   skip(frame: number) {
+    const every = (fps: number) =>
+      Math.max(1, Math.round((this.hz || 60) / fps))
+    if (this.away) return frame % every(AWAY_FPS) !== 0
+    if (this.calm) return frame % every(PLANT_CAPS[this.level]) !== 0
     return this.level >= HALF_RATE && this.hz > 90 && frame % 2 === 1
   }
 
@@ -176,7 +202,8 @@ export class Quality {
     // Votes cast against another rate no longer hold.
     if (hz !== this.hz) this.behind = []
     this.hz = hz
-    if (hz === 0) return
+    // Away, the page runs slow on purpose, which says nothing about the machine.
+    if (hz === 0 || this.away) return
     this.vote(fps, meanWork)
     this.plants(plantFps)
   }
@@ -221,12 +248,12 @@ export class Quality {
     if (this.plantRates.length > PLANT_WINDOWS) this.plantRates.shift()
     const mean = this.plantRates.reduce((a, b) => a + b, 0) / PLANT_WINDOWS
     const cap = PLANT_CAPS[this.level]
-    // Well under the cap, the workers are what holds the plants back. Only a cap above
-    // FAST_PLANTS can show them keeping up.
+    // Well under the cap, the workers are what holds the plants back. Only the finest level's
+    // cap can show them keeping up.
     const want =
       mean < Math.min(SLOW_PLANTS, cap * 0.6)
         ? true
-        : cap > FAST_PLANTS && mean >= FAST_PLANTS
+        : this.level === 0 && mean >= cap * FAST_PLANTS
           ? false
           : this.wantCoarse
     if (want === this.wantCoarse) return

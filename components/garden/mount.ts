@@ -19,6 +19,8 @@ import { Quality } from './quality'
 const STEP = 1 / 120
 const MAX_STEPS = 6
 const MEASURE_EVERY = 30
+/** How long after the cursor or a scrub last moved, in ms, the page keeps drawing every frame. */
+const LIVELY_FOR = 1000
 
 // The site's page colours (tokens.css); the scene fades into them.
 const PAGE: Record<'dark' | 'light', Rgb> = {
@@ -383,6 +385,8 @@ export function mountGarden({
   let lastWheel = 0
   /** When the wheel or a finger last moved the hour, on the event clock. */
   let lastScrub = 0
+  /** When the hour was last set elsewhere (the time slider, the poem's scroll). */
+  let lastStir = 0
   // The axis a scroll gesture started on, kept until the wheel rests.
   let wheelAxis: 'x' | 'y' | null = null
   // The hour scrubbed here but not yet handed to the rest of the page.
@@ -422,6 +426,7 @@ export function mountGarden({
   // The hour set elsewhere: the time slider, or its `now`.
   const onHourChange = () => {
     busy()
+    lastStir = performance.now()
     const now = currentHour()
     hour = now.hour
     live = !now.set
@@ -560,6 +565,11 @@ export function mountGarden({
     }
     if (steps === MAX_STEPS) acc = 0
     if (++frames % MEASURE_EVERY === 0) measure()
+    // The cursor's light and a shooting star move every display frame; the rest on the plants' beat.
+    quality.calm =
+      now - Math.max(lastMove, lastScrub, lastStir) > LIVELY_FOR &&
+      scrubVel === 0 &&
+      !meteors.alive
     if (!quality.skip(frames)) draw()
     quality.frame(
       now,
@@ -705,6 +715,14 @@ export function mountGarden({
 
   const onVisibility = () => (document.hidden ? stop() : start())
 
+  // A window on screen but out of use keeps its meadow moving, slowly (quality.ts).
+  const onFocus = () => {
+    const away = !document.hasFocus()
+    if (away === quality.away) return
+    quality.away = away
+    quality.reset()
+  }
+
   // Off screen (scrolled past), the scene stops drawing.
   const seen = new IntersectionObserver(([entry]) => {
     visible = entry.isIntersecting
@@ -723,6 +741,8 @@ export function mountGarden({
   window.addEventListener('pointermove', onMove, { passive: true })
   html.addEventListener('pointerleave', leave)
   window.addEventListener('blur', leave)
+  window.addEventListener('blur', onFocus)
+  window.addEventListener('focus', onFocus)
   window.addEventListener('pointerup', onPointerUp)
   window.addEventListener('pointercancel', onPointerUp)
   root.addEventListener('pointerdown', onPointerDown)
@@ -732,6 +752,7 @@ export function mountGarden({
   window.addEventListener(HOUR_EVENT, onHourChange)
 
   showHour()
+  onFocus()
   resize()
   start()
   onReady?.({
@@ -769,6 +790,8 @@ export function mountGarden({
     window.removeEventListener('pointermove', onMove)
     html.removeEventListener('pointerleave', leave)
     window.removeEventListener('blur', leave)
+    window.removeEventListener('blur', onFocus)
+    window.removeEventListener('focus', onFocus)
     window.removeEventListener('pointerup', onPointerUp)
     window.removeEventListener('pointercancel', onPointerUp)
     root.removeEventListener('pointerdown', onPointerDown)
