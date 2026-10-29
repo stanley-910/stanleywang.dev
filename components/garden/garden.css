@@ -50,13 +50,14 @@
 }
 
 /* The home text sits on the scene's dark ground at every hour, so it keeps
-   the night page's colours, hover cards included. */
+   the night page's colours; its hover cards take the hour's panel. */
 .garden-hero {
   --page: var(--page-dark);
   --ink: #e4e2da;
   --ink-muted: #9d9b94;
   --hairline: #6a6964;
-  --surface: #242422;
+  /* mount.ts tints it with the hour. */
+  --surface: var(--garden-panel, #242422);
   --focus: var(--ink);
   position: relative;
   z-index: 1;

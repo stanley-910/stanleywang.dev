@@ -73,6 +73,7 @@ export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
   let visible = true
   let hourLabel = ''
   let edgeCss = ''
+  let panelCss = ''
 
   const showHour = () => {
     const h = Math.floor(hour) % 24
@@ -114,6 +115,17 @@ export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
     if (css !== edgeCss) canvas.style.backgroundColor = edgeCss = css
   }
 
+  /**
+   * The hover cards over the hero take the hour's panel colour, lifted a
+   * touch toward its cream so they stand off the ground (garden.css).
+   */
+  const matchPanel = (p: Palette) => {
+    const [r, g, b] = mix(p.panelBg, p.panelInk, 0.04)
+    const css = `rgb(${r | 0} ${g | 0} ${b | 0})`
+    if (css !== panelCss)
+      root.style.setProperty('--garden-panel', (panelCss = css))
+  }
+
   /** Window px → scene px, from the canvas's own top-left. */
   const sceneRect = (b: DOMRect, origin: DOMRect): Rect => ({
     left: toScene(b.left - origin.left),
@@ -145,6 +157,7 @@ export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
     const page = pageFor(palette)
     matchEdge(palette)
     matchSky(palette)
+    matchPanel(palette)
     garden.hour = hour
     if (now || !raster.busy) {
       raster.clear()
