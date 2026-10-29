@@ -4,7 +4,6 @@ import { useTheme } from 'next-themes'
 import { useEffect, useRef, useState } from 'react'
 
 import { paletteAt } from '@/components/garden/engine/palette'
-import { HourTrack } from '@/components/ui/hour-track'
 import {
   applyColours,
   currentHour,
@@ -40,12 +39,24 @@ const label = (h: number) => {
 
 // The track: the horizon's colour through the day, sampled every hour, run
 // down to black at midnight like the page.
-const TRACK = Array.from({ length: 25 }, (_, i) => {
+const TRACK_STOPS = Array.from({ length: 25 }, (_, i) => {
   const toMidnight = Math.min(i, 24 - i)
   const lit = toMidnight === 0 ? 0 : toMidnight === 1 ? 0.5 : 1
-  const [r, g, b] = paletteAt(i % 24).skyHorizon.map((v) => (v * lit) | 0)
-  return `rgb(${r}, ${g}, ${b})`
+  return paletteAt(i % 24).skyHorizon.map((v) => v * lit)
 })
+const TRACK = `linear-gradient(to right, ${TRACK_STOPS.map(
+  ([r, g, b], i) => `rgb(${r | 0} ${g | 0} ${b | 0}) ${(i / 24) * 100}%`,
+).join(', ')})`
+
+/** The track's colour at an hour, to fill the thumb with. */
+const trackAt = (h: number) => {
+  const i = Math.min(23, Math.floor(h))
+  const t = h - i
+  const [r, g, b] = TRACK_STOPS[i].map(
+    (v, k) => v + (TRACK_STOPS[i + 1][k] - v) * t,
+  )
+  return `rgb(${r | 0} ${g | 0} ${b | 0})`
+}
 
 /** Text fades out for this long before a family switch (time-control.css fades it back). */
 const DIP_OUT = 90
@@ -194,11 +205,22 @@ export function ThemeSwitch({ className }: { className?: string }) {
       </button>
       {open && (
         <div ref={popRef} className="time-control-pop">
-          <HourTrack
-            hour={hour}
-            colours={TRACK}
-            valueText={`${label(hour)}, ${phaseAt(hour)}`}
-            onHour={setHour}
+          <input
+            className="time-control-range"
+            type="range"
+            min={0}
+            max={24}
+            step={0.25}
+            value={hour}
+            aria-label="Hour"
+            aria-valuetext={`${label(hour)}, ${phaseAt(hour)}`}
+            style={
+              {
+                '--track': TRACK,
+                '--bead': trackAt(hour),
+              } as React.CSSProperties
+            }
+            onChange={(e) => setHour(Number(e.target.value))}
             onKeyDown={onKeyDown}
           />
           <p className="time-control-readout">

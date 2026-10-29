@@ -85,6 +85,6 @@ Slide 00:00→24:00 on a long post at 1440px and 375px: text never drops below t
 - Does the hour keep running after a visitor sets it? Recommended no (it's a reading choice); the alternative is "set offset from now".
 - The light `hairline` token (`#8f8e89`) is 2.7:1 on `page-light`. The table's `#868580` fixes it; held until this ships, since it changes every border on the site at once.
 
-## The track bump (built)
+## The thumb
 
-The slider's thumb is a small bead on the track that opens into a leaning hump while the hour moves. Spec: `track-bump.md` here; it supersedes section 1's thumb.
+A 10px circle filled with the track's colour at that hour, ringed all the way round in 1.25px `ink-muted`, on a 4px track; it grows 15% on hover and keyboard focus. It supersedes section 1's ink bar. `track-bump.md` records the bead-and-hump design that was built and then dropped for this.

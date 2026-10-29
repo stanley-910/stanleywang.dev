@@ -48,31 +48,10 @@
   }
 }
 
-/* The track: a drawn band and bead (hour-track.tsx) under the native range
-   input, which stays on top, invisible, as what's grabbed and focused. Its
-   thumb is as wide as the hump, so a grab near the bead takes it. */
-.hour-track {
-  position: relative;
-  height: 30px;
-  color: var(--ink);
-}
-
-.hour-track-art {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-  pointer-events: none;
-}
-
 .time-control-range {
-  position: absolute;
-  top: 0;
-  left: 0;
   display: block;
   width: 100%;
-  height: 30px;
+  height: 20px;
   margin: 0;
   background: transparent;
   cursor: pointer;
@@ -80,38 +59,49 @@
 }
 
 .time-control-range::-webkit-slider-runnable-track {
-  height: 100%;
-  background: transparent;
+  height: 4px;
+  background: var(--track);
+  border-radius: var(--radius-hair);
 }
 
 .time-control-range::-moz-range-track {
-  height: 100%;
-  background: transparent;
+  height: 4px;
+  background: var(--track);
+  border-radius: var(--radius-hair);
 }
 
+/* The thumb: a small circle in the track's colour at that hour, ringed all
+   the way round in muted ink so it holds on both popovers. */
 .time-control-range::-webkit-slider-thumb {
-  width: 28px;
-  height: 30px;
-  background: transparent;
-  border: 0;
-  cursor: grab;
+  box-sizing: border-box;
+  width: 10px;
+  height: 10px;
+  margin-top: -3px;
+  background: var(--bead);
+  border: 1.25px solid var(--ink-muted);
+  border-radius: 50%;
   appearance: none;
+  transition: transform var(--duration-quick) var(--ease-calm);
 }
 
 .time-control-range::-moz-range-thumb {
-  width: 28px;
-  height: 30px;
-  background: transparent;
-  border: 0;
-  cursor: grab;
+  box-sizing: border-box;
+  width: 10px;
+  height: 10px;
+  background: var(--bead);
+  border: 1.25px solid var(--ink-muted);
+  border-radius: 50%;
+  transition: transform var(--duration-quick) var(--ease-calm);
 }
 
-.time-control-range:active::-webkit-slider-thumb {
-  cursor: grabbing;
+.time-control-range:hover::-webkit-slider-thumb,
+.time-control-range:focus-visible::-webkit-slider-thumb {
+  transform: scale(1.15);
 }
 
-.time-control-range:active::-moz-range-thumb {
-  cursor: grabbing;
+.time-control-range:hover::-moz-range-thumb,
+.time-control-range:focus-visible::-moz-range-thumb {
+  transform: scale(1.15);
 }
 
 .time-control-range:focus-visible {
@@ -122,16 +112,8 @@
 /* A finger-sized target, without moving the layout. */
 @media (pointer: coarse) {
   .time-control-range {
-    top: -7px;
     height: 44px;
-  }
-
-  .time-control-range::-webkit-slider-thumb {
-    height: 44px;
-  }
-
-  .time-control-range::-moz-range-thumb {
-    height: 44px;
+    margin-block: -12px;
   }
 }
 
@@ -185,5 +167,14 @@
 @media (prefers-reduced-motion: reduce) {
   .time-control-pop {
     animation: none;
+  }
+
+  /* Separate rules: a browser drops a whole list holding another's pseudo-element. */
+  .time-control-range::-webkit-slider-thumb {
+    transition: none;
+  }
+
+  .time-control-range::-moz-range-thumb {
+    transition: none;
   }
 }
