@@ -50,7 +50,9 @@ nav.toc a::before {
   background: var(--hairline);
 }
 
+/* Rows never take the prose links' underline, which would also push the list down. */
 nav.toc a:hover {
+  border: 0;
   color: var(--ink);
 }
 
