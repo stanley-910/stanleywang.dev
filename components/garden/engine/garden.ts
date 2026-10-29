@@ -637,6 +637,49 @@ export class Garden {
     ctx.fillRect(0, top, this.width, H * 0.18)
   }
 
+  /**
+   * Snow on the far range's highest tops: everything above a ragged snowline set so high that
+   * only the main massif reaches it. Paler and lit, so it prints as a denser halftone.
+   */
+  private drawSnow(r: Raster, ridge: Float32Array, color: Rgb, p: Palette) {
+    const line = (k: number) =>
+      this.horizon -
+      this.height * (0.215 + 0.012 * (fbm1(k * 0.35, this.seed + 404, 2) - 0.5))
+    const snow = new Shape()
+    const n = ridge.length
+    let top = this.horizon
+    let i = 0
+    while (i < n) {
+      if (ridge[i] >= line(i)) {
+        i++
+        continue
+      }
+      let j = i
+      while (j + 1 < n && ridge[j + 1] < line(j + 1)) j++
+      snow.moveTo(i * RIDGE_STEP, ridge[i])
+      for (let k = i + 1; k <= j; k++) snow.lineTo(k * RIDGE_STEP, ridge[k])
+      for (let k = j; k >= i; k--) snow.lineTo(k * RIDGE_STEP, line(k))
+      snow.closePath()
+      for (let k = i; k <= j; k++) top = Math.min(top, ridge[k])
+      i = j + 1
+    }
+    if (top === this.horizon) return
+    // Cream by day; under the moon it only greys a little, so night stays dark.
+    r.fill(
+      snow,
+      mix(color, [250, 248, 240], 0.85 * (1 - 0.6 * p.night)),
+      Kind.Land,
+      1,
+      {
+        id: 0,
+        light: 0.8 - 0.2 * p.night,
+        back: false,
+      },
+    )
+    r.touchMeta(0, top)
+    r.touchMeta(this.width, this.horizon)
+  }
+
   private drawLand(r: Raster, p: Palette) {
     const W = this.width
     const colors = this.ridgeColors(p)
@@ -646,10 +689,12 @@ export class Garden {
     const { light, color: lightCol } = this.slopeLight(p)
     this.ridges.forEach((ridge, layer) => {
       r.fill(this.ridgePath(ridge, this.height + 10), colors[layer], Kind.Land)
-      if (light <= 0) return
       // Four strips, each shallower and stronger, so the glyphs thicken toward the crest.
       const q = clamp(light / 0.45, 0, 1)
-      for (const [k, reach] of [1, 0.7, 0.45, 0.25].entries()) {
+      for (const [k, reach] of (light > 0
+        ? [1, 0.7, 0.45, 0.25]
+        : []
+      ).entries()) {
         const s = q * (0.35 + 0.65 * (k / 3))
         const { lit, shade } = this.slopes(ridge, layer, cx, reach)
         r.fill(
@@ -667,6 +712,7 @@ export class Garden {
           { id: 0, light: 0.5 - 0.5 * s, back: false },
         )
       }
+      if (layer === 0) this.drawSnow(r, ridge, colors[0], p)
     })
     if (light > 0) {
       let top = this.horizon
