@@ -30,9 +30,11 @@ import './poem.css'
 // bottom when the line above stands at its pin; `@ gap 68%` sizes it for the
 // line above standing at 68% of the screen instead, pinned or not.
 //
-// `@ end top` (or any <where>) before a line ends the scroll with that line
-// there, so long as the last line still shows no lower than the end pin puts
-// it; on a screen too short for both, the last line wins.
+// `@ end top` (or any <where>) before a line ends the scroll with the
+// stretch from that line to the last framed on the screen: as much room
+// above that line as below the last. <where> is as high as that line may
+// stand for it; on a screen too short for the frame, the last line rests
+// where the end pin puts it instead.
 //
 // `@ rose` before a line grows the meadow's one rose, in the middle of the
 // screen, as the reader scrolls through the room above that line: it breaks
@@ -278,12 +280,18 @@ function fitEnd(poem: Parsed, root: HTMLElement) {
   const last = root.querySelector('.poem-line:last-of-type')
   if (!last) return
   const h = window.innerHeight
-  // Where the scroll should run out: the last line no lower than its pin, and
-  // an `@ end` line where it asks, if that keeps the last line high enough.
+  // Where the scroll should run out: the last line at its pin, or, from an
+  // `@ end` line, the stretch down to the last line framed with even room above
+  // and below, if that leaves the `@ end` line no higher than it asks.
   let stop = centreOf(last) - h * (poem.end?.at ?? END_AT)
   const rest = root.querySelector<HTMLElement>('[data-rest]')
-  if (rest)
-    stop = Math.max(stop, centreOf(rest) - h * Number(rest.dataset.rest))
+  if (rest) {
+    const top = rest.getBoundingClientRect().top + window.scrollY
+    const bottom = last.getBoundingClientRect().bottom + window.scrollY
+    const room = (h - (bottom - top)) / 2
+    if (room >= h * Number(rest.dataset.rest) - rest.clientHeight / 2)
+      stop = top - room
+  }
   const pad = parseFloat(getComputedStyle(root).paddingBottom) || 0
   const without = document.documentElement.scrollHeight - pad
   root.style.paddingBottom = `${Math.max(0, Math.round(stop + h - without))}px`
