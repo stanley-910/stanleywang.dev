@@ -79,6 +79,8 @@ type GardenOptions = {
   onReady?: (scene: { rose: (x: number, grown: number) => void }) => void
   /** The scene's zoom in place of SCENE_ZOOM: lower is a finer grid (the poem, for its rose). */
   zoom?: number
+  /** How hard the wind blows, 1 a full breeze. */
+  wind?: number
 }
 
 function localHour() {
@@ -97,6 +99,7 @@ export function mountGarden({
   visitors = 'butterflies',
   onReady,
   zoom: sceneZoom = SCENE_ZOOM,
+  wind: windStrength = 0.6,
 }: GardenOptions) {
   const html = document.documentElement
   const quality = new Quality()
@@ -112,7 +115,7 @@ export function mountGarden({
   const coarse = window.matchMedia('(pointer: coarse)')
   let heartTimer = 0
   const wind = new Wind()
-  wind.strength = 0.6
+  wind.strength = windStrength
   const raster = new Raster()
   const ascii = new AsciiRenderer(canvas, font)
   // The page's hour (lib/circadian.ts): the clock's, or one set on the time
@@ -565,18 +568,12 @@ export function mountGarden({
     if (e.pointerType === 'touch') leave()
   }
 
-  // Pressing on the garden lets the cursor stir it while held; pressing a flower bends it a
-  // little, away from where it was pressed.
+  // Pressing on the garden lets the cursor stir it while held. The press alone moves nothing:
+  // only a moving cursor brushes the plants.
   const onPointerDown = (e: PointerEvent) => {
     if (e.button !== 0) return
     onMove(e)
     wind.pointer.pressed = true
-    const origin = canvas.getBoundingClientRect()
-    const x = toScene(e.clientX - origin.left)
-    const y = toScene(e.clientY - origin.top)
-    const head = garden.headAt(x, y)
-    const plant = head?.owner as { nudge?: (dir: number) => void } | undefined
-    if (head && plant?.nudge) plant.nudge(x > head.x ? -1 : 1)
   }
 
   const onClick = (e: MouseEvent) => {
@@ -593,7 +590,7 @@ export function mountGarden({
     const y = toScene(e.clientY - origin.top)
     if (y < 0 || y > height) return
     // Bugs are small; a fingertip gets a bigger target than a pointer.
-    if (garden.tapVisitor(x, y, toScene(coarse.matches ? 22 : 12))) {
+    if (garden.tapVisitor(x, y, toScene(coarse.matches ? 22 : 18))) {
       if (reduced.matches) {
         // The heart shows for a while, still, then goes: one frame for each.
         draw(true)

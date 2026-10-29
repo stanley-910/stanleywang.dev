@@ -212,6 +212,56 @@ const MIRRORED = new Map<Insect, Insect>(
 
 export type FigureSize = 'big' | 'mid' | 'small'
 
+/** Seconds a figure takes to change size. */
+const SWAP = 0.4
+const RANK: Record<FigureSize, number> = { small: 0, mid: 1, big: 2 }
+
+/** A figure's size as shown: while it changes, the size it came from and how far along, 0 to 1. */
+export type Shown = { size: FigureSize; from: FigureSize | null; k: number }
+
+/** Moves a shown size toward `size`; a change starts a swap from the size it was. */
+export function showSize(s: Shown, size: FigureSize, dt: number) {
+  if (size !== s.size) {
+    // Turned back mid-swap: run back from where it got to.
+    if (size === s.from) {
+      s.from = s.size
+      s.k = 1 - s.k
+    } else {
+      s.from = s.size
+      s.k = 0
+    }
+    s.size = size
+  }
+  if (!s.from) return
+  s.k += dt / SWAP
+  if (s.k >= 1) {
+    s.from = null
+    s.k = 1
+  }
+}
+
+/**
+ * Pushes a sprite at its shown size. Mid-swap the smaller figure prints whole and the larger
+ * rings it, its outer cells fading in as it grows or out as it shrinks, so the step between
+ * sizes eases over instead of jumping.
+ */
+export function pushShown(out: Sprite[], sprite: Sprite, s: Shown) {
+  if (!s.from) {
+    out.push({ ...sprite, size: s.size })
+    return
+  }
+  const [small, large] =
+    RANK[s.size] < RANK[s.from] ? [s.size, s.from] : [s.from, s.size]
+  const k = s.k * s.k * (3 - 2 * s.k)
+  out.push({ ...sprite, size: small })
+  out.push({
+    ...sprite,
+    size: large,
+    fade: large === s.size ? k : 1 - k,
+    under: true,
+  })
+}
+
 /** Cells across and down each kind's figures print at each size. */
 const EXTENT = Object.fromEntries(
   Object.entries(INSECTS).map(([kind, set]) => [
@@ -315,6 +365,8 @@ export class Typesetter {
   private nearHead = new Uint8Array(0)
   private stampCol = new Float32Array(0)
   private stampTile = new Float32Array(0)
+  /** How much each stamped cell shows, for a figure fading between sizes. */
+  private stampAlpha = new Float32Array(0)
   private stampTileCol = new Float32Array(0)
   /** Working tile alpha and colour, before they're packed. */
   private tile = new Float32Array(0)
@@ -331,6 +383,7 @@ export class Typesetter {
       this.nearHead = new Uint8Array(n)
       this.stampCol = new Float32Array(n * 3)
       this.stampTile = new Float32Array(n)
+      this.stampAlpha = new Float32Array(n)
       this.stampTileCol = new Float32Array(n * 3)
       this.tile = new Float32Array(n)
       this.tileCol = new Float32Array(n * 3)
@@ -396,8 +449,8 @@ export class Typesetter {
           cr = stampCol[i * 3]
           cg = stampCol[i * 3 + 1]
           cb = stampCol[i * 3 + 2]
-          alpha = 1
-          tile[i] = stampTile[i]
+          alpha = this.stampAlpha[i]
+          tile[i] = stampTile[i] * alpha
           tileCol[i * 3] = stampTileCol[i * 3]
           tileCol[i * 3 + 1] = stampTileCol[i * 3 + 1]
           tileCol[i * 3 + 2] = stampTileCol[i * 3 + 2]
@@ -439,7 +492,12 @@ export class Typesetter {
               alpha = 1
               if (edge >= 0) {
                 g = code(LINES[edge])
-                tile[i] = body * 0.7 * Math.min(1, v * 1.4)
+                // A rim inside the head, where one petal's edge lies over another, keeps the
+                // body under it; only the head's outer rim thins, so the field never shows inside.
+                tile[i] =
+                  this.petalsAround(c, r) >= 3
+                    ? body
+                    : body * 0.7 * Math.min(1, v * 1.4)
                 ;[cr, cg, cb] = mix([cr, cg, cb], ink, 0.7 * reach)
                 break
               }
@@ -470,13 +528,18 @@ export class Typesetter {
               if (L < 0.25) {
                 g = code(v > 0.6 ? '@' : '#')
                 alpha = 1
-                // On a tile of its own colour, lifted toward the haze by day so a dark centre
-                // reads solid rather than as a hole; after dark the haze is black, so no lift.
-                const lift = mix([cr, cg, cb], p.haze, 0.4 * (1 - p.night))
+                // A thin dark line drawn over a head (a rose's furled heart) sits among petals:
+                // it keeps a full tile of its own colour, or the field shows through as a hole.
+                const among = this.petalsAround(c, r) >= 3
+                // Otherwise on a tile of its own colour, lifted toward the haze by day so a dark
+                // centre reads solid rather than as a hole; after dark the haze is black, so no lift.
+                const lift = among
+                  ? [cr, cg, cb]
+                  : mix([cr, cg, cb], p.haze, 0.4 * (1 - p.night))
                 tileCol[i * 3] = lift[0] * p.ink
                 tileCol[i * 3 + 1] = lift[1] * p.ink
                 tileCol[i * 3 + 2] = lift[2] * p.ink
-                tile[i] = 0.75 * Math.min(1, v * 1.4)
+                tile[i] = among ? 0.85 : 0.75 * Math.min(1, v * 1.4)
                 ;[cr, cg, cb] = mix([cr, cg, cb], p.ground, 0.5)
               } else if (
                 this.petal(c - 1, r) +
@@ -701,6 +764,16 @@ export class Typesetter {
     return this.kinds[i] === Kind.Petal ? this.pid[i] : 0
   }
 
+  /** How many of a cell's four neighbours are petal. */
+  private petalsAround(c: number, r: number) {
+    return (
+      Number(this.pidAt(c - 1, r) > 0) +
+      Number(this.pidAt(c + 1, r) > 0) +
+      Number(this.pidAt(c, r - 1) > 0) +
+      Number(this.pidAt(c, r + 1) > 0)
+    )
+  }
+
   /**
    * Line glyph for the fold between two petals of a head, or -1. The fold prints on its lit
    * side only, so it stays one cell wide and sits where dark ink shows; its direction follows
@@ -797,6 +870,7 @@ export class Typesetter {
           const i = r * cols + c
           if (nearHead[i]) continue
           stamp[i] = code(row[t])
+          this.stampAlpha[i] = 1
           const col =
             m === 'd'
               ? lum(h.disc[0], h.disc[1], h.disc[2]) < 0.35
@@ -824,9 +898,20 @@ export class Typesetter {
     sprites: Sprite[],
     inkAt: (x: number, y: number) => { ink: Rgb; dark: boolean },
   ) {
-    const { cols, rows, cw, ch, stamp, stampCol, stampTile, stampTileCol } =
-      this
+    const {
+      cols,
+      rows,
+      cw,
+      ch,
+      stamp,
+      stampCol,
+      stampTile,
+      stampAlpha,
+      stampTileCol,
+    } = this
     for (const s of sprites) {
+      const fade = s.fade ?? 1
+      if (fade <= 0.02) continue
       // As big as its flower's depth allows: a visitor on the horizon prints as one glyph.
       const set = INSECTS[s.kind][s.size ?? sizeFor(s.kind, s.span / cw)]
       const fig = set[Math.min(set.length - 1, s.pose)]
@@ -858,8 +943,10 @@ export class Typesetter {
           const c = cc - (row.length >> 1) + t
           if (!role || c < 0 || c >= cols) continue
           const i = r * cols + c
+          if (s.under && stamp[i]) continue
           const [tile, col] = role
           stamp[i] = code(row[t])
+          stampAlpha[i] = fade
           stampCol.set(col, i * 3)
           if (tile) {
             // The tile key packs 5 bits a channel straight from these values, so keep them in range.

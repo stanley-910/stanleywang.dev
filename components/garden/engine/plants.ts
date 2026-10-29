@@ -124,15 +124,6 @@ export abstract class Plant {
     for (const s of this.stems) if (!s.parent) s.baseY = env.floor(this.z)
   }
 
-  /** Pressed: the stalk swings a little toward `dir` (-1 left, 1 right) and springs back. */
-  nudge(dir: number) {
-    for (const s of this.stems) {
-      if (s.parent) continue
-      // Stronger toward the top, as if the head were pushed.
-      for (let i = 0; i < s.n; i++) s.vel[i] += dir * 0.9 * ((i + 1) / s.n)
-    }
-  }
-
   /** Sown by a click: grow straight to full flower over RUSH seconds instead of half a minute. */
   hurry() {
     this.rush = { from: this.age, to: this.bloomAge(), t: 0 }
@@ -254,7 +245,7 @@ export abstract class Plant {
       const lobe =
         style === 'lobed'
           ? 0.55 + 0.45 * Math.abs(Math.sin(t * 9 + leaf.seed))
-          : 0.5 + 0.5 * ((i % 2) ^ 1)
+          : 0.5 + 0.5 * (i % 2 ^ 1)
       const w = env0 * lobe
       left.push(mid[i * 2] - nx * w, mid[i * 2 + 1] - ny * w)
       right.push(mid[i * 2] + nx * w, mid[i * 2 + 1] + ny * w)
@@ -1142,6 +1133,9 @@ export class Lace extends Plant {
   }
 }
 
+/** The deep gold at a dandelion's heart, where the florets are youngest and packed tightest. */
+const GOLD: Rgb = [214, 140, 34]
+
 // ── Dandelion ──────────────────────────────────────────────────────────────
 // Low rosette of backward-toothed leaves. The flower closes at night and for good after a few
 // days; then the stalk lengthens, and it reopens as a clock of pappus seeds for the wind.
@@ -1377,6 +1371,23 @@ export class Dandelion extends Plant {
         list,
       )
     }
+    // The heart: a domed tuft of short florets, packed and deepest gold, so the head reads full
+    // to the middle instead of as a brim around a hollow crown. On top once it faces us.
+    list.push({
+      depth: axis[2] > 0 && open > 0.5 ? Infinity : axis[2] * H * 0.1,
+      draw: () => {
+        r.fill(
+          disc(tx, ty, axis, H * 0.24 * open, H * 0.08),
+          shade(yellow, 0.94),
+          Kind.Petal,
+        )
+        r.fill(
+          disc(tx, ty, axis, Math.max(H * 0.12 * open, r.minLine), H * 0.12),
+          this.bloomed(mix(p.dandelion, GOLD, 0.6), p),
+          Kind.Petal,
+        )
+      },
+    })
     flush(list)
   }
 }

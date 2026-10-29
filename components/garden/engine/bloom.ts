@@ -173,11 +173,13 @@ export function drawPetals(
           for (let i = 0; i < pts.length; i += 2)
             r.touchMeta(pts[i], pts[i + 1])
         r.fill(p, color, spec.kind ?? Kind.Petal, 1, meta)
+        // The outline prints as petal, on a body of its colour: as a stalk it would be bare
+        // glyphs, and the field would show through between the petals.
         if (spec.edge)
           r.stroke(
             p,
             mix(spec.edge, spec.haze, spec.hazeAmount),
-            Kind.Stem,
+            Kind.Petal,
             r.minLine,
           )
         if (spec.blotch) {

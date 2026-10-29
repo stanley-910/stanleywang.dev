@@ -134,8 +134,11 @@
   line-height: 1.2;
 }
 
+/* As wide as its words, so a click beside a short line reaches the meadow (the rose). */
 .poem-line {
   display: flex;
+  width: fit-content;
+  max-width: 100%;
   margin: 0;
 }
 

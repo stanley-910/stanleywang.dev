@@ -1,5 +1,6 @@
 import { clamp, lerp, mulberry32, TAU } from './math'
 import { mix, type Palette, type Rgb } from './palette'
+import { pushShown, showSize, sizeFor, type Shown } from './typeset'
 
 import type { Head, Look, Raster } from './raster'
 import type { Wind } from './wind'
@@ -9,6 +10,8 @@ const FLYING_MAX = 3
 const TOTAL_MAX = 5
 /** A flower this close to the one it's leaving is a hop, not a journey. */
 const HOP_RANGE = 300
+/** A glyph cell's width in scene px, as the figures are sized by. */
+const CELL = 5
 
 /**
  * Species by day, each a wing ground, a pattern over it, the dark margin and the body. The
@@ -134,6 +137,11 @@ type Butterfly = {
   called: number
   /** Wingspan in px, easing toward its flower's scale so far visitors print small. */
   span: number
+  /** The size as printed, easing between figures when the span crosses a step. */
+  shown: Shown
+  /** The flight to the flower it's bound for: its start's span and distance, so it shrinks or
+   * grows with the way covered rather than all at once on leaving. */
+  leg: { owner: object; span: number; d: number } | null
 }
 
 /**
@@ -228,6 +236,12 @@ export class Butterflies {
       hop: false,
       spin: rng() < 0.5 ? 1 : -1,
       span: spanAt(head),
+      shown: {
+        size: sizeFor(moth ? 'moth' : 'butterfly', spanAt(head) / CELL),
+        from: null,
+        k: 1,
+      },
+      leg: null,
       call: null,
       called: ++this.calls,
     }
@@ -316,7 +330,18 @@ export class Butterflies {
         ? heads.find((h) => h.owner === b.target && h.alpha > 0.3)
         : undefined
       if (!head && b.state !== 'leave' && b.state !== 'takeoff') this.depart(b)
-      if (head) b.span += (spanAt(head) - b.span) * Math.min(1, dt * 1.5)
+      if (head && b.target) {
+        const d = Math.hypot(head.x - b.x, head.y - b.y)
+        if (b.leg?.owner !== b.target)
+          b.leg = { owner: b.target, span: b.span, d: Math.max(d, 1) }
+        const goal = lerp(spanAt(head), b.leg.span, clamp(d / b.leg.d, 0, 1))
+        b.span += (goal - b.span) * Math.min(1, dt * 4)
+      }
+      showSize(
+        b.shown,
+        sizeFor(b.moth ? 'moth' : 'butterfly', b.span / CELL),
+        dt,
+      )
       const px = head ? head.x + b.shift : b.x
       const py = head ? head.y - head.r * 0.35 : b.y
       const startled = sweep && Math.hypot(ptr.x - b.x, ptr.y - b.y) < 90
@@ -566,14 +591,18 @@ export class Butterflies {
         const s = Math.sin(b.beat)
         pose = s > 0.3 ? 0 : s > -0.3 ? 1 : 2
       } else pose = 0
-      r.sprites.push({
-        x: b.x,
-        y: b.y,
-        pose,
-        look: b.look,
-        kind: b.moth ? 'moth' : 'butterfly',
-        span: b.span,
-      })
+      pushShown(
+        r.sprites,
+        {
+          x: b.x,
+          y: b.y,
+          pose,
+          look: b.look,
+          kind: b.moth ? 'moth' : 'butterfly',
+          span: b.span,
+        },
+        b.shown,
+      )
     }
   }
 }

@@ -16,6 +16,8 @@ import type { Material, Style } from './typeset'
 export { Kind, SS }
 /** How long a worker may hold a frame before the raster gives up on workers. */
 const WORKER_TIMEOUT = 1000
+/** A gap between frames this long means the page stood still, not the worker. */
+const STALL = 250
 /**
  * Worker replies before the workers count as warm. Their first frames come back several times
  * slower than later ones while their code compiles, so the opening waits them out.
@@ -61,6 +63,10 @@ export type Sprite = {
   facing?: 1 | -1
   /** A figure size to print at instead of the one `span` picks, so a pair prints alike. */
   size?: 'big' | 'mid' | 'small'
+  /** How much of it shows, 0 to 1: a figure changing size fades its outer cells. */
+  fade?: number
+  /** Prints only where no figure is yet, so the larger of two sizes rings the smaller. */
+  under?: boolean
 }
 
 /** Petal identity for the meta layer: which petal (1..10), how lit it is, and whether its back shows. */
@@ -165,6 +171,8 @@ export class Raster {
   private idle: Worker[] = []
   /** Frames out at the workers, by sequence number. */
   private inFlight = new Map<number, { gen: number; sent: number }>()
+  /** When `busy` last looked, so time the page itself stood still isn't counted against a worker. */
+  private lastLook = 0
   private seq = 0
   private shownSeq = -1
   private local: Rasterizer | null = null
@@ -234,10 +242,17 @@ export class Raster {
     if (this.workers.length === 0 || this.idle.length > 0) return false
     // A reply that never comes would freeze the plants for good: give up on the workers instead.
     const now = performance.now()
+    // After a stall here (a hidden tab, a long task, a dev rebuild) the reply may be queued
+    // behind it, so each frame out gets a fresh wait from now.
+    if (now - this.lastLook > STALL)
+      for (const job of this.inFlight.values()) job.sent = now
+    this.lastLook = now
+    // The first frames compile the worker's code; give them longer.
+    const limit = this.warm ? WORKER_TIMEOUT : WORKER_TIMEOUT * 5
     for (const job of this.inFlight.values()) {
-      if (now - job.sent > WORKER_TIMEOUT) {
+      if (now - job.sent > limit) {
         this.dropWorkers(
-          `Raster worker silent for ${WORKER_TIMEOUT}ms; drawing on the main thread`,
+          `Raster worker silent for ${limit}ms; drawing on the main thread`,
         )
         return false
       }

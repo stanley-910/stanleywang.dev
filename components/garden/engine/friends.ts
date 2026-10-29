@@ -1,6 +1,13 @@
-import { clamp, mulberry32, TAU } from './math'
+import { clamp, lerp, mulberry32, TAU } from './math'
 import { mix, type Palette, type Rgb } from './palette'
-import { figureSize, sizeFor, type FigureSize } from './typeset'
+import {
+  figureSize,
+  pushShown,
+  showSize,
+  sizeFor,
+  type FigureSize,
+  type Shown,
+} from './typeset'
 
 import type { Head, Look, Raster } from './raster'
 import type { Visitors } from './visitors'
@@ -142,6 +149,11 @@ type Pair = {
   heart: { x: number; y: number; age: number; still: boolean } | null
   span: number
   size: FigureSize
+  /** The size as printed, easing between figures when `size` steps. */
+  shown: Shown
+  /** The flight to the flower they're bound for: its start's size and distance, so they
+   * shrink or grow with the way covered rather than all at once on leaving. */
+  leg: { owner: object; span: number; d: number } | null
   lady: Bug
   bee: Bug
   /** Perched, seconds to the bee's next wing flick, and how long the flick has left. */
@@ -250,6 +262,8 @@ export class Friends implements Visitors {
         heart: null,
         span,
         size,
+        shown: { size, from: null, k: 1 },
+        leg: null,
         lady: bug('ladybug'),
         bee: bug('bee'),
         flickIn: 2,
@@ -302,31 +316,42 @@ export class Friends implements Visitors {
   }
 
   /**
-   * A click near either bug. In flight it sets off the meeting; on a flower under reduced motion
-   * it shows the heart. True whenever it lands on one, so the click doesn't also sow a flower.
+   * A click on either bug, or in flight anywhere on the circle they fly, sets off the meeting:
+   * on the wing they meet and fly on, on a flower they dance there and settle back. Under reduced
+   * motion, on a flower it shows the heart. True whenever it lands, so the click doesn't also sow.
    * `reach` is the least half-size of a bug's target, px, so small figures stay tappable.
    */
   tap(x: number, y: number, reach = 0) {
     const pair = this.pair
     if (!pair) return false
+    let hw = reach
+    let hh = reach
     const hit = [pair.lady, pair.bee].some((b) => {
       // The figure's cells and one more all round; its last row sits on the point.
       const { cols, rows } = figureSize(b.kind, pair.size)
-      const hw = Math.max((cols / 2 + 1) * CELL, reach)
+      hw = Math.max((cols / 2 + 1) * CELL, reach)
       const top = b.y - (rows - 0.5) * ROW - ROW
       const bottom = b.y + ROW * 1.5
-      const hh = Math.max((bottom - top) / 2, reach)
+      hh = Math.max((bottom - top) / 2, reach)
       return Math.abs(x - b.x) < hw && Math.abs(y - (top + bottom) / 2) < hh
     })
-    if (!hit) return false
+    // Flying, they're quick: the whole ring they trace answers, a figure's size beyond it.
+    const flying = pair.mode === 'travel' || pair.mode === 'leave'
+    const dx = (x - pair.cx) / (pair.rx + hw)
+    const dy = (y - (pair.cy - hh / 2)) / (pair.ry + hh)
+    if (!hit && !(flying && dx * dx + dy * dy < 1)) return false
     if (pair.moment || pair.heart) return true
     if (this.reduced) {
       if (pair.mode === 'perch') this.heartOver(pair, true)
       return true
     }
-    // On a flower the click is the flower's; lifting off, it's too soon to turn back.
-    if (pair.mode === 'perch' || pair.mode === 'settle') return false
+    // Lifting off, it's too soon to turn back.
     if (pair.mode === 'takeoff') return true
+    // On a flower they dance where they sit, with no way left over from the flight in.
+    if (pair.mode === 'perch' || pair.mode === 'settle') {
+      pair.vx = 0
+      pair.vy = 0
+    }
     pair.moment = 'close'
     pair.momentT = CLOSE
     return true
@@ -352,9 +377,16 @@ export class Friends implements Visitors {
     // One size for both, by the bee's widths, so they never print at different scales; held
     // through a meeting, which is spaced by it.
     if (head && !pair.moment) {
-      pair.span = ease(pair.span, spanAt(head), 1.5, dt)
+      const d = Math.hypot(head.x - pair.cx, head.y - pair.cy)
+      if (pair.target && pair.leg?.owner !== pair.target)
+        pair.leg = { owner: pair.target, span: pair.span, d: Math.max(d, 1) }
+      const goal = pair.leg
+        ? lerp(spanAt(head), pair.leg.span, clamp(d / pair.leg.d, 0, 1))
+        : spanAt(head)
+      pair.span = ease(pair.span, goal, 4, dt)
       pair.size = sizeFor('bee', pair.span / CELL)
     }
+    showSize(pair.shown, pair.size, dt)
 
     if (pair.heart && !pair.heart.still) {
       pair.heart.age += dt
@@ -386,13 +418,20 @@ export class Friends implements Visitors {
     width: number,
   ) {
     const [ox, oy] = ORBIT[pair.size]
+    // A dance on the flower parts back into the circle before they take their places again.
+    if (
+      pair.moment === 'part' &&
+      (pair.mode === 'perch' || pair.mode === 'settle')
+    )
+      return
     switch (pair.mode) {
       case 'perch': {
         // The head sways in the wind; they ride it.
         if (head) this.perchOn(pair, head)
-        // The circle's centre rides along between them, for the takeoff.
-        pair.cx = (pair.rest.lx + pair.rest.bx) / 2
-        pair.cy = pair.rest.by
+        // The circle's centre rides along between them, for the takeoff; eased, so a dance on
+        // the flower hands back to their places without a step.
+        pair.cx = ease(pair.cx, (pair.rest.lx + pair.rest.bx) / 2, 10, dt)
+        pair.cy = ease(pair.cy, pair.rest.by, 10, dt)
         pair.hold = ease(pair.hold, 1, 8, dt)
         this.fidget(pair, dt)
         pair.t -= dt
@@ -724,16 +763,19 @@ export class Friends implements Visitors {
           ? 0
           : 2
         : Math.floor(b.clock / frame) % 2
-      r.sprites.push({
-        x: b.x,
-        y: b.y,
-        pose,
-        look: looks[b.kind],
-        kind: b.kind,
-        span: pair.span,
-        size: pair.size,
-        facing: b.facing,
-      })
+      pushShown(
+        r.sprites,
+        {
+          x: b.x,
+          y: b.y,
+          pose,
+          look: looks[b.kind],
+          kind: b.kind,
+          span: pair.span,
+          facing: b.facing,
+        },
+        pair.shown,
+      )
     }
     const heart = pair.heart
     if (heart) {
