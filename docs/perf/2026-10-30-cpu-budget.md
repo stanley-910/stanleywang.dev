@@ -5,6 +5,20 @@ fresh profile per run (no saved quality level, no DevTools throttle), 1440×900 
 display at 120 Hz, after midnight scene time. Follows
 [2026-10-29-adaptive-quality.md](2026-10-29-adaptive-quality.md).
 
+## In short
+
+Main before this work (921c812) against the end of the second pass below, same quiet M4, same
+seed, two runs each:
+
+| Cores busy, all of Chrome | Before | After |
+|---|---|---|
+| Home, idle | 5.0 | 1.03 |
+| Home, cursor moving | 5.2 | 1.54 |
+| Poem, idle | 4.5 | 1.08 |
+| Home, 4× CPU | 3.0–4.6, at 94–119 fps | 1.76, at 119 fps |
+
+On a quiet machine the uncapped plants redrew about 118 times a second, every display frame.
+
 ## The problem
 
 The page held 120 fps, but one idle tab of the home page kept about four cores busy and spun the
