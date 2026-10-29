@@ -66,20 +66,27 @@
   flex: 1;
   margin: 0;
   color: var(--ink);
-  text-decoration: underline;
-  text-decoration-color: transparent;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 3px;
-  transition: text-decoration-color var(--duration-quick) var(--ease-calm);
-}
-
-.post-link:hover .post-title {
-  text-decoration-color: var(--hairline);
 }
 
 .post-date {
-  color: var(--ink-muted);
+  /* Ink, not ink-muted: faded to 0.7 it still reads. */
+  color: var(--ink);
   white-space: nowrap;
+}
+
+/* The original site's hover: a row rests a little faded and comes up to
+   full on hover, its date with it. */
+.post-title,
+.post-date {
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.post-link:hover .post-title,
+.post-link:hover .post-date,
+.post-link:focus-visible .post-title,
+.post-link:focus-visible .post-date {
+  opacity: 1;
 }
 
 @media (max-width: 768px) {
