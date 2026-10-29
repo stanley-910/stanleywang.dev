@@ -125,8 +125,8 @@ export class Particles {
       if (p.type !== 'firefly' && p.type !== 'mote' && p.y >= p.floor) {
         p.y = p.floor
         p.landed = true
-        // Fallen petals linger a while on the ground, then fade.
-        p.life = p.age + (p.type === 'petal' ? 9 : 2)
+        // Fallen petals linger a moment on the ground, then fade.
+        p.life = p.age + (p.type === 'petal' ? 4 : 2)
         this.onLand?.(p)
         if (p.type === 'seed' || p.type === 'pappus') continue
       }
@@ -142,8 +142,8 @@ export class Particles {
       switch (p.type) {
         case 'petal': {
           const path = new Shape()
-          // A loose petal is a little smaller than the one it fell from.
-          const s = p.size * 0.7
+          // A loose petal reads smaller than the one it fell from, so it never looks like a stone.
+          const s = p.size * 0.5
           if (p.landed) {
             // Lying on the ground, seen from low down: wide, flat and nearly level.
             const tilt = (((p.seed * 0.618) % 1) - 0.5) * 0.5
