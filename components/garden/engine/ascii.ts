@@ -195,6 +195,20 @@ export class AsciiRenderer {
   private cloudBase = new Float32Array(0)
   private cloudLit = new Float32Array(0)
   private cloudTick = -1
+  /** Scene time of the last cloud refresh: a third of the rows at most twenty times a second. */
+  private cloudAt = 0
+  /**
+   * Plant and land cells as last worked out, before the cursor's light: glyph, ink, alpha and
+   * tile (already faded under text). They change only with a new raster, new colours or new text
+   * boxes; between those only the sky and the light around the cursor move, so frames reuse them.
+   */
+  private mat = new Uint8Array(0)
+  private matGlyph = new Uint16Array(0)
+  private matGc = new Float32Array(0)
+  private matA = new Float32Array(0)
+  private matTile = new Float32Array(0)
+  private matKey = ''
+  private dimKey = ''
   /** Sky, ridges and mist, painted once per palette and handed to the GPU as the layer under the glyphs. */
   private bg = document.createElement('canvas')
   private bgKey = ''
@@ -255,6 +269,13 @@ export class AsciiRenderer {
     this.cloudBase = new Float32Array(n)
     this.cloudLit = new Float32Array(n)
     this.cloudTick = -1
+    this.mat = new Uint8Array(n)
+    this.matGlyph = new Uint16Array(n)
+    this.matGc = new Float32Array(n * 3)
+    this.matA = new Float32Array(n)
+    this.matTile = new Float32Array(n)
+    this.matKey = ''
+    this.dimKey = ''
     this.bg.width = this.canvas.width
     this.bg.height = this.canvas.height
     this.bgKey = ''
@@ -302,6 +323,13 @@ export class AsciiRenderer {
   }
 
   setDimBoxes(boxes: Rect[]) {
+    // Measured every half second; the boxes rarely move, and a change means re-working every cell.
+    const key = boxes
+      .map((b) => `${b.left | 0},${b.top | 0},${b.right | 0},${b.bottom | 0}`)
+      .join(';')
+    if (key === this.dimKey) return
+    this.dimKey = key
+    this.matKey = ''
     const { cols, rows, cw, ch, dim } = this
     dim.fill(1)
     // A wide, gentle fade: the garden recedes behind the text rather than stopping at a box.
@@ -824,16 +852,38 @@ export class AsciiRenderer {
       const dark = lum(b[0], b[1], b[2]) > 0.42 && p.night < 0.5
       return { ink: dark ? p.ground : cream, dark }
     }
-    this.stampHeads(raster.drawnHeads, p, inkAt)
-    this.stampSprites(raster.drawnSprites, inkAt)
-    const { stamp, stampCol, stampTile, tileCol } = this
+    // Plants and land are worked out again only for a new raster or new colours; the rest of
+    // the time a frame redraws the sky and the cursor's light over the cells kept from last time.
+    const matKey = `${raster.version}/${bgKey}/${p.ink}/${p.night}`
+    const fresh = matKey !== this.matKey
+    this.matKey = matKey
+    if (fresh) {
+      this.stampHeads(raster.drawnHeads, p, inkAt)
+      this.stampSprites(raster.drawnSprites, inkAt)
+    }
+    const {
+      stamp,
+      stampCol,
+      stampTile,
+      tileCol,
+      mat,
+      matGlyph,
+      matGc,
+      matA,
+      matTile,
+    } = this
 
     // The halftone screen keeps roughly the same spacing in pixels, so fine grids don't fill with dots.
     const pitch = this.cw < 8 ? 8 : 4
     const cloudT = time * 0.012
-    // Until every row has been filled once, refresh them all.
-    const tick = this.cloudTick < 0 ? -1 : this.cloudTick % 3
-    this.cloudTick++
+    // Until every row has been filled once, refresh them all; then a third of the rows at a
+    // time, at most twenty times a second (-2: none this frame).
+    const cloudDue = this.cloudTick < 0 || Math.abs(time - this.cloudAt) >= 0.05
+    const tick = this.cloudTick < 0 ? -1 : cloudDue ? this.cloudTick % 3 : -2
+    if (cloudDue) {
+      this.cloudTick++
+      this.cloudAt = time
+    }
     const stars = p.night
     const lightR = 120
     for (let r = 0; r < rows; r++) {
@@ -849,300 +899,341 @@ export class AsciiRenderer {
         let cg = 0
         let cb = 0
         let alpha = 0
-        tile[i] = 0
         const k = kinds[i]
         const v = cov[i]
-        if (stamp[i]) {
-          g = stamp[i]
-          cr = stampCol[i * 3]
-          cg = stampCol[i * 3 + 1]
-          cb = stampCol[i * 3 + 2]
-          alpha = 1
-          tile[i] = stampTile[i]
-          tileCol[i * 3] = this.stampTileCol[i * 3]
-          tileCol[i * 3 + 1] = this.stampTileCol[i * 3 + 1]
-          tileCol[i * 3 + 2] = this.stampTileCol[i * 3 + 2]
-        } else if (v > 0.07 && k !== Kind.Empty) {
-          cr = rgb[i * 3]
-          cg = rgb[i * 3 + 1]
-          cb = rgb[i * 3 + 2]
-          // The tile keeps the material's own colour; the cases below may move the glyph's ink.
-          tileCol[i * 3] = cr * p.ink
-          tileCol[i * 3 + 1] = cg * p.ink
-          tileCol[i * 3 + 2] = cb * p.ink
-          const { ink, dark: darkInk } =
-            k === Kind.Petal ? inkAt(x, y) : { ink: cream, dark: false }
-          const L = lum(cr, cg, cb)
-          alpha = clamp(v * 1.6, 0.25, 1)
-          switch (k) {
-            case Kind.Petal: {
-              // The tile is the petal's body, in its own colour, under every petal cell so lines
-              // don't punch holes in the head; outline cells take a little less so the edge stays soft.
-              const lit = this.lit[i]
-              // After dark cream ink glows against the dim petals; pull it back toward the petal's own colour.
-              const reach = darkInk ? 1 : 1 - 0.5 * p.night
-              // Mostly opaque, so what's behind (a hill's edge, the sky) doesn't show through
-              // the head as a line across it. By day it keeps the light the raster gave the petal
-              // (bloom.ts shades each flap by 0.62..1.17). After dark that shading is undone, so
-              // the flowers stay full colour and the glyphs alone carry the light.
-              const body = darkInk ? 0.75 + 0.1 * lit : 0.7 + 0.15 * lit
-              const flat = 1 + p.night * (1 / (0.62 + 0.55 * lit) - 1)
-              tileCol[i * 3] = Math.min(255, tileCol[i * 3] * flat)
-              tileCol[i * 3 + 1] = Math.min(255, tileCol[i * 3 + 1] * flat)
-              tileCol[i * 3 + 2] = Math.min(255, tileCol[i * 3 + 2] * flat)
-              // Lines carry the drawing: the head's outline, in ink that contrasts with what's
-              // behind, and the folds between its petals, in the petal's own dark ink.
-              // On a head only a few cells across nearly every cell touches the edge; keep lines for
-              // the cells the petal only partly covers, the true rim, and fill the rest.
-              const rim = this.petalEdge(c, r)
-              const edge =
-                rim >= 0 && v >= 0.7 && this.headCells(c, r) < 22 ? -1 : rim
-              alpha = 1
-              if (edge >= 0) {
-                g = code(LINES[edge])
-                tile[i] = body * 0.7 * Math.min(1, v * 1.4)
-                ;[cr, cg, cb] = mix([cr, cg, cb], ink, 0.7 * reach)
-                break
-              }
-              tile[i] = body
-              const seam = this.petalSeam(c, r)
-              if (seam >= 0) {
-                g = code(LINES[seam])
-                ;[cr, cg, cb] = mix([cr, cg, cb], p.ground, 0.85)
-                break
-              }
-              // One glyph per flap, in ink darker than its tile: more ink where the petal turns
-              // from the light, most on one seen from behind. After dark, one step lighter.
-              const step = this.back[i]
-                ? 3
-                : lit >= 0.6
-                  ? 0
-                  : lit >= 0.3
-                    ? 1
-                    : 2
-              g = code(FOLD[Math.max(0, step - (p.night > 0.5 ? 1 : 0))])
-              ;[cr, cg, cb] = mix([cr, cg, cb], p.ground, 0.7)
-              break
-            }
-            case Kind.Disc: {
-              // The centre is the heaviest ink in the head: a dark eye, or a bright disc on its own tile.
-              // The eye is only what is truly dark (a poppy's stamens and blotch, at L .03): a
-              // yellow cosmos centre dimmed by haze and night (L .3-.45) is still a pale disc.
-              if (L < 0.25) {
-                g = code(v > 0.6 ? '@' : '#')
+        let gc: Rgb
+        let a: number
+        if (!fresh && mat[i]) {
+          g = matGlyph[i]
+          glyph[i] = g
+          if (g === 0) continue
+          gc = [matGc[i * 3], matGc[i * 3 + 1], matGc[i * 3 + 2]]
+          a = matA[i]
+          tile[i] = matTile[i]
+        } else {
+          tile[i] = 0
+          mat[i] = 0
+          if (stamp[i]) {
+            g = stamp[i]
+            cr = stampCol[i * 3]
+            cg = stampCol[i * 3 + 1]
+            cb = stampCol[i * 3 + 2]
+            alpha = 1
+            tile[i] = stampTile[i]
+            tileCol[i * 3] = this.stampTileCol[i * 3]
+            tileCol[i * 3 + 1] = this.stampTileCol[i * 3 + 1]
+            tileCol[i * 3 + 2] = this.stampTileCol[i * 3 + 2]
+          } else if (v > 0.07 && k !== Kind.Empty) {
+            cr = rgb[i * 3]
+            cg = rgb[i * 3 + 1]
+            cb = rgb[i * 3 + 2]
+            // The tile keeps the material's own colour; the cases below may move the glyph's ink.
+            tileCol[i * 3] = cr * p.ink
+            tileCol[i * 3 + 1] = cg * p.ink
+            tileCol[i * 3 + 2] = cb * p.ink
+            const { ink, dark: darkInk } =
+              k === Kind.Petal ? inkAt(x, y) : { ink: cream, dark: false }
+            const L = lum(cr, cg, cb)
+            alpha = clamp(v * 1.6, 0.25, 1)
+            switch (k) {
+              case Kind.Petal: {
+                // The tile is the petal's body, in its own colour, under every petal cell so lines
+                // don't punch holes in the head; outline cells take a little less so the edge stays soft.
+                const lit = this.lit[i]
+                // After dark cream ink glows against the dim petals; pull it back toward the petal's own colour.
+                const reach = darkInk ? 1 : 1 - 0.5 * p.night
+                // Mostly opaque, so what's behind (a hill's edge, the sky) doesn't show through
+                // the head as a line across it. By day it keeps the light the raster gave the petal
+                // (bloom.ts shades each flap by 0.62..1.17). After dark that shading is undone, so
+                // the flowers stay full colour and the glyphs alone carry the light.
+                const body = darkInk ? 0.75 + 0.1 * lit : 0.7 + 0.15 * lit
+                const flat = 1 + p.night * (1 / (0.62 + 0.55 * lit) - 1)
+                tileCol[i * 3] = Math.min(255, tileCol[i * 3] * flat)
+                tileCol[i * 3 + 1] = Math.min(255, tileCol[i * 3 + 1] * flat)
+                tileCol[i * 3 + 2] = Math.min(255, tileCol[i * 3 + 2] * flat)
+                // Lines carry the drawing: the head's outline, in ink that contrasts with what's
+                // behind, and the folds between its petals, in the petal's own dark ink.
+                // On a head only a few cells across nearly every cell touches the edge; keep lines for
+                // the cells the petal only partly covers, the true rim, and fill the rest.
+                const rim = this.petalEdge(c, r)
+                const edge =
+                  rim >= 0 && v >= 0.7 && this.headCells(c, r) < 22 ? -1 : rim
                 alpha = 1
-                // On a tile of its own colour, lifted toward the haze by day so a dark centre
-                // reads solid rather than as a hole; after dark the haze is black, so no lift.
-                const lift = mix([cr, cg, cb], p.haze, 0.4 * (1 - p.night))
-                tileCol[i * 3] = lift[0] * p.ink
-                tileCol[i * 3 + 1] = lift[1] * p.ink
-                tileCol[i * 3 + 2] = lift[2] * p.ink
-                tile[i] = 0.75 * Math.min(1, v * 1.4)
-                ;[cr, cg, cb] = mix([cr, cg, cb], p.ground, 0.5)
-              } else if (
-                this.petal(c - 1, r) +
-                  this.petal(c + 1, r) +
-                  this.petal(c, r - 1) +
-                  this.petal(c, r + 1) >
-                0
-              ) {
-                g = code(v > 0.6 ? 'O' : 'o')
-                alpha = 1
-                tile[i] = 0.75
-                ;[cr, cg, cb] = shade([cr, cg, cb], 0.7)
-              } else {
-                const d = clamp(0.35 + v * 0.6 - L * 0.3, 0, 1)
-                g = code(
-                  DISC[
-                    Math.min(
-                      DISC.length - 1,
-                      1 + Math.floor(d * (DISC.length - 1)),
-                    )
-                  ],
-                )
-                tile[i] = v * 0.18
-              }
-              break
-            }
-            case Kind.Fluff:
-              if (this.back[i]) {
-                // A loose petal (LOOSE_PETAL in the air, LANDED_PETAL on the ground), printed like
-                // the petals it fell from: a line outline over a tile in its colour, sparse dark
-                // glyphs inside. In the air the tile is thin, so a flower it crosses still shows;
-                // on the ground it's a body, so the petal reads as lying there.
-                const landed = this.lit[i] > 0.5
-                tile[i] = (landed ? 0.7 : 0.35) * Math.min(1, v * 1.4)
-                const rim = this.edgeOf(c, r, this.looseCov)
-                alpha = 1
-                if (rim >= 0) {
-                  g = code(LINES[rim])
-                  ;[cr, cg, cb] = mix(
-                    [cr, cg, cb],
-                    inkAt(x, y).ink,
-                    0.7 * (1 - 0.5 * p.night),
-                  )
-                } else {
-                  g = code('.')
-                  ;[cr, cg, cb] = mix([cr, cg, cb], p.ground, 0.5)
+                if (edge >= 0) {
+                  g = code(LINES[edge])
+                  tile[i] = body * 0.7 * Math.min(1, v * 1.4)
+                  ;[cr, cg, cb] = mix([cr, cg, cb], ink, 0.7 * reach)
+                  break
                 }
+                tile[i] = body
+                const seam = this.petalSeam(c, r)
+                if (seam >= 0) {
+                  g = code(LINES[seam])
+                  ;[cr, cg, cb] = mix([cr, cg, cb], p.ground, 0.85)
+                  break
+                }
+                // One glyph per flap, in ink darker than its tile: more ink where the petal turns
+                // from the light, most on one seen from behind. After dark, one step lighter.
+                const step = this.back[i]
+                  ? 3
+                  : lit >= 0.6
+                    ? 0
+                    : lit >= 0.3
+                      ? 1
+                      : 2
+                g = code(FOLD[Math.max(0, step - (p.night > 0.5 ? 1 : 0))])
+                ;[cr, cg, cb] = mix([cr, cg, cb], p.ground, 0.7)
                 break
               }
-              g = code(
-                FLUFF[
-                  Math.min(
-                    FLUFF.length - 1,
-                    1 + Math.floor(clamp(v * 1.2, 0, 1) * (FLUFF.length - 2)),
-                  )
-                ],
-              )
-              alpha = clamp(v * 2.2, 0.35, 1)
-              if (this.lit[i] > 0.75) {
-                // Lace and seed heads get a soft body in their own colour, with the glyphs inked
-                // against it, so a pale head holds against a pale hill. The sun and moon stay bare.
-                tile[i] = 0.25 + 0.35 * Math.min(1, v)
-                ;[cr, cg, cb] = mix([cr, cg, cb], inkAt(x, y).ink, 0.45)
-                alpha = 1
-              }
-              break
-            case Kind.Stem:
-            case Kind.Sky: {
-              const dir = this.lineAt(c, r, k)
-              // A stalk straddling two cells prints once, in the stronger one.
-              if (
-                k === Kind.Stem &&
-                dir !== 0 &&
-                (this.stemCov(c - 1, r) > v || this.stemCov(c + 1, r) >= v)
-              )
-                break
-              if (v < 0.1) g = code(k === Kind.Sky ? '·' : '.')
-              else if (dir >= 0) g = code(LINES[dir])
-              else g = code(v > 0.5 ? '+' : ':')
-              // Stalks hold a firm floor so a flower reads down to its root; grass is a separate kind.
-              alpha = clamp(v * 3.5, 0.55, 1)
-              if (k === Kind.Stem && p.night > 0) {
-                // Night stem colours sit almost on the ground; lift them toward the moonlit haze.
-                const sc = mix(
-                  [cr, cg, cb],
-                  mix(p.haze, cream, 0.3),
-                  0.45 * p.night,
-                )
-                cr = sc[0]
-                cg = sc[1]
-                cb = sc[2]
-              }
-              break
-            }
-            case Kind.Foliage: {
-              // Blades print as strokes along their run; only broad leaf cells fall back to the fill ramp.
-              const dir = this.lineAt(c, r, k)
-              if (dir > 0) g = code(LINES[dir])
-              else {
-                const d = clamp(v * 0.55 + L * 0.7, 0, 1)
-                g = code(
-                  FOLIAGE[
-                    Math.min(
-                      FOLIAGE.length - 1,
-                      1 + Math.floor(d * (FOLIAGE.length - 1)),
-                    )
-                  ],
-                )
-              }
-              // Grass is texture, not subject: a little quieter than the flowers, and holding its
-              // strength toward the viewer so near tufts read as grass rather than static.
-              // Thin blades only partly cover a cell, so give their strokes a floor like stalks have.
-              if (dir > 0) alpha = Math.max(alpha, clamp(v * 3, 0.95, 1))
-              alpha *= 1 - 0.08 * clamp((y - horizon) / (H - horizon), 0, 1)
-              break
-            }
-            case Kind.Land: {
-              // Halftone: ordered dither on brightness, like the cloud and grass studies.
-              // The silhouette itself is painted in the backdrop; these are its halftone dots.
-              const d = L * 1.3 + (skyRow ? 0.1 : -0.15)
-              if (d > bayer(c, r) * 1.1)
-                g = code(LAND[1 + Math.min(2, Math.floor(d * 2.2))])
-              const lc = mix([cr, cg, cb], p.cloud, skyRow ? 0.28 : 0.12)
-              cr = lc[0]
-              cg = lc[1]
-              cb = lc[2]
-              alpha = skyRow ? 0.6 : 0.45
-              // Slope light, in glyphs alone: the sunward side thickens toward the crest and the far
-              // side goes bare, so the contrast is all in the lit flank.
-              const sl = (this.lit[i] - 0.5) * 2
-              if (sl > 0.05) {
-                if (sl > bayer(c, r) * 0.9)
+              case Kind.Disc: {
+                // The centre is the heaviest ink in the head: a dark eye, or a bright disc on its own tile.
+                // The eye is only what is truly dark (a poppy's stamens and blotch, at L .03): a
+                // yellow cosmos centre dimmed by haze and night (L .3-.45) is still a pale disc.
+                if (L < 0.25) {
+                  g = code(v > 0.6 ? '@' : '#')
+                  alpha = 1
+                  // On a tile of its own colour, lifted toward the haze by day so a dark centre
+                  // reads solid rather than as a hole; after dark the haze is black, so no lift.
+                  const lift = mix([cr, cg, cb], p.haze, 0.4 * (1 - p.night))
+                  tileCol[i * 3] = lift[0] * p.ink
+                  tileCol[i * 3 + 1] = lift[1] * p.ink
+                  tileCol[i * 3 + 2] = lift[2] * p.ink
+                  tile[i] = 0.75 * Math.min(1, v * 1.4)
+                  ;[cr, cg, cb] = mix([cr, cg, cb], p.ground, 0.5)
+                } else if (
+                  this.petal(c - 1, r) +
+                    this.petal(c + 1, r) +
+                    this.petal(c, r - 1) +
+                    this.petal(c, r + 1) >
+                  0
+                ) {
+                  g = code(v > 0.6 ? 'O' : 'o')
+                  alpha = 1
+                  tile[i] = 0.75
+                  ;[cr, cg, cb] = shade([cr, cg, cb], 0.7)
+                } else {
+                  const d = clamp(0.35 + v * 0.6 - L * 0.3, 0, 1)
                   g = code(
-                    SLOPE_LIT[
+                    DISC[
                       Math.min(
-                        SLOPE_LIT.length - 1,
-                        Math.floor(sl * SLOPE_LIT.length),
+                        DISC.length - 1,
+                        1 + Math.floor(d * (DISC.length - 1)),
                       )
                     ],
                   )
-                alpha = 0.45 + 0.25 * sl
-              } else if (sl < -0.05 && -sl > bayer(c, r)) g = 0
-              break
-            }
-          }
-        } else if (skyRow) {
-          // Sky: drifting cumulus as dithered halftone, stars at night.
-          if (tick < 0 || r % 3 === tick) {
-            const nx = x / 280 - cloudT
-            const ny = y / 120
-            const base = fbm2(nx, ny, 5, 4)
-            this.cloudBase[i] = base
-            // Lit from above: brighter where the cloud thins below. Only clouds need it.
-            this.cloudLit[i] =
-              base > 0.5
-                ? clamp(0.55 + (base - fbm2(nx, ny + 0.25, 5, 4)) * 4, 0.2, 1)
-                : 0
-          }
-          const base = this.cloudBase[i]
-          const shape =
-            smoothstep(0.5, 0.74, base) * (1 - smoothstep(0.55, 1, y / horizon))
-          if (shape > 0.02) {
-            const lit = this.cloudLit[i]
-            const d = shape * lit
-            if (d > bayer(c, r) * 0.9) {
-              g = code(
-                CLOUD[
-                  Math.min(
-                    CLOUD.length - 1,
-                    1 + Math.floor(d * (CLOUD.length - 1)),
+                  tile[i] = v * 0.18
+                }
+                break
+              }
+              case Kind.Fluff:
+                if (this.back[i]) {
+                  // A loose petal (LOOSE_PETAL in the air, LANDED_PETAL on the ground), printed like
+                  // the petals it fell from: a line outline over a tile in its colour, sparse dark
+                  // glyphs inside. In the air the tile is thin, so a flower it crosses still shows;
+                  // on the ground it's a body, so the petal reads as lying there.
+                  const landed = this.lit[i] > 0.5
+                  tile[i] = (landed ? 0.7 : 0.35) * Math.min(1, v * 1.4)
+                  const rim = this.edgeOf(c, r, this.looseCov)
+                  alpha = 1
+                  if (rim >= 0) {
+                    g = code(LINES[rim])
+                    ;[cr, cg, cb] = mix(
+                      [cr, cg, cb],
+                      inkAt(x, y).ink,
+                      0.7 * (1 - 0.5 * p.night),
+                    )
+                  } else {
+                    g = code('.')
+                    ;[cr, cg, cb] = mix([cr, cg, cb], p.ground, 0.5)
+                  }
+                  break
+                }
+                g = code(
+                  FLUFF[
+                    Math.min(
+                      FLUFF.length - 1,
+                      1 + Math.floor(clamp(v * 1.2, 0, 1) * (FLUFF.length - 2)),
+                    )
+                  ],
+                )
+                alpha = clamp(v * 2.2, 0.35, 1)
+                if (this.lit[i] > 0.75) {
+                  // Lace and seed heads get a soft body in their own colour, with the glyphs inked
+                  // against it, so a pale head holds against a pale hill. The sun and moon stay bare.
+                  tile[i] = 0.25 + 0.35 * Math.min(1, v)
+                  ;[cr, cg, cb] = mix([cr, cg, cb], inkAt(x, y).ink, 0.45)
+                  alpha = 1
+                }
+                break
+              case Kind.Stem:
+              case Kind.Sky: {
+                const dir = this.lineAt(c, r, k)
+                // A stalk straddling two cells prints once, in the stronger one.
+                if (
+                  k === Kind.Stem &&
+                  dir !== 0 &&
+                  (this.stemCov(c - 1, r) > v || this.stemCov(c + 1, r) >= v)
+                )
+                  break
+                if (v < 0.1) g = code(k === Kind.Sky ? '·' : '.')
+                else if (dir >= 0) g = code(LINES[dir])
+                else g = code(v > 0.5 ? '+' : ':')
+                // Stalks hold a firm floor so a flower reads down to its root; grass is a separate kind.
+                alpha = clamp(v * 3.5, 0.55, 1)
+                if (k === Kind.Stem && p.night > 0) {
+                  // Night stem colours sit almost on the ground; lift them toward the moonlit haze.
+                  const sc = mix(
+                    [cr, cg, cb],
+                    mix(p.haze, cream, 0.3),
+                    0.45 * p.night,
                   )
-                ],
-              )
-              const cc = mix(bg, p.cloud, 0.35 + 0.65 * lit)
+                  cr = sc[0]
+                  cg = sc[1]
+                  cb = sc[2]
+                }
+                break
+              }
+              case Kind.Foliage: {
+                // Blades print as strokes along their run; only broad leaf cells fall back to the fill ramp.
+                const dir = this.lineAt(c, r, k)
+                if (dir > 0) g = code(LINES[dir])
+                else {
+                  const d = clamp(v * 0.55 + L * 0.7, 0, 1)
+                  g = code(
+                    FOLIAGE[
+                      Math.min(
+                        FOLIAGE.length - 1,
+                        1 + Math.floor(d * (FOLIAGE.length - 1)),
+                      )
+                    ],
+                  )
+                }
+                // Grass is texture, not subject: a little quieter than the flowers, and holding its
+                // strength toward the viewer so near tufts read as grass rather than static.
+                // Thin blades only partly cover a cell, so give their strokes a floor like stalks have.
+                if (dir > 0) alpha = Math.max(alpha, clamp(v * 3, 0.95, 1))
+                alpha *= 1 - 0.08 * clamp((y - horizon) / (H - horizon), 0, 1)
+                break
+              }
+              case Kind.Land: {
+                // Halftone: ordered dither on brightness, like the cloud and grass studies.
+                // The silhouette itself is painted in the backdrop; these are its halftone dots.
+                const d = L * 1.3 + (skyRow ? 0.1 : -0.15)
+                if (d > bayer(c, r) * 1.1)
+                  g = code(LAND[1 + Math.min(2, Math.floor(d * 2.2))])
+                const lc = mix([cr, cg, cb], p.cloud, skyRow ? 0.28 : 0.12)
+                cr = lc[0]
+                cg = lc[1]
+                cb = lc[2]
+                alpha = skyRow ? 0.6 : 0.45
+                // Slope light, in glyphs alone: the sunward side thickens toward the crest and the far
+                // side goes bare, so the contrast is all in the lit flank.
+                const sl = (this.lit[i] - 0.5) * 2
+                if (sl > 0.05) {
+                  if (sl > bayer(c, r) * 0.9)
+                    g = code(
+                      SLOPE_LIT[
+                        Math.min(
+                          SLOPE_LIT.length - 1,
+                          Math.floor(sl * SLOPE_LIT.length),
+                        )
+                      ],
+                    )
+                  alpha = 0.45 + 0.25 * sl
+                } else if (sl < -0.05 && -sl > bayer(c, r)) g = 0
+                break
+              }
+            }
+          } else if (skyRow) {
+            // Sky: drifting cumulus as dithered halftone, stars at night.
+            if (tick === -1 || r % 3 === tick) {
+              const nx = x / 280 - cloudT
+              const ny = y / 120
+              const base = fbm2(nx, ny, 5, 4)
+              this.cloudBase[i] = base
+              // Lit from above: brighter where the cloud thins below. Only clouds need it.
+              this.cloudLit[i] =
+                base > 0.5
+                  ? clamp(0.55 + (base - fbm2(nx, ny + 0.25, 5, 4)) * 4, 0.2, 1)
+                  : 0
+            }
+            const base = this.cloudBase[i]
+            const shape =
+              smoothstep(0.5, 0.74, base) *
+              (1 - smoothstep(0.55, 1, y / horizon))
+            if (shape > 0.02) {
+              const lit = this.cloudLit[i]
+              const d = shape * lit
+              if (d > bayer(c, r) * 0.9) {
+                g = code(
+                  CLOUD[
+                    Math.min(
+                      CLOUD.length - 1,
+                      1 + Math.floor(d * (CLOUD.length - 1)),
+                    )
+                  ],
+                )
+                const cc = mix(bg, p.cloud, 0.35 + 0.65 * lit)
+                cr = cc[0]
+                cg = cc[1]
+                cb = cc[2]
+                alpha = clamp(0.3 + shape, 0, 1)
+              }
+            } else if (stars > 0.1 && hash(c, r, 77) < 0.006 * stars) {
+              const tw =
+                0.5 + 0.5 * Math.sin(time * (1 + hash(c, r, 5) * 3) + c)
+              g = code(hash(c, r, 9) < 0.2 ? '+' : '.')
+              cr = 230
+              cg = 235
+              cb = 255
+              alpha = stars * (0.3 + 0.7 * tw)
+            } else if ((c + r * 2) % pitch === 0 && r % (pitch / 2) === 0) {
+              // The poster's halftone screen over open sky.
+              g = code('·')
+              const cc = mix(bg, p.cloud, 0.22)
               cr = cc[0]
               cg = cc[1]
               cb = cc[2]
-              alpha = clamp(0.3 + shape, 0, 1)
+              alpha = 0.55
             }
-          } else if (stars > 0.1 && hash(c, r, 77) < 0.006 * stars) {
-            const tw = 0.5 + 0.5 * Math.sin(time * (1 + hash(c, r, 5) * 3) + c)
-            g = code(hash(c, r, 9) < 0.2 ? '+' : '.')
-            cr = 230
-            cg = 235
-            cb = 255
-            alpha = stars * (0.3 + 0.7 * tw)
-          } else if ((c + r * 2) % pitch === 0 && r % (pitch / 2) === 0) {
-            // The poster's halftone screen over open sky.
-            g = code('·')
-            const cc = mix(bg, p.cloud, 0.22)
-            cr = cc[0]
-            cg = cc[1]
-            cb = cc[2]
-            alpha = 0.55
+          }
+          const isMat = stamp[i] > 0 || (v > 0.07 && k !== Kind.Empty)
+          if (isMat) {
+            mat[i] = 1
+            matGlyph[i] = 0
+          }
+          glyph[i] = g
+          if (g === 0) continue
+
+          // Clamped: the night's ink boost would push bright colours past 255 and corrupt the sprite key.
+          gc = [
+            Math.min(255, cr * p.ink),
+            Math.min(255, cg * p.ink),
+            Math.min(255, cb * p.ink),
+          ]
+          // Flowers and stems fade less than grass near the text, so plants don't lose their stalks.
+          const plant =
+            k === Kind.Petal ||
+            k === Kind.Disc ||
+            k === Kind.Stem ||
+            k === Kind.Fluff
+          const fade = plant ? Math.sqrt(dim[i]) : dim[i]
+          a = alpha * fade
+          // Barely-there glyphs cost a draw each and add nothing.
+          if (a < 0.06 && tile[i] <= 0) {
+            glyph[i] = 0
+            continue
+          }
+          if (tile[i] > 0) tile[i] *= fade
+          if (isMat) {
+            matGlyph[i] = g
+            matGc[i * 3] = gc[0]
+            matGc[i * 3 + 1] = gc[1]
+            matGc[i * 3 + 2] = gc[2]
+            matA[i] = a
+            matTile[i] = tile[i]
           }
         }
-        glyph[i] = g
-        if (g === 0) continue
-
-        // Clamped: the night's ink boost would push bright colours past 255 and corrupt the sprite key.
-        let gc: Rgb = [
-          Math.min(255, cr * p.ink),
-          Math.min(255, cg * p.ink),
-          Math.min(255, cb * p.ink),
-        ]
         // Near the cursor the garden catches a little more light; much more after dark.
         if (pointer.active) {
           const dd = Math.hypot(x - pointer.x, y - pointer.y)
@@ -1151,24 +1242,10 @@ export class AsciiRenderer {
             gc = mix(gc, [255, 250, 232], kk)
           }
         }
-        // Flowers and stems fade less than grass near the text, so plants don't lose their stalks.
-        const plant =
-          k === Kind.Petal ||
-          k === Kind.Disc ||
-          k === Kind.Stem ||
-          k === Kind.Fluff
-        const fade = plant ? Math.sqrt(dim[i]) : dim[i]
-        const a = alpha * fade
-        // Barely-there glyphs cost a draw each and add nothing.
-        if (a < 0.06 && tile[i] <= 0) {
-          glyph[i] = 0
-          continue
-        }
         gc = mix(bg, gc, a)
         out[i * 3] = gc[0]
         out[i * 3 + 1] = gc[1]
         out[i * 3 + 2] = gc[2]
-        if (tile[i] > 0) tile[i] *= fade
       }
     }
 
