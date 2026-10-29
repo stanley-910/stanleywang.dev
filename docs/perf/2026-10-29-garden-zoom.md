@@ -76,6 +76,28 @@ Fix 1 and 4, then make the zoom change. Doing the zoom first makes a slow page 1
 Rough expectation, not measured: with 1–3 done, zoom 0.64 on the M4 runs near 60 fps
 throughout. On a 4× CPU it runs about 30–45 fps, with plants at 20–30 frames/s.
 
+## After the fixes
+
+These were built on 2026-10-29: 60 Hz cap (60f9f3d), plant and land cells worked out once per
+raster (c35a59c), cells reduced in the workers with up to four of them (f77f6c2), and hover no
+longer stirring the plants (758197c). Same machine and method as above.
+
+| | zoom 0.8, M4 | zoom 0.64, M4 | zoom 0.8, 4× CPU | zoom 0.64, 4× CPU |
+|---|---|---|---|---|
+| Page fps | 60 (was 99 at 120 Hz) | 60 (was 53) | 33 (was 19) | 22 (was 14) |
+| Plant frames/s | 60 (was 45) | 51 (was 24) | 33 (was 19) | 22 (was 13) |
+| `ascii.render` mean | 4.5 ms | 6.8 ms | 21 ms | 34 ms |
+| Main-thread load | ~38% (was 93%) | ~55% | saturated | saturated |
+
+The default is now 0.64 on screens 768 px and wider, and 0.8 on phones (`mount.ts`). On a
+slower machine, 0.64 now runs a little faster than 0.8 did before these changes.
+
+What's left for slower machines: every new raster still re-classifies every plant and land
+cell on the main thread, about 34 ms at 0.64 with the CPU slowed 4×. The next step is to do that
+classification in the workers too. It's mostly pure, given the cells, the palette and the head
+stamps. The catch is that glyph codes are registered at runtime, so the worker and the page
+need to agree on them.
+
 ## Method
 
 The production build was served from a scratch copy with a `?zoom=` override and timing
