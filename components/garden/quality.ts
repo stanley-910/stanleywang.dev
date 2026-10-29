@@ -119,8 +119,8 @@ export class Quality {
   away = false
   /**
    * Whether nothing is moving the scene (the cursor still, no scrub). Between plant redraws only
-   * the clouds, the stars' twinkle and the light around the cursor change, so a calm page draws on
-   * the plants' beat rather than every display frame.
+   * the clouds, the stars' twinkle and the light around the cursor change, so a calm page draws
+   * only when a new plant frame comes back (mount.ts).
    */
   calm = false
   /** Whether nobody has touched the page for a while, so the plants can slow a little more. */
@@ -164,16 +164,21 @@ export class Quality {
     return true
   }
 
-  /**
-   * Whether this frame should skip drawing: to run the page at AWAY_FPS, on the plants' beat while
-   * calm, or at half the display's rate.
-   */
+  /** Whether this frame should skip drawing: to run the page at AWAY_FPS, or at half the display's rate. */
   skip(frame: number) {
-    const every = (fps: number) =>
-      Math.max(1, Math.round((this.hz || 60) / fps))
-    if (this.away) return frame % every(AWAY_FPS) !== 0
-    if (this.calm) return frame % every(this.plantRate()) !== 0
+    if (this.away)
+      return frame % Math.max(1, Math.round((this.hz || 60) / AWAY_FPS)) !== 0
     return this.level >= HALF_RATE && this.hz > 90 && frame % 2 === 1
+  }
+
+  /** Starts the windows over but keeps the display's rate, after the window goes in or out of use. */
+  resettle() {
+    this.windowStart = -1
+    this.lastFrame = -1
+    this.gaps = []
+    this.behind = []
+    this.spare = 0
+    this.settle = 2
   }
 
   /** Forgets the current windows, after a pause or while something else loads the page. */

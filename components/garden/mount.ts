@@ -255,13 +255,16 @@ export function mountGarden({
   let peak = Infinity
   // The far range's faces per cell, for the rock's tiles.
   let relief = new Float32Array(0)
+  /** The plant frame the page last drew. */
+  let drawn = -1
 
   /**
    * Records the scene and draws the latest rasterised frame. In the loop the
    * raster workers fill this frame's shapes while the page shows the one
-   * before; `now` draws this frame itself, for one-off redraws.
+   * before; `now` draws this frame itself, for one-off redraws. `fresh` draws
+   * the page only when a new plant frame has come back since it last did.
    */
-  const draw = (now = false) => {
+  const draw = (now = false, fresh = false) => {
     // Nothing to draw into until the canvas has a size.
     if (width === 0) return
     const palette = paletteAt(hour)
@@ -300,6 +303,8 @@ export function mountGarden({
       })
     }
     if (!raster.ready) return
+    if (fresh && raster.version === drawn) return
+    drawn = raster.version
     const secs = performance.now() / 1000
     meteors.paint(secs, palette, palette.ink)
     birds.fly(
@@ -569,7 +574,13 @@ export function mountGarden({
     quality.calm = still > LIVELY_FOR && scrubVel === 0 && !meteors.alive
     quality.idle = quality.calm && still > IDLE_AFTER
     quality.frameMs = raster.frameMs
-    if (!quality.skip(frames)) draw()
+    // A window out of use but under the cursor or the wheel isn't away.
+    const away = unfocused && quality.calm
+    if (away !== quality.away) {
+      quality.away = away
+      quality.resettle()
+    }
+    if (!quality.skip(frames)) draw(false, quality.calm)
     quality.frame(
       now,
       performance.now() - began,
@@ -716,12 +727,8 @@ export function mountGarden({
   const onVisibility = () => (document.hidden ? stop() : start())
 
   // A window on screen but out of use keeps its meadow moving, slowly (quality.ts).
-  const onFocus = () => {
-    const away = !document.hasFocus()
-    if (away === quality.away) return
-    quality.away = away
-    quality.reset()
-  }
+  let unfocused = false
+  const onFocus = () => (unfocused = !document.hasFocus())
 
   // Off screen (scrolled past), the scene stops drawing.
   const seen = new IntersectionObserver(([entry]) => {
