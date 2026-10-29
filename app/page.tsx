@@ -164,7 +164,7 @@ export default function Personal() {
                 San Francisco
               </span>
               <span>
-                <b>Last Updated</b>: Oct 6, 2026
+                <b>Last Updated</b>: Oct 29, 2026
               </span>
             </div>
           </div>
