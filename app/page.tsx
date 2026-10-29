@@ -111,8 +111,6 @@ export default function Personal() {
           </ExperienceLink>{' '}
         </div>
         <p className="link-row" data-avoid>
-          <CopyEmail />
-          <span className="sep">/</span>
           <a className="link-quiet" href="https://github.com/stanley-910">
             github
           </a>
@@ -132,6 +130,8 @@ export default function Personal() {
           >
             resume
           </a>
+          <span className="sep">/</span>
+          <CopyEmail />
         </p>
       </GardenHome>
       <motion.main
