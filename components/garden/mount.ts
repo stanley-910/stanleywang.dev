@@ -76,6 +76,7 @@ export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
   let hourLabel = ''
   let edgeCss = ''
   let panelCss = ''
+  let inkCss = ''
 
   const showHour = () => {
     const h = Math.floor(hour) % 24
@@ -128,6 +129,21 @@ export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
       root.style.setProperty('--garden-panel', (panelCss = css))
   }
 
+  /**
+   * The text over the scene (the bio, and the top bar on a dark sky) takes
+   * the hour's cream, muted toward the ground, more so the deeper the night,
+   * so it sits in the scene rather than glaring white (garden.css).
+   */
+  const matchInk = (p: Palette) => {
+    const ink = mix(p.panelInk, p.ground, 0.1 + 0.2 * p.night)
+    const muted = mix(ink, p.ground, 0.22)
+    const rgb = (c: Rgb) => `rgb(${c[0] | 0} ${c[1] | 0} ${c[2] | 0})`
+    const css = rgb(ink)
+    if (css === inkCss) return
+    html.style.setProperty('--garden-ink', (inkCss = css))
+    html.style.setProperty('--garden-ink-muted', rgb(muted))
+  }
+
   /** Window px → scene px, from the canvas's own top-left. */
   const sceneRect = (b: DOMRect, origin: DOMRect): Rect => ({
     left: toScene(b.left - origin.left),
@@ -160,6 +176,7 @@ export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
     matchEdge(palette)
     matchSky(palette)
     matchPanel(palette)
+    matchInk(palette)
     garden.hour = hour
     if (now || !raster.busy) {
       raster.clear()
@@ -421,5 +438,7 @@ export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
     raster.dispose()
     window.removeEventListener(HOUR_EVENT, onHourChange)
     delete html.dataset.sky
+    html.style.removeProperty('--garden-ink')
+    html.style.removeProperty('--garden-ink-muted')
   }
 }

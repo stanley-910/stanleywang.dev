@@ -38,8 +38,9 @@
 /* On home the bar sits on the sky; mount.ts picks the ink that reads best
    against it, whatever the page theme. */
 :root[data-sky='dark'] .site-header {
-  --ink: #e4e2da;
-  --ink-muted: #b4b2aa;
+  /* The hour's toned cream (mount.ts), as on the bio. */
+  --ink: var(--garden-ink, #e4e2da);
+  --ink-muted: var(--garden-ink-muted, #b4b2aa);
   --glass: #10141c;
 }
 
@@ -53,8 +54,8 @@
    the night page's colours; its hover cards take the hour's panel. */
 .garden-hero {
   --page: var(--page-dark);
-  --ink: #e4e2da;
-  --ink-muted: #9d9b94;
+  --ink: var(--garden-ink, #e4e2da);
+  --ink-muted: var(--garden-ink-muted, #9d9b94);
   --hairline: #6a6964;
   /* mount.ts tints it with the hour. */
   --surface: var(--garden-panel, #242422);
