@@ -86,7 +86,7 @@ export const PROJECTS: Project[] = [
     demoMascot: 'pip',
     github: 'https://github.com/stanley-910/portal',
     id: 'portal',
-    category: 'Web',
+    category: 'Agentic Commerce',
   },
   {
     name: 'Mini Compiler',
