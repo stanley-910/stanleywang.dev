@@ -77,6 +77,8 @@ type GardenOptions = {
   /** Called once the scene is up, with a way to grow the poem's rose, rooted `x` (a share of
    * the screen's width) across, to `grown` (0 to 1, full flower). */
   onReady?: (scene: { rose: (x: number, grown: number) => void }) => void
+  /** The scene's zoom in place of SCENE_ZOOM: lower is a finer grid (the poem, for its rose). */
+  zoom?: number
 }
 
 function localHour() {
@@ -94,16 +96,17 @@ export function mountGarden({
   scrub = true,
   visitors = 'butterflies',
   onReady,
+  zoom: sceneZoom = SCENE_ZOOM,
 }: GardenOptions) {
   const html = document.documentElement
   const quality = new Quality()
-  let zoom = SCENE_ZOOM
+  let zoom = sceneZoom
   const toScene = (v: number) => v / zoom
-  /** The scene's zoom for a canvas this size in CSS px: SCENE_ZOOM, or closer within the budget. */
+  /** The scene's zoom for a canvas this size in CSS px: sceneZoom, or closer within the budget. */
   const zoomFor = (w: number, h: number) => {
     const cellArea = CELL * Math.round(CELL * 1.32)
     const fit = Math.sqrt((w * h) / (cellArea * CELL_BUDGET))
-    return Math.max(SCENE_ZOOM, fit) * (quality.coarse ? COARSE_ZOOM : 1)
+    return Math.max(sceneZoom, fit) * (quality.coarse ? COARSE_ZOOM : 1)
   }
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)')
   const coarse = window.matchMedia('(pointer: coarse)')
