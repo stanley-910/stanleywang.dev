@@ -31,6 +31,15 @@ const PEN_EE3 = {
 
 export const PHOTOS: Photo[] = [
   {
+    id: 'XT302381',
+    src: '/images/film/yosemite-XT302381.jpg',
+    width: 4160,
+    height: 6240,
+    alt: 'Yosemite, CA.',
+    location: 'Yosemite, CA',
+    camera: 'Fujifilm X-T30 III',
+  },
+  {
     id: 'XT304576',
     src: '/images/film/zhangjiajie-XT304576.jpg',
     width: 6240,
