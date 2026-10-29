@@ -368,6 +368,7 @@ export class Garden {
     layer: number,
     toward: number,
     reach: number,
+    clear: number,
   ) {
     const lit = new Shape()
     const shade = new Shape()
@@ -377,6 +378,9 @@ export class Garden {
     // instead of flickering with every crease: down toward the light faces it.
     const W = 6
     const face = (i: number) => {
+      // Right under the sun or moon the ridge stands in front of it, its near face turned away:
+      // lit there, the slope would print as the globe showing through the hill.
+      if (Math.abs(i * RIDGE_STEP - toward) < clear) return 0
       const dy = ridge[Math.min(n - 1, i + W)] - ridge[Math.max(0, i - W)]
       return Math.abs(dy) < 2
         ? 0
@@ -676,7 +680,7 @@ export class Garden {
     const colors = this.ridgeColors(p)
     // Slopes facing the sun (or moon) catch light under the crest and the far sides fall into
     // shade. Only the glyphs carry it: lit slopes print a denser, brighter halftone.
-    const { cx } = this.globeAt()
+    const { cx, R } = this.globeAt()
     const { light, color: lightCol } = this.slopeLight(p)
     this.ridges.forEach((ridge, layer) => {
       r.fill(this.ridgePath(ridge, this.height + 10), colors[layer], Kind.Land)
@@ -687,7 +691,7 @@ export class Garden {
         : []
       ).entries()) {
         const s = q * (0.35 + 0.65 * (k / 3))
-        const { lit, shade } = this.slopes(ridge, layer, cx, reach)
+        const { lit, shade } = this.slopes(ridge, layer, cx, reach, R * 1.5)
         r.fill(
           lit,
           mix(colors[layer], lightCol, Math.min(1, 1.6 * light * s)),
