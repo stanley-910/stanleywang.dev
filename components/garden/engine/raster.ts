@@ -181,6 +181,8 @@ export class Raster {
   version = 0
   /** Frames the workers have sent back. */
   private replies = 0
+  /** A worker's time on one frame, in ms, averaged over the last few; 0 until warm. */
+  frameMs = 0
 
   constructor() {
     if (typeof Worker === 'undefined' || typeof OffscreenCanvas === 'undefined')
@@ -194,9 +196,15 @@ export class Raster {
         const w = new Worker(new URL('./raster.worker.ts', import.meta.url), {
           type: 'module',
         })
-        w.onmessage = (e: MessageEvent<RasterResult & { seq: number }>) => {
+        w.onmessage = (
+          e: MessageEvent<RasterResult & { seq: number; ms: number }>,
+        ) => {
           this.idle.push(w)
           this.replies++
+          if (this.warm)
+            this.frameMs = this.frameMs
+              ? this.frameMs + (e.data.ms - this.frameMs) * 0.1
+              : e.data.ms
           const job = this.inFlight.get(e.data.seq)
           this.inFlight.delete(e.data.seq)
           // A later frame may already be on screen; an older one arriving after it is dropped.

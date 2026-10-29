@@ -10,7 +10,12 @@ const rasterizer = new Rasterizer(() => {
 })
 
 self.onmessage = (e: MessageEvent<RasterJob & { seq: number }>) => {
-  const out = { ...rasterizer.run(e.data), seq: e.data.seq }
+  const began = performance.now()
+  const out = {
+    ...rasterizer.run(e.data),
+    seq: e.data.seq,
+    ms: performance.now() - began,
+  }
   const transfer = Object.values(out.material).map((a) => a.buffer)
   self.postMessage(out, { transfer: transfer as Transferable[] })
 }

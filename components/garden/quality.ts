@@ -49,6 +49,14 @@ const PLANT_CAPS = [40, 30, 20, 20]
  */
 const AWAY_PLANTS = 12
 const AWAY_FPS = 30
+/**
+ * Worker time the plants may take, in ms a second: about one core. A machine whose frames take
+ * longer redraws them less often, down to MIN_PLANTS, rather than keeping more cores busy.
+ */
+const PLANT_BUDGET = 1000
+const MIN_PLANTS = 20
+/** Plant redraws per second once nobody has touched the page for a while. */
+const IDLE_PLANTS = 30
 /** Refresh rates displays run at, for the measured one to snap to. */
 const RATES = [30, 48, 50, 60, 72, 75, 90, 100, 120, 144, 165, 240]
 const HALF_RATE = 3
@@ -115,6 +123,10 @@ export class Quality {
    * the plants' beat rather than every display frame.
    */
   calm = false
+  /** Whether nobody has touched the page for a while, so the plants can slow a little more. */
+  idle = false
+  /** A worker's time on one plant frame, in ms (raster.ts); 0 until known. */
+  frameMs = 0
 
   constructor() {
     const saved = load()
@@ -129,9 +141,23 @@ export class Quality {
     this.coarse = this.wantCoarse = saved?.coarse ?? false
   }
 
-  /** Whether the plants may be recorded again now, under this level's cap. */
+  /**
+   * How often the plants may redraw now, per second: the level's cap, lowered while idle and to
+   * keep within PLANT_BUDGET, then snapped to a whole number of display frames so the beat is even.
+   */
+  plantRate() {
+    if (this.away) return AWAY_PLANTS
+    let cap = PLANT_CAPS[this.level]
+    if (this.idle) cap = Math.min(cap, IDLE_PLANTS)
+    if (this.frameMs > 0)
+      cap = Math.min(cap, Math.max(MIN_PLANTS, PLANT_BUDGET / this.frameMs))
+    const hz = this.hz || 60
+    return hz / Math.ceil(hz / cap - 0.01)
+  }
+
+  /** Whether the plants may be recorded again now, under plantRate. */
   mayRecord(now: number) {
-    const cap = this.away ? AWAY_PLANTS : PLANT_CAPS[this.level]
+    const cap = this.plantRate()
     // A tenth of slack so a cap that lands on the display's rate isn't missed by rAF jitter.
     if (now - this.lastRecord < (1000 / cap) * 0.9) return false
     this.lastRecord = now
@@ -146,7 +172,7 @@ export class Quality {
     const every = (fps: number) =>
       Math.max(1, Math.round((this.hz || 60) / fps))
     if (this.away) return frame % every(AWAY_FPS) !== 0
-    if (this.calm) return frame % every(PLANT_CAPS[this.level]) !== 0
+    if (this.calm) return frame % every(this.plantRate()) !== 0
     return this.level >= HALF_RATE && this.hz > 90 && frame % 2 === 1
   }
 
@@ -247,7 +273,7 @@ export class Quality {
     if (this.plantRates.length < PLANT_WINDOWS) return
     if (this.plantRates.length > PLANT_WINDOWS) this.plantRates.shift()
     const mean = this.plantRates.reduce((a, b) => a + b, 0) / PLANT_WINDOWS
-    const cap = PLANT_CAPS[this.level]
+    const cap = this.plantRate()
     // Well under the cap, the workers are what holds the plants back. Only the finest level's
     // cap can show them keeping up.
     const want =

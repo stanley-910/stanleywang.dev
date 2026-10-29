@@ -21,6 +21,8 @@ const MAX_STEPS = 6
 const MEASURE_EVERY = 30
 /** How long after the cursor or a scrub last moved, in ms, the page keeps drawing every frame. */
 const LIVELY_FOR = 1000
+/** How long, in ms, with no cursor or scrub before the plants slow to quality.ts's IDLE_PLANTS. */
+const IDLE_AFTER = 10000
 
 // The site's page colours (tokens.css); the scene fades into them.
 const PAGE: Record<'dark' | 'light', Rgb> = {
@@ -563,10 +565,10 @@ export function mountGarden({
     if (steps === MAX_STEPS) acc = 0
     if (++frames % MEASURE_EVERY === 0) measure()
     // The cursor's light and a shooting star move every display frame; the rest on the plants' beat.
-    quality.calm =
-      now - Math.max(lastMove, lastScrub) > LIVELY_FOR &&
-      scrubVel === 0 &&
-      !meteors.alive
+    const still = now - Math.max(lastMove, lastScrub)
+    quality.calm = still > LIVELY_FOR && scrubVel === 0 && !meteors.alive
+    quality.idle = quality.calm && still > IDLE_AFTER
+    quality.frameMs = raster.frameMs
     if (!quality.skip(frames)) draw()
     quality.frame(
       now,
@@ -607,7 +609,8 @@ export function mountGarden({
 
   // ── input ─────────────────────────────────────────────────────────
 
-  let lastMove = 0
+  // Arriving counts as a touch, so the meadow starts at its full rate.
+  let lastMove = performance.now()
   const onMove = (e: PointerEvent) => {
     const origin = canvas.getBoundingClientRect()
     const x = toScene(e.clientX - origin.left)
