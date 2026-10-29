@@ -43,6 +43,112 @@ const TUFTS = [
 
 type Glyph = { glyph: string; color: string } | null
 
+// Two far flowers from the garden's MOTIFS (poppy.small, cosmos.small),
+// coloured as the garden colours them at sunset. Each char maps to its
+// colour; spaces draw nothing.
+const POPPY = {
+  rows: [' .-. ', '(*@*)'],
+  colors: {
+    '.': '#ff9e85',
+    '-': '#ff9e85',
+    '(': '#ff9e85',
+    ')': '#ff9e85',
+    '*': '#ff7252',
+    '@': '#7d1f2a', // sunset-poppy-deep, so the eye shows on the dark page
+  } as Record<string, string>,
+}
+const COSMOS = {
+  rows: ['\\|/', '-o-', '/|\\'],
+  colors: { o: '#ffb04a' } as Record<string, string>, // sunset-dandelion
+  petal: '#f8caba',
+}
+const STEM = '#9a6c50' // sunset-stem
+
+type Placed = {
+  glyph: string
+  color: string
+  left: number
+  top: number
+  // A 26px stalk fills its 26px line, so the stalk reads unbroken.
+  size: number
+}
+
+// A flower's head drawn from its top left cell, and a stalk of `stalk` cells
+// from `stalkLeft` down from `stalkTop`.
+function flower(
+  art: { rows: string[]; colors: Record<string, string>; petal?: string },
+  left: number,
+  top: number,
+  stalkLeft: number,
+  stalkTop: number,
+  stalk: number,
+): Placed[] {
+  const head = art.rows.flatMap((row, y) =>
+    [...row].flatMap((glyph, x) =>
+      glyph === ' '
+        ? []
+        : [
+            {
+              glyph,
+              color: art.colors[glyph] ?? art.petal ?? STEM,
+              left: left + x * CELL.width,
+              top: top + y * CELL.height,
+              size: 20,
+            },
+          ],
+    ),
+  )
+  const stalkCells = Array.from({ length: stalk }, (_, i) => ({
+    glyph: '|',
+    color: STEM,
+    left: stalkLeft,
+    top: stalkTop + i * CELL.height,
+    size: CELL.height,
+  }))
+  return [...head, ...stalkCells]
+}
+
+// Over the graph, the flowers sit half a cell right of its columns, so each
+// stalk runs down the gap between two weeks and covers no day.
+const FLOWERS_OVER_GRAPH = [
+  ...flower(POPPY, 854, 202, 894, 254, 12),
+  ...flower(COSMOS, 994, 280, 1014, 358, 8),
+]
+
+// Over the fallback's grass, they drop onto its grid and each stalk runs
+// into a tuft's centre blade.
+const FLOWERS_OVER_GRASS = [
+  ...flower(POPPY, 864, 384, 904, 436, 3),
+  ...flower(COSMOS, 1004, 410, 1024, 488, 2),
+]
+
+// A plain function, not a component: Satori can't render a component that
+// returns an array.
+function flowers(glyphs: Placed[]) {
+  return glyphs.map(({ glyph, color, left, top, size }) => (
+    <div
+      key={`${left},${top}`}
+      style={{
+        display: 'flex',
+        position: 'absolute',
+        left,
+        top,
+        width: CELL.width,
+        height: CELL.height,
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: 'Geist Mono',
+        fontWeight: 500,
+        fontSize: size,
+        lineHeight: `${CELL.height}px`,
+        color,
+      }}
+    >
+      {glyph}
+    </div>
+  ))
+}
+
 function font(file: string) {
   return readFile(join(process.cwd(), 'public/fonts/geist', file))
 }
@@ -164,6 +270,7 @@ export default async function Image() {
           stanleywang.dev
         </div>
         {graph}
+        {flowers(calendar ? FLOWERS_OVER_GRAPH : FLOWERS_OVER_GRASS)}
       </div>
     ),
     {
