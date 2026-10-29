@@ -1,0 +1,245 @@
+// Fits the meadow to the machine it lands on. The page's frame rate says whether the main thread
+// keeps up with the display; the plants' redraw rate says whether the raster workers do. When the
+// page falls behind, the plants redraw less often, since recording them is the main thread's
+// biggest cost; when the workers fall behind, the next visit uses a coarser grid. After
+// drei's PerformanceMonitor (a windowed vote) and hls.js (a remembered level); see
+// docs/perf/2026-10-29-adaptive-and-gpu-research.md.
+
+/** Length of one measuring window, in ms. */
+const WINDOW = 250
+/** Windows in a vote: 2.5 s. */
+const WINDOWS = 10
+/** Windows behind out of the last WINDOWS that step quality down. */
+const DOWN_VOTES = 8
+/** Windows in a row with time to spare before quality steps back up: 10 s. */
+const UP_WINDOWS = 40
+/** A window is behind under this share of the display's rate. */
+const BEHIND = 0.8
+/** Main-thread work per frame, as a share of the frame, low enough to try a step up. */
+const SPARE = 0.5
+/** Steps back up that went wrong again before the level stays put. */
+const MAX_FLIPS = 2
+/** Plant redraws per second below which the workers can't keep up at this grid. */
+const SLOW_PLANTS = 20
+/** Plant redraws per second at the finest level that show a coarse grid isn't needed. */
+const FAST_PLANTS = 45
+/** Windows the plant rate is averaged over before it decides the grid: 5 s. */
+const PLANT_WINDOWS = 20
+/**
+ * Windows the display's rate is the highest of: 1.5 s, shorter than a vote, so when the display
+ * itself slows (a laptop dropping to 60 Hz to save power) the rate follows it before the vote can
+ * count the page as behind.
+ */
+const RATE_WINDOWS = 6
+/** Ignores the first windows after a start, while the page and the workers settle. */
+const SETTLE = 8
+
+/**
+ * The ladder, cheapest loss first. Each step caps how often the plants redraw (per second); the
+ * last also draws the page every other frame on a display over 90 Hz.
+ */
+const PLANT_CAPS = [Infinity, 60, 30, 30]
+/** Refresh rates displays run at, for the measured one to snap to. */
+const RATES = [30, 48, 50, 60, 72, 75, 90, 100, 120, 144, 165, 240]
+const HALF_RATE = 3
+
+const KEY = 'garden-quality'
+
+type Saved = { level: number; coarse: boolean }
+
+function load(): Saved | null {
+  try {
+    const raw = localStorage.getItem(KEY)
+    if (!raw) return null
+    const s = JSON.parse(raw) as Partial<Saved>
+    if (typeof s.level !== 'number' || typeof s.coarse !== 'boolean')
+      return null
+    return { level: s.level, coarse: s.coarse }
+  } catch {
+    return null
+  }
+}
+
+function save(s: Saved) {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(s))
+  } catch {
+    // Storage blocked or full: the level is relearnt next visit.
+  }
+}
+
+export class Quality {
+  /** The step on the ladder, 0 for full quality. */
+  level = 0
+  /** Whether this visit lays the scene on a coarser grid, decided on an earlier one. */
+  readonly coarse: boolean
+  /**
+   * The display's rate, from the short gaps between frames: rAF times fall on the display's
+   * refresh, so a page that misses frames still shows the true rate between the ones it makes.
+   */
+  private hz = 0
+  private rates: number[] = []
+  private gaps: number[] = []
+  private lastFrame = -1
+  private windowStart = -1
+  private frames = 0
+  private work = 0
+  private plantsAt = 0
+  private behind: boolean[] = []
+  private spare = 0
+  private plantRates: number[] = []
+  private settle = SETTLE
+  private flips = 0
+  /** Windows since the last step; a step up that has held for UP_WINDOWS no longer counts as a flip. */
+  private held = 0
+  private steppedUp = false
+  private pinned = false
+  private lastRecord = -Infinity
+  private wantCoarse: boolean
+
+  constructor() {
+    const saved = load()
+    const slowHint =
+      (navigator.hardwareConcurrency || 8) <= 4 ||
+      (navigator as Navigator & { connection?: { saveData?: boolean } })
+        .connection?.saveData === true
+    this.level = Math.min(
+      PLANT_CAPS.length - 1,
+      Math.max(0, Math.round(saved?.level ?? (slowHint ? 1 : 0))),
+    )
+    this.coarse = this.wantCoarse = saved?.coarse ?? false
+  }
+
+  /** Whether the plants may be recorded again now, under this level's cap. */
+  mayRecord(now: number) {
+    const cap = PLANT_CAPS[this.level]
+    // A tenth of slack so a cap that lands on the display's rate isn't missed by rAF jitter.
+    if (now - this.lastRecord < (1000 / cap) * 0.9) return false
+    this.lastRecord = now
+    return true
+  }
+
+  /** Whether this frame should skip drawing, to run the page at half the display's rate. */
+  skip(frame: number) {
+    return this.level >= HALF_RATE && this.hz > 90 && frame % 2 === 1
+  }
+
+  /** Forgets the current windows, after a pause or while something else loads the page. */
+  reset() {
+    this.windowStart = -1
+    this.lastFrame = -1
+    this.gaps = []
+    this.rates = []
+    this.hz = 0
+    this.behind = []
+    this.spare = 0
+    this.settle = SETTLE
+  }
+
+  /**
+   * Counts one display frame, drawn or skipped, given the main thread's work on it in ms and how
+   * many plant frames have arrived so far. `quiet` is false while the page does work of its own
+   * (a scrub or a new hour restyling it, a resize redrawing the scene).
+   */
+  frame(now: number, work: number, plants: number, quiet: boolean) {
+    if (this.lastFrame >= 0) this.gaps.push(now - this.lastFrame)
+    this.lastFrame = now
+    if (this.windowStart < 0) {
+      this.windowStart = now
+      this.frames = 0
+      this.work = 0
+      this.plantsAt = plants
+      return
+    }
+    this.frames++
+    this.work += work
+    if (now - this.windowStart < WINDOW) return
+    const span = now - this.windowStart
+    const fps = (this.frames * 1000) / span
+    const plantFps = ((plants - this.plantsAt) * 1000) / span
+    const meanWork = this.work / this.frames
+    this.windowStart = now
+    this.frames = 0
+    this.work = 0
+    this.plantsAt = plants
+    if (!quiet || this.settle > 0) this.gaps = []
+    if (!quiet) return
+    if (this.settle > 0) {
+      this.settle--
+      return
+    }
+    // Frames skipped on purpose still come through here, so fps counts against the display.
+    const rate = this.refresh()
+    if (rate > 0) this.rates.push(rate)
+    if (this.rates.length > RATE_WINDOWS) this.rates.shift()
+    const hz = Math.max(0, ...this.rates)
+    // Votes cast against another rate no longer hold.
+    if (hz !== this.hz) this.behind = []
+    this.hz = hz
+    if (hz === 0) return
+    this.vote(fps, meanWork)
+    this.plants(plantFps)
+  }
+
+  /**
+   * This window's refresh rate: a short gap, but not the shortest, which a late frame catching up
+   * can halve, snapped to a rate displays run at.
+   */
+  private refresh() {
+    const gaps = this.gaps.sort((a, b) => a - b)
+    this.gaps = []
+    if (gaps.length < 4) return 0
+    const hz = 1000 / gaps[Math.floor(gaps.length * 0.2)]
+    return RATES.reduce((best, r) =>
+      Math.abs(r - hz) < Math.abs(best - hz) ? r : best,
+    )
+  }
+
+  private vote(fps: number, work: number) {
+    this.behind.push(fps < this.hz * BEHIND)
+    if (this.behind.length > WINDOWS) this.behind.shift()
+    const late = this.behind.filter(Boolean).length
+    if (++this.held >= UP_WINDOWS) this.steppedUp = false
+    if (late >= DOWN_VOTES && this.level < PLANT_CAPS.length - 1) {
+      if (this.steppedUp && ++this.flips >= MAX_FLIPS) this.pinned = true
+      this.steppedUp = false
+      this.set(this.level + 1)
+      return
+    }
+    this.spare =
+      late === 0 && work < (1000 / this.hz) * SPARE ? this.spare + 1 : 0
+    if (this.spare >= UP_WINDOWS && this.level > 0 && !this.pinned) {
+      this.steppedUp = true
+      this.set(this.level - 1)
+    }
+  }
+
+  /** Decides the next visit's grid from how fast the workers return frames. */
+  private plants(fps: number) {
+    this.plantRates.push(fps)
+    if (this.plantRates.length < PLANT_WINDOWS) return
+    if (this.plantRates.length > PLANT_WINDOWS) this.plantRates.shift()
+    const mean = this.plantRates.reduce((a, b) => a + b, 0) / PLANT_WINDOWS
+    const cap = PLANT_CAPS[this.level]
+    // Well under the cap, the workers are what holds the plants back. Only a cap above
+    // FAST_PLANTS can show them keeping up.
+    const want =
+      mean < Math.min(SLOW_PLANTS, cap * 0.6)
+        ? true
+        : cap > FAST_PLANTS && mean >= FAST_PLANTS
+          ? false
+          : this.wantCoarse
+    if (want === this.wantCoarse) return
+    this.wantCoarse = want
+    save({ level: this.level, coarse: want })
+  }
+
+  private set(level: number) {
+    this.level = level
+    this.behind = []
+    this.spare = 0
+    this.held = 0
+    this.settle = 2
+    save({ level, coarse: this.wantCoarse })
+  }
+}

@@ -161,6 +161,10 @@ still be needed.
 
 ## Noticed, not yet looked at
 
+Both items below, and the adaptive quality design above, were followed up in
+[2026-10-29-adaptive-quality.md](2026-10-29-adaptive-quality.md). The opening's stutter turned out
+to be cold workers, not the number of plants.
+
 - **The opening stutters** while the flowers sprout on a fresh load. During growth every plant
   changes shape each frame, so no raster can be reused, and the page is also still loading. Profile
   this before deciding whether there are too many plants. `maxPlants` is one per 26 scene px of width.

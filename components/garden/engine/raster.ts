@@ -16,6 +16,11 @@ import type { Material, Style } from './typeset'
 export { Kind, SS }
 /** How long a worker may hold a frame before the raster gives up on workers. */
 const WORKER_TIMEOUT = 1000
+/**
+ * Worker replies before the workers count as warm. Their first frames come back several times
+ * slower than later ones while their code compiles, so the opening waits them out.
+ */
+const WARM_REPLIES = 3
 
 /** A flower head drawn this frame, so far ones can print as a stamped motif instead. */
 export type Head = {
@@ -156,6 +161,8 @@ export class Raster {
   private local: Rasterizer | null = null
   /** Bumped each time a frame's pixels are adopted, so readers can skip re-reading the same frame. */
   version = 0
+  /** Frames the workers have sent back. */
+  private replies = 0
 
   constructor() {
     if (typeof Worker === 'undefined' || typeof OffscreenCanvas === 'undefined')
@@ -171,6 +178,7 @@ export class Raster {
         })
         w.onmessage = (e: MessageEvent<RasterResult & { seq: number }>) => {
           this.idle.push(w)
+          this.replies++
           const job = this.inFlight.get(e.data.seq)
           this.inFlight.delete(e.data.seq)
           // A later frame may already be on screen; an older one arriving after it is dropped.
@@ -205,6 +213,11 @@ export class Raster {
       this.workers = []
       this.idle = []
     }
+  }
+
+  /** Whether the workers are past their slow first frames, or there are none to wait for. */
+  get warm() {
+    return this.workers.length === 0 || this.replies >= WARM_REPLIES
   }
 
   /** Every worker has a frame; recording another now would only queue behind them. */

@@ -228,6 +228,11 @@ export class Garden {
     return head > b.top - this.height * 0.08
   }
 
+  /** Whether the first load's grow-in is still to finish. */
+  get growing() {
+    return this.intro < INTRO
+  }
+
   /** Jump straight to the grown garden, for reduced motion. */
   skipIntro() {
     this.intro = INTRO
@@ -470,7 +475,10 @@ export class Garden {
     if (this.intro < INTRO) {
       this.intro += dt
       const k = easeInOut(Math.min(1, this.intro / INTRO))
-      for (const [plant, age] of this.targetAge) plant.age = age * k - dt
+      for (const [plant, age] of this.targetAge) {
+        plant.age = age * k - dt
+        plant.calm = 1
+      }
       this.meadow.grow = Math.min(1, this.intro / (INTRO * 0.7))
       if (this.intro >= INTRO) {
         this.targetAge.clear()

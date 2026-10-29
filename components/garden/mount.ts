@@ -10,6 +10,7 @@ import { mix, paletteAt, type Palette, type Rgb } from './engine/palette'
 import { Raster } from './engine/raster'
 import { Wind } from './engine/wind'
 import { playIntro } from './intro'
+import { Quality } from './quality'
 
 // Stepped at 120 Hz so a 120 Hz display gets a new pose every frame; the stems' springs scale
 // with the step, so their motion is the same at any rate.
@@ -30,6 +31,13 @@ const PAGE: Record<'dark' | 'light', Rgb> = {
 const SCENE_ZOOM = 0.64
 /** Cell width in scene px: the prototype's finest grid. */
 const CELL = 5
+/**
+ * Most cells the grid lays out, about a 27-inch 1440p window's worth at SCENE_ZOOM. A bigger
+ * window zooms the scene in instead, so its cost stops growing with its area.
+ */
+const CELL_BUDGET = 270_000
+/** How much further a machine too slow for the full grid zooms in (quality.ts). */
+const COARSE_ZOOM = 1.25
 
 /** Hours of scene time per pixel of sideways scroll: a day is about three screen-widths. */
 const HOURS_PER_PX = 1 / 120
@@ -81,8 +89,15 @@ export function mountGarden({
   scrub = true,
 }: GardenOptions) {
   const html = document.documentElement
-  const zoom = SCENE_ZOOM
+  const quality = new Quality()
+  let zoom = SCENE_ZOOM
   const toScene = (v: number) => v / zoom
+  /** The scene's zoom for a canvas this size in CSS px: SCENE_ZOOM, or closer within the budget. */
+  const zoomFor = (w: number, h: number) => {
+    const cellArea = CELL * Math.round(CELL * 1.32)
+    const fit = Math.sqrt((w * h) / (cellArea * CELL_BUDGET))
+    return Math.max(SCENE_ZOOM, fit) * (quality.coarse ? COARSE_ZOOM : 1)
+  }
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)')
   const wind = new Wind()
   wind.strength = 0.6
@@ -224,7 +239,7 @@ export function mountGarden({
     matchPanel(palette)
     matchInk(palette)
     garden.hour = hour
-    if (now || !raster.busy) {
+    if (now || (!raster.busy && quality.mayRecord(performance.now()))) {
       raster.clear()
       garden.draw(raster, palette)
       if (hill.length !== ascii.cols) hill = new Float32Array(ascii.cols)
@@ -244,15 +259,24 @@ export function mountGarden({
       backdrop: (ctx) => garden.backdrop(ctx, palette),
       backdropKey: garden.backdropKey(palette),
     })
-    playIntro()
+    // The opening shows the meadow once the workers are past their slow first frames.
+    if (raster.warm) playIntro()
   }
+
+  /** The canvas size and density last laid out, so a callback at the same size does nothing. */
+  let laidOut = ''
 
   const resize = () => {
     const box = canvas.getBoundingClientRect()
+    const dpr = Math.min(window.devicePixelRatio || 1, 2)
+    const size = `${box.width}/${box.height}/${dpr}`
+    if (box.width === 0 || box.height === 0 || size === laidOut) return
+    laidOut = size
+    busy()
+    zoom = zoomFor(box.width, box.height)
     const w = toScene(box.width)
     const h = toScene(box.height)
-    if (w === 0 || h === 0) return
-    ascii.resize(w, h, Math.min(window.devicePixelRatio || 1, 2) * zoom, CELL)
+    ascii.resize(w, h, dpr * zoom, CELL)
     raster.resize(ascii.cols, ascii.rows, ascii.cw, ascii.ch)
     if (w !== width || h !== height) {
       width = w
@@ -278,6 +302,12 @@ export function mountGarden({
   // ── scrubbing the hour ────────────────────────────────────────────
 
   let scrubVel = 0
+  /**
+   * Until when the page is busy with work of its own (restyling for a new hour, laying out a new
+   * size), so quality.ts doesn't take the slow frames for a slow machine.
+   */
+  let busyUntil = 0
+  const busy = () => (busyUntil = Math.max(busyUntil, performance.now() + 500))
   let lastWheel = 0
   /** When the wheel or a finger last moved the hour, on the event clock. */
   let lastScrub = 0
@@ -307,6 +337,7 @@ export function mountGarden({
   const scrubBy = (px: number, at: number) => {
     const dt = Math.max(8, Math.min(100, at - lastScrub)) / 1000
     lastScrub = at
+    busy()
     scrubVel +=
       (Math.max(-GLIDE_MAX, Math.min(GLIDE_MAX, px / dt)) - scrubVel) * 0.4
     setScrubHour(hour + px * HOURS_PER_PX)
@@ -318,6 +349,7 @@ export function mountGarden({
 
   // The hour set elsewhere: the time slider, or its `now`.
   const onHourChange = () => {
+    busy()
     const now = currentHour()
     hour = now.hour
     live = !now.set
@@ -406,12 +438,15 @@ export function mountGarden({
   // ── loop ──────────────────────────────────────────────────────────
 
   const frame = (now: number) => {
+    const began = performance.now()
     // Set here rather than on mount: React's dev double-mount tears the first one down before
     // any frame runs.
     grownBefore = true
     const dt = Math.min(0.1, (now - last) / 1000)
     last = now
-    acc += dt
+    // The grow-in waits for the workers to warm, so the flowers come up smoothly from the start
+    // rather than in jumps; meanwhile the workers rasterise the bare meadow, hidden (intro.ts).
+    acc += garden.growing && !raster.warm ? 0 : dt
     glide(dt, now)
     sendHour()
     if (live && frames % 60 === 0) {
@@ -428,7 +463,13 @@ export function mountGarden({
     }
     if (steps === MAX_STEPS) acc = 0
     if (++frames % MEASURE_EVERY === 0) measure()
-    draw()
+    if (!quality.skip(frames)) draw()
+    quality.frame(
+      now,
+      performance.now() - began,
+      raster.version,
+      now > busyUntil,
+    )
     raf = requestAnimationFrame(frame)
   }
 
@@ -452,6 +493,7 @@ export function mountGarden({
       return
     }
     last = performance.now()
+    quality.reset()
     raf = requestAnimationFrame(frame)
   }
 
