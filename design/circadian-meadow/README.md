@@ -72,7 +72,7 @@ Each cell of the grid reads the material under it and prints from that material'
 - **Petals:** line glyphs along the outline, light glyphs inside over a faint colour tile. The silhouette carries the species. Outlines print paler than the petal (22% toward white by day, 55% at night), so dark night flowers keep their edge.
 - **Centres:** `@` or `#` in `*-disc`.
 - **Stalks, blades and wires:** the line glyph nearest the stroke's direction (`- \ | /`).
-- **Clouds and hills:** ordered-dither halftone. Hills are solid ridges with a depth haze; sun- or moonlit flanks thicken into `.·:;` toward the crest and the far side goes bare. Light lives in glyphs only: no painted gradients or 3D shading on the land.
+- **Clouds and hills:** ordered-dither halftone. Hills are solid ridges with a depth haze; sun- or moonlit flanks thicken into `.·:;` toward the crest and the far side goes bare. Each mountainside takes the light as one flat plane, sunlit or shaded (see `components/Ridgeline`); no painted gradients or 3D shading beyond that. The far range carries snow above a ragged snowline, and conifers line the middle ridge.
 - **Sun and moon:** glyphs only, no painted disc. The moon keeps its phase, and its holes show.
 - **Lace and seed heads:** a soft tile in the head's own colour with the glyphs inked against it, so a pale head holds against a pale hill.
 - **Far flowers:** a bare motif with no tile, always behind nearer heads.

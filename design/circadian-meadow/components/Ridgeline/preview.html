@@ -1,0 +1,370 @@
+<!-- @dsCard group="Site" height=1260 subtitle="Snow caps, sun and moon light on the ridges, and the conifer line on the middle ridge, at dawn, noon, dusk and night" -->
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Ridgeline</title>
+<style>
+  body { margin: 0; background: var(--page); color: var(--ink); font: 15px/24px var(--font-sans); }
+  .wrap { padding: var(--space-3); }
+  .bar { display: flex; gap: var(--space-2); align-items: center; margin: 0 0 var(--space-3); font: 12px/16px var(--font-mono); color: var(--ink-muted); }
+  .bar button { font: inherit; color: var(--ink-muted); background: none; border: 1px solid var(--hairline); padding: 4px 10px; cursor: pointer; border-radius: 0; }
+  .bar button[aria-pressed="true"] { color: var(--ink); border-color: var(--ink); }
+  .row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: flex-end; margin: 0 0 var(--space-3); }
+  figure { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+  figcaption { font: 12px/16px var(--font-mono); color: var(--ink-muted); }
+  canvas { display: block; max-width: 100%; height: auto; }
+  .note { font: 12px/16px var(--font-mono); color: var(--ink-muted); margin: 0 0 var(--space-3); max-width: 54rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="bar" role="group" aria-label="Version">
+    <button type="button" data-mode="before" aria-pressed="false">Before</button>
+    <button type="button" data-mode="after" aria-pressed="true">After</button>
+  </div>
+  <p class="note">The painted layer only (backdrop), seed 1, as the engine lays it out: desktop is 1440×762 CSS px (2250×1190 scene px), phone 375×812 (586×1269). The band runs from 0.3 H above the horizon to just under it. The glyph halftone that prints over this paint is not drawn here.</p>
+  <div id="rows"></div>
+</div>
+<script>
+// ── engine maths, copied from components/garden/engine/math.ts ──
+function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v }
+function lerp(a, b, t) { return a + (b - a) * t }
+function smoothstep(e0, e1, x) { var t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t) }
+function hash(x, y, z) {
+  var h = Math.imul(x | 0, 374761393) ^ Math.imul(y | 0, 668265263) ^ Math.imul(z | 0, 1442695041)
+  h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16
+  return (h >>> 0) / 4294967296
+}
+function noise1(x, seed) { var i = Math.floor(x), f = x - i, u = f * f * (3 - 2 * f); return lerp(hash(i, seed), hash(i + 1, seed), u) * 2 - 1 }
+function fbm1(x, seed, oct) { var s = 0, a = 0.5, n = 0; for (var o = 0; o < oct; o++) { s += noise1(x, seed + o * 31) * a; n += a; x *= 2.1; a *= 0.5 } return s / n }
+function mix(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t] }
+function rgb(c, a) { return a === undefined ? 'rgb(' + (c[0] | 0) + ',' + (c[1] | 0) + ',' + (c[2] | 0) + ')' : 'rgba(' + (c[0] | 0) + ',' + (c[1] | 0) + ',' + (c[2] | 0) + ',' + a + ')' }
+function hex(h) { return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)] }
+
+// ── palette keyframes used here, from palette.ts (only the fields the land reads) ──
+var P = {
+  dawn:  { skyTop: '#45506a', skyHorizon: '#a7a3a4', ground: '#222324', cloud: '#e8dcd8', haze: '#a3a6ab', hillFar: '#6a7187', hillNear: '#474c50', grassDark: '#464a48', globe: '#f2e4dc', night: 0.35, moonlight: 1 },
+  day:   { skyTop: '#4b6787', skyHorizon: '#a3afb2', ground: '#262624', cloud: '#e2e2d4', haze: '#a9b1b0', hillFar: '#5f7283', hillNear: '#454d52', grassDark: '#4a4c47', globe: '#e6e2d0', night: 0, moonlight: 1 },
+  dusk:  { skyTop: '#3a2650', skyHorizon: '#d4502e', ground: '#170f16', cloud: '#ff9f73', haze: '#b35a4e', hillFar: '#5b3557', hillNear: '#2c1b2b', grassDark: '#362e2f', globe: '#ffc48f', night: 0.3, moonlight: 1 },
+  night: { skyTop: '#0d1424', skyHorizon: '#1d2a3f', ground: '#0c1117', cloud: '#5b6c8c', haze: '#2c3a52', hillFar: '#243149', hillNear: '#141e26', grassDark: '#232a2a', globe: '#dfe4f7', night: 1, moonlight: 1 },
+}
+for (var k in P) for (var f in P[k]) if (typeof P[k][f] === 'string') P[k][f] = hex(P[k][f])
+
+var SCENES = [
+  { label: 'Dawn 06:40', hour: 6.67, p: P.dawn },
+  { label: 'Noon 12:00', hour: 12, p: P.day },
+  { label: 'Dusk 18:55', hour: 18.92, p: P.dusk },
+  { label: 'Night 22:30', hour: 22.5, p: P.night },
+]
+var SIZES = [
+  { label: 'Desktop', W: 2250, H: 1190, scale: 0.4 },
+  { label: '375', W: 586, H: 1269, scale: 0.4 },
+]
+var STEP = 6, SEED = 1
+
+function scene(W, H, hour, p) {
+  var s = { W: W, H: H, hour: hour, p: p, horizon: H * 0.55 }
+  // buildRidges, unchanged
+  var n = Math.ceil(W / STEP) + 2, seed = SEED * 13
+  function feature(x, salt) {
+    var k = Math.floor(x / 1500), best = 0
+    ;[k - 1, k, k + 1].forEach(function (j) { var at = j * 1500 + lerp(700, 1100, hash(j, salt, SEED)); best = Math.abs(x - at) < Math.abs(x - best) ? at : best })
+    return x - best
+  }
+  s.far = new Float32Array(n); s.mid = new Float32Array(n); s.near = new Float32Array(n)
+  for (var i = 0; i < n; i++) {
+    var x = i * STEP
+    var ridged = Math.pow(Math.max(0, 1 - Math.abs(fbm1(x / 210, seed + 7, 4) - 0.5) * 2), 1.6)
+    var roll = fbm1(x / 560, seed, 3), dm = feature(x, 1)
+    var massif = Math.exp(-Math.pow(dm / 170, 2)) * 0.085 + Math.exp(-Math.pow((dm + 120) / 90, 2)) * 0.03
+    s.far[i] = s.horizon - H * (0.03 + 0.17 * (0.35 + 0.35 * roll + 0.45 * ridged) + massif)
+    var dc = feature(x, 2), shelf = smoothstep(-10, 10, dc) * (1 - smoothstep(160, 340, dc))
+    s.mid[i] = s.horizon - H * (0.01 + 0.1 * (0.5 + fbm1(x / 380, seed + 101, 4) * 0.8) + 0.035 * shelf)
+    s.near[i] = s.horizon - H * 0.035 * (0.55 + fbm1(x / 680, seed + 202, 3) * 0.9)
+  }
+  // globeAt, lights, sunLook, backlight, slopeLight: as in garden.ts
+  var day = hour >= 6 && hour < 18.5
+  var t = day ? (hour - 6) / 12.5 : ((hour + 24 - 18.5) % 24) / 11.5
+  s.cx = lerp(0.12, 0.62, t) * W
+  s.cy = s.horizon - Math.sin(Math.PI * clamp(t, 0, 1)) * H * 0.36 - H * 0.03
+  s.R = Math.min(W, H) * 0.075
+  s.sun = day ? smoothstep(6, 6.75, hour) * (1 - smoothstep(17.75, 18.5, hour)) : 0
+  s.moon = day ? 0 : smoothstep(0.5, 0.9, p.night) * p.moonlight
+  s.low = 1 - smoothstep(0, H * 0.32, s.horizon - s.cy)
+  var warm = mix(mix(p.globe, [255, 196, 120], 0.35 + 0.4 * s.low), [236, 96, 52], s.low * s.low * 0.8)
+  s.light = s.sun ? (0.34 + 0.26 * s.low) * s.sun : 0.42 * s.moon
+  s.lightCol = s.sun ? warm : p.globe
+  s.back = s.sun > 0 ? s.sun * Math.sqrt(s.low) : 0
+  s.rim = s.sun > 0 ? s.low : 0
+  s.colors = [
+    mix(mix(p.hillFar, p.skyHorizon, 0.5), p.ground, 0.5 * s.back),
+    mix(mix(mix(p.hillFar, p.hillNear, 0.45), p.skyHorizon, 0.25), p.ground, 0.5 * s.back),
+    mix(mix(p.hillNear, p.ground, 0.2), p.ground, 0.6 * s.back),
+  ]
+  return s
+}
+
+// ── the spec: faces, planes, snow, trees ──
+
+/** The ridge smoothed over ±12 samples (±72 px), so faces follow whole mountainsides. */
+function smooth(ridge) {
+  var n = ridge.length, out = new Float32Array(n)
+  for (var i = 0; i < n; i++) { var sum = 0, c = 0; for (var q = i - 12; q <= i + 12; q++) if (q >= 0 && q < n) { sum += ridge[q]; c++ } out[i] = sum / c }
+  return out
+}
+/** Which way each crest sample faces the light: 1 lit, -1 shade, 0 flat. The slopes() rule, read
+ *  on the smoothed ridge, then runs shorter than 10 samples (60 px) take their left neighbour's face. */
+function faces(s, raw) {
+  var out = facesOf(s, smooth(raw)), n = out.length, i = 0, prev = out[0]
+  while (i < n) {
+    var j = i; while (j + 1 < n && out[j + 1] === out[i]) j++
+    if (j - i + 1 < 10 && i > 0) for (var q = i; q <= j; q++) out[q] = prev
+    prev = out[i]; i = j + 1
+  }
+  return out
+}
+function facesOf(s, ridge) {
+  var n = ridge.length, Wn = 6, clear = s.R * 1.5, out = new Int8Array(n)
+  for (var i = 0; i < n; i++) {
+    var x = i * STEP
+    if (Math.abs(x - s.cx) < clear && s.cy + clear > ridge[i]) { out[i] = 0; continue }
+    var dy = ridge[Math.min(n - 1, i + Wn)] - ridge[Math.max(0, i - Wn)]
+    if (Math.abs(dy) < 2) { out[i] = 0; continue }
+    if (Math.sign(dy) === Math.sign(s.cx - x)) { out[i] = 1; continue }
+    var pitch = Math.abs(dy) / (2 * Wn * STEP)
+    out[i] = ridge[i] - s.cy > 2 * pitch * Math.abs(s.cx - x) ? 1 : -1
+  }
+  return out
+}
+/** Light falloff with distance from the globe, across the screen. */
+function fall(s, x) { return 0.55 + 0.45 * Math.exp(-Math.pow((x - s.cx) / (0.5 * Math.max(s.W, 1400)), 2)) }
+/** Strength of the plane light, 0..1. */
+function kOf(s) { return clamp(s.light / 0.6, 0, 1) }
+
+/** Runs of same-facing samples, each as [i, j, face]; neighbours share their end sample. */
+function runs(fc) {
+  var out = [], i = 0, n = fc.length
+  while (i < n) { var j = i; while (j + 1 < n && fc[j + 1] === fc[i]) j++; out.push([i, Math.min(n - 1, j + 1), fc[i]]); i = j + 1 }
+  return out
+}
+/** x where a run's side line meets depth y: it leans away from the light, 0.2 px per px down. */
+function sideX(s, ridge, k, y) { var x = k * STEP; return x + 0.2 * (y - ridge[k]) * Math.sign(x - s.cx) }
+
+function paintPlanes(ctx, s, ridge, layer, fc) {
+  var k = kOf(s), front = 1 - s.rim, amt = layer === 0 ? 1 : 0.5
+  if (k * front * amt <= 0) return
+  var sm = smooth(ridge)
+  ctx.save()
+  ctx.clip(ridgePath(s, ridge, s.horizon + 2))
+  runs(fc).forEach(function (r) {
+    if (!r[2]) return
+    var i = r[0], j = r[1], f = fall(s, ((i + j) / 2) * STEP)
+    // Gentle sides barely turn from the light: the plane fades in with the run's mean pitch.
+    var pitch = Math.abs(sm[j] - sm[i]) / Math.max(1, (j - i) * STEP)
+    var a = k * f * front * amt * smoothstep(0.08, 0.35, pitch)
+    var c = r[2] > 0
+      ? mix(s.colors[layer], s.lightCol, 0.16 * a)
+      : mix(s.colors[layer], s.p.ground, 0.22 * a)
+    ctx.beginPath()
+    ctx.moveTo(i * STEP, ridge[i])
+    for (var q = i + 1; q <= j; q++) ctx.lineTo(q * STEP, ridge[q])
+    ctx.lineTo(sideX(s, ridge, j, s.horizon), s.horizon)
+    ctx.lineTo(sideX(s, ridge, i, s.horizon), s.horizon)
+    ctx.closePath()
+    ctx.fillStyle = rgb(c)
+    ctx.fill()
+  })
+  ctx.restore()
+}
+
+/** Height above the horizon of the highest summit near each sample, smoothed. */
+function summits(s) {
+  var far = s.far, n = far.length, mx = new Float32Array(n), out = new Float32Array(n)
+  for (var i = 0; i < n; i++) { var m = 0; for (var q = i - 20; q <= i + 20; q++) if (q >= 0 && q < n) m = Math.max(m, s.horizon - far[q]); mx[i] = m }
+  for (var i2 = 0; i2 < n; i2++) { var sum = 0, c = 0; for (var q2 = i2 - 10; q2 <= i2 + 10; q2++) if (q2 >= 0 && q2 < n) { sum += mx[q2]; c++ } out[i2] = sum / c }
+  return out
+}
+/** The snowline's y per sample, or null where a summit is too low for snow. */
+function snowline(s) {
+  var H = s.H, top = summits(s), line = new Array(s.far.length)
+  for (var i = 0; i < line.length; i++) {
+    var cap = Math.min(0.06 * H, Math.max(0, 0.7 * (top[i] - 0.15 * H)))
+    if (cap < 0.008 * H) { line[i] = null; continue }
+    var rag = 0.2 * cap * fbm1(i * STEP / 9, SEED + 404, 2)
+    var tongue = 0.9 * cap * Math.pow(Math.max(0, (fbm1(i * STEP / 20, SEED + 505, 2) - 0.3) / 0.7), 1.5)
+    line[i] = s.horizon - top[i] + cap + rag + tongue
+  }
+  return line
+}
+function snowColors(s) {
+  var p = s.p, k = kOf(s)
+  var base = mix(p.cloud, p.skyHorizon, 0.25)
+  var paint = mix(base, s.colors[0], 0.3 + 0.4 * s.back)
+  return {
+    paint: paint,
+    lit: function (x) { return mix(paint, s.lightCol, 0.35 * k * fall(s, x) * (1 - 0.6 * s.back)) },
+    shade: function (x) { return mix(paint, p.skyTop, 0.25 * k * fall(s, x)) },
+  }
+}
+function paintSnow(ctx, s, fc) {
+  var line = snowline(s), far = s.far, col = snowColors(s)
+  ctx.save()
+  ctx.clip(ridgePath(s, far, s.horizon + 2))
+  runs(fc).forEach(function (r) {
+    // Within a face run, each stretch under the snowline is one shape.
+    var i = r[0]
+    while (i <= r[1]) {
+      if (line[i] === null || far[i] >= line[i]) { i++; continue }
+      var j = i
+      while (j + 1 <= r[1] && line[j + 1] !== null && far[j + 1] < line[j + 1]) j++
+      var x = ((i + j) / 2) * STEP
+      var c = r[2] > 0 ? col.lit(x) : r[2] < 0 ? col.shade(x) : col.paint
+      ctx.beginPath()
+      ctx.moveTo(i * STEP, far[i])
+      for (var q = i + 1; q <= j; q++) ctx.lineTo(q * STEP, far[q])
+      // the run's side lines lean like the planes, so snow splits where the rock does
+      ctx.lineTo(r[1] === j ? sideX(s, far, j, line[j]) : j * STEP, line[j])
+      for (var q2 = j - 1; q2 > i; q2--) ctx.lineTo(q2 * STEP, line[q2])
+      ctx.lineTo(r[0] === i ? sideX(s, far, i, line[i]) : i * STEP, line[i])
+      ctx.closePath()
+      ctx.fillStyle = rgb(c)
+      ctx.fill()
+      i = j + 1
+    }
+  })
+  ctx.restore()
+}
+
+function forestColor(s) {
+  var p = s.p
+  return mix(s.colors[1], mix(p.hillNear, p.grassDark, 0.4), 0.35 + 0.15 * s.back)
+}
+function midAt(s, x) { var f = x / STEP, i = Math.floor(f), a = s.mid[Math.max(0, i)], b = s.mid[Math.min(s.mid.length - 1, i + 1)]; return lerp(a, b, f - i) }
+function steep(s, x) { var i = Math.round(x / STEP), n = s.mid.length; return Math.abs(s.mid[Math.min(n - 1, i + 2)] - s.mid[Math.max(0, i - 2)]) / (4 * STEP) > 0.9 }
+function woods(x) { return fbm1(x / 140, SEED * 13 + 606, 3) }
+function paintForest(ctx, s) {
+  var H = s.H, fc = forestColor(s)
+  ctx.save()
+  ctx.fillStyle = rgb(fc)
+  // The wood's body: a band under the crest, 0.015 to 0.035 H deep, tapering to nothing over
+  // 10 samples at each end of a wooded run, so no wood ends in a vertical edge.
+  var n = s.mid.length, wooded = new Uint8Array(n)
+  for (var i = 0; i < n; i++) wooded[i] = woods(i * STEP) > -0.1 && !steep(s, i * STEP) ? 1 : 0
+  var a = 0
+  while (a < n) {
+    if (!wooded[a]) { a++; continue }
+    var b = a; while (b + 1 < n && wooded[b + 1]) b++
+    ctx.beginPath()
+    ctx.moveTo(a * STEP, s.mid[a])
+    for (var q = a + 1; q <= b; q++) ctx.lineTo(q * STEP, s.mid[q])
+    for (var q2 = b; q2 >= a; q2--) {
+      var d = H * (0.025 + 0.01 * fbm1(q2 * STEP / 60, SEED * 13 + 808, 2)) * smoothstep(0, 10, Math.min(q2 - a, b - q2))
+      ctx.lineTo(q2 * STEP, s.mid[q2] + d)
+    }
+    ctx.closePath(); ctx.fill()
+    a = b + 1
+  }
+  // The spires, one slot every 5 scene px.
+  ctx.beginPath()
+  for (var slot = 0; slot * 5 < s.W + 10; slot++) {
+    var x0 = slot * 5 + (hash(slot, 1, SEED) - 0.5) * 3
+    var wv = woods(x0)
+    var dens = smoothstep(-0.1, 0.15, wv)
+    if (wv < -0.25 || steep(s, x0)) continue
+    if (hash(slot, 2, SEED) > 0.12 + 0.83 * dens) continue
+    var clump = 0.6 + 0.4 * clamp((fbm1(x0 / 45, SEED * 13 + 707, 2) + 1) / 2, 0, 1)
+    var h = H * (0.007 + 0.011 * Math.pow(hash(slot, 3, SEED), 1.5)) * clump
+    var w2 = 0.36 * h, yb = midAt(s, x0) + 0.2 * h
+    ctx.moveTo(x0 - w2 / 2, yb); ctx.lineTo(x0, yb - h); ctx.lineTo(x0 + w2 / 2, yb); ctx.closePath()
+  }
+  ctx.fill()
+  ctx.restore()
+}
+
+function ridgePath(s, ridge, base) {
+  var path = new Path2D()
+  path.moveTo(-10, base)
+  for (var i = 0; i < ridge.length; i++) path.lineTo(i * STEP, ridge[i])
+  path.lineTo(s.W + 10, base); path.closePath()
+  return path
+}
+
+function draw(ctx, s, after) {
+  var p = s.p, W = s.W, H = s.H
+  // sky (a plain two-stop stand-in for the engine's sky)
+  var sky = ctx.createLinearGradient(0, 0, 0, s.horizon)
+  sky.addColorStop(0, rgb(p.skyTop)); sky.addColorStop(1, rgb(p.skyHorizon))
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H)
+  // glow, as backdrop()
+  if (s.sun + s.moon > 0) {
+    var gc = s.sun ? s.lightCol : p.globe
+    var strength = s.sun ? (0.2 + 0.12 * s.low) * s.sun : 0.16 * s.moon
+    var reach = s.sun ? s.R * (6 + 4 * s.low) : s.R * 7
+    var glow = ctx.createRadialGradient(s.cx, s.cy, s.R, s.cx, s.cy, reach)
+    glow.addColorStop(0, rgb(gc, strength)); glow.addColorStop(1, rgb(gc, 0))
+    ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H)
+    ctx.fillStyle = rgb(gc, 0.85 * (s.sun || s.moon)); ctx.beginPath(); ctx.arc(s.cx, s.cy, s.R * 0.55, 0, Math.PI * 2); ctx.fill()
+  }
+  var thin = 1 - 0.6 * s.back
+  ;[s.far, s.mid, s.near].forEach(function (ridge, layer) {
+    ctx.fillStyle = rgb(s.colors[layer])
+    ctx.fill(ridgePath(s, ridge, s.horizon + 2))
+    if (after) {
+      var fc = faces(s, ridge)
+      if (layer === 1) paintForest(ctx, s)
+      if (layer < 2) paintPlanes(ctx, s, ridge, layer, fc)
+      if (layer === 0) paintSnow(ctx, s, fc)
+    }
+    if (layer < 2) {
+      var top = s.horizon - 1
+      for (var i = 0; i < ridge.length; i++) top = Math.min(top, ridge[i])
+      var veil = ctx.createLinearGradient(0, top, 0, s.horizon)
+      veil.addColorStop(0, rgb(p.haze, 0))
+      veil.addColorStop(1, rgb(p.haze, (layer ? 0.3 : 0.4) * (0.45 + 0.55 * p.night) * thin))
+      ctx.fillStyle = veil
+      ctx.fill(ridgePath(s, ridge, s.horizon))
+    }
+  })
+  var floor = ctx.createLinearGradient(0, s.horizon, 0, H)
+  floor.addColorStop(0, rgb(s.colors[2])); floor.addColorStop(0.55, rgb(mix(p.ground, p.skyHorizon, 0.08)))
+  ctx.fillStyle = floor; ctx.fillRect(0, s.horizon, W, H - s.horizon)
+  var mtop = s.horizon - H * 0.06, mist = ctx.createLinearGradient(0, mtop, 0, s.horizon + H * 0.12)
+  for (var q = 0; q <= 8; q++) { var tt = q / 8, a = tt < 1 / 3 ? smoothstep(0, 1 / 3, tt) : 1 - smoothstep(1 / 3, 1, tt); mist.addColorStop(tt, rgb(p.haze, (0.32 * a * thin).toFixed(3))) }
+  ctx.fillStyle = mist; ctx.fillRect(0, mtop, W, H * 0.18)
+}
+
+var mode = 'after'
+function render() {
+  var rows = document.getElementById('rows')
+  rows.innerHTML = ''
+  SCENES.forEach(function (sc) {
+    var row = document.createElement('div'); row.className = 'row'
+    SIZES.forEach(function (sz) {
+      var s = scene(sz.W, sz.H, sc.hour, sc.p)
+      var y0 = s.horizon - 0.3 * sz.H, bandH = 0.34 * sz.H
+      var cv = document.createElement('canvas')
+      var dpr = Math.min(2, window.devicePixelRatio || 1)
+      cv.width = Math.round(sz.W * sz.scale * dpr); cv.height = Math.round(bandH * sz.scale * dpr)
+      cv.style.width = Math.round(sz.W * sz.scale) + 'px'
+      var ctx = cv.getContext('2d')
+      ctx.scale(sz.scale * dpr, sz.scale * dpr); ctx.translate(0, -y0)
+      draw(ctx, s, mode === 'after')
+      var fig = document.createElement('figure'), cap = document.createElement('figcaption')
+      cap.textContent = sc.label + ', ' + sz.label
+      fig.appendChild(cv); fig.appendChild(cap); row.appendChild(fig)
+    })
+    rows.appendChild(row)
+  })
+}
+document.querySelectorAll('.bar button').forEach(function (b) {
+  b.addEventListener('click', function () {
+    mode = b.dataset.mode
+    document.querySelectorAll('.bar button').forEach(function (o) { o.setAttribute('aria-pressed', String(o === b)) })
+    render()
+  })
+})
+render()
+</script>
+</body>
+</html>

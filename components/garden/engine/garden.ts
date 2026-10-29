@@ -22,6 +22,16 @@ import {
   type Species,
 } from './plants'
 import { type Head, Kind, type Raster, Shape } from './raster'
+import {
+  faces,
+  plane,
+  RIDGE_STEP,
+  snowline,
+  snowOn,
+  woods,
+  type Face,
+  type Woods,
+} from './ridgeline'
 
 import type { Rect } from './ascii'
 import type { Visitors } from './visitors'
@@ -43,8 +53,6 @@ const ROSE_Z = 0.72
 
 /** Seconds the opening time-lapse takes to grow the garden in. */
 const INTRO = 4.5
-/** Spacing of the ridge outline's points. */
-const RIDGE_STEP = 6
 /** Depth of the farthest planting: a field away, short of the hills, so nothing roots on them. */
 const FARTHEST_Z = 0.22
 
@@ -64,6 +72,12 @@ export class Garden {
   private targetAge = new Map<Plant, number>()
   private intro = 0
   private ridges: Float32Array[] = []
+  /** The far range's snowline, y per ridge point (ridgeline.ts). */
+  private snowline = new Float32Array(0)
+  /** The conifers on the middle ridge. */
+  private forest: Woods | null = null
+  /** Each ridge's mountainsides by which way they face the light, while the light stays put. */
+  private faceCache: { key: string; runs: Face[][] } = { key: '', runs: [] }
   /** Plants sown by clicking, oldest first. */
   private sown: Plant[] = []
   time = 0
@@ -418,6 +432,94 @@ export class Garden {
         this.horizon - H * 0.035 * (0.55 + fbm1(x / 680, seed + 202, 3) * 0.9)
     }
     this.ridges = [far, mid, near]
+    this.snowline = snowline(far, this.horizon, H, this.seed)
+    this.forest = woods(mid, this.width, H, this.seed)
+    this.faceCache.key = ''
+  }
+
+  /** Each ridge's mountainsides, read again only when the sun or moon has moved. */
+  private facesNow() {
+    const { cx, cy, R } = this.globeAt()
+    const key = `${Math.round(cx / 4)},${Math.round(cy / 4)}`
+    if (key !== this.faceCache.key)
+      this.faceCache = {
+        key,
+        runs: this.ridges.map((ridge) => faces(ridge, cx, cy, R * 1.5)),
+      }
+    return this.faceCache.runs
+  }
+
+  /**
+   * The mountains in the hour's light, for the backdrop and the glyphs alike: each side of the
+   * far and middle ridges a plane, lit or shaded, fading with distance from the sun or moon and
+   * with a low sun behind the range; the far range's snow, split by the same sides; and the
+   * woods' colour. Night without a moon leaves the planes off and the snow one tone.
+   */
+  private ridgeline(p: Palette) {
+    const colors = this.ridgeColors(p)
+    const { cx } = this.globeAt()
+    const { light, color: lightCol } = this.slopeLight(p)
+    const rim = this.lights(p).sun > 0 ? this.sunLook(p).low : 0
+    const back = this.backlight(p)
+    const k = clamp(light / 0.6, 0, 1)
+    const reach = 0.5 * Math.max(this.width, 1400)
+    const fall = (f: Face) => {
+      const d = (((f.i + f.j) / 2) * RIDGE_STEP - cx) / reach
+      return 0.55 + 0.45 * Math.exp(-d * d)
+    }
+    const runs = this.facesNow()
+    const planes = runs.map((list, layer) =>
+      list.flatMap((f) => {
+        const a =
+          k *
+          fall(f) *
+          (1 - rim) *
+          [1, 0.5, 0][layer] *
+          smoothstep(0.08, 0.35, f.pitch)
+        if (f.face === 0 || a < 0.01) return []
+        return [
+          {
+            shape: plane(this.ridges[layer], f, cx, this.horizon + 2),
+            color:
+              f.face > 0
+                ? mix(colors[layer], lightCol, 0.16 * a)
+                : mix(colors[layer], p.ground, 0.22 * a),
+          },
+        ]
+      }),
+    )
+    // Snow takes the sky's cloud colour, hazed like its range; a low sun still warms the side
+    // turned to it while the rock under it has gone to silhouette.
+    const paint = mix(
+      mix(p.cloud, p.skyHorizon, 0.25),
+      colors[0],
+      0.3 + 0.4 * back,
+    )
+    const snow = []
+    for (const f of runs[0] ?? []) {
+      const kf = k * fall(f)
+      const shape = new Shape()
+      const top = snowOn(this.ridges[0], this.snowline, f, cx, shape)
+      if (top === Infinity) continue
+      snow.push({
+        shape,
+        top,
+        color:
+          f.face > 0
+            ? mix(paint, lightCol, 0.35 * kf * (1 - 0.6 * back))
+            : f.face < 0
+              ? mix(paint, p.skyTop, 0.25 * kf)
+              : paint,
+        light:
+          f.face > 0 ? 0.5 + 0.5 * (0.4 + 0.5 * kf) : f.face < 0 ? 0.45 : 0.6,
+      })
+    }
+    const forest = mix(
+      colors[1],
+      mix(p.hillNear, p.grassDark, 0.4),
+      0.35 + 0.15 * back,
+    )
+    return { colors, planes, snow, forest }
   }
 
   /** A ridge's outline as a path, closed down to `base`. */
@@ -441,6 +543,7 @@ export class Garden {
     above: number,
     reach: number,
     clear: number,
+    crest: Float32Array = ridge,
   ) {
     const lit = new Shape()
     const shade = new Shape()
@@ -470,13 +573,13 @@ export class Garden {
       if (f !== 0 && j > i) {
         // One shape per run: along the crest, then back along a line up to `depth` below it.
         const path = f > 0 ? lit : shade
-        path.moveTo(i * RIDGE_STEP, ridge[i])
-        for (let k = i + 1; k <= j; k++) path.lineTo(k * RIDGE_STEP, ridge[k])
+        path.moveTo(i * RIDGE_STEP, crest[i])
+        for (let k = i + 1; k <= j; k++) path.lineTo(k * RIDGE_STEP, crest[k])
         // Tapered to nothing at both ends, so a run doesn't stop at a hard vertical edge.
         for (let k = j; k >= i; k--)
           path.lineTo(
             k * RIDGE_STEP,
-            ridge[k] + depth * smoothstep(0, 10, Math.min(k - i, j - k)),
+            crest[k] + depth * smoothstep(0, 10, Math.min(k - i, j - k)),
           )
         path.closePath()
       }
@@ -737,14 +840,30 @@ export class Garden {
       ctx.fillStyle = glow
       ctx.fillRect(0, 0, this.width, this.height)
     }
-    const colors = this.ridgeColors(p)
+    const { colors, planes, snow, forest } = this.ridgeline(p)
+    const rgb = (c: Rgb) => `rgb(${c.map((v) => v | 0).join(',')})`
     // Backlit ridges lose most of their haze and mist, so they read as shapes against the glow.
     const thin = 1 - 0.6 * this.backlight(p)
     const hz = p.haze.map((v) => v | 0).join(',')
     const H = this.height
     for (const [layer, ridge] of this.ridges.entries()) {
-      ctx.fillStyle = `rgb(${colors[layer].map((v) => v | 0).join(',')})`
+      ctx.fillStyle = rgb(colors[layer])
       ctx.fill(this.ridgePath(ridge, this.horizon + 2).toPath2D())
+      // Its sides in the light, then the far range's snow, or the middle ridge's woods.
+      for (const pl of planes[layer]) {
+        ctx.fillStyle = rgb(pl.color)
+        ctx.fill(pl.shape.toPath2D())
+      }
+      if (layer === 0)
+        for (const s of snow) {
+          ctx.fillStyle = rgb(s.color)
+          ctx.fill(s.shape.toPath2D())
+        }
+      if (layer === 1 && this.forest) {
+        ctx.fillStyle = rgb(forest)
+        ctx.fill(this.forest.body.toPath2D())
+        ctx.fill(this.forest.spires.toPath2D())
+      }
       // Haze pooled low on the far and middle ridges, deepest at the foot, so each stands
       // clear of the one behind without an edge.
       if (layer < 2) {
@@ -786,52 +905,9 @@ export class Garden {
     ctx.fillRect(0, top, this.width, H * 0.18)
   }
 
-  /**
-   * Snow on the far range's highest tops: everything above a ragged snowline set so high that
-   * only the main massif reaches it. Paler and lit, so it prints as a denser halftone.
-   */
-  private drawSnow(r: Raster, ridge: Float32Array, color: Rgb, p: Palette) {
-    const line = (k: number) =>
-      this.horizon -
-      this.height * (0.215 + 0.012 * (fbm1(k * 0.35, this.seed + 404, 2) - 0.5))
-    const snow = new Shape()
-    const n = ridge.length
-    let top = this.horizon
-    let i = 0
-    while (i < n) {
-      if (ridge[i] >= line(i)) {
-        i++
-        continue
-      }
-      let j = i
-      while (j + 1 < n && ridge[j + 1] < line(j + 1)) j++
-      snow.moveTo(i * RIDGE_STEP, ridge[i])
-      for (let k = i + 1; k <= j; k++) snow.lineTo(k * RIDGE_STEP, ridge[k])
-      for (let k = j; k >= i; k--) snow.lineTo(k * RIDGE_STEP, line(k))
-      snow.closePath()
-      for (let k = i; k <= j; k++) top = Math.min(top, ridge[k])
-      i = j + 1
-    }
-    if (top === this.horizon) return
-    // Cream by day; under the moon it only greys a little, so night stays dark.
-    r.fill(
-      snow,
-      mix(color, [250, 248, 240], 0.85 * (1 - 0.6 * p.night)),
-      Kind.Land,
-      1,
-      {
-        id: 0,
-        light: 0.8 - 0.2 * p.night,
-        back: false,
-      },
-    )
-    r.touchMeta(0, top)
-    r.touchMeta(this.width, this.horizon)
-  }
-
   private drawLand(r: Raster, p: Palette) {
     const W = this.width
-    const colors = this.ridgeColors(p)
+    const { colors, planes, snow, forest } = this.ridgeline(p)
     // Slopes facing the sun (or moon) catch light under the crest and the far sides fall into
     // shade. Only the glyphs carry it: lit slopes print a denser, brighter halftone.
     const { cx, cy, R } = this.globeAt()
@@ -841,6 +917,11 @@ export class Garden {
     const rim = this.lights(p).sun > 0 ? this.sunLook(p).low : 0
     this.ridges.forEach((ridge, layer) => {
       r.fill(this.ridgePath(ridge, this.height + 10), colors[layer], Kind.Land)
+      for (const pl of planes[layer]) r.fill(pl.shape, pl.color, Kind.Land)
+      if (layer === 1 && this.forest) {
+        r.fill(this.forest.body, forest, Kind.Land)
+        r.fill(this.forest.spires, forest, Kind.Land)
+      }
       // Four strips, each shallower and stronger, so the glyphs thicken toward the crest.
       const q = clamp(light / 0.45, 0, 1)
       for (const [k, reach] of (light > 0
@@ -849,7 +930,16 @@ export class Garden {
       ).entries()) {
         const s = q * (0.35 + 0.65 * (k / 3))
         const sl = s * (1 - rim * (1 - k / 3))
-        const { lit, shade } = this.slopes(ridge, layer, cx, cy, reach, R * 1.5)
+        // On the middle ridge the strips run along the treetops, so a low sun rims the woods.
+        const { lit, shade } = this.slopes(
+          ridge,
+          layer,
+          cx,
+          cy,
+          reach,
+          R * 1.5,
+          layer === 1 && this.forest ? this.forest.canopy : ridge,
+        )
         r.fill(
           lit,
           mix(colors[layer], lightCol, Math.min(1, 1.6 * light * sl)),
@@ -865,12 +955,23 @@ export class Garden {
           { id: 0, light: 0.5 - 0.5 * s, back: false },
         )
       }
-      if (layer === 0) this.drawSnow(r, ridge, colors[0], p)
+      // Snow over the strips, marked (meta `back`) so it prints brighter and denser than rock.
+      if (layer === 0)
+        for (const sn of snow)
+          r.fill(sn.shape, sn.color, Kind.Land, 1, {
+            id: 0,
+            light: sn.light,
+            back: true,
+          })
     })
+    let top = this.horizon
     if (light > 0) {
-      let top = this.horizon
       for (const ridge of this.ridges)
         for (const y of ridge) top = Math.min(top, y)
+      top = Math.min(top, this.forest?.top ?? top)
+    }
+    for (const sn of snow) top = Math.min(top, sn.top)
+    if (top < this.horizon) {
       r.touchMeta(0, top)
       r.touchMeta(W, this.horizon)
     }
