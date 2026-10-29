@@ -9,9 +9,10 @@ import cipher from './poem.enc.json'
 import '@/components/garden/garden.css'
 import './poem.css'
 
-// A poem over the meadow, behind a password. Scrolling through it runs the
-// scene through a day. A line `@ <when> [<where>]` in the plaintext pins the
-// line after it: when that line stands at <where> on the screen, the scene
+// A poem over the meadow, behind a riddle whose answer is the password.
+// Scrolling through it runs the scene through a day. A line
+// `@ <when> [<where>]` in the plaintext pins the line after it: when that
+// line stands at <where> on the screen, the scene
 // shows <when>, and between pins the hour follows the scroll.
 //
 //   <when>   18:45, or sunrise / sunset / moonset (when the sun stands
@@ -436,7 +437,7 @@ export function Poem({ className, preview }: PoemProps) {
   const unlock = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const input = e.currentTarget.elements.namedItem(
-      'password',
+      'answer',
     ) as HTMLInputElement
     if (!input.value || busy) return
     setBusy(true)
@@ -494,18 +495,32 @@ export function Poem({ className, preview }: PoemProps) {
           </article>
         ) : (
           <form className="poem-lock" onSubmit={unlock} hidden={!checked}>
+            <p className="poem-intro">
+              If you want to unlock this page, you need to get past this riddle.
+            </p>
+            <label htmlFor="poem-answer" className="poem-riddle">
+              When something is really easy, you say, &ldquo;That was
+              a&nbsp;&hellip;&rdquo;
+            </label>
             <input
               ref={inputRef}
-              name="password"
-              type="password"
+              id="poem-answer"
+              name="answer"
+              type="text"
               className="poem-password"
-              placeholder="password"
-              aria-label="Password"
+              placeholder="answer"
+              aria-describedby="poem-format"
               aria-invalid={wrong || undefined}
               autoComplete="off"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               readOnly={busy}
               onChange={() => setWrong(false)}
             />
+            <span id="poem-format" className="poem-format">
+              lowercase, hyphenated: like-this
+            </span>
             <span className="poem-status" aria-live="polite">
               {busy ? 'opening…' : wrong ? 'not quite' : ''}
             </span>

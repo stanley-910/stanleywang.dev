@@ -34,10 +34,23 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  width: min(16rem, 100%);
-  margin-top: calc(55svh - 116px);
+  width: min(20rem, 100%);
+  /* The field where it stood alone; the riddle rises above it. */
+  margin-top: max(var(--space-5), calc(55svh - 116px - 7.5rem));
   font-family: var(--font-mono);
   font-size: var(--text-small);
+}
+
+.poem-intro {
+  margin: 0 0 var(--space-1);
+  color: var(--ink-muted);
+}
+
+.poem-riddle {
+  margin-bottom: var(--space-2);
+  font-family: var(--font-poem), 'EB Garamond', Garamond, serif;
+  font-size: 1.3125rem;
+  line-height: 1.35;
 }
 
 .poem-password {
@@ -60,6 +73,10 @@
 
 .poem-password:focus {
   border-bottom-color: var(--ink);
+}
+
+.poem-format {
+  color: var(--ink-muted);
 }
 
 .poem-status {
