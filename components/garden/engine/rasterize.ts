@@ -19,6 +19,18 @@ export const enum Kind {
   Sky = 7,
 }
 
+/**
+ * What a land cell is made of, carried as the meta id under `Kind.Land`: the kinds already fill
+ * the material canvas's eight corners.
+ */
+export const enum LandMat {
+  Rock = 0,
+  SnowLit = 1,
+  SnowShade = 2,
+  Canopy = 3,
+  Spruce = 4,
+}
+
 /** Samples per cell along each axis. */
 export const SS = 2
 
@@ -330,6 +342,8 @@ function sampleCells(
   // A plant needs a quarter of the cell to win it.
   const floor = 0.25 * 255 * n
   const weight = new Float32Array(8)
+  // Votes for the land material (LandMat) under a land cell, by its meta id.
+  const mats = new Uint8Array(8)
   const kr = new Float32Array(8)
   const kg = new Float32Array(8)
   const kb = new Float32Array(8)
@@ -357,6 +371,7 @@ function sampleCells(
       // Hills carry slope light in the same layer: 0.5 neutral, up toward the light, down in shade.
       let ll = 0
       let ln = 0
+      mats.fill(0)
       // Fluff marked as a loose petal (LOOSE_PETAL) carries the back flag.
       let lb = 0
       for (let sy = 0; sy < SS; sy++) {
@@ -392,6 +407,8 @@ function sampleCells(
                   bk += md[m + 2]
                   pn++
                 } else if (k === Kind.Land || md[m] === 0) {
+                  if (k === Kind.Land)
+                    mats[Math.min(7, Math.round(md[m] / 24))]++
                   // Fluff reads only fluff's own marks (id 0): a seed head, firefly or the moon
                   // in front of a petal or leaf would otherwise take its back flag and print as
                   // a loose petal.
@@ -438,6 +455,12 @@ function sampleCells(
       }
       // A cell split between petals goes to the one with more of it, so folds stay unbroken.
       pid[i] = id
+      // A land cell's pid is its material instead: rock, snow or forest.
+      if (best === Kind.Land) {
+        let mv = 0
+        for (let x = 1; x < 8; x++) if (mats[x] > mats[mv]) mv = x
+        pid[i] = mv
+      }
       lit[i] = pn ? li / (pn * 255) : ln ? ll / (ln * 255) : 0.5
       back[i] = pn ? +(bk / pn > 127) : ln ? +(lb / ln > 127) : 0
       const plant = (PLANT_MASK >> best) & 1

@@ -5,7 +5,7 @@
 
 import { bayer, clamp } from './math'
 import { mix, shade, type Palette, type Rgb } from './palette'
-import { Kind, type Cells } from './rasterize'
+import { Kind, LandMat, type Cells } from './rasterize'
 
 import type { Head, Sprite, SpriteKind } from './raster'
 
@@ -16,6 +16,8 @@ const FLUFF = " .'*+x*#"
 const FOLIAGE = " .,':;!|"
 const LAND = ' .·:'
 const SLOPE_LIT = '.·:;'
+// Snow's lit flank, densest just under the crest.
+const SNOW = '·:;='
 export const CLOUD = ' ·.:-=+*o'
 
 // Line glyphs by direction, for stems, blades and the globe's wires.
@@ -44,6 +46,9 @@ for (const ramp of [
   SLOPE_LIT,
   CLOUD,
   LINES.join(''),
+  SNOW,
+  // Snow's crest outline and shaded flank, and the forest's tips.
+  "^_'",
   // The shooting star's tail (meteors.ts), here so main thread and workers agree on its code.
   '@#Oo+:·`',
 ])
@@ -329,6 +334,14 @@ export type Style = {
   ch: number
   /** Top of the painted hills per column, so ink contrasts with a ridge rather than the sky behind it. */
   hill: Float32Array
+  /**
+   * The far range's faces per cell (Garden.relief): > 0 toward the light, < 0 in shadow. Rock there
+   * takes a faint tile, the light's colour at `reliefLit` or the ground's at 8%, and its slope
+   * glyphs thicken or thin a little.
+   */
+  relief: Float32Array
+  reliefLight: Rgb
+  reliefLit: number
   heads: HeadMark[]
   sprites: Sprite[]
 }
@@ -403,7 +416,7 @@ export class Typesetter {
       tileCol: new Uint8ClampedArray(n * 3),
       flags: new Uint8Array(n),
     }
-    const { palette: p, horizon, hill } = style
+    const { palette: p, horizon, hill, relief, reliefLight, reliefLit } = style
     const { cw, ch } = this
     const H = rows * ch
 
@@ -658,6 +671,84 @@ export class Typesetter {
               break
             }
             case Kind.Land: {
+              const mat = this.pid[i]
+              const b = bayer(c, r)
+              // Snow, the palest mark on the land: glyphs over a flat tile in its own colour. Where
+              // the cap only partly covers a cell, at its lower edge, it dithers into the rock.
+              if (
+                (mat === LandMat.SnowLit || mat === LandMat.SnowShade) &&
+                (v > 0.85 || v > b)
+              ) {
+                if (this.matAt(c, r - 1) < 0) {
+                  // The crest outline: the line glyph nearest the slope, `^` at a summit, `_` on a ledge.
+                  const L = this.snowAt(c - 1, r)
+                  const R = this.snowAt(c + 1, r)
+                  const LU = this.snowAt(c - 1, r - 1)
+                  const RU = this.snowAt(c + 1, r - 1)
+                  g = code(
+                    LU && !RU
+                      ? '\\'
+                      : RU && !LU
+                        ? '/'
+                        : L && R
+                          ? '_'
+                          : !L && !R
+                            ? '^'
+                            : L
+                              ? '\\'
+                              : '/',
+                  )
+                  const lc = mix([cr, cg, cb], [255, 255, 255], 0.15)
+                  cr = lc[0]
+                  cg = lc[1]
+                  cb = lc[2]
+                  alpha = 1
+                } else if (mat === LandMat.SnowLit) {
+                  let n = 0
+                  while (n < 8 && this.snowAt(c, r - 1 - n)) n++
+                  const dl =
+                    0.15 + 0.85 * (1 - Math.min(1, ((n + 0.5) * ch) / 70))
+                  g = code(
+                    SNOW[
+                      Math.min(SNOW.length - 1, Math.floor(dl * SNOW.length))
+                    ],
+                  )
+                  tile[i] = 0.35
+                  alpha = 0.9
+                } else {
+                  g = code(b < 0.3 ? "'" : '.')
+                  tile[i] = 0.3
+                  alpha = 0.8
+                }
+                break
+              }
+              // Forest: the painted silhouette carries it; sparse tips inside, none on the top edge,
+              // which the silhouette already serrates.
+              if (mat === LandMat.Canopy) {
+                if (this.matAt(c, r - 1) === LandMat.Canopy && b < 0.3)
+                  g = code(b < 0.12 ? '|' : '^')
+                const lc = mix([cr, cg, cb], p.cloud, 0.22)
+                cr = lc[0]
+                cg = lc[1]
+                cb = lc[2]
+                alpha = 0.6
+                break
+              }
+              // A near spruce: line glyphs down its flanks, a sparse `:` inside.
+              if (mat === LandMat.Spruce) {
+                const top = this.matAt(c, r - 1) !== LandMat.Spruce
+                if (!top && this.matAt(c - 1, r) !== LandMat.Spruce)
+                  g = code('/')
+                else if (!top && this.matAt(c + 1, r) !== LandMat.Spruce)
+                  g = code('\\')
+                else if (b < 0.22) g = code(':')
+                const lc = mix([cr, cg, cb], p.cloud, 0.3)
+                cr = lc[0]
+                cg = lc[1]
+                cb = lc[2]
+                alpha = 0.7
+                break
+              }
               // Halftone: ordered dither on brightness, like the cloud and grass studies.
               // The silhouette itself is painted in the backdrop; these are its halftone dots.
               const d = L * 1.3 + (skyRow ? 0.1 : -0.15)
@@ -668,9 +759,18 @@ export class Typesetter {
               cg = lc[1]
               cb = lc[2]
               alpha = skyRow ? 0.6 : 0.45
+              // The far range's faces: a faint tile, lit or shaded, and a nudge to the slope glyphs.
+              const face = relief.length === kinds.length ? relief[i] : 0
+              if (face) {
+                const fc = face > 0 ? reliefLight : p.ground
+                tile[i] = face > 0 ? reliefLit * face : -0.08 * face
+                tileCol[i * 3] = fc[0]
+                tileCol[i * 3 + 1] = fc[1]
+                tileCol[i * 3 + 2] = fc[2]
+              }
               // Slope light, in glyphs alone: the sunward side thickens toward the crest and the far
               // side goes bare, so the contrast is all in the lit flank.
-              const sl = (this.lit[i] - 0.5) * 2
+              const sl = (this.lit[i] - 0.5) * 2 + 0.3 * face
               if (sl > 0.05) {
                 if (sl > bayer(c, r) * 0.9)
                   g = code(
@@ -694,7 +794,8 @@ export class Typesetter {
           k === Kind.Stem ||
           k === Kind.Fluff
         out.flags[i] = MAT | (plant ? PLANT : 0)
-        if (g === 0) continue
+        // A bare rock cell still shows its face's tile.
+        if (g === 0 && !(k === Kind.Land && tile[i] > 0)) continue
         out.glyph[i] = g
         // The night's ink boost would push bright colours past 255; the arrays clamp them.
         out.ink[i * 3] = cr * p.ink
@@ -756,6 +857,18 @@ export class Typesetter {
     if (c < 0 || c >= this.cols) return 0
     const i = r * this.cols + c
     return this.kinds[i] === Kind.Stem ? this.cov[i] : 0
+  }
+
+  /** A land cell's material (LandMat), or -1 where the cell isn't land. */
+  private matAt(c: number, r: number) {
+    if (c < 0 || r < 0 || c >= this.cols || r >= this.rows) return -1
+    const i = r * this.cols + c
+    return this.kinds[i] === Kind.Land && this.cov[i] > 0.07 ? this.pid[i] : -1
+  }
+
+  private snowAt(c: number, r: number) {
+    const m = this.matAt(c, r)
+    return m === LandMat.SnowLit || m === LandMat.SnowShade
   }
 
   /** Petal id at a cell, 0 off petals. */

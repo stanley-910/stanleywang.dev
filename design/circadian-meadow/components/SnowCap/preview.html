@@ -1,0 +1,62 @@
+<!-- @dsCard group="Site" height=420 subtitle="Snow on the far range at each hour: crest outline, lit flank and shaded flank on their tiles" -->
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>SnowCap</title>
+<style>
+  body { margin: 0; background: var(--page); color: var(--ink); font: 12px/16px var(--font-mono); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1px; background: var(--hairline); }
+  .pane { padding: var(--space-3); }
+  .label { margin: 0 0 var(--space-1); }
+  pre { margin: 0; font: 500 14px/18px var(--font-mono); white-space: pre; }
+  .tile { display: inline-block; }
+</style>
+</head>
+<body>
+<div class="grid">
+  <div class="pane" style="background: var(--day-sky-horizon); color: var(--day-ground)">
+    <p class="label">Day</p>
+    <pre><span style="color: var(--day-snow)">  /^\_  </span>
+<span style="color: var(--day-snow); background: color-mix(in srgb, var(--day-snow) 35%, transparent)">=;;:</span><span style="color: var(--day-snow-shade); background: color-mix(in srgb, var(--day-snow-shade) 30%, transparent)">'.'.</span>
+<span style="color: var(--day-snow); background: color-mix(in srgb, var(--day-snow) 35%, transparent)">;:·:</span><span style="color: var(--day-snow-shade); background: color-mix(in srgb, var(--day-snow-shade) 30%, transparent)">.'..</span>
+<span style="color: var(--day-hill-far)">·.:·</span><span style="color: var(--day-hill-far)"> . .</span></pre>
+  </div>
+  <div class="pane" style="background: var(--golden-sky-horizon); color: var(--golden-ground)">
+    <p class="label">Golden</p>
+    <pre><span style="color: var(--golden-snow)">  /^\_  </span>
+<span style="color: var(--golden-snow); background: color-mix(in srgb, var(--golden-snow) 35%, transparent)">=;;:</span><span style="color: var(--golden-snow-shade); background: color-mix(in srgb, var(--golden-snow-shade) 30%, transparent)">'.'.</span>
+<span style="color: var(--golden-snow); background: color-mix(in srgb, var(--golden-snow) 35%, transparent)">;:·:</span><span style="color: var(--golden-snow-shade); background: color-mix(in srgb, var(--golden-snow-shade) 30%, transparent)">.'..</span>
+<span style="color: var(--golden-hill-far)">·.:·</span><span style="color: var(--golden-hill-far)"> . .</span></pre>
+  </div>
+  <div class="pane" style="background: var(--sunset-sky-horizon); color: var(--sunset-ground)">
+    <p class="label">Sunset</p>
+    <pre><span style="color: var(--sunset-snow)">  /^\_  </span>
+<span style="color: var(--sunset-snow); background: color-mix(in srgb, var(--sunset-snow) 35%, transparent)">=;;:</span><span style="color: var(--sunset-snow-shade); background: color-mix(in srgb, var(--sunset-snow-shade) 30%, transparent)">'.'.</span>
+<span style="color: var(--sunset-snow); background: color-mix(in srgb, var(--sunset-snow) 35%, transparent)">;:·:</span><span style="color: var(--sunset-snow-shade); background: color-mix(in srgb, var(--sunset-snow-shade) 30%, transparent)">.'..</span>
+<span style="color: var(--sunset-hill-far)">·.:·</span><span style="color: var(--sunset-hill-far)"> . .</span></pre>
+  </div>
+  <div class="pane" style="background: var(--twilight-sky-horizon); color: var(--twilight-ground)">
+    <p class="label">Twilight</p>
+    <pre><span style="color: var(--twilight-snow)">  /^\_  </span>
+<span style="color: var(--twilight-snow); background: color-mix(in srgb, var(--twilight-snow) 35%, transparent)">=;;:</span><span style="color: var(--twilight-snow-shade); background: color-mix(in srgb, var(--twilight-snow-shade) 30%, transparent)">'.'.</span>
+<span style="color: var(--twilight-snow); background: color-mix(in srgb, var(--twilight-snow) 35%, transparent)">;:·:</span><span style="color: var(--twilight-snow-shade); background: color-mix(in srgb, var(--twilight-snow-shade) 30%, transparent)">.'..</span>
+<span style="color: var(--twilight-hill-far)">·.:·</span><span style="color: var(--twilight-hill-far)"> . .</span></pre>
+  </div>
+  <div class="pane" style="background: var(--night-sky-horizon); color: var(--night-ground)">
+    <p class="label">Night</p>
+    <pre><span style="color: var(--night-snow)">  /^\_  </span>
+<span style="color: var(--night-snow); background: color-mix(in srgb, var(--night-snow) 35%, transparent)">=;;:</span><span style="color: var(--night-snow-shade); background: color-mix(in srgb, var(--night-snow-shade) 30%, transparent)">'.'.</span>
+<span style="color: var(--night-snow); background: color-mix(in srgb, var(--night-snow) 35%, transparent)">;:·:</span><span style="color: var(--night-snow-shade); background: color-mix(in srgb, var(--night-snow-shade) 30%, transparent)">.'..</span>
+<span style="color: var(--night-hill-far)">·.:·</span><span style="color: var(--night-hill-far)"> . .</span></pre>
+  </div>
+  <div class="pane" style="background: var(--dawn-sky-horizon); color: var(--dawn-ground)">
+    <p class="label">Dawn</p>
+    <pre><span style="color: var(--dawn-snow)">  /^\_  </span>
+<span style="color: var(--dawn-snow); background: color-mix(in srgb, var(--dawn-snow) 35%, transparent)">=;;:</span><span style="color: var(--dawn-snow-shade); background: color-mix(in srgb, var(--dawn-snow-shade) 30%, transparent)">'.'.</span>
+<span style="color: var(--dawn-snow); background: color-mix(in srgb, var(--dawn-snow) 35%, transparent)">;:·:</span><span style="color: var(--dawn-snow-shade); background: color-mix(in srgb, var(--dawn-snow-shade) 30%, transparent)">.'..</span>
+<span style="color: var(--dawn-hill-far)">·.:·</span><span style="color: var(--dawn-hill-far)"> . .</span></pre>
+  </div>
+</div>
+</body>
+</html>

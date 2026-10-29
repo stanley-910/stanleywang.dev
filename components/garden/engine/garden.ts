@@ -7,11 +7,12 @@ import {
   hash,
   lerp,
   mulberry32,
+  noise1,
   smoothstep,
   TAU,
 } from './math'
 import { Meadow, STRIP } from './meadow'
-import { mix, type Palette, type Rgb } from './palette'
+import { css, mix, type Palette, type Rgb } from './palette'
 import { particle, Particles } from './particles'
 import {
   createPlant,
@@ -21,7 +22,7 @@ import {
   type Plant,
   type Species,
 } from './plants'
-import { type Head, Kind, type Raster, Shape } from './raster'
+import { type Head, Kind, LandMat, type Raster, Shape } from './raster'
 
 import type { Rect } from './ascii'
 import type { Visitors } from './visitors'
@@ -45,6 +46,20 @@ const ROSE_Z = 0.72
 const INTRO = 4.5
 /** Spacing of the ridge outline's points. */
 const RIDGE_STEP = 6
+/** Peaks lower than this, as a share of the screen height above the horizon, carry no snow. */
+const SNOW_MIN = 0.08
+/** Spacing of the relief field on the far range, in px; finer than a glyph cell. */
+const FACE_STEP = 5
+/** How far the lit face of a hidden ridgeline reaches, and its narrower shadow, in px. */
+const FACE_LIT = 80
+const FACE_SHADE = 36
+/** The middle ridge's forest, three rows back to front: how far down the slope each starts, and how often it gaps. */
+const FOREST_ROWS = [
+  { drop: 0, gate: 0.44, hMin: 0.6, hVar: 1.0 },
+  { drop: 0.12, gate: 0.42, hMin: 0.8, hVar: 1.3 },
+  { drop: 0.3, gate: 0.48, hMin: 1.0, hVar: 1.6 },
+]
+const FOREST_STEP = 2
 /** Depth of the farthest planting: a field away, short of the hills, so nothing roots on them. */
 const FARTHEST_Z = 0.22
 
@@ -64,6 +79,24 @@ export class Garden {
   private targetAge = new Map<Plant, number>()
   private intro = 0
   private ridges: Float32Array[] = []
+  /** Where snow starts on the far range at each ridge point, as a screen y; NaN where there's none. */
+  private snowline = new Float32Array(0)
+  /**
+   * The far range's faces: for each point of a coarse grid, the distance to the nearest hidden
+   * ridgeline, which side of it the point lies on, and where the ridgeline is.
+   */
+  private faces: {
+    cols: number
+    rows: number
+    top: number
+    d: Float32Array
+    side: Int8Array
+    qx: Float32Array
+  } | null = null
+  /** The middle ridge's forest rows, back to front, and the spruce stands on the near ridge. */
+  private forest: Shape[] = []
+  private spruce: Shape[] = []
+  private treeTop = 0
   /** Plants sown by clicking, oldest first. */
   private sown: Plant[] = []
   time = 0
@@ -376,8 +409,8 @@ export class Garden {
 
   /**
    * Three ridges with their own characters, all fixed in x so a resize only reveals more of the
-   * range: a far range of sharp peaks with a main massif every so often, a rolling middle ridge
-   * with a cliff and a shelf, and a low, soft near ridge.
+   * range: a far range of sharp peaks with a main massif every so often, a low, rough middle
+   * ridge, and a low, soft near ridge.
    */
   private buildRidges() {
     const n = Math.ceil(this.width / RIDGE_STEP) + 2
@@ -393,6 +426,20 @@ export class Garden {
       }
       return x - best
     }
+    // The middle ridge is a low, rough foothill: rolling, with ridged knolls, forested to its crest.
+    const midAt = (x: number) => {
+      const knolls =
+        Math.max(0, 1 - Math.abs(fbm1(x / 120, seed + 111, 3) - 0.5) * 2) ** 1.4
+      return (
+        this.horizon -
+        H *
+          (0.03 +
+            0.055 * (0.5 + (fbm1(x / 300, seed + 101, 4) - 0.5) * 1.6) +
+            0.025 * knolls)
+      )
+    }
+    const nearAt = (x: number) =>
+      this.horizon - H * 0.035 * (0.55 + fbm1(x / 680, seed + 202, 3) * 0.9)
     const far = new Float32Array(n)
     const mid = new Float32Array(n)
     const near = new Float32Array(n)
@@ -409,16 +456,288 @@ export class Garden {
       far[i] =
         this.horizon -
         H * (0.03 + 0.17 * (0.35 + 0.35 * roll + 0.45 * ridged) + massif)
-      // The middle ridge rolls, then steps up a cliff onto a shelf that eases back down.
-      const dc = feature(x, 2)
-      const shelf = smoothstep(-10, 10, dc) * (1 - smoothstep(160, 340, dc))
-      const rollM = fbm1(x / 380, seed + 101, 4)
-      mid[i] =
-        this.horizon - H * (0.01 + 0.1 * (0.5 + rollM * 0.8) + 0.035 * shelf)
-      near[i] =
-        this.horizon - H * 0.035 * (0.55 + fbm1(x / 680, seed + 202, 3) * 0.9)
+      mid[i] = midAt(x)
+      near[i] = nearAt(x)
     }
     this.ridges = [far, mid, near]
+    const massifs: number[] = []
+    for (let j = -1; j <= Math.ceil(this.width / 1500) + 1; j++)
+      massifs.push(j * 1500 + lerp(700, 1100, hash(j, 1, this.seed)))
+    this.buildSnowline(massifs)
+    this.buildFaces(massifs)
+    this.buildForest(midAt, nearAt)
+  }
+
+  /** A ridge's height at any x, between its points. */
+  private ridgeAt(ridge: Float32Array, x: number) {
+    const f = clamp(x / RIDGE_STEP, 0, ridge.length - 1)
+    const i = Math.min(ridge.length - 2, Math.floor(f))
+    return lerp(ridge[i], ridge[i + 1], f - i)
+  }
+
+  /**
+   * Snow on each massif covers the top quarter of its height, measured from its true summit, with
+   * a gentle wobble. Measured from a sliding local top instead, the line crept down whole flanks.
+   */
+  private buildSnowline(massifs: number[]) {
+    const far = this.ridges[0]
+    const n = far.length
+    const line = new Float32Array(n).fill(NaN)
+    const lineAt = (i: number, pk: number) => {
+      const x = i * RIDGE_STEP
+      return (
+        this.horizon -
+        (pk * 0.76 +
+          20 * (fbm1(x / 45, this.seed + 404, 3) - 0.5) +
+          12 * (fbm1(x / 9, this.seed + 405, 2) - 0.5))
+      )
+    }
+    for (const at of massifs) {
+      // The summit: the highest point within 200px of the massif's centre that's on screen.
+      let si = -1
+      for (let x = at - 200; x <= at + 200; x += RIDGE_STEP) {
+        const i = Math.round(x / RIDGE_STEP)
+        if (i >= 0 && i < n && (si < 0 || far[i] < far[si])) si = i
+      }
+      if (si < 0) continue
+      const pk = this.horizon - far[si]
+      if (pk < this.height * SNOW_MIN) continue
+      // The cap runs out from the summit each way until the ridge has dropped clear of the line,
+      // so it ends where the mountain does, never at a cut.
+      for (const dir of [-1, 1]) {
+        let below = 0
+        for (let i = si; i >= 0 && i < n && below < 4; i += dir) {
+          const y = lineAt(i, pk)
+          line[i] = Number.isNaN(line[i]) ? y : Math.min(line[i], y)
+          below = far[i] > y ? below + 1 : 0
+        }
+      }
+    }
+    this.snowline = line
+  }
+
+  /**
+   * Hidden ridgelines that split the far range into faces. The main summit sends one down each
+   * side and every other sub-peak one down its own flank, away from the summit; each runs down in
+   * 5px steps and branches once, steeper. They're never drawn: only the faces either side are.
+   */
+  private buildFaces(massifs: number[]) {
+    const far = this.ridges[0]
+    const hz = this.horizon
+    const W = this.width
+    const at = (x: number) => this.ridgeAt(far, x)
+    const segs: number[] = []
+    const grow = (
+      x: number,
+      y: number,
+      dir: number,
+      len: number,
+      sd: number,
+      branch: boolean,
+    ) => {
+      const lean = 0.3 + 0.35 * hash(sd, 1, this.seed) + (branch ? 0 : 0.45)
+      const steps = Math.ceil(len / 5)
+      for (let k = 0; k < steps; k++) {
+        const nx = x + dir * lean * 5 + (noise1(k * 0.45, sd) - 0.5) * 4
+        const ny = Math.max(y + 5, at(nx) + 3)
+        if (ny > hz - 8) break
+        segs.push(x, y, nx, ny)
+        if (branch && k === Math.floor(steps * 0.4))
+          grow(nx, ny, dir, len * 0.45, sd * 7 + 1, false)
+        x = nx
+        y = ny
+      }
+    }
+    const peaks: number[] = []
+    for (let x = -150; x < W + 150; x += 3) {
+      const y = at(x)
+      if (
+        hz - y > this.height * 0.1 &&
+        y <= at(x - 6) &&
+        y <= at(x + 6) &&
+        y < at(x - 16) &&
+        y < at(x + 16) &&
+        (!peaks.length || x - peaks[peaks.length - 1] > 42)
+      )
+        peaks.push(x)
+    }
+    peaks.forEach((px, pi) => {
+      const top = at(px)
+      let sm = massifs[0]
+      for (const m of massifs) if (Math.abs(px - m) < Math.abs(px - sm)) sm = m
+      const dirs = Math.abs(px - sm) < 30 ? [-1, 1] : [px < sm ? -1 : 1]
+      dirs.forEach((dir, di) =>
+        grow(
+          px + dir * 2,
+          top + 3,
+          dir,
+          (hz - top) * (0.4 + 0.3 * hash(pi, di + 3, this.seed)),
+          pi * 13 + di + 2,
+          true,
+        ),
+      )
+    })
+    let top = hz
+    for (const y of far) top = Math.min(top, y)
+    const cols = Math.ceil(W / FACE_STEP) + 1
+    const rows = Math.max(1, Math.ceil((hz - top) / FACE_STEP) + 1)
+    const d = new Float32Array(cols * rows).fill(1e9)
+    const side = new Int8Array(cols * rows)
+    const qx = new Float32Array(cols * rows)
+    for (let s = 0; s < segs.length; s += 4) {
+      const [x1, y1, x2, y2] = segs.slice(s, s + 4)
+      const dx = x2 - x1
+      const dy = y2 - y1
+      const L2 = dx * dx + dy * dy
+      const c0 = Math.max(
+        0,
+        Math.floor((Math.min(x1, x2) - FACE_LIT) / FACE_STEP),
+      )
+      const c1 = Math.min(
+        cols - 1,
+        Math.ceil((Math.max(x1, x2) + FACE_LIT) / FACE_STEP),
+      )
+      const r0 = Math.max(0, Math.floor((y1 - FACE_LIT - top) / FACE_STEP))
+      const r1 = Math.min(
+        rows - 1,
+        Math.ceil((y2 + FACE_LIT - top) / FACE_STEP),
+      )
+      for (let r = r0; r <= r1; r++)
+        for (let c = c0; c <= c1; c++) {
+          const X = c * FACE_STEP
+          const Y = top + r * FACE_STEP
+          const t = clamp(((X - x1) * dx + (Y - y1) * dy) / L2, 0, 1)
+          const qX = x1 + dx * t
+          const dd = Math.hypot(X - qX, Y - (y1 + dy * t))
+          const i = r * cols + c
+          if (dd < d[i]) {
+            d[i] = dd
+            side[i] = X < qX ? -1 : 1
+            qx[i] = qX
+          }
+        }
+    }
+    this.faces = { cols, rows, top, d, side, qx }
+  }
+
+  /**
+   * Forest. The middle ridge is forested to its crest in three staggered rows, each lower on the
+   * slope, with its own gaps; the near ridge carries a few stands of tall, tiered spruce. Each row is
+   * a low canopy with one narrow spire per slot; toward the end of a stretch the spires drop out and
+   * the canopy sinks, so a stand thins to single trees instead of rounding off into a mound.
+   */
+  private buildForest(
+    midAt: (x: number) => number,
+    nearAt: (x: number) => number,
+  ) {
+    const hz = this.horizon
+    const W = this.width
+    const seed = this.seed
+    // About one glyph cell, so the trees keep their size against the type.
+    const CH = this.height * 0.0125
+    const CW = CH / 1.32
+    const tw = 2.6 * CW
+    const on = (k: number, x: number) =>
+      k === 0 || fbm1(x / 170, seed + 707 + k * 41, 3) > FOREST_ROWS[k].gate
+    const taper = (k: number, x: number) => {
+      let n = 0
+      for (let j = 1; j <= 6; j++) n += +on(k, x - j * 12) + +on(k, x + j * 12)
+      return n / 12
+    }
+    const spire = (
+      x: number,
+      salt: number,
+      t: number,
+      hMin: number,
+      hVar: number,
+    ) => {
+      const i = Math.floor(x / tw + hash(salt, 3, seed) * 0.5)
+      if (hash(i, salt * 11 + 5, seed) > 0.15 + 0.85 * t) return 0
+      const hw = 0.28 + 0.12 * hash(i, salt * 11 + 6, seed)
+      const off = Math.abs(x / tw - i - 0.5)
+      if (off > hw) return 0
+      return (hMin + hVar * hash(i, salt * 11 + 7, seed)) * CH * (1 - off / hw)
+    }
+    let treeTop = hz
+    this.forest = FOREST_ROWS.map((R, k) => {
+      const shape = new Shape()
+      let last = -1
+      for (let x = -FOREST_STEP; x <= W + FOREST_STEP; x += FOREST_STEP) {
+        if (!on(k, x)) {
+          if (last >= 0) {
+            shape.lineTo(last, hz + 2)
+            shape.closePath()
+            last = -1
+          }
+          continue
+        }
+        const m = midAt(x)
+        const f =
+          k === 0
+            ? 0.03
+            : 0.12 + 0.2 * (fbm1(x / 45, seed + 505 + k * 9, 3) - 0.5)
+        const top = m + Math.min(0.92, f + R.drop) * (hz - m)
+        const t = taper(k, x)
+        const canopy = top + (1 - smoothstep(0.5, 1, t)) * (hz - top)
+        const y = Math.max(
+          m - 2.4 * CH,
+          Math.min(canopy, hz - 2) - spire(x, 1 + k * 10, t, R.hMin, R.hVar),
+        )
+        if (last < 0) shape.moveTo(x, hz + 2)
+        shape.lineTo(x, y)
+        treeTop = Math.min(treeTop, y)
+        last = x
+      }
+      if (last >= 0) {
+        shape.lineTo(last, hz + 2)
+        shape.closePath()
+      }
+      return shape
+    })
+    // Two or three stands across a screen, never over the text, so the flowers keep open sky
+    // behind most of them.
+    this.spruce = []
+    const clear = this.keepClear
+    for (let j = 0; j * 520 < W + 200; j++) {
+      if (hash(j, 62, seed) > 0.6) continue
+      const n = 5 + Math.floor(hash(j, 63, seed) * 5)
+      const gx = 120 + j * 520 + (hash(j, 61, seed) - 0.5) * 200
+      const span = n * 3.4 * CW * 0.6 + 30
+      if (clear && gx + span > clear.left && gx - span < clear.right) continue
+      for (let k = 0; k < n; k++) {
+        const mid = 1 - (0.55 * Math.abs(k - (n - 1) / 2)) / n
+        const x =
+          gx +
+          (k - (n - 1) / 2) *
+            3.4 *
+            CW *
+            (0.75 + 0.5 * hash(k, j * 13 + 1, seed))
+        const H = (5 + 8 * hash(k, j * 13 + 2, seed)) * CH * mid
+        const hw = H * 0.26
+        const tiers = 3 + Math.floor(H / CH / 2.2)
+        const base = nearAt(x) + CH * 0.8
+        // Tiered: each branch tier flares out, then steps in under the next.
+        const half = (y: number) => {
+          const t = (y - (base - H)) / H
+          const q = t * tiers
+          return hw * (0.06 + 0.94 * t) * (0.62 + 0.38 * (q - Math.floor(q)))
+        }
+        // Down the left flank from the tip, then back up the right.
+        const shape = new Shape()
+        const ys: number[] = []
+        for (let y = base - H; y <= base + 0.01; y += CH / 4)
+          ys.push(Math.min(base - 0.01, y))
+        ys.forEach((y, q) =>
+          q ? shape.lineTo(x - half(y), y) : shape.moveTo(x, y),
+        )
+        for (let q = ys.length - 1; q > 0; q--)
+          shape.lineTo(x + half(ys[q]), ys[q])
+        shape.closePath()
+        this.spruce.push(shape)
+        treeTop = Math.min(treeTop, base - H)
+      }
+    }
+    this.treeTop = treeTop
   }
 
   /** A ridge's outline as a path, closed down to `base`. */
@@ -511,8 +830,14 @@ export class Garden {
     // With the sun low the ridges stand against it, their near faces in shadow: they go toward
     // silhouette, the nearest most, while the far range keeps its haze.
     const back = this.backlight(p)
+    // By day the far rock takes less of the pale sky, a step darker, so snow and lit faces stand out.
+    const day = (1 - smoothstep(0, 0.1, p.night)) * (1 - back)
     return [
-      mix(mix(p.hillFar, p.skyHorizon, 0.5), p.ground, 0.5 * back),
+      mix(
+        mix(p.hillFar, p.skyHorizon, 0.5 - 0.12 * day),
+        p.ground,
+        0.5 * back + 0.08 * day,
+      ),
       mix(
         mix(mix(p.hillFar, p.hillNear, 0.45), p.skyHorizon, 0.25),
         p.ground,
@@ -520,6 +845,22 @@ export class Garden {
       ),
       mix(mix(p.hillNear, p.ground, 0.2), p.ground, 0.6 * back),
     ]
+  }
+
+  /**
+   * The forest's colours: the middle ridge's three rows, paler and hazed at the back, darkest at
+   * the front, and the near spruce, the darkest mark on the land.
+   */
+  private forestColors(p: Palette, colors: Rgb[]) {
+    const pine = mix(p.pine, colors[1], 0.12)
+    return {
+      rows: [
+        mix(mix(pine, colors[1], 0.38), p.haze, 0.12),
+        mix(pine, colors[1], 0.16),
+        mix(pine, p.ground, 0.14),
+      ],
+      spruce: mix(p.pine, p.ground, 0.35),
+    }
   }
 
   step(dt: number, palette: Palette) {
@@ -663,6 +1004,58 @@ export class Garden {
     this.visitors.draw(r, p)
   }
 
+  /**
+   * The far range's faces per glyph cell, for the typesetter: within 80px of a hidden ridgeline,
+   * up to 1 on the face toward the light and down to -1 in its narrower shadow, easing to 0 at each
+   * face's edge and in the 30px under the snowline, so they never touch the cap. With the sun low
+   * behind the range every face takes the shaded side. Returns the lit faces' tint and strength:
+   * the light at 8% by day, 2.5% at night, where more showed every cell's edge as a stair step.
+   */
+  relief(
+    out: Float32Array,
+    cols: number,
+    rows: number,
+    cw: number,
+    ch: number,
+    p: Palette,
+  ) {
+    out.fill(0)
+    const { light, color } = this.slopeLight(p)
+    const lit = light > 0 ? lerp(0.08, 0.025, smoothstep(0.3, 0.7, p.night)) : 0
+    const F = this.faces
+    if (!F) return { color, lit }
+    const rim = this.lights(p).sun > 0 ? this.sunLook(p).low : 0
+    const { cx } = this.globeAt()
+    const [far, mid] = this.ridges
+    for (let r = 0; r < rows; r++) {
+      const y = (r + 0.5) * ch
+      if (y < F.top || y >= this.horizon) continue
+      const gr = Math.min(F.rows - 1, Math.round((y - F.top) / FACE_STEP))
+      for (let c = 0; c < cols; c++) {
+        const x = (c + 0.5) * cw
+        // Only the far range's own rock: not the sky above it or the ridges in front.
+        if (y < this.ridgeAt(far, x) || y >= this.ridgeAt(mid, x)) continue
+        const g = gr * F.cols + Math.min(F.cols - 1, Math.round(x / FACE_STEP))
+        const d = F.d[g]
+        if (d >= FACE_LIT) continue
+        const line =
+          this.snowline[
+            Math.min(this.snowline.length - 1, Math.round(x / RIDGE_STEP))
+          ]
+        const under = Number.isNaN(line) ? 1 : smoothstep(0, 30, y - line)
+        if (under <= 0) continue
+        const toward = rim < 0.5 && F.side[g] === (cx < F.qx[g] ? -1 : 1)
+        const v = toward
+          ? smoothstep(0, 1, 1 - d / FACE_LIT)
+          : d < FACE_SHADE
+            ? -smoothstep(0, 1, 1 - d / FACE_SHADE)
+            : 0
+        out[r * cols + c] = v * under
+      }
+    }
+    return { color, lit }
+  }
+
   /** The highest painted ridge at x. */
   hillTop(x: number) {
     let top = this.horizon
@@ -739,6 +1132,7 @@ export class Garden {
       ctx.fillRect(0, 0, this.width, this.height)
     }
     const colors = this.ridgeColors(p)
+    const trees = this.forestColors(p, colors)
     // Backlit ridges lose most of their haze and mist, so they read as shapes against the glow.
     const thin = 1 - 0.6 * this.backlight(p)
     const hz = p.haze.map((v) => v | 0).join(',')
@@ -746,6 +1140,15 @@ export class Garden {
     for (const [layer, ridge] of this.ridges.entries()) {
       ctx.fillStyle = `rgb(${colors[layer].map((v) => v | 0).join(',')})`
       ctx.fill(this.ridgePath(ridge, this.horizon + 2).toPath2D())
+      if (layer === 1)
+        this.forest.forEach((shape, k) => {
+          ctx.fillStyle = css(trees.rows[k])
+          ctx.fill(shape.toPath2D())
+        })
+      if (layer === 2) {
+        ctx.fillStyle = css(trees.spruce)
+        for (const shape of this.spruce) ctx.fill(shape.toPath2D())
+      }
       // Haze pooled low on the far and middle ridges, deepest at the foot, so each stands
       // clear of the one behind without an edge.
       if (layer < 2) {
@@ -788,46 +1191,72 @@ export class Garden {
   }
 
   /**
-   * Snow on the far range's highest tops: everything above a ragged snowline set so high that
-   * only the main massif reaches it. Paler and lit, so it prints as a denser halftone.
+   * Snow on the massifs' tops, its own material: a lit flank facing the sun or moon and a shaded
+   * one, in their own colours. Slopes steeper than about 60° hold none, so cliffs show dark ribs.
+   * With the sun low behind the range only a rim along the crest is lit.
    */
-  private drawSnow(r: Raster, ridge: Float32Array, color: Rgb, p: Palette) {
-    const line = (k: number) =>
-      this.horizon -
-      this.height * (0.215 + 0.012 * (fbm1(k * 0.35, this.seed + 404, 2) - 0.5))
-    const snow = new Shape()
+  private drawSnow(
+    r: Raster,
+    ridge: Float32Array,
+    p: Palette,
+    toward: number,
+    rim: number,
+  ) {
+    const line = this.snowline
     const n = ridge.length
+    const CH = this.height * 0.0125
+    const kind = (i: number) => {
+      if (!(ridge[i] < line[i])) return 0
+      // Steepness from the next points either side, which catches cliffs; which way the flank
+      // faces from a wider window, so it doesn't flicker with every crease of the crest.
+      const steep =
+        (ridge[Math.min(n - 1, i + 1)] - ridge[Math.max(0, i - 1)]) /
+        (2 * RIDGE_STEP)
+      if (Math.abs(steep) > 1.7) return 0
+      const s =
+        (ridge[Math.min(n - 1, i + 3)] - ridge[Math.max(0, i - 3)]) /
+        (6 * RIDGE_STEP)
+      if (rim > 0.5) return LandMat.SnowShade
+      const x = i * RIDGE_STEP
+      const lit = Math.abs(s) < 0.15 || (s < 0 ? toward < x : toward > x)
+      return lit ? LandMat.SnowLit : LandMat.SnowShade
+    }
+    const shapes = [new Shape(), new Shape(), new Shape()]
     let top = this.horizon
     let i = 0
     while (i < n) {
-      if (ridge[i] >= line(i)) {
-        i++
-        continue
-      }
+      const k = kind(i)
       let j = i
-      while (j + 1 < n && ridge[j + 1] < line(j + 1)) j++
-      snow.moveTo(i * RIDGE_STEP, ridge[i])
-      for (let k = i + 1; k <= j; k++) snow.lineTo(k * RIDGE_STEP, ridge[k])
-      for (let k = j; k >= i; k--) snow.lineTo(k * RIDGE_STEP, line(k))
-      snow.closePath()
-      for (let k = i; k <= j; k++) top = Math.min(top, ridge[k])
+      while (j + 1 < n && kind(j + 1) === k) j++
+      if (k) {
+        // Each run of one flank: along the crest, then back along the snowline.
+        const cap = shapes[k]
+        cap.moveTo(i * RIDGE_STEP, ridge[i])
+        for (let q = i + 1; q <= j; q++) cap.lineTo(q * RIDGE_STEP, ridge[q])
+        for (let q = j; q >= i; q--) cap.lineTo(q * RIDGE_STEP, line[q])
+        cap.closePath()
+        if (rim > 0.5) {
+          const edge = shapes[LandMat.SnowLit]
+          edge.moveTo(i * RIDGE_STEP, ridge[i])
+          for (let q = i + 1; q <= j; q++) edge.lineTo(q * RIDGE_STEP, ridge[q])
+          for (let q = j; q >= i; q--)
+            edge.lineTo(q * RIDGE_STEP, Math.min(line[q], ridge[q] + 2.2 * CH))
+          edge.closePath()
+        }
+        for (let q = i; q <= j; q++) top = Math.min(top, ridge[q])
+      }
       i = j + 1
     }
     if (top === this.horizon) return
-    // Cream by day; under the moon it only greys a little, so night stays dark.
+    const meta = (id: number) => ({ id, light: 0.5, back: false })
     r.fill(
-      snow,
-      mix(color, [250, 248, 240], 0.85 * (1 - 0.6 * p.night)),
+      shapes[LandMat.SnowShade],
+      p.snowShade,
       Kind.Land,
       1,
-      {
-        id: 0,
-        light: 0.8 - 0.2 * p.night,
-        back: false,
-      },
+      meta(LandMat.SnowShade),
     )
-    r.touchMeta(0, top)
-    r.touchMeta(this.width, this.horizon)
+    r.fill(shapes[LandMat.SnowLit], p.snow, Kind.Land, 1, meta(LandMat.SnowLit))
   }
 
   private drawLand(r: Raster, p: Palette) {
@@ -840,8 +1269,17 @@ export class Garden {
     // A low sun sits behind the range, so the slopes we see face away from it: the light only
     // catches a rim along the crest and the shade side deepens.
     const rim = this.lights(p).sun > 0 ? this.sunLook(p).low : 0
+    const trees = this.forestColors(p, colors)
+    const rock = { id: LandMat.Rock, light: 0.5, back: false }
     this.ridges.forEach((ridge, layer) => {
-      r.fill(this.ridgePath(ridge, this.height + 10), colors[layer], Kind.Land)
+      // The nearer ridges reset the material under them, so snow or forest behind doesn't show through.
+      r.fill(
+        this.ridgePath(ridge, this.height + 10),
+        colors[layer],
+        Kind.Land,
+        1,
+        layer ? rock : undefined,
+      )
       // Four strips, each shallower and stronger, so the glyphs thicken toward the crest.
       const q = clamp(light / 0.45, 0, 1)
       for (const [k, reach] of (light > 0
@@ -866,15 +1304,29 @@ export class Garden {
           { id: 0, light: 0.5 - 0.5 * s, back: false },
         )
       }
-      if (layer === 0) this.drawSnow(r, ridge, colors[0], p)
+      if (layer === 0) this.drawSnow(r, ridge, p, cx, rim)
+      if (layer === 1)
+        this.forest.forEach((shape, k) =>
+          r.fill(shape, trees.rows[k], Kind.Land, 1, {
+            id: LandMat.Canopy,
+            light: 0.5,
+            back: false,
+          }),
+        )
+      if (layer === 2)
+        for (const shape of this.spruce)
+          r.fill(shape, trees.spruce, Kind.Land, 1, {
+            id: LandMat.Spruce,
+            light: 0.5,
+            back: false,
+          })
     })
-    if (light > 0) {
-      let top = this.horizon
-      for (const ridge of this.ridges)
-        for (const y of ridge) top = Math.min(top, y)
-      r.touchMeta(0, top)
-      r.touchMeta(W, this.horizon)
-    }
+    // The land's materials and slope light live in the meta layer, over the whole range.
+    let top = this.treeTop
+    for (const ridge of this.ridges)
+      for (const y of ridge) top = Math.min(top, y)
+    r.touchMeta(0, top)
+    r.touchMeta(W, this.horizon)
     // Meadow floor, darkening toward the viewer.
     const ground = new Shape()
     ground.rect(-10, this.horizon, W + 20, this.height - this.horizon + 10)

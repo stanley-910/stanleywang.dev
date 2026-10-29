@@ -31,6 +31,11 @@ export interface Palette {
   disc: Rgb
   fluff: Rgb
   globe: Rgb
+  /** Snow on the far range's tops: its lit flank, and the flank turned from the light. */
+  snow: Rgb
+  snowShade: Rgb
+  /** Conifers on the ridges, the darkest mark on each: little hue by day, never a saturated green. */
+  pine: Rgb
   /** Panel the hero text sits in: background and the cream its glyphs are recoloured toward. */
   panelBg: Rgb
   panelInk: Rgb
@@ -73,6 +78,9 @@ const DAY: Palette = {
   disc: hex('#2b302a'),
   fluff: hex('#f1ecda'),
   globe: hex('#e6e2d0'),
+  snow: hex('#eeece4'),
+  snowShade: hex('#a5b2c0'),
+  pine: hex('#3c4744'),
   panelBg: hex('#262624'),
   panelInk: hex('#ded9bf'),
   night: 0,
@@ -104,6 +112,9 @@ const GOLDEN: Palette = {
   dandelion: hex('#f2c867'),
   fluff: hex('#fbe7c8'),
   globe: hex('#ffe0b0'),
+  snow: hex('#f4dcb6'),
+  snowShade: hex('#8f8399'),
+  pine: hex('#3d3a35'),
   panelBg: hex('#241f1c'),
   panelInk: hex('#f3dfc0'),
   night: 0.1,
@@ -134,6 +145,9 @@ const DUSK: Palette = {
   disc: hex('#1d0f16'),
   fluff: hex('#ffd9bf'),
   globe: hex('#ffc48f'),
+  snow: hex('#f09a7c'),
+  snowShade: hex('#6a4a78'),
+  pine: hex('#2a1a29'),
   panelBg: hex('#1f1219'),
   panelInk: hex('#f6d6c0'),
   night: 0.3,
@@ -162,6 +176,9 @@ const TWILIGHT: Palette = {
   lace: hex('#efd0e6'),
   dandelion: hex('#d9a070'),
   globe: hex('#f2c8e0'),
+  snow: hex('#b98aa8'),
+  snowShade: hex('#3e2e58'),
+  pine: hex('#191322'),
   panelBg: hex('#150f1e'),
   panelInk: hex('#ecd6e6'),
   night: 0.6,
@@ -191,6 +208,9 @@ const NIGHT: Palette = {
   disc: hex('#0b0f17'),
   fluff: hex('#e3e8ff'),
   globe: hex('#dfe4f7'),
+  snow: hex('#8a98b0'),
+  snowShade: hex('#2c3950'),
+  pine: hex('#0f161d'),
   panelBg: hex('#0d1520'),
   panelInk: hex('#cfd6ee'),
   night: 1,
@@ -223,6 +243,9 @@ const MIDNIGHT: Palette = {
   disc: hex('#05070a'),
   fluff: hex('#eef3ff'),
   globe: hex('#a9b1c4'),
+  snow: hex('#56627a'),
+  snowShade: hex('#1c2433'),
+  pine: hex('#06090d'),
   panelBg: hex('#07090d'),
   panelInk: hex('#d8dce8'),
   night: 1,
@@ -246,6 +269,9 @@ const DAWN: Palette = {
   roseDeep: hex('#581620'),
   roseLeaf: hex('#56644e'),
   globe: hex('#f2e4dc'),
+  snow: hex('#e6d4d6'),
+  snowShade: hex('#8c92a8'),
+  pine: hex('#3a3f43'),
   panelBg: hex('#1e2a2c'),
   panelInk: hex('#e4dccd'),
   night: 0.35,

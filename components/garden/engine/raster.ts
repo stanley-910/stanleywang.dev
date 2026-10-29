@@ -1,6 +1,7 @@
 import {
   buildPath,
   Kind,
+  LandMat,
   Op,
   PathOp,
   Rasterizer,
@@ -13,7 +14,7 @@ import type { Rgb } from './palette'
 import type { Material, Style } from './typeset'
 
 // Defined beside the rasteriser, which the worker loads without this file.
-export { Kind, SS }
+export { Kind, LandMat, SS }
 /** How long a worker may hold a frame before the raster gives up on workers. */
 const WORKER_TIMEOUT = 1000
 /** A gap between frames this long means the page stood still, not the worker. */
@@ -399,7 +400,13 @@ export class Raster {
    * Sends this frame's draws off to be rasterised and set in type, in the colours of `look`;
    * `now` does it here, before returning.
    */
-  submit(now: boolean, look: Pick<Style, 'palette' | 'horizon' | 'hill'>) {
+  submit(
+    now: boolean,
+    look: Pick<
+      Style,
+      'palette' | 'horizon' | 'hill' | 'relief' | 'reliefLight' | 'reliefLit'
+    >,
+  ) {
     const t = this.touch
     const box: Box = [
       Math.max(0, Math.floor(t[0] * this.sx) - 2),

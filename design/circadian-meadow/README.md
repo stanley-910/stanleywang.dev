@@ -32,11 +32,11 @@ The hour follows the viewer's clock by default, so the site is dark at night wit
 
 **Home text** sits on the scene's ground, which is dark at every hour, so it uses `scene-ink`, `scene-ink-muted` and `scene-hairline` whatever the page theme.
 
-**Scene colour** is the garden. Each of six keyframes (`day`, `golden`, `sunset`, `twilight`, `night`, `dawn`) has 18 tokens: `day-sky-top`, `sunset-poppy`, `night-grass-light` and so on. The scene blends between keyframes by hour: night until 4:30, dawn at 6:30, day from 9 to 16, golden hour at 17:45, sunset at 19:00, twilight at 20:09, night from 21:24.
+**Scene colour** is the garden. Each of six keyframes (`day`, `golden`, `sunset`, `twilight`, `night`, `dawn`) has 24 tokens: `day-sky-top`, `sunset-poppy`, `night-grass-light` and so on. The scene blends between keyframes by hour: night until 4:30, dawn at 6:30, day from 9 to 16, golden hour at 17:45, sunset at 19:00, twilight at 20:09, night from 21:24.
 
 Rules:
 
-- The land stays neutral stone: `*-ground`, `*-hill-near`, `*-grass-dark` and `*-grass-light` carry little hue by day. The flowers (`*-poppy`, `*-cosmos`, `*-dandelion`), the sky (`*-sky-top`, `*-sky-horizon`) and the clouds (`*-cloud`) are where colour lives.
+- The land stays neutral stone: `*-ground`, `*-hill-near`, `*-grass-dark` and `*-grass-light` carry little hue by day. Snow at sunset is the one exception: its lit flank and summits take alpenglow (`sunset-snow`). The flowers (`*-poppy`, `*-cosmos`, `*-dandelion`), the sky (`*-sky-top`, `*-sky-horizon`) and the clouds (`*-cloud`) are where colour lives.
 - Sunset is the loudest moment: `sunset-sky-horizon` blood orange under `sunset-sky-top` bruised violet. Don't tame it.
 - `*-disc` is the darkest mark in every flower head, in every keyframe.
 
@@ -72,7 +72,9 @@ Each cell of the grid reads the material under it and prints from that material'
 - **Petals:** line glyphs along the outline, light glyphs inside over a faint colour tile. The silhouette carries the species. Outlines print paler than the petal (22% toward white by day, 55% at night), so dark night flowers keep their edge.
 - **Centres:** `@` or `#` in `*-disc`.
 - **Stalks, blades and wires:** the line glyph nearest the stroke's direction (`- \ | /`).
-- **Clouds and hills:** ordered-dither halftone. Hills are solid ridges with a depth haze; sun- or moonlit flanks thicken into `.·:;` toward the crest and the far side goes bare. Light lives in glyphs only: no painted gradients or 3D shading on the land.
+- **Clouds and hills:** ordered-dither halftone. Hills are solid ridges with a depth haze; sun- or moonlit flanks thicken into `.·:;` toward the crest and the far side goes bare. The far range is split into broad faces, each a faint tile per cell, light on one side of a hidden ridgeline and shadow on the other (SnowCap). Light lives in the cells: no painted gradients or 3D shading on the land.
+- **Snow:** its own material on the far range's massifs, the palest mark on the land. Lit flank `·:;=` and shaded flank `.'`, each on a flat tile in its own colour, with a line-glyph outline along the crest (SnowCap).
+- **Trees:** a painted serrated silhouette, the darkest mark on its ridge: three staggered rows on the middle ridge with sparse `^ |` inside, and tiered spruce stands on the near ridge with `/ \` down their flanks (TreeLine).
 - **Sun and moon:** glyphs only, no painted disc. The moon keeps its phase, and its holes show.
 - **Lace and seed heads:** a soft tile in the head's own colour with the glyphs inked against it, so a pale head holds against a pale hill.
 - **Far flowers:** a bare motif with no tile, always behind nearer heads.
@@ -84,7 +86,7 @@ A plant wins a cell over the land behind it once it covers a quarter of the cell
 - A flower head that should read as a flower spans at least `specimen-head` (14) cells. Smaller ones are texture, and that's fine far back.
 - Compose rather than scatter: a few large feature flowers in front, beside and above the text; small ones near the horizon. Wild carrot stays rare, because at a distance an umbel prints as a block.
 - Grass grows in tufts: three to seven blades fanned from one root, the outer ones leaning out and curling at the tip, with bare ground between. It prints as `\|/` clumps, a little quieter than the flowers. There is no dense foreground row.
-- Nothing is planted on the hills. The farthest flowers sit on the meadow's back edge, small.
+- No flowers on the hills. The hills carry a forest (TreeLine) and snow (SnowCap); the farthest flowers sit on the meadow's back edge, small.
 - Butterflies scale with the depth of the flower they visit.
 - Near the text the grass thins to 22% within 14 cells. Flowers are never planted where their heads would land on the text. There is never a panel or scrim behind copy.
 

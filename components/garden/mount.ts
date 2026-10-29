@@ -242,6 +242,8 @@ export function mountGarden({
 
   // Top of the painted hills per cell column, sent with each frame for the ink to contrast with.
   let hill = new Float32Array(0)
+  // The far range's faces per cell, for the rock's tiles.
+  let relief = new Float32Array(0)
 
   /**
    * Records the scene and draws the latest rasterised frame. In the loop the
@@ -264,7 +266,24 @@ export function mountGarden({
       if (hill.length !== ascii.cols) hill = new Float32Array(ascii.cols)
       for (let c = 0; c < hill.length; c++)
         hill[c] = garden.hillTop((c + 0.5) * ascii.cw)
-      raster.submit(now, { palette, horizon: garden.horizon, hill })
+      if (relief.length !== ascii.cols * ascii.rows)
+        relief = new Float32Array(ascii.cols * ascii.rows)
+      const face = garden.relief(
+        relief,
+        ascii.cols,
+        ascii.rows,
+        ascii.cw,
+        ascii.ch,
+        palette,
+      )
+      raster.submit(now, {
+        palette,
+        horizon: garden.horizon,
+        hill,
+        relief,
+        reliefLight: face.color,
+        reliefLit: face.lit,
+      })
     }
     if (!raster.ready) return
     meteors.paint(performance.now() / 1000, palette, palette.ink)
