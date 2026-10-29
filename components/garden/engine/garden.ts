@@ -95,9 +95,10 @@ export class Garden {
       quiet: true,
     }
     this.particles.onLand = (p) => {
-      // Now and then a pappus that lands takes root.
+      // Now and then a pappus that lands takes root, on home; the poem keeps the flowers it sets.
       if (
         p.type === 'pappus' &&
+        !this.keepClearColumn &&
         this.rng() < 0.04 &&
         this.plants.length < this.maxPlants()
       ) {
