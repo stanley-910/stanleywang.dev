@@ -783,9 +783,9 @@ export class Garden {
       return shape
     })
     // A few stands, placed by hand along the range, so the flowers keep open sky behind most of
-    // them. A stand is left out only where it would stand over the text itself.
     // them. A stand is left out only where it would stand over the home page's bio; the poem's text
     // crosses the whole scene, peaks and all, so it keeps them all.
+    this.spruce = []
     const clear = this.keepClear
     for (const [j, [at, n]] of SPRUCE_STANDS.entries()) {
       const gx = this.rangeX(at)
