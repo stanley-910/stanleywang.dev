@@ -372,8 +372,8 @@ export class Poppy extends Plant {
     const fallen = Math.floor(ph.shed * 4.999)
     while (this.shed < fallen) {
       this.shed++
-      // Only every other petal drifts down; the rest just leave the head.
-      if (env.quiet || this.shed % 2) continue
+      // Only one petal in three drifts down; the rest just leave the head.
+      if (env.quiet || this.shed % 3) continue
       const a = this.rng() * TAU
       env.particles.add(
         particle({
@@ -759,8 +759,8 @@ export class Cosmos extends Plant {
       const fallen = Math.floor(ph.shed * 8.999)
       while (h.shed < fallen) {
         h.shed++
-        // Only every other petal drifts down; the rest just leave the head.
-        if (env.quiet || h.shed % 2) continue
+        // Only one petal in three drifts down; the rest just leave the head.
+        if (env.quiet || h.shed % 3) continue
         const tx = h.stem.tipX()
         const ty = h.stem.tipY()
         env.particles.add(

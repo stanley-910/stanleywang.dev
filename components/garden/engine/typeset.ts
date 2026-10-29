@@ -571,10 +571,9 @@ export class Typesetter {
               if (this.back[i]) {
                 // A loose petal (LOOSE_PETAL in the air, LANDED_PETAL on the ground), printed like
                 // the petals it fell from: a line outline over a tile in its colour, sparse dark
-                // glyphs inside. In the air the tile is thin, so a flower it crosses still shows;
-                // on the ground it's a body, so the petal reads as lying there.
-                const landed = this.lit[i] > 0.5
-                tile[i] = (landed ? 0.7 : 0.35) * Math.min(1, v * 1.4)
+                // glyphs inside. Nearly solid, in the air as on the ground: thinner, a cream
+                // petal over the dark meadow mixed to a grey blob.
+                tile[i] = 0.85 * Math.min(1, v * 1.4)
                 const rim = this.edgeOf(c, r, this.looseCov)
                 alpha = 1
                 if (rim >= 0) {
