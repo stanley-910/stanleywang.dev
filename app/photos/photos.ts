@@ -38,6 +38,11 @@ export const PHOTOS: Photo[] = [
     alt: 'Yosemite, CA.',
     location: 'Yosemite, CA',
     camera: 'Fujifilm X-T30 III',
+    // Settings copied from the Zhangjiajie frame; the original kept no EXIF. Placeholders.
+    lens: 'XF 23mm f/2.8 R WR',
+    iso: 400,
+    shutter: '1/60',
+    aperture: 'f/4',
   },
   {
     id: 'XT304576',
