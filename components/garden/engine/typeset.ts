@@ -474,11 +474,11 @@ export class Typesetter {
               const lit = this.lit[i]
               // After dark cream ink glows against the dim petals; pull it back toward the petal's own colour.
               const reach = darkInk ? 1 : 1 - 0.5 * p.night
-              // Mostly opaque, so what's behind (a hill's edge, the sky) doesn't show through
-              // the head as a line across it. By day it keeps the light the raster gave the petal
+              // Nearly opaque, so what's behind (a hill's edge, the sky, another flower) doesn't
+              // show through the head. By day it keeps the light the raster gave the petal
               // (bloom.ts shades each flap by 0.62..1.17). After dark that shading is undone, so
               // the flowers stay full colour and the glyphs alone carry the light.
-              const body = darkInk ? 0.75 + 0.1 * lit : 0.7 + 0.15 * lit
+              const body = darkInk ? 0.93 + 0.05 * lit : 0.92 + 0.06 * lit
               const flat = 1 + p.night * (1 / (0.62 + 0.55 * lit) - 1)
               tileCol[i * 3] = Math.min(255, tileCol[i * 3] * flat)
               tileCol[i * 3 + 1] = Math.min(255, tileCol[i * 3 + 1] * flat)
@@ -574,7 +574,7 @@ export class Typesetter {
                 // glyphs inside. In the air the tile is thin, so a flower it crosses still shows;
                 // on the ground it's a body, so the petal reads as lying there.
                 const landed = this.lit[i] > 0.5
-                tile[i] = (landed ? 0.7 : 0.35) * Math.min(1, v * 1.4)
+                tile[i] = (landed ? 0.45 : 0.35) * Math.min(1, v * 1.4)
                 const rim = this.edgeOf(c, r, this.looseCov)
                 alpha = 1
                 if (rim >= 0) {
