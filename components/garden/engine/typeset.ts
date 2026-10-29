@@ -659,35 +659,18 @@ export class Typesetter {
             case Kind.Land: {
               // Halftone: ordered dither on brightness, like the cloud and grass studies.
               // The silhouette itself is painted in the backdrop; these are its halftone dots.
-              // Snow (marked by its meta's back flag) keeps its own colour and prints denser.
-              const snow = this.back[i] === 1
               const d = L * 1.3 + (skyRow ? 0.1 : -0.15)
-              if (d > bayer(c, r) * (snow ? 0.88 : 1.1))
+              if (d > bayer(c, r) * 1.1)
                 g = code(LAND[1 + Math.min(2, Math.floor(d * 2.2))])
-              const lc = mix(
-                [cr, cg, cb],
-                p.cloud,
-                snow ? 0.1 : skyRow ? 0.28 : 0.12,
-              )
+              const lc = mix([cr, cg, cb], p.cloud, skyRow ? 0.28 : 0.12)
               cr = lc[0]
               cg = lc[1]
               cb = lc[2]
               alpha = skyRow ? 0.6 : 0.45
-              // Slope light: the paint carries each side's plane, and the glyphs thicken toward a
-              // lit crest while the far side thins, so the light reads at the crest too.
+              // Slope light, in glyphs alone: the sunward side thickens toward the crest and the far
+              // side goes bare, so the contrast is all in the lit flank.
               const sl = (this.lit[i] - 0.5) * 2
-              if (snow) {
-                alpha = sl > 0.05 ? 0.75 : 0.55
-                if (sl > 0.05 && sl > bayer(c, r) * 0.9)
-                  g = code(
-                    SLOPE_LIT[
-                      Math.min(
-                        SLOPE_LIT.length - 1,
-                        Math.floor(sl * SLOPE_LIT.length),
-                      )
-                    ],
-                  )
-              } else if (sl > 0.05) {
+              if (sl > 0.05) {
                 if (sl > bayer(c, r) * 0.9)
                   g = code(
                     SLOPE_LIT[
@@ -697,7 +680,7 @@ export class Typesetter {
                       )
                     ],
                   )
-                alpha = 0.5 + 0.35 * sl
+                alpha = 0.45 + 0.25 * sl
               } else if (sl < -0.05 && -sl > bayer(c, r)) g = 0
               break
             }
