@@ -174,8 +174,9 @@ export class AsciiRenderer {
     this.dimKey = key
     const { cols, rows, cw, ch, dim } = this
     dim.fill(1)
-    // A wide, gentle fade: the garden recedes behind the text rather than stopping at a box.
-    const pad = cw * 14
+    // A wide, gentle fade: the garden recedes behind the text rather than stopping at a box. Kept
+    // light, now the flowers stop under the tree line and rarely stand behind the bio.
+    const pad = cw * 11
     for (const b of boxes) {
       const c0 = Math.max(0, Math.floor((b.left - pad) / cw))
       const c1 = Math.min(cols - 1, Math.floor((b.right + pad) / cw))
@@ -190,7 +191,7 @@ export class AsciiRenderer {
             Math.max(b.top - y, 0, y - b.bottom),
           )
           const i = r * cols + c
-          dim[i] = Math.min(dim[i], 0.22 + 0.78 * smoothstep(0, pad, d))
+          dim[i] = Math.min(dim[i], 0.38 + 0.62 * smoothstep(0, pad, d))
         }
       }
     }

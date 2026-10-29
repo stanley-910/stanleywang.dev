@@ -68,13 +68,13 @@ const FAR_RANGE: [number, number][] = [
   [0.345, 0.215],
   [0.37, 0.225],
   [0.41, 0.15],
-  [0.46, 0.1],
-  [0.52, 0.075],
-  [0.57, 0.1],
-  [0.61, 0.13],
-  [0.645, 0.105],
-  [0.69, 0.14],
-  [0.74, 0.12],
+  [0.47, 0.11],
+  [0.53, 0.085],
+  [0.58, 0.07],
+  [0.63, 0.095],
+  [0.665, 0.125],
+  [0.705, 0.105],
+  [0.75, 0.14],
   [0.8, 0.17],
   [0.85, 0.215],
   [0.885, 0.17],
@@ -84,6 +84,8 @@ const FAR_RANGE: [number, number][] = [
 ]
 /** The massifs that carry snow, by share of the range's width. */
 const SNOW_PEAKS = [0.31, 0.85]
+/** The low saddle between them, where the sun and moon go down. */
+const SADDLE = 0.58
 /**
  * Hidden ridgelines that set the far range's faces, placed by hand: the peak they run down from,
  * which way, how far (a share of the peak's height) and how much across per px down.
@@ -94,14 +96,17 @@ const RIDGELINES: { at: number; dir: -1 | 1; len: number; lean: number }[] = [
   { at: 0.19, dir: -1, len: 0.6, lean: 0.7 },
   { at: 0.26, dir: -1, len: 0.5, lean: 0.9 },
   { at: 0.37, dir: 1, len: 0.6, lean: 0.7 },
-  { at: 0.61, dir: -1, len: 0.5, lean: 0.8 },
-  { at: 0.69, dir: 1, len: 0.5, lean: 0.7 },
+  { at: 0.665, dir: -1, len: 0.5, lean: 0.8 },
+  { at: 0.75, dir: 1, len: 0.5, lean: 0.7 },
   { at: 0.85, dir: -1, len: 0.75, lean: 0.7 },
   { at: 0.85, dir: 1, len: 0.7, lean: 0.75 },
   { at: 0.92, dir: 1, len: 0.5, lean: 0.8 },
 ]
-/** Below this width the screen shows a stretch of the range around the main summit, not all of it. */
-const RANGE_MIN_WIDTH = 900
+/**
+ * The range is never narrower than this many screen heights, so its peaks keep their shape: a
+ * screen narrower than that shows a stretch of it, from the main summit to the saddle.
+ */
+const RANGE_ASPECT = 0.9
 /** How far the lit face of a hidden ridgeline reaches, and its narrower shadow, in px. */
 const FACE_LIT = 80
 const FACE_SHADE = 36
@@ -326,7 +331,7 @@ export class Garden {
             z = lerp(z0, z1, rng())
             x = (this.strips + rng()) * STRIP
             if (this.underText(x, z)) {
-              if (rng() > 0.3) continue
+              if (rng() > 0.12) continue
               species = 'dandelion'
             }
           } else {
@@ -493,14 +498,20 @@ export class Garden {
     return true
   }
 
+  /** How wide the whole range is drawn, in px: the screen's width, or more on a narrow screen. */
+  private get rangeWidth() {
+    return Math.max(this.width, this.height * RANGE_ASPECT)
+  }
+
   /**
    * Where a point of the composed range (a share of its width) falls on screen. The whole range
-   * spans a wide screen; a narrow one shows the stretch around the main summit, so the peaks
-   * keep their shape instead of crowding together.
+   * spans a wide screen; a narrow one shows the stretch from the main summit, a fifth of the way
+   * in, to the saddle, so the peaks keep their shape and the sun still sets into the valley. Both
+   * are shares of the screen, so the home page and the poem, at different zooms, match.
    */
   private rangeX(u: number) {
-    const span = Math.min(1, this.width / RANGE_MIN_WIDTH)
-    const u0 = clamp(SNOW_PEAKS[0] - span * 0.45, 0, 1 - span)
+    const span = this.width / this.rangeWidth
+    const u0 = clamp(SNOW_PEAKS[0] - span * 0.22, 0, 1 - span)
     return ((u - u0) / span) * this.width
   }
 
@@ -512,7 +523,7 @@ export class Garden {
     const n = Math.ceil(this.width / RIDGE_STEP) + 2
     const H = this.height
     const seed = this.seed * 13
-    const span = Math.min(1, this.width / RANGE_MIN_WIDTH)
+    const span = this.width / this.rangeWidth
     const x0 = this.rangeX(0)
     const xs = FAR_RANGE.map(([u]) => this.rangeX(u))
     const farAt = (x: number) => {
@@ -705,8 +716,7 @@ export class Garden {
     const seed = this.seed
     // About one glyph cell, so the trees keep their size against the type; on a tall phone, held
     // to the range's width so a stand doesn't tower over the magnified peaks.
-    const CH =
-      Math.min(this.height, 0.62 * Math.max(W, RANGE_MIN_WIDTH)) * 0.0125
+    const CH = Math.min(this.height, 0.62 * this.rangeWidth) * 0.0125
     const CW = CH / 1.32
     const tw = 2.6 * CW
     const on = (k: number, x: number) =>
@@ -768,7 +778,8 @@ export class Garden {
     })
     // A few stands, placed by hand along the range, so the flowers keep open sky behind most of
     // them. A stand is left out only where it would stand over the text itself.
-    this.spruce = []
+    // them. A stand is left out only where it would stand over the home page's bio; the poem's text
+    // crosses the whole scene, peaks and all, so it keeps them all.
     const clear = this.keepClear
     for (const [j, [at, n]] of SPRUCE_STANDS.entries()) {
       const gx = this.rangeX(at)
@@ -776,6 +787,7 @@ export class Garden {
       const tall = 10 * CH
       if (
         clear &&
+        !this.keepClearColumn &&
         gx + span > clear.left &&
         gx - span < clear.right &&
         nearAt(gx) - tall < clear.bottom &&
@@ -1278,7 +1290,7 @@ export class Garden {
     const CH = this.height * 0.0125
     // Slope in the range's own units (height share per width share), so a phone, which shows a
     // stretch of the range magnified, keeps the same cap rather than a steeper, barer one.
-    const unit = Math.max(this.width, RANGE_MIN_WIDTH) / this.height
+    const unit = this.rangeWidth / this.height
     const inCap = (i: number) => {
       if (!(ridge[i] < line[i])) return false
       const steep =
@@ -1453,7 +1465,8 @@ export class Garden {
       ? (this.hour - 6) / 12.5
       : ((this.hour + 24 - 18.5) % 24) / 11.5
     return {
-      cx: lerp(0.12, 0.62, t) * this.width,
+      // Across the sky to set into the saddle between the two snowy massifs.
+      cx: lerp(0.12 * this.width, this.rangeX(SADDLE), t),
       cy:
         this.horizon -
         Math.sin(Math.PI * clamp(t, 0, 1)) * this.height * 0.36 -

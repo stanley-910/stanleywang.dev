@@ -89,7 +89,7 @@ A plant wins a cell over the land behind it once it covers a quarter of the cell
 - Grass grows in tufts: three to seven blades fanned from one root, the outer ones leaning out and curling at the tip, with bare ground between. It prints as `\|/` clumps, a little quieter than the flowers. There is no dense foreground row.
 - No flowers on the hills. The hills carry a forest (TreeLine) and snow (SnowCap); the farthest flowers sit on the meadow's back edge, small.
 - Butterflies scale with the depth of the flower they visit.
-- Near the text the grass thins to 22% within 14 cells. Flowers are never planted where their heads would land on the text. There is never a panel or scrim behind copy.
+- Near the text the grass thins to 38% within 11 cells. (It was 22% within 14 when the flowers grew up into the range; stopped under the tree line, they rarely stand behind the bio, so the fade is lighter.) Flowers are never planted where their heads would land on the text. There is never a panel or scrim behind copy.
 
 ## Time
 
