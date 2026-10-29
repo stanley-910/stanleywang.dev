@@ -33,6 +33,9 @@ export function GardenHome({ children }: GardenHomeProps) {
   return (
     <div ref={rootRef} className="garden-home">
       <canvas ref={canvasRef} className="garden-canvas" aria-hidden="true" />
+      {/* Safari tints its bars from fixed elements at the window's edges. */}
+      <div className="garden-tint garden-tint-top" aria-hidden="true" />
+      <div className="garden-tint garden-tint-bottom" aria-hidden="true" />
       <div className="garden-hero">{children}</div>
     </div>
   )

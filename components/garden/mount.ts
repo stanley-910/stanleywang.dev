@@ -24,12 +24,9 @@ const PAGE: Record<'dark' | 'light', Rgb> = {
 
 // The scene is laid out as if the page were zoomed out to 64%: a finer grid,
 // smaller marks and a wider meadow at full device resolution, so flowers read
-// as flowers rather than filling the screen. Text keeps its size. Phones stay
-// at 80%: their cells would get too small to read, and they'd pay the most for
-// the extra cells.
+// as flowers rather than filling the screen. Text keeps its size. Phones use
+// the same zoom, so their meadow is the desktop's at the same scale.
 const SCENE_ZOOM = 0.64
-const PHONE_ZOOM = 0.8
-const PHONE_WIDTH = 768
 /** Cell width in scene px: the prototype's finest grid. */
 const CELL = 5
 
@@ -41,6 +38,10 @@ const WHEEL_REST = 200
 const GLIDE_DECAY = 8
 /** Fastest glide, px/s, so a hard flick only drifts on a little after release. */
 const GLIDE_MAX = 1200
+/** Wheel px per px of finger travel: a phone-height swipe runs about nine hours. */
+const TOUCH_GAIN = 1.5
+/** Finger travel, in px, before a touch picks its axis; less is a tap. */
+const TOUCH_SLOP = 6
 
 type GardenOptions = {
   canvas: HTMLCanvasElement
@@ -73,7 +74,7 @@ export function mountGarden({
   scrub = true,
 }: GardenOptions) {
   const html = document.documentElement
-  let zoom = SCENE_ZOOM
+  const zoom = SCENE_ZOOM
   const toScene = (v: number) => v / zoom
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)')
   const wind = new Wind()
@@ -96,6 +97,7 @@ export function mountGarden({
   let visible = true
   let hourLabel = ''
   let edgeCss = ''
+  let topCss = ''
   let panelCss = ''
   let inkCss = ''
 
@@ -132,11 +134,21 @@ export function mountGarden({
     if (html.dataset.sky !== sky) html.dataset.sky = sky
   }
 
-  /** The page behind the canvas matches its edge, so a sub-pixel gap never shows. */
+  /**
+   * The page behind the canvas matches its edge, so a sub-pixel gap never
+   * shows. Its top and bottom colours also go to garden.css, which paints the
+   * page and the strips Safari tints its bars from (garden-home.tsx).
+   */
   const matchEdge = (p: Palette) => {
     const [r, g, b] = mix(p.ground, p.skyHorizon, 0.08)
     const css = `rgb(${r | 0} ${g | 0} ${b | 0})`
-    if (css !== edgeCss) canvas.style.backgroundColor = edgeCss = css
+    if (css !== edgeCss) {
+      canvas.style.backgroundColor = edgeCss = css
+      html.style.setProperty('--garden-edge', css)
+    }
+    const [tr, tg, tb] = p.skyTop
+    const top = `rgb(${tr | 0} ${tg | 0} ${tb | 0})`
+    if (top !== topCss) html.style.setProperty('--garden-top', (topCss = top))
   }
 
   /**
@@ -226,7 +238,6 @@ export function mountGarden({
 
   const resize = () => {
     const box = canvas.getBoundingClientRect()
-    zoom = window.innerWidth < PHONE_WIDTH ? PHONE_ZOOM : SCENE_ZOOM
     const w = toScene(box.width)
     const h = toScene(box.height)
     if (w === 0 || h === 0) return
@@ -257,16 +268,42 @@ export function mountGarden({
 
   let scrubVel = 0
   let lastWheel = 0
+  /** When the wheel or a finger last moved the hour, on the event clock. */
+  let lastScrub = 0
   // The axis a scroll gesture started on, kept until the wheel rests.
   let wheelAxis: 'x' | 'y' | null = null
+  // The hour scrubbed here but not yet handed to the rest of the page.
+  let unsent = false
+
+  /** Hands a scrubbed hour to the rest of the page (its colours, the time slider). */
+  const sendHour = () => {
+    if (!unsent) return
+    unsent = false
+    setHour(hour)
+  }
 
   const setScrubHour = (h: number) => {
     live = false
     hour = ((h % 24) + 24) % 24
-    // The rest of the page (its colours, the time slider) follows.
-    setHour(hour)
     showHour()
+    // Restyling the page costs far more than a frame of the scene, and a
+    // finger moves at up to 120 Hz, so the loop sends the hour once a frame.
+    unsent = true
+    if (reduced.matches || !raf) sendHour()
   }
+
+  /** Moves the hour by `px` of wheel travel, and keeps its speed for the glide. */
+  const scrubBy = (px: number, at: number) => {
+    const dt = Math.max(8, Math.min(100, at - lastScrub)) / 1000
+    lastScrub = at
+    scrubVel +=
+      (Math.max(-GLIDE_MAX, Math.min(GLIDE_MAX, px / dt)) - scrubVel) * 0.4
+    setScrubHour(hour + px * HOURS_PER_PX)
+    if (reduced.matches) draw(true)
+  }
+
+  /** Whether the page scrolls up and down, so a vertical gesture should scroll it instead. */
+  const pageScrolls = () => html.scrollHeight > html.clientHeight + 1
 
   // The hour set elsewhere: the time slider, or its `now`.
   const onHourChange = () => {
@@ -289,23 +326,63 @@ export function mountGarden({
     if (e.timeStamp - lastWheel > WHEEL_REST) wheelAxis = null
     wheelAxis ??= Math.abs(e.deltaX) > Math.abs(e.deltaY) ? 'x' : 'y'
     const sideways = wheelAxis === 'x'
-    const scrolls =
-      document.documentElement.scrollHeight > window.innerHeight + 1
-    if (!sideways && scrolls) return
+    if (!sideways && pageScrolls()) return
     e.preventDefault()
-    const d = sideways ? e.deltaX : e.deltaY
-    const px = e.deltaMode === 1 ? d * 16 : d
-    const dt = Math.max(8, Math.min(100, e.timeStamp - lastWheel)) / 1000
     lastWheel = e.timeStamp
-    scrubVel +=
-      (Math.max(-GLIDE_MAX, Math.min(GLIDE_MAX, px / dt)) - scrubVel) * 0.4
-    setScrubHour(hour + px * HOURS_PER_PX)
-    if (reduced.matches) draw(true)
+    const d = sideways ? e.deltaX : e.deltaY
+    scrubBy(e.deltaMode === 1 ? d * 16 : d, e.timeStamp)
   }
 
-  /** After the wheel goes quiet, the scrub keeps a little speed and eases to a stop. */
+  // A finger on a phone scrubs as the wheel does: a swipe up or left runs
+  // later. Like the wheel, a gesture keeps the axis it started on.
+  let touch: { x: number; y: number; axis: 'x' | 'y' | null } | null = null
+
+  const onTouchStart = (e: TouchEvent) => {
+    touch = null
+    if (!scrub || !visible || e.touches.length !== 1) return
+    const t = e.target
+    // The time slider takes its own drags.
+    if (t instanceof Element && t.closest('.time-control-pop, input')) return
+    const { clientX: x, clientY: y } = e.touches[0]
+    touch = { x, y, axis: null }
+    // Putting a finger down catches a glide, as it would a page's momentum.
+    scrubVel = 0
+  }
+
+  const onTouchMove = (e: TouchEvent) => {
+    if (!touch) return
+    if (e.touches.length !== 1) {
+      touch = null
+      return
+    }
+    const { clientX: x, clientY: y } = e.touches[0]
+    const dx = x - touch.x
+    const dy = y - touch.y
+    const scrolls = pageScrolls()
+    if (!touch.axis) {
+      // Hold the page still from the first move, or Safari starts a scroll
+      // it won't give back; a page that scrolls keeps its vertical swipes.
+      if (!scrolls && e.cancelable) e.preventDefault()
+      if (Math.hypot(dx, dy) < TOUCH_SLOP) return
+      touch.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y'
+      if (touch.axis === 'y' && scrolls) {
+        touch = null
+        return
+      }
+    }
+    if (e.cancelable) e.preventDefault()
+    touch.x = x
+    touch.y = y
+    scrubBy(-(touch.axis === 'x' ? dx : dy) * TOUCH_GAIN, e.timeStamp)
+  }
+
+  const onTouchEnd = () => {
+    touch = null
+  }
+
+  /** After the wheel goes quiet or the finger lifts, the scrub keeps a little speed and eases to a stop. */
   const glide = (dt: number, now: number) => {
-    if (scrubVel === 0 || now - lastWheel < 60) return
+    if (scrubVel === 0 || touch?.axis || now - lastScrub < 60) return
     if (reduced.matches) {
       scrubVel = 0
       return
@@ -322,6 +399,7 @@ export function mountGarden({
     last = now
     acc += dt
     glide(dt, now)
+    sendHour()
     if (live && frames % 60 === 0) {
       hour = localHour()
       showHour()
@@ -343,6 +421,7 @@ export function mountGarden({
   const stop = () => {
     cancelAnimationFrame(raf)
     raf = 0
+    sendHour()
   }
 
   const start = () => {
@@ -442,6 +521,10 @@ export function mountGarden({
   sized.observe(canvas)
 
   window.addEventListener('wheel', onWheel, { passive: false })
+  window.addEventListener('touchstart', onTouchStart, { passive: true })
+  window.addEventListener('touchmove', onTouchMove, { passive: false })
+  window.addEventListener('touchend', onTouchEnd)
+  window.addEventListener('touchcancel', onTouchEnd)
   window.addEventListener('pointermove', onMove, { passive: true })
   html.addEventListener('pointerleave', leave)
   window.addEventListener('blur', leave)
@@ -474,6 +557,10 @@ export function mountGarden({
     seen.disconnect()
     sized.disconnect()
     window.removeEventListener('wheel', onWheel)
+    window.removeEventListener('touchstart', onTouchStart)
+    window.removeEventListener('touchmove', onTouchMove)
+    window.removeEventListener('touchend', onTouchEnd)
+    window.removeEventListener('touchcancel', onTouchEnd)
     window.removeEventListener('pointermove', onMove)
     html.removeEventListener('pointerleave', leave)
     window.removeEventListener('blur', leave)
@@ -488,5 +575,7 @@ export function mountGarden({
     delete html.dataset.sky
     html.style.removeProperty('--garden-ink')
     html.style.removeProperty('--garden-ink-muted')
+    html.style.removeProperty('--garden-edge')
+    html.style.removeProperty('--garden-top')
   }
 }

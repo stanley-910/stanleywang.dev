@@ -29,6 +29,41 @@
   overscroll-behavior-x: none;
 }
 
+/* Past the canvas (under a phone's toolbar, or in an overscroll) the page
+   carries on in the scene's colours: the sky's above it, the floor's below.
+   mount.ts sets both with the hour; the scrub moves them every frame, so no
+   transition. */
+html:has(.garden-home) {
+  background-color: var(--garden-top, var(--page));
+  overscroll-behavior: none;
+}
+
+html:has(.garden-home) body {
+  background-color: var(--garden-edge, var(--page));
+  transition: none;
+}
+
+/* iOS 26 Safari ignores theme-color and tints its status bar and toolbar
+   from fixed elements at the window's top and bottom edges. These match the
+   scene there, so the bars take the hour's colours and show no seam. */
+.garden-tint {
+  position: fixed;
+  inset-inline: 0;
+  z-index: 0;
+  height: 2px;
+  pointer-events: none;
+}
+
+.garden-tint-top {
+  top: 0;
+  background-color: var(--garden-top, var(--page));
+}
+
+.garden-tint-bottom {
+  bottom: 0;
+  background-color: var(--garden-edge, var(--page));
+}
+
 /* Over the canvas, the top bar and the hero stay on top. */
 .site-header {
   position: relative;

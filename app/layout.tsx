@@ -64,7 +64,7 @@ export default function RootLayout({
           storageKey="theme"
           defaultTheme="light"
         >
-          <div className="flex min-h-screen w-full flex-col">
+          <div className="flex min-h-svh w-full flex-col">
             <div className="site-shell relative flex w-full flex-1 flex-col">
               <Header />
               <main className="flex-1">
