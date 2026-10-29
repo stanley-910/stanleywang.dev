@@ -98,6 +98,31 @@ classification in the workers too. It's mostly pure, given the cells, the palett
 stamps. The catch is that glyph codes are registered at runtime, so the worker and the page
 need to agree on them.
 
+## 120 Hz
+
+The 60 Hz cap read as stutter on 120 Hz displays, so it's gone (cd61b86). The simulation
+steps at 1/120 s, and the classification above now runs in the workers as `typeset.ts`. Glyph
+codes are registered when the module loads, so the worker and the page agree on them. The
+workers also keep the land as a still layer. When its draw commands haven't changed, they lay
+it with one copy and draw the sun or moon behind it.
+
+At zoom 0.64 on the M4, uncapped:
+
+| | Before | After |
+|---|---|---|
+| Page fps | 107 | 120 |
+| Frames over 10 ms in 8 s | 95 | 0 |
+| `ascii.render` mean | 3.1 ms (9.8 ms on a new raster) | 1.6 ms |
+| Main-thread load | ~80% | ~33% |
+| Plant frames/s | ~50 | ~58 |
+
+Worker time per raster was about 72 ms before the land cache. The biggest parts were sampling
+(20 ms), the colour and kind canvases (16 and 15 ms) and typesetting (10 ms). The still layer
+brings it to about 54 ms. Six workers instead of four gave 62 plant frames/s, but each one ran
+slower (73 ms), so the cap stays at four. Plants at 120 frames/s are out of reach while
+rasterising on the CPU. The page itself, including wind, sky, text fade and cursor light,
+runs at the display's rate.
+
 ## Method
 
 The production build was served from a scratch copy with a `?zoom=` override and timing
