@@ -8,9 +8,9 @@ import { ThemeSwitch } from '@/components/ui/theme-switch'
 // current page in `ink`, the rest muted, and the sun/moon at the end
 // (design/circadian-meadow/components/SiteHeader).
 const NAV = [
-  { href: '/', label: 'home' },
+  { href: '/', label: 'garden' },
   { href: '/projects', label: 'projects' },
-  { href: '/film', label: 'film' },
+  { href: '/photos', label: 'photos' },
   { href: '/writing', label: 'writing' },
   { href: '/music', label: 'music' },
 ]

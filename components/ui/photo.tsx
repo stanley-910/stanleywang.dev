@@ -2,7 +2,7 @@
 import Image from 'next/image'
 import { useId, useState } from 'react'
 
-import type { Photo as PhotoData } from '@/app/film/photos'
+import type { Photo as PhotoData } from '@/app/photos/photos'
 
 import './photo.css'
 

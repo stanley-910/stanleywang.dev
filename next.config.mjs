@@ -65,6 +65,8 @@ const nextConfig = {
   },
   async redirects() {
     return [
+      // The photos page was /film.
+      { source: '/film', destination: '/photos', permanent: true },
       // The shell lives on its own origin.
       {
         source: '/shell/:path*',

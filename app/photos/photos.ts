@@ -1,4 +1,4 @@
-// Photos on /film. Every field but the size is optional: a caption shows
+// Photos on /photos. Every field but the size is optional: a caption shows
 // only what's known. Files live in public/images/film, with their metadata
 // (GPS included) stripped; without `src` the page draws a placeholder.
 export type Photo = {

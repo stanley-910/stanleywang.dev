@@ -230,10 +230,18 @@ export function mountGarden({ canvas, root, font, onHour }: GardenOptions) {
   }
 
   const onWheel = (e: WheelEvent) => {
-    // Sideways only, so a vertical scroll is left alone.
-    if (!visible || Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return
+    // The time slider handles its own scroll.
+    if (!visible || e.defaultPrevented) return
+    // Sideways always scrubs; up and down scrub too while the page has
+    // nowhere to scroll, as home's single screen doesn't. Down and right run
+    // later, like the slider.
+    const sideways = Math.abs(e.deltaX) > Math.abs(e.deltaY)
+    const scrolls =
+      document.documentElement.scrollHeight > window.innerHeight + 1
+    if (!sideways && scrolls) return
     e.preventDefault()
-    const px = e.deltaMode === 1 ? e.deltaX * 16 : e.deltaX
+    const d = sideways ? e.deltaX : e.deltaY
+    const px = e.deltaMode === 1 ? d * 16 : d
     const dt = Math.max(8, Math.min(100, e.timeStamp - lastWheel)) / 1000
     lastWheel = e.timeStamp
     scrubVel +=

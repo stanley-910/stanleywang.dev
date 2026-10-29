@@ -5,14 +5,14 @@ import { PHOTOS } from './photos'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Film — Stanley Wang',
-  description: 'Photographs on film.',
+  title: 'Photos — Stanley Wang',
+  description: 'Photographs.',
 }
 
-export default function FilmPage() {
+export default function PhotosPage() {
   return (
     <section className="film">
-      <h1 className="sr-only">Film</h1>
+      <h1 className="sr-only">Photos</h1>
       <div className="film-grid">
         {PHOTOS.map((photo) => (
           <div
