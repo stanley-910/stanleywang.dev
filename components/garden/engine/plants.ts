@@ -517,7 +517,8 @@ export class Poppy extends Plant {
         )
       },
     })
-    flush(list)
+    // The bud's halves part behind the petals pushing out of it. Drawn over them, they printed
+    // as foliage across the middle of the head: sparse glyphs with no tile, so a see-through hole.
     if (ph.open < 0.35)
       this.drawBud(
         r,
@@ -529,6 +530,7 @@ export class Poppy extends Plant {
         p,
         smoothstep(0, 0.35, ph.open),
       )
+    flush(list)
   }
 
   /** A hairy, hanging, egg-shaped bud; `split` 0..1 parts the two sepals as the petals push out. */
