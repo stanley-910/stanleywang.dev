@@ -102,9 +102,12 @@ pinned with `?seed=1715089390`.
 
 | Cores busy, all of Chrome | First pass | Second pass |
 |---|---|---|
-| Home, idle | 1.42–1.50 | 1.03–1.04 |
-| Poem, idle | 1.39–1.52 | 1.20 before item 3 |
-| Home, cursor moving | 1.74–1.76 | 1.71–1.75 before item 3 |
+| Home, idle | 1.42 | 1.01–1.02 |
+| Home, cursor moving | 1.74–1.75 | 1.49–1.50 |
+| Poem, idle | 1.47–1.48 | 1.05–1.09 |
+| Home, 4× CPU | 1.87–1.90 | 1.75 |
+
+Page fps stayed at 120 in every run (119 at 4× CPU).
 
 A per-process split of the second pass, idle: renderer 0.95 (workers about 0.45, page main thread
 0.1, the rest V8's compilers and GC), GPU process 0.03.
