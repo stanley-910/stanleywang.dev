@@ -622,6 +622,12 @@ export class Typesetter {
               else g = code(v > 0.5 ? '+' : ':')
               // Stalks hold a firm floor so a flower reads down to its root; grass is a separate kind.
               alpha = clamp(v * 3.5, 0.55, 1)
+              if (k === Kind.Stem) {
+                // A faint band in the stalk's own colour behind its line, so it reads apart from
+                // the ground rather than as a hairline; lighter than the rose's solid cane.
+                tile[i] = 0.3 * Math.min(1, v * 2)
+                ;[cr, cg, cb] = mix([cr, cg, cb], p.grassLight, 0.15)
+              }
               if (k === Kind.Stem && p.night > 0) {
                 // Night stem colours sit almost on the ground; lift them toward the moonlit haze.
                 const sc = mix(

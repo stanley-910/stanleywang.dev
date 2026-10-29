@@ -421,7 +421,8 @@ export class Poppy extends Plant {
     const wither = ph.wither
     const stemColor = this.stalked(this.withered(p.stem, wither, p), p)
     const leafColor = this.hazed(
-      this.withered(mix(p.grassDark, p.stem, 0.45), wither, p),
+      // Toward the stalk's colour, so a leaf in front of a flower reads as a leaf, not a hole.
+      this.withered(mix(p.grassDark, p.stem, 0.7), wither, p),
       p,
     )
     for (const leaf of this.leaves)
@@ -1267,7 +1268,7 @@ export class Dandelion extends Plant {
       this.withered(mix(p.stem, p.grassLight, 0.15), ph.wither, p),
       p,
     )
-    const leafColor = this.hazed(mix(p.grassDark, p.stem, 0.5), p)
+    const leafColor = this.hazed(mix(p.grassDark, p.stem, 0.7), p)
     for (const leaf of this.leaves)
       this.drawLeaf(
         r,
