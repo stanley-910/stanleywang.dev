@@ -371,6 +371,8 @@ export class AsciiRenderer {
         // Hills carry slope light in the same layer: 0.5 neutral, up toward the light, down in shade.
         let ll = 0
         let ln = 0
+        // Fluff marked as a loose petal (LOOSE_PETAL) carries the back flag.
+        let lb = 0
         for (let sy = 0; sy < SS; sy++) {
           let o = ((r * SS + sy) * W + c * SS) * 4
           for (let sx = 0; sx < SS; sx++, o += 4) {
@@ -391,6 +393,7 @@ export class AsciiRenderer {
               pn++
             } else if ((k === Kind.Land || k === Kind.Fluff) && md[o + 3] > 0) {
               ll += md[o + 1]
+              lb += md[o + 2]
               ln++
             }
             kr[k] += cd[o] * al
@@ -418,7 +421,7 @@ export class AsciiRenderer {
         // A cell split between petals has no clear owner and gets no seam.
         pid[i] = votes * 2 > nIds ? id : 0
         lit[i] = pn ? li / (pn * 255) : ln ? ll / (ln * 255) : 0.5
-        back[i] = pn && bk / pn > 127 ? 1 : 0
+        back[i] = pn ? +(bk / pn > 127) : ln ? +(lb / ln > 127) : 0
         const plant = (PLANT_MASK >> best) & 1
         cov[i] = (plant ? weight[best] : a) / (255 * n)
         let cr = 0
@@ -919,6 +922,12 @@ export class AsciiRenderer {
               break
             }
             case Kind.Fluff:
+              if (this.back[i] && v > 0.8) {
+                // A loose petal's inside: sparse light glyphs in its own colour.
+                g = code(bayer(c, r) < 0.5 ? '.' : "'")
+                alpha = 1
+                break
+              }
               g = code(
                 FLUFF[
                   Math.min(

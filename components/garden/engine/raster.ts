@@ -67,6 +67,9 @@ export type PetalMeta = { id: number; light: number; back: boolean }
 /** Marks flower fluff (lace florets, dandelion seeds) apart from the sun and moon, which share its kind. */
 export const FLOWER_FLUFF: PetalMeta = { id: 0, light: 1, back: false }
 
+/** Marks a loose, falling petal, drawn as fluff, so its inside can print light. */
+export const LOOSE_PETAL: PetalMeta = { id: 0, light: 0, back: true }
+
 /**
  * A path recorded as numbers instead of drawn, so a frame's shapes can be shipped to the raster
  * worker. Plants build these exactly as they would a Path2D.

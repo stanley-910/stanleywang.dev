@@ -1,5 +1,5 @@
 import { clamp, noise1, TAU } from './math'
-import { Kind, type Raster, Shape } from './raster'
+import { Kind, LOOSE_PETAL, type Raster, Shape } from './raster'
 
 import type { Rgb } from './palette'
 import type { Wind } from './wind'
@@ -164,9 +164,12 @@ export class Particles {
             TAU,
           )
           if (p.type === 'petal') {
-            // Its outline only, in light glyphs of its own colour. Filled, it printed as a solid
-            // blob of '#' (or, as petal material, a flat tile) that blotted out flowers it crossed.
-            r.stroke(path, p.color, Kind.Fluff, 2.6, fade)
+            // Fluff marked as a loose petal: its edge prints in the fluff ramp and its inside in
+            // sparse light glyphs (ascii.ts), so it reads as a petal without blotting out what's
+            // behind. As petal material it had no outline or seams and read as a flat tile.
+            r.touchMeta(p.x - s, p.y - s)
+            r.touchMeta(p.x + s, p.y + s)
+            r.fill(path, p.color, Kind.Fluff, fade, LOOSE_PETAL)
           } else r.fill(path, p.color, Kind.Foliage, fade)
           break
         }
