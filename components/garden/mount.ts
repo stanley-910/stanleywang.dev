@@ -197,6 +197,9 @@ export function mountGarden({
     const boxes: Rect[] = []
     // The top bar too, which sits outside `root`.
     for (const el of document.querySelectorAll<HTMLElement>('[data-avoid]')) {
+      // Text that carries its own halo instead (garden.css, on phones).
+      if (getComputedStyle(el).getPropertyValue('--avoid').trim() === 'none')
+        continue
       const b = el.getBoundingClientRect()
       if (b.width > 0 && b.height > 0) boxes.push(sceneRect(b, origin))
     }

@@ -123,6 +123,30 @@ html:has(.garden-home) body {
   }
 }
 
+/* On a phone the text covers much of the meadow, so the garden doesn't
+   recede behind it in a box (mount.ts reads --avoid). A halo close around
+   each glyph holds the ink instead, a little lighter than the poem's. The
+   type steps down so the four links fit one row from 360px. */
+@media (max-width: 480px) {
+  .garden-hero {
+    --avoid: none;
+    --hero-halo: var(--garden-panel, #242422);
+    gap: var(--space-2);
+    text-shadow:
+      0 0 1px color-mix(in srgb, var(--hero-halo) 60%, transparent),
+      0 0 4px color-mix(in srgb, var(--hero-halo) 45%, transparent),
+      0 0 10px color-mix(in srgb, var(--hero-halo) 28%, transparent);
+  }
+  .garden-hero .bio {
+    font-size: var(--text-body);
+    line-height: 1.65;
+  }
+  .garden-hero .link-row {
+    gap: 0 4px;
+    font-size: var(--text-meta);
+  }
+}
+
 /* The opening, on a fresh load of home (intro.ts): the meadow first, then the
    top bar drops in, then the bio fades up. Until the garden's first frame,
    all three are held back. */
