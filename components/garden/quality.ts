@@ -1,7 +1,7 @@
 // Fits the meadow to the machine it lands on. The page's frame rate says whether the main thread
 // keeps up with the display; the plants' redraw rate says whether the raster workers do. When the
-// page falls behind, the plants redraw less often, since recording them is the main thread's
-// biggest cost; when the workers fall behind, the next visit uses a coarser grid. After
+// page or the workers fall behind, the plants redraw less often, since recording them is the
+// biggest cost. The grid itself never coarsens: a coarser grid blurred the far flowers. After
 // drei's PerformanceMonitor (a windowed vote) and hls.js (a remembered level); see
 // docs/perf/2026-10-29-adaptive-and-gpu-research.md.
 
@@ -19,12 +19,6 @@ const BEHIND = 0.8
 const SPARE = 0.5
 /** Steps back up that went wrong again before the level stays put. */
 const MAX_FLIPS = 2
-/** Plant redraws per second below which the workers can't keep up at this grid. */
-const SLOW_PLANTS = 20
-/** Share of the finest level's cap the plants keep up with that shows a coarse grid isn't needed. */
-const FAST_PLANTS = 0.9
-/** Windows the plant rate is averaged over before it decides the grid: 5 s. */
-const PLANT_WINDOWS = 20
 /**
  * Windows the display's rate is the highest of: 1.5 s, shorter than a vote, so when the display
  * itself slows (a laptop dropping to 60 Hz to save power) the rate follows it before the vote can
@@ -55,16 +49,6 @@ const AWAY_FPS = 30
  */
 const PLANT_BUDGET = 1000
 const MIN_PLANTS = 20
-/**
- * A worker's time on a frame, in ms, past which the budget holds the plants at MIN_PLANTS and the
- * next visit takes the coarse grid; and under which, scaled to the fine grid, it goes back.
- */
-const SLOW_FRAME = PLANT_BUDGET / MIN_PLANTS
-const FAST_FRAME = SLOW_FRAME * 0.7
-/** How much further a machine too slow for the full grid zooms in (mount.ts). */
-export const COARSE_ZOOM = 1.25
-/** How much more a frame costs on the fine grid than the coarse. */
-const COARSE_COST = COARSE_ZOOM ** 2
 /** Plant redraws per second once nobody has touched the page for a while. */
 const IDLE_PLANTS = 30
 /** Refresh rates displays run at, for the measured one to snap to. */
@@ -72,18 +56,18 @@ const RATES = [30, 48, 50, 60, 72, 75, 90, 100, 120, 144, 165, 240]
 const HALF_RATE = 3
 
 // Renamed when the ladder changes, so a level saved against the old one isn't read as the new.
-const KEY = 'garden-quality-2'
+// 3: the coarse grid is gone, and a visit that saved it starts over at full quality.
+const KEY = 'garden-quality-3'
 
-type Saved = { level: number; coarse: boolean }
+type Saved = { level: number }
 
 function load(): Saved | null {
   try {
     const raw = localStorage.getItem(KEY)
     if (!raw) return null
     const s = JSON.parse(raw) as Partial<Saved>
-    if (typeof s.level !== 'number' || typeof s.coarse !== 'boolean')
-      return null
-    return { level: s.level, coarse: s.coarse }
+    if (typeof s.level !== 'number') return null
+    return { level: s.level }
   } catch {
     return null
   }
@@ -100,8 +84,6 @@ function save(s: Saved) {
 export class Quality {
   /** The step on the ladder, 0 for full quality. */
   level = 0
-  /** Whether this visit lays the scene on a coarser grid, decided on an earlier one. */
-  readonly coarse: boolean
   /**
    * The display's rate, from the short gaps between frames: rAF times fall on the display's
    * refresh, so a page that misses frames still shows the true rate between the ones it makes.
@@ -113,12 +95,8 @@ export class Quality {
   private windowStart = -1
   private frames = 0
   private work = 0
-  private plantsAt = 0
   private behind: boolean[] = []
   private spare = 0
-  private plantRates: number[] = []
-  /** For each window of plantRates, whether the workers' frames were slow (SLOW_FRAME). */
-  private slowFrames: boolean[] = []
   private settle = SETTLE
   private flips = 0
   /** Windows since the last step; a step up that has held for UP_WINDOWS no longer counts as a flip. */
@@ -126,7 +104,6 @@ export class Quality {
   private steppedUp = false
   private pinned = false
   private lastRecord = -Infinity
-  private wantCoarse: boolean
   /** Whether the window is out of use: on screen, but another app or window is in front. */
   away = false
   /**
@@ -152,7 +129,6 @@ export class Quality {
       PLANT_CAPS.length - 1,
       Math.max(0, Math.round(saved?.level ?? (slowHint ? 1 : 0))),
     )
-    this.coarse = this.wantCoarse = saved?.coarse ?? false
   }
 
   /**
@@ -215,18 +191,17 @@ export class Quality {
   }
 
   /**
-   * Counts one display frame, drawn or skipped, given the main thread's work on it in ms and how
-   * many plant frames have arrived so far. `quiet` is false while the page does work of its own
-   * (a scrub or a new hour restyling it, a resize redrawing the scene).
+   * Counts one display frame, drawn or skipped, given the main thread's work on it in ms. `quiet`
+   * is false while the page does work of its own (a scrub or a new hour restyling it, a resize
+   * redrawing the scene).
    */
-  frame(now: number, work: number, plants: number, quiet: boolean) {
+  frame(now: number, work: number, quiet: boolean) {
     if (this.lastFrame >= 0) this.gaps.push(now - this.lastFrame)
     this.lastFrame = now
     if (this.windowStart < 0) {
       this.windowStart = now
       this.frames = 0
       this.work = 0
-      this.plantsAt = plants
       return
     }
     this.frames++
@@ -234,12 +209,10 @@ export class Quality {
     if (now - this.windowStart < WINDOW) return
     const span = now - this.windowStart
     const fps = (this.frames * 1000) / span
-    const plantFps = ((plants - this.plantsAt) * 1000) / span
     const meanWork = this.work / this.frames
     this.windowStart = now
     this.frames = 0
     this.work = 0
-    this.plantsAt = plants
     if (!quiet || this.settle > 0) this.gaps = []
     if (!quiet) return
     if (this.settle > 0) {
@@ -257,7 +230,6 @@ export class Quality {
     // Away, the page runs slow on purpose, which says nothing about the machine.
     if (hz === 0 || this.away) return
     this.vote(fps, meanWork)
-    this.plants(plantFps)
   }
 
   /**
@@ -293,40 +265,12 @@ export class Quality {
     }
   }
 
-  /** Decides the next visit's grid from how fast the workers return frames. */
-  private plants(fps: number) {
-    this.plantRates.push(fps)
-    this.slowFrames.push(this.frameMs > SLOW_FRAME)
-    if (this.plantRates.length < PLANT_WINDOWS) return
-    if (this.plantRates.length > PLANT_WINDOWS) {
-      this.plantRates.shift()
-      this.slowFrames.shift()
-    }
-    const mean = this.plantRates.reduce((a, b) => a + b, 0) / PLANT_WINDOWS
-    // Slow in most windows, not in one burst (a collection, another app).
-    const slow = this.slowFrames.filter(Boolean).length >= PLANT_WINDOWS * 0.8
-    const cap = this.plantRate()
-    // Well under the rate asked of them, or slow enough that the budget holds them at its floor,
-    // the workers want a coarser grid. Back to the fine grid when they keep up, with frames that
-    // would fit the budget there.
-    const fineMs = this.coarse ? this.frameMs * COARSE_COST : this.frameMs
-    const want =
-      mean < Math.min(SLOW_PLANTS, cap * 0.6) || slow
-        ? true
-        : mean >= cap * FAST_PLANTS && fineMs < FAST_FRAME
-          ? false
-          : this.wantCoarse
-    if (want === this.wantCoarse) return
-    this.wantCoarse = want
-    save({ level: this.level, coarse: want })
-  }
-
   private set(level: number) {
     this.level = level
     this.behind = []
     this.spare = 0
     this.held = 0
     this.settle = 2
-    save({ level, coarse: this.wantCoarse })
+    save({ level })
   }
 }

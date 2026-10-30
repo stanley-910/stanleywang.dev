@@ -12,7 +12,7 @@ import { mix, paletteAt, type Palette, type Rgb } from './engine/palette'
 import { Raster } from './engine/raster'
 import { Wind } from './engine/wind'
 import { playIntro } from './intro'
-import { COARSE_ZOOM, Quality } from './quality'
+import { Quality } from './quality'
 
 // Stepped at 120 Hz so a 120 Hz display gets a new pose every frame; the stems' springs scale
 // with the step, so their motion is the same at any rate.
@@ -129,7 +129,7 @@ export function mountGarden({
   const zoomFor = (w: number, h: number) => {
     const cellArea = CELL * Math.round(CELL * 1.32)
     const fit = Math.sqrt((w * h) / (cellArea * CELL_BUDGET))
-    return Math.max(sceneZoom, fit) * (quality.coarse ? COARSE_ZOOM : 1)
+    return Math.max(sceneZoom, fit)
   }
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)')
   const coarse = window.matchMedia('(pointer: coarse)')
@@ -624,12 +624,7 @@ export function mountGarden({
       quality.resettle()
     }
     if (!quality.skip(frames)) draw(false, quality.calm)
-    quality.frame(
-      now,
-      performance.now() - began,
-      raster.version,
-      now > busyUntil,
-    )
+    quality.frame(now, performance.now() - began, now > busyUntil)
     raf = requestAnimationFrame(frame)
   }
 

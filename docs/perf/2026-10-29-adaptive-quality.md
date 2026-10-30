@@ -116,3 +116,12 @@ especially its workers and its GPU.
   It's worth doing if a real slow machine still struggles at level 2.
 - **Smaller fill canvases.** Filling at one sample per cell instead of two would quarter the
   fills, at the price of thinner stems surviving less often.
+
+## 2026-10-30: the coarse grid is gone
+
+Stanley found the far flowers blurred and hadn't asked for a lower resolution. Once the coarse grid
+was also triggered by slow worker frames (0113b52), a busy machine (the perf runs shared it with
+other agents at load 6–42) could save it, and every later visit drew the whole scene 1.25× coarser
+until one proved fast. Small, distant flowers lose the most. A slow machine now only gets fewer
+plant redraws a second (the ladder and the worker budget); the grid stays at `SCENE_ZOOM`. The
+storage key moved to `garden-quality-3`, so a saved coarse grid is dropped.
