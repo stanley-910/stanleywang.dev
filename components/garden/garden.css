@@ -120,6 +120,12 @@ html:has(.garden-home, .poem-page) body {
   max-width: var(--measure);
 }
 
+/* The links sit a little further from the bio than the hero's gap, 24px, so they read as its
+   sign-off rather than one more line of it; still closer than the greeting's blank line. */
+.garden-hero .link-row {
+  margin-top: 6px;
+}
+
 @media (max-height: 720px), (max-width: 760px) {
   .garden-hero {
     padding-bottom: 48px;
