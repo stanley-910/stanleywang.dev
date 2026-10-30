@@ -171,7 +171,10 @@ export class Raster {
   private workers: Worker[] = []
   private idle: Worker[] = []
   /** Frames out at the workers, by sequence number. */
-  private inFlight = new Map<number, { gen: number; sent: number }>()
+  private inFlight = new Map<
+    number,
+    { gen: number; sent: number; hour: number }
+  >()
   /** When `busy` last looked, so time the page itself stood still isn't counted against a worker. */
   private lastLook = 0
   private seq = 0
@@ -179,6 +182,8 @@ export class Raster {
   private local: Rasterizer | null = null
   /** Bumped each time a frame's pixels are adopted, so readers can skip re-reading the same frame. */
   version = 0
+  /** The hour the frame on screen was recorded at, so what's painted around it can match. */
+  hour = NaN
   /** Frames the workers have sent back. */
   private replies = 0
   /** A worker's time on one frame, in ms, averaged over the last few; 0 until warm. */
@@ -218,7 +223,7 @@ export class Raster {
             e.data.seq > this.shownSeq
           ) {
             this.shownSeq = e.data.seq
-            this.adopt(e.data)
+            this.adopt(e.data, job.hour)
           }
         }
         w.onerror = (e) =>
@@ -409,7 +414,7 @@ export class Raster {
 
   /**
    * Sends this frame's draws off to be rasterised and set in type, in the colours of `look`;
-   * `now` does it here, before returning.
+   * `now` does it here, before returning. `hour` is the scene's hour as recorded.
    */
   submit(
     now: boolean,
@@ -417,6 +422,7 @@ export class Raster {
       Style,
       'palette' | 'horizon' | 'hill' | 'relief' | 'reliefLight' | 'reliefLit'
     >,
+    hour: number,
   ) {
     const t = this.touch
     const box: Box = [
@@ -454,7 +460,7 @@ export class Raster {
     const worker = !now && this.ready ? this.idle.pop() : undefined
     if (worker) {
       const seq = ++this.seq
-      this.inFlight.set(seq, { gen: this.gen, sent: performance.now() })
+      this.inFlight.set(seq, { gen: this.gen, sent: performance.now(), hour })
       worker.postMessage({ ...job, seq }, [job.cmds.buffer])
       return
     }
@@ -466,11 +472,12 @@ export class Raster {
       return ctx
     })
     this.shownSeq = ++this.seq
-    this.adopt(this.local.run(job))
+    this.adopt(this.local.run(job), hour)
   }
 
-  private adopt(out: RasterResult) {
+  private adopt(out: RasterResult, hour: number) {
     this.version++
+    this.hour = hour
     this.material = out.material
     this.ready = true
   }

@@ -5,6 +5,9 @@ fresh profile per run (no saved quality level, no DevTools throttle), 1440×900 
 display at 120 Hz, after midnight scene time. Follows
 [2026-10-29-adaptive-quality.md](2026-10-29-adaptive-quality.md).
 
+Later the same day the plants went back to the display's rate while something moves them, easing
+to 40 once calm: see [2026-10-30-active-rate.md](2026-10-30-active-rate.md).
+
 ## In short
 
 Main before this work (921c812) against the end of the second pass below, same quiet M4, same

@@ -29,14 +29,28 @@ const RATE_WINDOWS = 6
 const SETTLE = 8
 
 /**
- * The ladder, cheapest loss first. Each step caps how often the plants redraw (per second); the
- * last also draws the page every other frame on a display over 90 Hz.
+ * The ladder, cheapest loss first. Each step caps how often the plants redraw (per second) while
+ * the cursor or a scrub is moving them, and once they're calm; the last step also draws the page
+ * every other frame on a display over 90 Hz.
  *
- * Even full quality caps them. A plant redraw costs about 40 ms of CPU across the page, the workers
- * and the GPU process on an M4; uncapped, they ran 60 to 80 a second and kept four cores busy.
- * 40 a second is every third frame at 120 Hz and every other at 60, an even beat.
+ * While something moves them they redraw on every display frame, as fast as the budget allows. A
+ * plant redraw costs about 20 ms of a worker's time on an M4, a third of it the flowers, a third
+ * the grass and a third turning the frame into type (docs/perf/2026-10-30-active-rate.md), so a
+ * calm page caps them at 40: every third frame at 120 Hz and every other at 60, an even beat.
  */
+const ACTIVE_CAPS = [Infinity, 60, 30, 20]
 const PLANT_CAPS = [40, 30, 20, 20]
+/**
+ * How long each step down from the active rate to the calm one is held, in ms, so the motion
+ * slows over a second or so (120, 60, then 40 a second at 120 Hz) rather than dropping at once.
+ */
+const EASE_STEP = 500
+/**
+ * How long, in ms, a budget must keep calling for another beat before the plants take it. A
+ * worker's frame time wanders by a quarter from one second to the next on an M4, as the workers
+ * land on its fast and slow cores, and a beat that followed it would flip between 120 and 60.
+ */
+const BEAT_HOLD = 1000
 /**
  * Plant redraws per second, and the page's frame rate, while the window is on screen but not the
  * one in use: the meadow keeps moving, slowly, for a fraction of the cost.
@@ -49,6 +63,22 @@ const AWAY_FPS = 30
  */
 const PLANT_BUDGET = 1000
 const MIN_PLANTS = 20
+/**
+ * The page's own time recording the plants, in ms a second, so a slow main thread keeps up with the
+ * display rather than dropping frames to redraw them.
+ */
+const RECORD_BUDGET = 250
+/**
+ * The same while something moves the plants: up to three cores, and no more than a third of the
+ * machine's, for the second or two it lasts. An M4's frame takes about 20 ms, 24 in a scrub, so it
+ * holds 120 a second with room for a frame that runs long.
+ */
+const ACTIVE_BUDGET = Math.min(
+  3000,
+  ((typeof navigator === 'undefined' ? 0 : navigator.hardwareConcurrency) ||
+    4) *
+    (1000 / 3),
+)
 /** Plant redraws per second once nobody has touched the page for a while. */
 const IDLE_PLANTS = 30
 /** Refresh rates displays run at, for the measured one to snap to. */
@@ -98,12 +128,19 @@ export class Quality {
    * only when a new plant frame comes back (mount.ts).
    */
   calm = false
+  /** Whether the cursor, a scrub or a new hour is moving the plants, so they redraw at the active rate. */
+  moving = false
+  /** How long, in ms, since they stopped moving; 0 while they move. */
+  stillFor = 0
   /** Whether nobody has touched the page for a while, so the plants can slow a little more. */
   idle = false
   /** A worker's time on one plant frame, in ms (raster.ts); 0 until known. */
   frameMs = 0
-  /** Display frames per plant frame under the budget, held until the budget moves well past it. */
-  private budgetBeat = 0
+  /** The page's time recording one plant frame, in ms (mount.ts); 0 until known. */
+  recordMs = 0
+  /** Display frames per plant frame under each budget, held until the budget moves well past it. */
+  private activeBeat = { beat: 0, since: -1 }
+  private calmBeat = { beat: 0, since: -1 }
 
   constructor() {
     forget()
@@ -117,28 +154,61 @@ export class Quality {
 
   /**
    * How often the plants may redraw now, per second: the level's cap, lowered while idle and to
-   * keep within PLANT_BUDGET, then snapped to a whole number of display frames so the beat is even.
+   * keep within the budget, then snapped to a whole number of display frames so the beat is even.
+   * Once the page turns calm the beat lengthens one frame at a time, from the active rate to the
+   * calm one.
    */
-  plantRate() {
+  plantRate(now: number) {
     if (this.away) return AWAY_PLANTS
     const hz = this.hz || 60
     const beat = (cap: number) => Math.max(1, Math.ceil(hz / cap - 0.01))
+    const active = Math.max(
+      beat(ACTIVE_CAPS[this.level]),
+      this.fit(ACTIVE_BUDGET, this.activeBeat, now),
+    )
+    // Kept current while active too, so its hold doesn't run out unseen.
+    const calmFit = this.fit(PLANT_BUDGET, this.calmBeat, now)
+    if (this.moving) return hz / active
     const cap = this.idle
       ? Math.min(PLANT_CAPS[this.level], IDLE_PLANTS)
       : PLANT_CAPS[this.level]
-    if (this.frameMs > 0) {
-      // A frame time near a step would flip the beat back and forth as it wavers, so the budget's
-      // beat moves only once it's a tenth of a frame past the next.
-      const x = hz / Math.max(MIN_PLANTS, PLANT_BUDGET / this.frameMs)
-      const n = this.budgetBeat
-      if (!n || x > n + 0.1 || x < n - 1.1) this.budgetBeat = beat(hz / x)
-    } else this.budgetBeat = 0
-    return hz / Math.max(beat(cap), this.budgetBeat)
+    const calm = Math.max(beat(cap), calmFit, active)
+    return hz / Math.min(calm, active + Math.floor(this.stillFor / EASE_STEP))
+  }
+
+  /**
+   * Display frames per plant frame that keep the workers within `budget` ms a second and the page
+   * within RECORD_BUDGET, 0 until a frame's time is known. A frame time near a step would flip the
+   * beat back and forth as it wavers, so the beat moves from the one held only once it's a tenth of
+   * a frame past the next, and has stayed past it for BEAT_HOLD.
+   */
+  private fit(
+    budget: number,
+    held: { beat: number; since: number },
+    now: number,
+  ) {
+    // Without workers the page rasterises too, so its recording time alone sets the rate.
+    const fits = Math.min(
+      this.frameMs > 0 ? budget / this.frameMs : Infinity,
+      this.recordMs > 0 ? RECORD_BUDGET / this.recordMs : Infinity,
+    )
+    if (!Number.isFinite(fits)) return (held.beat = 0)
+    const hz = this.hz || 60
+    const x = hz / Math.max(MIN_PLANTS, fits)
+    const n = held.beat
+    if (n && x <= n + 0.1 && x >= n - 1.1) {
+      held.since = -1
+      return n
+    }
+    if (n && held.since < 0) held.since = now
+    if (n && now - held.since < BEAT_HOLD) return n
+    held.since = -1
+    return (held.beat = Math.max(1, Math.ceil(x - 0.01)))
   }
 
   /** Whether the plants may be recorded again now, under plantRate. */
   mayRecord(now: number) {
-    const cap = this.plantRate()
+    const cap = this.plantRate(now)
     // A tenth of slack so a cap that lands on the display's rate isn't missed by rAF jitter.
     if (now - this.lastRecord < (1000 / cap) * 0.9) return false
     this.lastRecord = now
@@ -171,7 +241,14 @@ export class Quality {
     this.hz = 0
     this.behind = []
     this.spare = 0
+    this.forgetBeats()
     this.settle = SETTLE
+  }
+
+  /** Drops the budgets' beats, which count display frames and so mean another rate at another hz. */
+  private forgetBeats() {
+    this.activeBeat = { beat: 0, since: -1 }
+    this.calmBeat = { beat: 0, since: -1 }
   }
 
   /**
@@ -209,7 +286,10 @@ export class Quality {
     if (this.rates.length > RATE_WINDOWS) this.rates.shift()
     const hz = Math.max(0, ...this.rates)
     // Votes cast against another rate no longer hold.
-    if (hz !== this.hz) this.behind = []
+    if (hz !== this.hz) {
+      this.behind = []
+      this.forgetBeats()
+    }
     this.hz = hz
     // Away, the page runs slow on purpose, which says nothing about the machine.
     if (hz === 0 || this.away) return

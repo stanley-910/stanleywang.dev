@@ -271,6 +271,8 @@ export function mountGarden({
   let relief = new Float32Array(0)
   /** The plant frame the page last drew. */
   let drawn = -1
+  /** The palette of the plant frame on screen, worked out once per frame that comes back. */
+  let shownPalette = { version: -1, palette: paletteAt(hour) }
 
   /**
    * Records the scene and draws the latest rasterised frame. In the loop the
@@ -289,6 +291,7 @@ export function mountGarden({
     matchInk(palette)
     garden.hour = hour
     if (now || (!raster.busy && quality.mayRecord(performance.now()))) {
+      const began = performance.now()
       raster.clear()
       garden.draw(raster, palette)
       if (hill.length !== ascii.cols) hill = new Float32Array(ascii.cols)
@@ -307,38 +310,62 @@ export function mountGarden({
         ascii.ch,
         palette,
       )
-      raster.submit(now, {
-        palette,
-        horizon: garden.horizon,
-        hill,
-        relief,
-        reliefLight: face.color,
-        reliefLit: face.lit,
-      })
+      raster.submit(
+        now,
+        {
+          palette,
+          horizon: garden.horizon,
+          hill,
+          relief,
+          reliefLight: face.color,
+          reliefLit: face.lit,
+        },
+        hour,
+      )
+      // A one-off redraw rasterises here too, so only the loop's say what recording costs.
+      const took = performance.now() - began
+      if (!now)
+        quality.recordMs = quality.recordMs
+          ? quality.recordMs + (took - quality.recordMs) * 0.1
+          : took
     }
     if (!raster.ready) return
     if (fresh && raster.version === drawn) return
     drawn = raster.version
-    const secs = performance.now() / 1000
-    meteors.paint(secs, palette, palette.ink)
-    birds.fly(
-      secs,
-      palette.night < BY_DAY && !reduced.matches ? skyFor() : null,
-    )
-    birds.paint(secs, palette)
-    ascii.render({
-      raster,
-      palette,
-      time: garden.time,
-      horizon: garden.horizon,
-      page,
-      veil: 0,
-      pointer: wind.pointer,
-      meteors,
-      birds,
-      backdrop: (ctx) => garden.backdrop(ctx, palette),
-      backdropKey: garden.backdropKey(palette),
-    })
+    // The sky, the glow and the ridges take the hour of the plant frame on screen, which a scrub
+    // has moved past since it was recorded, so the sun and the land under it move together.
+    const shown = raster.hour
+    if (shownPalette.version !== raster.version)
+      shownPalette = {
+        version: raster.version,
+        palette: Number.isNaN(shown) ? palette : paletteAt(shown),
+      }
+    const scene = shown === hour ? palette : shownPalette.palette
+    garden.hour = Number.isNaN(shown) ? hour : shown
+    try {
+      const secs = performance.now() / 1000
+      meteors.paint(secs, scene, scene.ink)
+      birds.fly(
+        secs,
+        scene.night < BY_DAY && !reduced.matches ? skyFor() : null,
+      )
+      birds.paint(secs, scene)
+      ascii.render({
+        raster,
+        palette: scene,
+        time: garden.time,
+        horizon: garden.horizon,
+        page,
+        veil: 0,
+        pointer: wind.pointer,
+        meteors,
+        birds,
+        backdrop: (ctx) => garden.backdrop(ctx, scene),
+        backdropKey: garden.backdropKey(scene),
+      })
+    } finally {
+      garden.hour = hour
+    }
     // The opening shows the meadow once the workers are past their slow first frames.
     if (raster.warm) playIntro()
   }
@@ -448,6 +475,9 @@ export function mountGarden({
   // The hour set elsewhere: the time slider, or its `now`.
   const onHourChange = () => {
     busy()
+    // A new hour moves the scene like a scrub: the poem's scroll, or the slider. (Home's own
+    // scrub comes back here too, harmlessly; it's kept apart from lastScrub, which paces the glide.)
+    lastHourChange = performance.now()
     const now = currentHour()
     hour = now.hour
     live = !now.set
@@ -613,8 +643,16 @@ export function mountGarden({
     if (steps === MAX_STEPS) acc = 0
     if (++frames % MEASURE_EVERY === 0) measure()
     // The cursor's light and a shooting star move every display frame; the rest on the plants' beat.
-    const still = now - Math.max(lastMove, lastScrub)
-    quality.calm = still > LIVELY_FOR && scrubVel === 0 && !meteors.alive
+    const touched = now - Math.max(lastMove, lastScrub)
+    const still = Math.min(touched, now - lastHourChange)
+    const moving = still <= LIVELY_FOR || scrubVel !== 0
+    if (!moving && quality.moving) stillSince = now
+    quality.moving = moving
+    quality.stillFor = moving ? 0 : now - stillSince
+    // Between plant frames only the cursor's light and a shooting star move, so a new hour alone
+    // (the poem's scroll) draws the page only when a plant frame comes back. A shooting star needs
+    // every display frame, but doesn't move the plants.
+    quality.calm = touched > LIVELY_FOR && scrubVel === 0 && !meteors.alive
     quality.idle = quality.calm && still > IDLE_AFTER
     quality.frameMs = raster.frameMs
     // A window out of use but under the cursor or the wheel isn't away.
@@ -660,6 +698,10 @@ export function mountGarden({
 
   // Arriving counts as a touch, so the meadow starts at its full rate.
   let lastMove = performance.now()
+  /** When the hour last changed from elsewhere (the poem's scroll, the slider). */
+  let lastHourChange = -Infinity
+  /** When the cursor and the hour last came to rest, for quality.ts to ease the plants down from. */
+  let stillSince = 0
   const onMove = (e: PointerEvent) => {
     const origin = canvas.getBoundingClientRect()
     const x = toScene(e.clientX - origin.left)
