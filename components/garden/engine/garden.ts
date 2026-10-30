@@ -16,6 +16,7 @@ import { css, mix, type Palette, type Rgb } from './palette'
 import { particle, Particles } from './particles'
 import {
   createPlant,
+  Dandelion,
   Rose,
   RUSH,
   type Env,
@@ -509,6 +510,19 @@ export class Garden {
   }
 
   /** Calls a visitor to the flower under the click. */
+  /** A click on a dandelion shakes it, and puffs a seed clock out. Whether one was there. */
+  poke(x: number, y: number) {
+    // The nearest in front first, as they're drawn back to front.
+    for (let k = this.plants.length - 1; k >= 0; k--) {
+      const p = this.plants[k]
+      if (p instanceof Dandelion && p.hit(x, y)) {
+        p.poke()
+        return true
+      }
+    }
+    return false
+  }
+
   visit(head: Head) {
     if (head.owner)
       this.visitors.summon(head.owner, this.heads, this.env.palette)

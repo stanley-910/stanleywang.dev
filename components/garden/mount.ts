@@ -686,15 +686,27 @@ export function mountGarden({
     if (e.pointerType === 'touch') leave()
   }
 
+  /** Where the last press went down, so a click that ends a drag can be told from a click. */
+  let pressAt: { x: number; y: number } | null = null
+
   // Pressing on the garden lets the cursor stir it while held. The press alone moves nothing:
   // only a moving cursor brushes the plants.
   const onPointerDown = (e: PointerEvent) => {
     if (e.button !== 0) return
+    pressAt = { x: e.clientX, y: e.clientY }
     onMove(e)
     wind.pointer.pressed = true
   }
 
   const onClick = (e: MouseEvent) => {
+    // Only a click sows, calls or puffs: one that ends a drag through the flowers does nothing.
+    const press = pressAt
+    pressAt = null
+    if (
+      press &&
+      Math.hypot(e.clientX - press.x, e.clientY - press.y) > TOUCH_SLOP
+    )
+      return
     const interactive = e
       .composedPath()
       .some(
@@ -718,6 +730,11 @@ export function mountGarden({
           draw(true)
         }, 1200)
       }
+      return
+    }
+    // A dandelion isn't a head a visitor lands on: a click shakes it, and puffs out its seeds.
+    if (garden.poke(x, y)) {
+      if (reduced.matches) draw(true)
       return
     }
     const head = garden.headAt(x, y)

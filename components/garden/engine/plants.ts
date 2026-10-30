@@ -1185,6 +1185,8 @@ export class Dandelion extends Plant {
   private remaining = 0
   private clockStart: number
   private bareAt = -1
+  /** Seeds a click has shaken loose, to let go on the next step. */
+  private puffs = 0
 
   constructor(x: number, z: number, seed: number, env: Env) {
     super(x, z, seed)
@@ -1227,6 +1229,31 @@ export class Dandelion extends Plant {
       : this.clockStart + 6 + this.rng() * 30
   }
 
+  /** Whether a click at x, y lands on the head: the flower, or the seed clock. */
+  hit(x: number, y: number) {
+    const s = this.stem
+    if (s.growth < 0.3 || this.phase().wither > 0.5) return false
+    const tip = s.tipAngle()
+    const R = this.head * 0.55
+    const d = Math.hypot(
+      x - (s.tipX() + Math.sin(tip) * R),
+      y - (s.tipY() - Math.cos(tip) * R),
+    )
+    return d < Math.max(this.head * 0.9, 12)
+  }
+
+  /**
+   * A click shakes the stalk, and a seed clock lets go of a good handful of its seeds at once:
+   * about two fifths, at least a dozen, flung out from the head rather than lifted off by the wind.
+   */
+  poke() {
+    const side = this.rng() < 0.5 ? -1 : 1
+    const s = this.stem
+    for (let i = 0; i < s.n; i++) s.vel[i] += side * 0.9 * ((i + 1) / s.n)
+    if (this.phase().clock >= 0.98 && this.remaining > 0)
+      this.puffs += Math.max(12, Math.round(this.remaining * 0.4))
+  }
+
   private phase() {
     const t = this.age
     const G = this.G
@@ -1266,7 +1293,12 @@ export class Dandelion extends Plant {
       const expect = rate * dt
       release = Math.floor(expect) + (this.rng() < expect % 1 ? 1 : 0)
     }
+    const puffed = Math.min(this.puffs, this.remaining)
+    this.puffs = 0
+    release += puffed
     for (let k = 0; k < release && this.remaining > 0; k++) {
+      // The first few go out in the click's puff, flung wide; the rest drift off on the wind.
+      const fling = k < puffed ? 3 : 1
       let i = Math.floor(this.rng() * this.seeds.length)
       while (!this.attached[i]) i = (i + 1) % this.seeds.length
       this.attached[i] = false
@@ -1278,8 +1310,8 @@ export class Dandelion extends Plant {
           type: 'pappus',
           x: tx + sx * R,
           y: ty - this.head * 0.5 + sy * R,
-          vx: env.wind.at(tx, ty) * 60 + sx * 30,
-          vy: -15 - this.rng() * 25,
+          vx: env.wind.at(tx, ty) * 60 + sx * 30 * fling,
+          vy: (-15 - this.rng() * 25) * (fling > 1 ? 1.8 : 1) + sy * 10 * fling,
           size: Math.max(1.2, this.head * 0.13),
           color: this.bloomed(env.palette.fluff, env.palette),
           floor: env.floor(this.z + (this.rng() - 0.3) * 0.25),

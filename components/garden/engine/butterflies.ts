@@ -165,16 +165,18 @@ export class Butterflies {
   }
 
   /**
-   * Sends a butterfly to the flower. One already about, and not on its way out, takes the call
-   * wherever it is, so a click steers the butterfly on screen; only when none is about does a new
-   * one fly in from the nearest edge.
+   * Sends a butterfly to the flower. One already about takes the call wherever it is, so a click
+   * steers the butterfly on screen: one staying first, else one on its way out, which turns back
+   * rather than a second flying in behind it. Only when none is on screen does a new one fly in
+   * from the nearest edge.
    */
   summon(owner: object, heads: Head[], p: Palette) {
     const head = heads.find((h) => h.owner === owner)
     if (!head) return
-    const about = this.list
-      .filter((b) => b.state !== 'leave')
-      .sort((a, c) => c.called - a.called)[0]
+    const latest = (a: Butterfly, c: Butterfly) => c.called - a.called
+    const about =
+      this.list.filter((b) => b.state !== 'leave').sort(latest)[0] ??
+      this.list.filter((b) => b.state === 'leave').sort(latest)[0]
     if (about) {
       this.redirect(about, owner, head)
       return
