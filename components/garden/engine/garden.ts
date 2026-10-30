@@ -1516,12 +1516,14 @@ export class Garden {
     const t = day
       ? (this.hour - 6) / 12.5
       : ((this.hour + 24 - 18.5) % 24) / 11.5
+    // A wide screen's sun sets into the saddle between the two snowy massifs. A phone's runs
+    // nearly edge to edge, up past the dawn notch and down the far side of the saddle, so a swipe
+    // carries it a longer way for the same hours; a tablet falls between.
+    const wide = clamp((this.width / this.rangeWidth - 0.5) / 0.5, 0, 1)
     return {
-      // Up out of the dawn notch on a narrow screen, across, and down into the saddle between the
-      // two snowy massifs.
       cx: lerp(
-        Math.min(0.12 * this.width, this.rangeX(DAWN)),
-        this.rangeX(SADDLE),
+        lerp(0.06, 0.12, wide) * this.width,
+        lerp(0.88 * this.width, this.rangeX(SADDLE), wide),
         t,
       ),
       cy:
