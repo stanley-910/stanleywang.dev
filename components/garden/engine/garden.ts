@@ -72,7 +72,7 @@ const FAR_RANGE: [number, number][] = [
   [0.12, 0.16],
   [0.155, 0.13],
   [0.19, 0.19],
-  [0.225, 0.165],
+  [0.225, 0.15],
   [0.26, 0.21],
   [0.31, 0.27],
   [0.345, 0.215],
@@ -96,6 +96,8 @@ const FAR_RANGE: [number, number][] = [
 const SNOW_PEAKS = [0.31, 0.85]
 /** The low saddle between them, where the sun and moon go down. */
 const SADDLE = 0.58
+/** The notch left of the main massif, where the sun and moon come up on a narrow screen. */
+const DAWN = 0.225
 /**
  * Hidden ridgelines that set the far range's faces, placed by hand: the peak they run down from,
  * which way, how far (a share of the peak's height) and how much across per px down.
@@ -555,13 +557,13 @@ export class Garden {
 
   /**
    * Where a point of the composed range (a share of its width) falls on screen. The whole range
-   * spans a wide screen; a narrow one shows the stretch from the main summit, a fifth of the way
-   * in, to the saddle, so the peaks keep their shape and the sun still sets into the valley. Both
-   * are shares of the screen, so the home page and the poem, at different zooms, match.
+   * spans a wide screen; a narrow one shows the stretch from the dawn notch, a tenth of the way
+   * in, past the saddle, so the peaks keep their shape and the sun rises and sets in a valley.
+   * Both are shares of the screen, so the home page and the poem, at different zooms, match.
    */
   private rangeX(u: number) {
     const span = this.width / this.rangeWidth
-    const u0 = clamp(SNOW_PEAKS[0] - span * 0.22, 0, 1 - span)
+    const u0 = clamp(DAWN - span * 0.1, 0, 1 - span)
     return ((u - u0) / span) * this.width
   }
 
@@ -1515,8 +1517,13 @@ export class Garden {
       ? (this.hour - 6) / 12.5
       : ((this.hour + 24 - 18.5) % 24) / 11.5
     return {
-      // Across the sky to set into the saddle between the two snowy massifs.
-      cx: lerp(0.12 * this.width, this.rangeX(SADDLE), t),
+      // Up out of the dawn notch on a narrow screen, across, and down into the saddle between the
+      // two snowy massifs.
+      cx: lerp(
+        Math.min(0.12 * this.width, this.rangeX(DAWN)),
+        this.rangeX(SADDLE),
+        t,
+      ),
       cy:
         this.horizon -
         Math.sin(Math.PI * clamp(t, 0, 1)) * this.height * 0.36 -
