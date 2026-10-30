@@ -21,8 +21,12 @@ const MAX_STEPS = 6
 const MEASURE_EVERY = 30
 /** How long after the cursor or a scrub last moved, in ms, the page keeps drawing every frame. */
 const LIVELY_FOR = 1000
-/** How long, in ms, with no cursor or scrub before the plants slow to quality.ts's IDLE_PLANTS. */
-const IDLE_AFTER = 10000
+/**
+ * How long, in ms, with no cursor or scrub before the plants slow to quality.ts's IDLE_PLANTS; and
+ * how long the window must also have been out of use before it counts as away. Someone may be
+ * watching the meadow without touching it, so neither comes soon.
+ */
+const IDLE_AFTER = 30000
 
 // The site's page colours (tokens.css); the scene fades into them.
 const PAGE: Record<'dark' | 'light', Rgb> = {
@@ -573,7 +577,7 @@ export function mountGarden({
     quality.idle = quality.calm && still > IDLE_AFTER
     quality.frameMs = raster.frameMs
     // A window out of use but under the cursor or the wheel isn't away.
-    const away = unfocused && quality.calm
+    const away = unfocused && quality.idle && now - blurredAt > IDLE_AFTER
     if (away !== quality.away) {
       quality.away = away
       quality.resettle()
@@ -726,7 +730,13 @@ export function mountGarden({
 
   // A window on screen but out of use keeps its meadow moving, slowly (quality.ts).
   let unfocused = false
-  const onFocus = () => (unfocused = !document.hasFocus())
+  /** When the window last went out of use. */
+  let blurredAt = 0
+  const onFocus = () => {
+    const out = !document.hasFocus()
+    if (out && !unfocused) blurredAt = performance.now()
+    unfocused = out
+  }
 
   // Off screen (scrolled past), the scene stops drawing.
   const seen = new IntersectionObserver(([entry]) => {

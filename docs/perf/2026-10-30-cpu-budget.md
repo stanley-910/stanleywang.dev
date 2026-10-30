@@ -43,8 +43,9 @@ All in `quality.ts` and `mount.ts`, as amended by the second pass below:
    there's no scrub or glide and no shooting star is out, the page records every frame under the
    cap but draws only when a new plant frame has come back. Moving the cursor brings back every
    display frame at once, so the cursor's light stays smooth.
-3. **Away, the meadow slows down.** When the window isn't the one in use and nothing is moving the
-   cursor or wheel over it, the plants redraw 12 times a second and the page draws at 30. The
+3. **Away, the meadow slows down.** When the window has been out of use for 30 s and nothing has
+   moved the cursor or wheel over it for 30 s, the plants redraw 12 times a second and the page
+   draws only with them. Someone may be watching the meadow from another app, so it waits. The
    quality vote ignores this time, but the display rate is still measured and kept.
 4. **The saved level moved to `garden-quality-2`**, since the levels mean something new. Levels
    saved under the old ladder, including ones learnt under DevTools throttling, are dropped.
@@ -101,7 +102,7 @@ pinned with `?seed=1715089390`.
    grid. It goes back to the fine grid on a visit where the plants keep up and the frames, scaled
    to the fine grid, would take under 35 ms. The budget's beat has a margin so a frame time near a
    step doesn't flip it. Each worker's first frame, which compiles its code, isn't counted.
-2. **After 10 s with no cursor or scrub the plants slow to 30 a second.**
+2. **After 30 s with no cursor or scrub the plants slow to 30 a second.**
 3. **V8 was compiling `sampleCells` about 1,300 times a second.** A trace showed V8's compilers
    busy about 0.3 cores on an idle tab. `sampleCells`, one long loop nest run a few times a second
    per worker, was compiled partway through each run and dropped when its inner loop ended
@@ -133,6 +134,9 @@ A per-process split of the second pass, idle: renderer 0.95 (workers about 0.45,
 - **Two samples across a cell and one down** (`SS` 2×2 to 2×1): a plant frame's round trip fell
   from 20.5 to 16 ms, about 0.25 cores while the cursor moves. The grass thins visibly and loses
   some of its slanted strokes, so it's left for Stanley to judge.
+- **Flowers at 60 a second** instead of 40, on a 120 Hz display (cap and budget both raised): idle
+  1.36–1.44 to 2.03–2.14 cores, cursor moving 1.61–1.63 to 2.19–2.45. About half as much again,
+  for a smoother sway. On a 60 Hz display it would double the plants' cost, from 30 to 60.
 - **Drawing at 60 while the cursor moves**, on a 120 Hz display: about 0.15 cores, for a choppier
   light around the cursor. Not done.
 
