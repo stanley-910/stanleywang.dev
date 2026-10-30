@@ -1,9 +1,9 @@
 // Fits the meadow to the machine it lands on. The page's frame rate says whether the main thread
 // keeps up with the display; the plants' redraw rate says whether the raster workers do. When the
 // page or the workers fall behind, the plants redraw less often, since recording them is the
-// biggest cost. The grid itself never coarsens: a coarser grid blurred the far flowers. After
-// drei's PerformanceMonitor (a windowed vote) and hls.js (a remembered level); see
-// docs/perf/2026-10-29-adaptive-and-gpu-research.md.
+// biggest cost. The grid itself never coarsens: a coarser grid blurred the far flowers. Nothing is
+// remembered between visits. After drei's PerformanceMonitor (a windowed vote) and hls.js (a
+// level); see docs/perf/2026-10-29-adaptive-and-gpu-research.md.
 
 /** Length of one measuring window, in ms. */
 const WINDOW = 250
@@ -55,29 +55,15 @@ const IDLE_PLANTS = 30
 const RATES = [30, 48, 50, 60, 72, 75, 90, 100, 120, 144, 165, 240]
 const HALF_RATE = 3
 
-// Renamed when the ladder changes, so a level saved against the old one isn't read as the new.
-// 3: the coarse grid is gone, and a visit that saved it starts over at full quality.
-const KEY = 'garden-quality-3'
+// Keys earlier visits saved their level under. The level now lasts only as long as the page:
+// a reading taken while the machine was busy with something else needn't slow the next visit.
+const OLD_KEYS = ['garden-quality', 'garden-quality-2', 'garden-quality-3']
 
-type Saved = { level: number }
-
-function load(): Saved | null {
+function forget() {
   try {
-    const raw = localStorage.getItem(KEY)
-    if (!raw) return null
-    const s = JSON.parse(raw) as Partial<Saved>
-    if (typeof s.level !== 'number') return null
-    return { level: s.level }
+    for (const key of OLD_KEYS) localStorage.removeItem(key)
   } catch {
-    return null
-  }
-}
-
-function save(s: Saved) {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(s))
-  } catch {
-    // Storage blocked or full: the level is relearnt next visit.
+    // Storage blocked: nothing was saved there either.
   }
 }
 
@@ -120,15 +106,13 @@ export class Quality {
   private budgetBeat = 0
 
   constructor() {
-    const saved = load()
+    forget()
     const slowHint =
       (navigator.hardwareConcurrency || 8) <= 4 ||
       (navigator as Navigator & { connection?: { saveData?: boolean } })
         .connection?.saveData === true
-    this.level = Math.min(
-      PLANT_CAPS.length - 1,
-      Math.max(0, Math.round(saved?.level ?? (slowHint ? 1 : 0))),
-    )
+    // A likely slow machine starts a step down, and climbs back once the page has time to spare.
+    this.level = slowHint ? 1 : 0
   }
 
   /**
@@ -271,6 +255,5 @@ export class Quality {
     this.spare = 0
     this.held = 0
     this.settle = 2
-    save({ level })
   }
 }

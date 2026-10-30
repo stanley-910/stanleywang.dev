@@ -125,3 +125,10 @@ other agents at load 6–42) could save it, and every later visit drew the whole
 until one proved fast. Small, distant flowers lose the most. A slow machine now only gets fewer
 plant redraws a second (the ladder and the worker budget); the grid stays at `SCENE_ZOOM`. The
 storage key moved to `garden-quality-3`, so a saved coarse grid is dropped.
+
+## 2026-10-30: nothing is remembered between visits
+
+Stanley asked that a machine judged slow on one visit not start the next one slowed: the reading
+may have been taken while it was busy with something else. The ladder's level now lasts only for
+the page; each visit starts at full quality (a step down on 4 cores or fewer, or with Save-Data)
+and adapts from there. The keys earlier visits saved are removed on load.
