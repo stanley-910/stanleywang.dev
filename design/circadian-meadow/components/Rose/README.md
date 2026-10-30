@@ -57,7 +57,7 @@ Rose time `t` starts at the trigger and runs for `duration-rose` (10 s). `ss(a, 
 | Petals open | 5.0 – 9.8 | Ring by ring, outward: inner `o = ss(5.0, 7.5)`, middle `ss(5.8, 8.6)`, outer `ss(6.6, 9.8)`. The core never opens. Head `R × lerp(0.6, 1, ss(5.0, 9.8))`, `facing` `lerp(0.5, 1.05, ss(5.0, 9.8))`. |
 | Settle | 9.8 – 12.8 | Damping eases from `SETTLED` (0.9) to `SWAY` (0.35) over 3 s. Hold the stem at 0.9 for the whole growth, so it rises and opens without a bounce. |
 
-After that it sways in the wind like the others, heavy-headed. At the poem's wind (0.6) the head's centre should drift no more than 0.03 W. If it drifts more, raise the stiffness and keep the damping. It stays open at night: no `night` fold, unlike the poppy and cosmos. It never sheds.
+After that it sways in the wind like the others, heavy-headed. At the poem's wind (0.13) the head's centre should drift no more than 0.03 W. If it drifts more, raise the stiffness and keep the damping. It stays open at night: no `night` fold, unlike the poppy and cosmos. It never sheds.
 
 - **Trigger:** once per visit, when the line's centre first rises above 80% of the viewport height. Expose it as `garden.growRose()`; `poem.tsx` calls it. A reload or a scroll that lands past the line shows it grown with no growth. Scrolling back up doesn't regrow it.
 - **The gap:** put an `@ gap` after the line, tall enough that the head's box plus 14 cells of padding (about 45 CSS px a side on a phone) is clear of text while the line stands above it: at least 75svh. Later lines scroll over the rose, and the existing text fade (`dimPlant`) steps it back. There is never a scrim.

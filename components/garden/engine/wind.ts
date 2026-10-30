@@ -10,6 +10,9 @@ export type Pointer = {
   pressed: boolean
 }
 
+/** Where gusts level off, in the same units as the gust (before strength). */
+const GUST_CAP = 0.45
+
 /**
  * Wind over a meadow arrives in gusts that roll across it as visible waves (the "honami" of a
  * rice field). Here a slow base breeze carries travelling fbm gusts, and the cursor stirs a
@@ -53,7 +56,10 @@ export class Wind {
     const gust = Math.max(0, fbm1(phase, 11) * 1.7 + 0.15) ** 1.6
     const envelope = 0.55 + 0.45 * noise1(t * 0.07, 5)
     const flutter = 0.12 * noise1(x * 0.02 + t * 2.3, 9)
-    let w = this.base() + s * (gust * envelope * 1.25 + flutter)
+    // A soft ceiling on each gust, so it still rolls across as a wave but never shoves a stem
+    // flat: uncapped, the strongest bent a cosmos 40° and laid its head on the bio.
+    const g = gust * envelope * 1.25
+    let w = this.base() + s * (GUST_CAP * Math.tanh(g / GUST_CAP) + flutter)
 
     const p = this.pointer
     if (p.active && p.pressed) {
