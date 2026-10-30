@@ -55,12 +55,20 @@ const WHEEL_REST = 200
 const GLIDE_DECAY = 8
 /** Fastest glide, px/s, so a hard flick only drifts on a little after release. */
 const GLIDE_MAX = 1200
+/** Wheel px per px of finger travel: a phone-height swipe runs about nine hours. */
+const TOUCH_GAIN = 1.5
 /**
- * Wheel px per px of finger travel. At 3 the sun keeps up with the thumb across a phone's narrow
- * sky, about as it follows a trackpad on a laptop: a 250px swipe moves about six hours. At 1.5 it
- * moved under half as far as the thumb, and the day took swipe after swipe.
+ * A flicked finger's glide dies away as iOS scrolling does: its speed keeps 0.998 of itself each
+ * ms (UIScrollView's normal deceleration), so it coasts on about half a second's worth of its
+ * release speed, easing out over a second or two. The wheel's quick glide felt dead on a phone,
+ * and doubling the gain instead made every swipe jumpy.
  */
-const TOUCH_GAIN = 3
+const FLICK_DECAY = -Math.log(0.998) * 1000
+/** Fastest flick, wheel px/s, so a hard one coasts on at most about eight hours. */
+const FLICK_MAX = 2000
+/** How far back, in ms, a lifted finger's speed is read, and how long it may rest first. */
+const FLICK_WINDOW = 100
+const FLICK_REST = 50
 /** Finger travel, in px, before a touch picks its axis; less is a tap. */
 const TOUCH_SLOP = 6
 
@@ -389,6 +397,8 @@ export function mountGarden({
   // ── scrubbing the hour ────────────────────────────────────────────
 
   let scrubVel = 0
+  /** How fast the current glide dies away: the wheel's, or a flick's. */
+  let glideDecay = GLIDE_DECAY
   /**
    * Until when the page is busy with work of its own (restyling for a new hour, laying out a new
    * size), so quality.ts doesn't take the slow frames for a slow machine.
@@ -424,6 +434,7 @@ export function mountGarden({
   const scrubBy = (px: number, at: number) => {
     const dt = Math.max(8, Math.min(100, at - lastScrub)) / 1000
     lastScrub = at
+    glideDecay = GLIDE_DECAY
     busy()
     scrubVel +=
       (Math.max(-GLIDE_MAX, Math.min(GLIDE_MAX, px / dt)) - scrubVel) * 0.4
@@ -467,6 +478,8 @@ export function mountGarden({
   // sideways swipe leaves the hour alone, as it reads more like a pan than a
   // dial. A gesture keeps the axis it started on.
   let touch: { x: number; y: number; axis: 'x' | 'y' | null } | null = null
+  /** The finger's recent heights and times, to read its speed when it lifts. */
+  let trail: { y: number; t: number }[] = []
   // A finger that lands on a flower is holding it, to push it about: it
   // neither scrubs nor scrolls the page (whose scroll sets the poem's hour).
   let holding = false
@@ -494,6 +507,7 @@ export function mountGarden({
     }
     if (!scrub) return
     touch = { x, y, axis: null }
+    trail = [{ y, t: e.timeStamp }]
     // Putting a finger down catches a glide, as it would a page's momentum.
     scrubVel = 0
   }
@@ -527,11 +541,30 @@ export function mountGarden({
     if (e.cancelable) e.preventDefault()
     touch.x = x
     touch.y = y
+    trail.push({ y, t: e.timeStamp })
+    while (trail.length > 2 && e.timeStamp - trail[1].t > FLICK_WINDOW)
+      trail.shift()
     scrubBy(-dy * TOUCH_GAIN, e.timeStamp)
   }
 
-  const onTouchEnd = () => {
+  const onTouchEnd = (e: TouchEvent) => {
+    // A scrubbing finger that lifts while still moving flicks the hour on; one that came to rest
+    // first, or a cancelled touch, just stops.
+    if (touch?.axis === 'y' && e.type === 'touchend' && !reduced.matches) {
+      const a = trail[0]
+      const b = trail[trail.length - 1]
+      const dt = (b.t - a.t) / 1000
+      const v =
+        e.timeStamp - b.t > FLICK_REST || dt <= 0
+          ? 0
+          : (-(b.y - a.y) * TOUCH_GAIN) / dt
+      scrubVel = Math.max(-FLICK_MAX, Math.min(FLICK_MAX, v))
+      glideDecay = FLICK_DECAY
+      // Coast from this frame, not after the wheel's pause.
+      lastScrub = -Infinity
+    }
     touch = null
+    trail = []
     holding = false
   }
 
@@ -542,8 +575,12 @@ export function mountGarden({
       scrubVel = 0
       return
     }
-    setScrubHour(hour + scrubVel * dt * HOURS_PER_PX)
-    scrubVel *= Math.exp(-GLIDE_DECAY * dt)
+    busy()
+    // The exact distance over the frame of a speed decaying exponentially, so a dropped frame
+    // doesn't throw the coast long.
+    const keep = Math.exp(-glideDecay * dt)
+    setScrubHour(hour + (scrubVel * (1 - keep) * HOURS_PER_PX) / glideDecay)
+    scrubVel *= keep
     if (Math.abs(scrubVel) < 5) scrubVel = 0
   }
 
