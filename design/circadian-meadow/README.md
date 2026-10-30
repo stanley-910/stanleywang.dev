@@ -95,7 +95,7 @@ A plant wins a cell over the land behind it once it covers a quarter of the cell
 ## Time
 
 - The hour shows in a small corner clock, top right, `hint` type in `ink`. It's static: no seconds.
-- A horizontal scroll or trackpad swipe moves the hour, 120px per hour, and turns off "Follow my clock". Letting go leaves a short glide (about 1/8 s, at most ~1¼ h of drift).
+- A horizontal scroll or trackpad swipe moves the hour, 120px per hour, and turns off "Follow my clock". On a phone a vertical swipe over the scene does the same, at 40px of finger per hour, so the sun keeps up with the thumb. Letting go leaves a short glide (about 1/8 s, at most ~1¼ h of drift).
 - The scene defaults to the finest grid and wind 0.2 (the poem, 0.13). Gusts level off softly, so the strongest bends a cosmos about 20°, not 40°.
 
 ## Motion

@@ -55,8 +55,12 @@ const WHEEL_REST = 200
 const GLIDE_DECAY = 8
 /** Fastest glide, px/s, so a hard flick only drifts on a little after release. */
 const GLIDE_MAX = 1200
-/** Wheel px per px of finger travel: a phone-height swipe runs about nine hours. */
-const TOUCH_GAIN = 1.5
+/**
+ * Wheel px per px of finger travel. At 3 the sun keeps up with the thumb across a phone's narrow
+ * sky, about as it follows a trackpad on a laptop: a 250px swipe moves about six hours. At 1.5 it
+ * moved under half as far as the thumb, and the day took swipe after swipe.
+ */
+const TOUCH_GAIN = 3
 /** Finger travel, in px, before a touch picks its axis; less is a tap. */
 const TOUCH_SLOP = 6
 
