@@ -99,3 +99,37 @@
 .photo-details dd {
   margin: 0;
 }
+
+/* The caption waits for its photo, and the two fade in together. */
+.photo img,
+.photo-caption {
+  opacity: 0;
+  transition: opacity 300ms var(--ease-calm);
+}
+
+.photo[data-loaded] img,
+.photo[data-loaded] .photo-caption {
+  opacity: 1;
+}
+
+/* Pressing the photo, anywhere but its caption, opens the viewer. */
+.photo-open {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
+
+.photo-open:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: -3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .photo img,
+  .photo-caption {
+    transition: none;
+  }
+}

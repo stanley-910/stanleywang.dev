@@ -143,18 +143,25 @@
 }
 
 .film-grid {
-  /* Photos share the row by shape (film/page.tsx sets --shape), so a
+  /* Rows of at most three, so the page stays a scroll rather than a wall.
+     Photos share their row by shape (photos/gallery.tsx sets --shape), so a
      landscape and a portrait cover about the same area and their bottoms
-     end unevenly. The grid breaks out of the gutter to the window's
-     width, centred under the top bar. */
+     end unevenly. The grid breaks out of the gutter to the window's width,
+     centred under the top bar. */
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: min(80rem, 100vw - 48px);
+  margin-left: 50%;
+  transform: translateX(-50%);
+}
+
+.film-row {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   align-items: flex-start;
   gap: var(--space-3);
-  width: min(80rem, 100vw - 48px);
-  margin-left: 50%;
-  transform: translateX(-50%);
 }
 
 .film-item {
