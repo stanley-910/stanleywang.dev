@@ -2,6 +2,7 @@ import { createCompositor, type Compositor } from './gl'
 import { bayer, clamp, fbm2, hash, smoothstep } from './math'
 import { mix, type Palette, type Rgb } from './palette'
 import { CLOUD, code, GLYPHS, MAT, PLANT } from './typeset'
+import { BOLT_COL, FLASH, SHADOW, type Disc, type Weather } from './weather'
 
 import type { Birds } from './birds'
 import type { Meteors } from './meteors'
@@ -15,6 +16,17 @@ const PERIOD = code('.')
 const PLUS = code('+')
 /** How strongly a shooting star lights the tile behind its glyph. */
 const GLOW = 0.3
+
+/**
+ * Whether the eclipse shows at a cell: above the land and trees, which the backdrop paints with
+ * no cells of their own, and on no cell of land. (The sun's own cells are `Fluff`, flagged as plant.)
+ */
+const showsEclipse = (f: number, x: number, y: number, d: Disc) =>
+  y < d.skyline(x) && (f & (MAT | PLANT)) !== MAT
+
+/** Whether a point is within the eclipse corona's reach. */
+const nearDisc = (x: number, y: number, d: Disc) =>
+  (x - d.x) ** 2 + (y - d.y) ** 2 < (1.8 * d.R) ** 2
 
 export type FrameInput = {
   raster: Raster
@@ -33,6 +45,8 @@ export type FrameInput = {
   meteors?: Meteors
   /** Birds in the day sky, already painted for this frame. */
   birds?: Birds
+  /** Rain, snow, gusts, lightning and the eclipse, already painted for this frame. */
+  weather?: Weather
   /** Paints smooth shapes (hill silhouettes) between the sky gradient and the glyphs. */
   backdrop?: (ctx: CanvasRenderingContext2D) => void
   /** Changes whenever the backdrop would paint differently, beyond the palette. */
@@ -257,6 +271,7 @@ export class AsciiRenderer {
       pointer,
       meteors,
       birds,
+      weather,
     } = input
     if (veil >= 1) {
       // Another page: nothing but the page colour.
@@ -327,6 +342,15 @@ export class AsciiRenderer {
     const glint = streaks?.glint
     const flock = birds?.alive ? birds : null
     const reach = 0.3 * H
+    // Weather: drops and flakes in the air, snow capping whatever stands, gust bands in the grass.
+    const fall = weather?.painted ? weather : null
+    const cover = weather?.cover ?? 0
+    const band = weather && weather.gale > 0 ? weather.band : null
+    // A cap on a head is the top of its snow, so it takes SnowCap's crest colour: `*-snow` lightened 15%.
+    const [snR, snG, snB] = mix(p.snow, [255, 255, 255], 0.15)
+    const [glR, glG, glB] = p.grassLight
+    const disc = weather?.disc
+    const flash = weather ? weather.flash * FLASH : 0
     for (let r = 0; r < rows; r++) {
       const y = r * ch + ch / 2
       const skyRow = y < horizon
@@ -342,6 +366,7 @@ export class AsciiRenderer {
       const refresh = tick === -1 || r % 3 === tick
       const py = y - pointer.y
       const lit = pointer.active && Math.abs(py) < lightR
+      const discRow = disc && Math.abs(y - disc.y) < disc.R ? disc : null
       for (let c = 0; c < cols; c++) {
         const i = r * cols + c
         const o = i * 4
@@ -353,6 +378,9 @@ export class AsciiRenderer {
         let t = 0
         // A shooting star lights its cell's tile, in place of the raster's.
         let glowing = false
+        // How far snow lying on this cell, or the eclipse's disc, turns its tile their colour.
+        let over = 0
+        let overCol = p.snow
         const f = flags[i]
         if (f & MAT) {
           g = glyph[i]
@@ -440,6 +468,102 @@ export class AsciiRenderer {
             cb = Math.min(255, cb)
           }
         }
+        if (g && f & MAT) {
+          // Snow settles on the top of each head and stem, a few more cells each step.
+          if (
+            cover > 0 &&
+            f & PLANT &&
+            (r === 0 || !(flags[i - cols] & PLANT)) &&
+            bayer(c, r) < cover * 1.1
+          ) {
+            const kk = 0.8 * cover
+            over = kk
+            cr += (snR * k - cr) * kk
+            cg += (snG * k - cg) * kk
+            cb += (snB * k - cb) * kk
+            a = Math.max(a, 0.75 * cover * dim[i])
+          }
+          // A gust band lights the grass it passes over.
+          if (band && !skyRow && !(f & PLANT) && band[c] > 0) {
+            const kk = 0.6 * band[c]
+            cr += (glR * k - cr) * kk
+            cg += (glG * k - cg) * kk
+            cb += (glB * k - cb) * kk
+            a += (1 - a) * 0.4 * band[c]
+          }
+        }
+        // The moon over the sun, or Earth's shadow on the moon. The new moon's face is a solid
+        // `night-disc` tile over the sun's glyphs. The shadow fills
+        // the whole moon in copper, as an eclipse only comes at full moon: the moon's own glyphs
+        // tinted, and `·` on a copper tile where it has none. It sets behind the ridges and pines
+        // like the sun (showsEclipse).
+        if (discRow && showsEclipse(f, c * cw + cw / 2, y, discRow)) {
+          const dx = c * cw + cw / 2 - discRow.x
+          const dy = y - discRow.y
+          if (dx * dx + dy * dy < discRow.R * discRow.R) {
+            const [dr, dg, db] = discRow.col
+            const kk = discRow.k
+            if (discRow.body) {
+              // A cell's tile is only drawn under a glyph, so the face prints `·` in its own
+              // colour: lost on the tile, the sun's glyph gone under it.
+              g = DOT
+              cr = dr
+              cg = dg
+              cb = db
+              a = kk
+              t = Math.max(t, kk)
+              over = 1
+              overCol = discRow.col
+            } else {
+              if (!g) {
+                g = SHADOW
+                cr = dr
+                cg = dg
+                cb = db
+                a = 0.3
+              } else {
+                cr += (dr - cr) * kk
+                cg += (dg - cg) * kk
+                cb += (db - cb) * kk
+              }
+              t = Math.max(t, kk)
+              over = kk
+              overCol = discRow.col
+            }
+          }
+        }
+        if (
+          fall &&
+          fall.alpha[i] > 0 &&
+          !(
+            disc &&
+            nearDisc(c * cw + cw / 2, y, disc) &&
+            !showsEclipse(f, c * cw + cw / 2, y, disc)
+          )
+        ) {
+          const wa = fall.alpha[i] * dim[i]
+          if (wa >= 0.06 && (!g || wa > a * 0.6)) {
+            g = fall.glyph[i]
+            cr = fall.rgb[i * 3]
+            cg = fall.rgb[i * 3 + 1]
+            cb = fall.rgb[i * 3 + 2]
+            a = wa
+            // The corona lights its tiles, as a shooting star does.
+            if (fall.tile[i] > 0) {
+              t = Math.max(t, fall.tile[i] * dim[i])
+              over = 1
+              overCol = fall.tileCol
+            }
+          }
+        }
+        // Lightning lights the sky's glyphs, and the land's a little.
+        if (flash > 0 && g) {
+          const kk = flash * (skyRow ? 1 : 0.35)
+          cr += (BOLT_COL[0] - cr) * kk
+          cg += (BOLT_COL[1] - cg) * kk
+          cb += (BOLT_COL[2] - cb) * kk
+          a += (1 - a) * kk
+        }
         // A bird is a silhouette over anything in its band of sky: open sky, cloud or the sun.
         let shadow = false
         if (flock && skyRow && flock.alpha[i] > 0) {
@@ -487,9 +611,12 @@ export class AsciiRenderer {
           tileData[o + 3] = t * 255
         } else if (t > 0) {
           const tc = glowing && streaks ? streaks.rgb : tileCol
-          tileData[o] = tc[i * 3]
-          tileData[o + 1] = tc[i * 3 + 1]
-          tileData[o + 2] = tc[i * 3 + 2]
+          const tr = tc[i * 3]
+          const tg = tc[i * 3 + 1]
+          const tb = tc[i * 3 + 2]
+          tileData[o] = tr + (overCol[0] - tr) * over
+          tileData[o + 1] = tg + (overCol[1] - tg) * over
+          tileData[o + 2] = tb + (overCol[2] - tb) * over
           tileData[o + 3] = t * 255
         } else tileData[o + 3] = 0
       }

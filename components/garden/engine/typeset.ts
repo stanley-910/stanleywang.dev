@@ -51,6 +51,8 @@ for (const ramp of [
   "^_'",
   // The shooting star's tail (meteors.ts), here so main thread and workers agree on its code.
   '@#Oo+:·`',
+  // Rain, snow and blown seed (weather.ts), for the same reason.
+  "\\`*·.~,'",
 ])
   for (const ch of ramp) code(ch)
 

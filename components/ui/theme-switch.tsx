@@ -13,11 +13,13 @@ import {
   type PageTheme,
 } from '@/lib/circadian'
 import { setUiHidden, useUiHidden } from '@/lib/hide-ui'
+import { setWeather, useWeather, WEATHERS } from '@/lib/weather'
 
 import './time-control.css'
 
 // The site menu in the top bar's corner: four dots that open the time slider
-// (design/circadian-meadow/components/ReadingTime) and, on home, hide text.
+// (design/circadian-meadow/components/ReadingTime), the meadow's weather
+// where there is a meadow, and, on home, hide text.
 // The page's colours follow the hour shown here, the clock's or one set by
 // hand for this visit, and home's meadow follows the same hour.
 
@@ -31,12 +33,17 @@ const PHASES: [number, string][] = [
   [21.4, 'night'],
 ]
 
+/** Pages with a meadow, which the weather shows on. */
+const MEADOWS = ['/', '/writing/poem']
+
 const phaseAt = (h: number) =>
   PHASES.reduce((name, [from, n]) => (h >= from ? n : name), 'night')
 
+/** The hour on a 12-hour clock, lowercase like the rest of the bar: `9:24 pm`. */
 const label = (h: number) => {
   const m = Math.round(h * 60) % (24 * 60)
-  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
+  const h24 = Math.floor(m / 60)
+  return `${h24 % 12 || 12}:${String(m % 60).padStart(2, '0')} ${h24 < 12 ? 'am' : 'pm'}`
 }
 
 // The track: the horizon's colour through the day, sampled every hour, run
@@ -76,6 +83,7 @@ export function ThemeSwitch({ className }: { className?: string }) {
   const { setTheme } = useTheme()
   const pathname = usePathname()
   const hidden = useUiHidden()
+  const weather = useWeather()
   const buttonRef = useRef<HTMLButtonElement>(null)
   const popRef = useRef<HTMLDivElement>(null)
   const family = useRef<PageTheme | null>(null)
@@ -256,6 +264,28 @@ export function ThemeSwitch({ className }: { className?: string }) {
               </button>
             )}
           </p>
+          {MEADOWS.includes(pathname) && (
+            <>
+              <hr className="time-control-rule" />
+              <div
+                className="time-control-weather"
+                role="group"
+                aria-label="Weather"
+              >
+                {WEATHERS.map((w) => (
+                  <button
+                    key={w}
+                    type="button"
+                    className="time-control-item"
+                    aria-pressed={weather === w}
+                    onClick={() => setWeather(w)}
+                  >
+                    {w}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
           {pathname === '/' && (
             <>
               <hr className="time-control-rule" />

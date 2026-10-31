@@ -110,10 +110,16 @@
   animation: time-control-in var(--duration-card) var(--ease-calm);
 }
 
+/* Unrolled from the top rather than faded in: a backdrop blur under opacity
+   below 1 isn't drawn until the fade ends (WebKit, and Chromium on the first
+   open after a load), so a fade showed clear glass for a beat. */
 @keyframes time-control-in {
   from {
-    opacity: 0;
+    clip-path: inset(0 0 100% 0 round var(--radius-card));
     transform: translateY(-4px);
+  }
+  to {
+    clip-path: inset(0 0 0 0 round var(--radius-card));
   }
 }
 
@@ -243,6 +249,22 @@
 .time-control-item:focus-visible {
   outline: 1px solid var(--focus);
   outline-offset: 0;
+}
+
+/* The weather: its six words as two rows of items, the one set in ink. */
+.time-control-weather {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 0 calc(var(--inset) / -2) calc(var(--inset) / -2);
+}
+
+.time-control-weather .time-control-item {
+  width: auto;
+  margin: 0;
+}
+
+.time-control-weather .time-control-item[aria-pressed='true'] {
+  color: var(--ink);
 }
 
 /* Hide text (lib/hide-ui.ts): the top bar's links and home's text fade

@@ -1,3 +1,5 @@
+import type { WeatherKind } from './weather'
+
 // Commands for the home meadow from elsewhere on the page (the terminal):
 // a window event that components/garden/mount.ts listens for while it runs.
 
@@ -10,6 +12,8 @@ export type MeadowCommand =
   | { kind: 'gust' }
   /** A new meadow grows in, from a fresh seed. */
   | { kind: 'regrow'; seed: number }
+  /** The visit's weather (lib/weather.ts), which the site menu shows too. */
+  | { kind: 'weather'; value: WeatherKind }
 
 export function sendMeadow(command: MeadowCommand) {
   window.dispatchEvent(new CustomEvent(MEADOW_EVENT, { detail: command }))
