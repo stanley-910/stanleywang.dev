@@ -1092,7 +1092,7 @@ export class Lace extends Plant {
         // Spread evenly over the disc, inner rays shorter, so the umbellets fill the head as a
         // real one's do; all at one reach left a hollow ring of clusters floating round the
         // stalk. From the seed, not the rng, so the meadows picked by hand keep their layout.
-        reach: 0.22 + 0.78 * Math.sqrt(hash(seed, 100 + i)),
+        reach: 0.25 + 0.85 * Math.sqrt(hash(seed, 100 + i)),
       })
     }
     this.darkFloret = r() < 0.6
@@ -1256,12 +1256,13 @@ export class Lace extends Plant {
       const tone = shade(lace, 1 - 0.2 * down - 0.08 * back)
       // A tiny umbellet: a ring of florets around one.
       const cluster = new Shape()
-      // Large enough that neighbours touch, as a real head's packed umbellets do.
-      const rr = H * 0.14
+      const rr = H * 0.13
       // The umbellet as a whole: a dome of florets too fine to print one by one, so the head
-      // reads as a lace of small clusters rather than loose specks.
+      // reads as a lace of small clusters rather than loose specks. A little smaller than its
+      // ring of florets, so each umbellet is its own round tuft with florets standing out of
+      // it and a gap to the next, as in a real head; wider, they ran together into one mat.
       const dome = new Shape()
-      const dr = Math.max(rr * 1.35, r.minLine * 1.2)
+      const dr = Math.max(rr * 0.95, r.minLine * 1.1)
       dome.ellipse(ex, ey, dr, dr * 0.8, 0, 0, TAU)
       r.fill(dome, tone, Kind.Fluff, 0.85, FLOWER_FLUFF)
       r.touchMeta(ex - dr - rr, ey - dr - rr)
@@ -1274,8 +1275,8 @@ export class Lace extends Plant {
           ey,
           axis,
           [u, v],
-          Math.cos(a) * rr,
-          Math.sin(a) * rr,
+          Math.cos(a) * rr * 1.15,
+          Math.sin(a) * rr * 1.15,
           0,
         )
         cluster.moveTo(x + fr, y)
