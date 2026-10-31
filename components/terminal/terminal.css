@@ -356,14 +356,57 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
 /* The view button: one bare pixel icon for the other view, a folder from the shell and a
    framed prompt from the files, drawn like the close x. Under the pointer a plate inverts
    behind it. */
+/* Files' tools, left of the view button: the sidebar, back and forward, bare pixel icons. */
+.terminal-menu .tools {
+  display: flex;
+  align-self: center;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.terminal-menu .tools button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 17px;
+  height: 18px;
+  padding: 0 2px;
+  color: var(--k-ink);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.terminal-menu .tools svg {
+  display: block;
+  fill: currentColor;
+  shape-rendering: crispEdges;
+}
+
+.terminal-menu .tools button:hover:not(:disabled),
+.terminal-menu .tools button:focus-visible {
+  background: var(--k-plate);
+  color: var(--k-on-plate);
+  outline: none;
+}
+
+.terminal-menu .tools button:disabled {
+  color: var(--k-hair);
+  cursor: default;
+}
+
+.terminal-menu .tools + .views {
+  margin-left: 8px;
+}
+
 .terminal-menu .views {
   display: flex;
   align-self: center;
   align-items: center;
   justify-content: center;
-  width: 15px;
-  height: 13px;
-  margin: 0 6px 0 auto;
+  width: 22px;
+  height: 18px;
+  margin: 0 4px 0 auto;
   padding: 0;
   color: var(--k-ink);
   background: none;
@@ -582,6 +625,62 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
 
 /* The site's pages as folders and a few sheets, as icons on paper. Click selects,
    double-click opens. */
+/* The files view: a sidebar of folders, toggled from the menu bar, beside the folder's
+   icons. It browses on its own; the shell's folder only changes with cd. */
+.terminal-finder {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.terminal-tree {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  width: 108px;
+  padding: 8px 4px;
+  overflow: auto;
+  border-right: 1px solid var(--k-line);
+}
+
+.terminal-tree button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 18px;
+  padding: 0 6px;
+  font: 400 12px/18px var(--bitmap);
+  color: var(--k-ink);
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: default;
+}
+
+.terminal-tree button[data-sub] {
+  padding-left: 18px;
+}
+
+.terminal-tree svg {
+  flex: none;
+  fill: currentColor;
+  shape-rendering: crispEdges;
+}
+
+.terminal-tree button[aria-current] {
+  background: var(--k-plate);
+  color: var(--k-on-plate);
+}
+
+.terminal-files .empty {
+  grid-column: 1 / -1;
+  margin: 0;
+  font: 400 12px/15px var(--bitmap);
+  color: var(--k-muted);
+  text-align: center;
+}
+
 .terminal-files {
   display: grid;
   flex: 1;
@@ -623,8 +722,8 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
   stroke-width: 1;
 }
 
-/* Selected or open, an icon goes to dither and a selected name inverts. */
-.terminal-files button:is([data-open], [aria-selected='true']) svg .f {
+/* Selected, an icon goes to dither and its name inverts. */
+.terminal-files button[aria-selected='true'] svg .f {
   fill: url(#terminal-dither);
 }
 

@@ -5,6 +5,7 @@ import { JetBrains_Mono, Pixelify_Sans } from 'next/font/google'
 import { usePathname, useRouter } from 'next/navigation'
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 
+import { PhotoViewer } from '@/components/ui/photo-viewer'
 import {
   currentHour,
   DARK_FROM,
@@ -22,6 +23,10 @@ import {
   itemsAt,
   markdownLines,
   POST_SOURCES,
+  DIRS,
+  entries as listEntries,
+  PRINTS,
+  type Entry as FileEntry,
   RELEASE,
   VERSION,
   parse,
@@ -63,23 +68,11 @@ const PLACES: [string, string][] = [
   ['music', '~/music'],
 ]
 const cdTo = (path: string) => (path === '~' ? 'cd ~' : `cd ${path.slice(2)}`)
-const SHEETS: [string, string][] = [
-  ['resume.pdf', 'resume'],
-  ['real-testimonials.txt', 'cat real-testimonials.txt'],
-  ['enjoy-your-stay.txt', 'cat enjoy-your-stay.txt'],
-  ['II-truth.txt', 'cat II-truth.txt'],
-  [
-    'rain-steam-and-speed-JMW-Turner.txt',
-    'cat rain-steam-and-speed-JMW-Turner.txt',
-  ],
-  ['no-hands.txt', 'cat no-hands.txt'],
-  ['waves.exe', './waves.exe'],
-]
 type Item = [string, string, string?] | null
-// file holds the preferences, as a File menu would: the hour, the breeze, the weather.
+// File holds the preferences, as a File menu would: the hour, the breeze, the weather.
 const MENUS: [string, Item[]][] = [
   [
-    'file',
+    'File',
     [
       ['follow my clock', 'time now'],
       ['sunrise', 'time 6:30'],
@@ -99,9 +92,9 @@ const MENUS: [string, Item[]][] = [
       ['regrow', 'regrow'],
     ],
   ],
-  ['go', PLACES.map(([n, p]) => [n, cdTo(p)])],
+  ['Go', PLACES.map(([n, p]) => [n, cdTo(p)])],
   [
-    'help',
+    'Help',
     [
       ['commands', 'help'],
       ['work', 'work'],
@@ -118,13 +111,13 @@ const GLITCH = '!@#$%^&*()_+-=[]{}|;:,.<>?~©λ'
 const isNight = (h: number) => !(h >= LIGHT_FROM && h < DARK_FROM)
 
 /** A small icon drawn cell by cell, on the bitmap face's grid like the close x: `#` is ink. */
-function Pixels({ rows }: { rows: string[] }) {
+function Pixels({ rows, scale = 1 }: { rows: string[]; scale?: number }) {
   const w = rows[0].length
   return (
     <svg
       viewBox={`0 0 ${w} ${rows.length}`}
-      width={w}
-      height={rows.length}
+      width={w * scale}
+      height={rows.length * scale}
       aria-hidden
     >
       {rows.flatMap((row, y) =>
@@ -156,6 +149,25 @@ const FOLDER_ICON = [
   '#.......#',
   '#.......#',
   '#########',
+]
+const SIDEBAR_ICON = [
+  '#########',
+  '#..#....#',
+  '#..#....#',
+  '#..#....#',
+  '#..#....#',
+  '#..#....#',
+  '#########',
+]
+const BACK_ICON = ['...#', '..#.', '.#..', '#...', '.#..', '..#.', '...#']
+const FORWARD_ICON = ['#...', '.#..', '..#.', '...#', '..#.', '.#..', '#...']
+const TREE_FOLDER = [
+  '###....',
+  '#######',
+  '#.....#',
+  '#.....#',
+  '#.....#',
+  '#######',
 ]
 
 function Line({ text }: { text: string }) {
@@ -412,6 +424,16 @@ export function Terminal() {
   const [view, setView] = useState<'shell' | 'files'>('shell')
   const [menu, setMenu] = useState<string | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
+  // The files view looks at its own folder, apart from the shell's: browsing
+  // doesn't cd. It keeps a back and forward history, as a Finder window does.
+  const [shown, setShown] = useState({
+    at: '~',
+    back: [] as string[],
+    fwd: [] as string[],
+  })
+  const [tree, setTree] = useState(true)
+  /** The photo open full screen, by its place in PRINTS. */
+  const [viewing, setViewing] = useState<number | null>(null)
   const [focused, setFocused] = useState(true)
   const [typing, setTyping] = useState(false)
   const [hour, setHourState] = useState(12)
@@ -562,6 +584,14 @@ export function Terminal() {
     if (s) s.scrollTop = s.scrollHeight
   }, [entries, open, view])
 
+  // The files view opens on the shell's folder; from there it browses on its own.
+  const toFiles = useCallback(() => {
+    setView('files')
+    setShown((s) =>
+      s.at === path ? s : { at: path, back: [...s.back, s.at], fwd: [] },
+    )
+  }, [path])
+
   const execute = useCallback(
     (text: string, opts: { stay?: boolean } = {}) => {
       if (!open) show()
@@ -569,9 +599,9 @@ export function Terminal() {
       const head = t.split(/\s+/)[0]
       if (head === 'files' || head === 'view') {
         setEntries((e) => [...e, { kind: 'cmd', path, text }])
-        setView(
-          head === 'files' || t.split(/\s+/)[1] === 'files' ? 'files' : 'shell',
-        )
+        const files = head === 'files' || t.split(/\s+/)[1] === 'files'
+        if (files) toFiles()
+        else setView('shell')
         return
       }
       let cleared = false
@@ -586,6 +616,10 @@ export function Terminal() {
         go: (p) => router.push(routeFor(p)),
         visit: (url) => router.push(url),
         // The prompt waits for a file that's still on its way, as a shell does.
+        photo: (src) => {
+          const i = PRINTS.findIndex((p) => p.src === src)
+          if (i >= 0) setViewing(i)
+        },
         cat: (url) => {
           const here = arrived.get(url)
           if (here !== undefined) return markdownLines(here)
@@ -637,7 +671,7 @@ export function Terminal() {
         focusInput()
       }
     },
-    [open, show, hide, path, hour, follow, router, focusInput],
+    [open, show, hide, path, hour, follow, router, focusInput, toFiles],
   )
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -803,10 +837,36 @@ export function Terminal() {
   }
 
   const night = isNight(hour)
-  const items = [
-    ...PLACES.map(([n, p]) => ({ name: n, folder: true, run: cdTo(p), at: p })),
-    ...SHEETS.map(([n, c]) => ({ name: n, folder: false, run: c, at: '' })),
-  ]
+  const items = listEntries(shown.at)
+  const browse = (at: string) => {
+    if (at === shown.at) return
+    setSelected(null)
+    setShown((s) => ({ at, back: [...s.back, s.at], fwd: [] }))
+  }
+  const back = () =>
+    setShown((s) =>
+      s.back.length
+        ? {
+            at: s.back[s.back.length - 1],
+            back: s.back.slice(0, -1),
+            fwd: [s.at, ...s.fwd],
+          }
+        : s,
+    )
+  const forward = () =>
+    setShown((s) =>
+      s.fwd.length
+        ? { at: s.fwd[0], back: [...s.back, s.at], fwd: s.fwd.slice(1) }
+        : s,
+    )
+  // Folders open in place; a post or project opens its page, a photo opens full
+  // screen, and a text file prints in the shell.
+  const openEntry = (it: FileEntry) => {
+    if (it.kind === 'dir') return browse(it.path)
+    if (it.kind === 'text') return execute(`cat ${it.path}`)
+    execute(`open ${it.path}`, { stay: true })
+  }
+  const shownPlace = view === 'files' ? shown.at : path
 
   return (
     <div
@@ -859,7 +919,7 @@ export function Terminal() {
               </span>
               <h2>
                 Terminal {RELEASE}
-                {path !== '~' && <i> — {path.slice(2)}</i>}
+                {shownPlace !== '~' && <i> — {shownPlace.slice(2)}</i>}
               </h2>
             </header>
 
@@ -898,14 +958,47 @@ export function Terminal() {
                   )}
                 </div>
               ))}
+              {view === 'files' && (
+                <span className="tools">
+                  <button
+                    aria-label="Sidebar"
+                    title="Sidebar"
+                    aria-pressed={tree}
+                    onClick={() => setTree((t) => !t)}
+                  >
+                    <Pixels rows={SIDEBAR_ICON} scale={2} />
+                  </button>
+                  <button
+                    aria-label="Back"
+                    title="Back"
+                    disabled={!shown.back.length}
+                    onClick={back}
+                  >
+                    <Pixels rows={BACK_ICON} scale={2} />
+                  </button>
+                  <button
+                    aria-label="Forward"
+                    title="Forward"
+                    disabled={!shown.fwd.length}
+                    onClick={forward}
+                  >
+                    <Pixels rows={FORWARD_ICON} scale={2} />
+                  </button>
+                </span>
+              )}
               {/* One button to the other view: the folder from the shell, the prompt from the files. */}
               <button
                 className="views"
                 aria-label={view === 'shell' ? 'Files' : 'Shell'}
                 title={view === 'shell' ? 'Files' : 'Shell'}
-                onClick={() => setView(view === 'shell' ? 'files' : 'shell')}
+                onClick={() =>
+                  view === 'shell' ? toFiles() : setView('shell')
+                }
               >
-                <Pixels rows={view === 'shell' ? FOLDER_ICON : PROMPT_ICON} />
+                <Pixels
+                  rows={view === 'shell' ? FOLDER_ICON : PROMPT_ICON}
+                  scale={2}
+                />
               </button>
             </nav>
 
@@ -999,44 +1092,52 @@ export function Terminal() {
                   )}
                 </div>
               ) : (
-                <div
-                  className="terminal-files well"
-                  role="listbox"
-                  aria-label="Files"
-                  onClick={() => setSelected(null)}
-                >
-                  <svg width="0" height="0" className="absolute" aria-hidden>
-                    <pattern
-                      id="terminal-dither"
-                      width="2"
-                      height="2"
-                      patternUnits="userSpaceOnUse"
-                    >
-                      <rect width="2" height="2" fill="var(--k-paper)" />
-                      <rect width="1" height="1" fill="var(--k-ink)" />
-                    </pattern>
-                  </svg>
-                  {items.map((it) => {
-                    const on =
-                      selected === it.name || (it.folder && it.at === path)
-                    const go = () =>
-                      it.folder
-                        ? execute(it.run, { stay: true })
-                        : execute(it.run)
-                    return (
+                <div className="terminal-finder well">
+                  {tree && (
+                    <nav className="terminal-tree" aria-label="Folders">
+                      {DIRS.map((d) => (
+                        <button
+                          key={d}
+                          aria-current={d === shown.at ? 'true' : undefined}
+                          data-sub={d === '~' ? undefined : ''}
+                          onClick={() => browse(d)}
+                        >
+                          <Pixels rows={TREE_FOLDER} />
+                          {d === '~' ? 'home' : d.slice(2)}
+                        </button>
+                      ))}
+                    </nav>
+                  )}
+                  <div
+                    className="terminal-files"
+                    role="listbox"
+                    aria-label="Files"
+                    onClick={() => setSelected(null)}
+                  >
+                    <svg width="0" height="0" className="absolute" aria-hidden>
+                      <pattern
+                        id="terminal-dither"
+                        width="2"
+                        height="2"
+                        patternUnits="userSpaceOnUse"
+                      >
+                        <rect width="2" height="2" fill="var(--k-paper)" />
+                        <rect width="1" height="1" fill="var(--k-ink)" />
+                      </pattern>
+                    </svg>
+                    {items.map((it) => (
                       <button
                         key={it.name}
                         role="option"
                         aria-selected={selected === it.name}
-                        data-open={on ? '' : undefined}
                         onClick={(e) => {
                           e.stopPropagation()
                           setSelected(it.name)
                         }}
-                        onDoubleClick={go}
-                        onKeyDown={(e) => e.key === 'Enter' && go()}
+                        onDoubleClick={() => openEntry(it)}
+                        onKeyDown={(e) => e.key === 'Enter' && openEntry(it)}
                       >
-                        {it.folder ? (
+                        {it.kind === 'dir' || it.kind === 'project' ? (
                           <svg viewBox="0 0 40 34" aria-hidden>
                             <path
                               className="f"
@@ -1061,10 +1162,11 @@ export function Terminal() {
                             />
                           </svg>
                         )}
-                        <span>{it.name}</span>
+                        <span>{it.name.replace(/\/$/, '')}</span>
                       </button>
-                    )
-                  })}
+                    ))}
+                    {!items.length && <p className="empty">empty</p>}
+                  </div>
                 </div>
               )}
             </div>
@@ -1083,6 +1185,12 @@ export function Terminal() {
           </div>
         </section>
       )}
+      <PhotoViewer
+        photos={PRINTS}
+        index={viewing}
+        onIndex={setViewing}
+        onClose={() => setViewing(null)}
+      />
       <button
         ref={word}
         className="terminal-power"

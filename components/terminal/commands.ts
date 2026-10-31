@@ -29,6 +29,8 @@ export type Ctx = {
   /** A text file from the site: its lines if it's here already, or none now
    * and printed once it arrives. */
   cat: (url: string) => string[]
+  /** A photo, full screen in the photos page's viewer, by its file. */
+  photo: (src: string) => void
   setHour: (hour: number | null) => void
   setWind: (wind: number) => void
   gust: () => void
@@ -189,12 +191,25 @@ const NAMES = [
 const elsewhere = ["{m|The meadow's at home. 'cd ~' to see it.}"]
 
 /** Something in a folder: how ls shows it, what open does, and what cat prints. */
+type Kind = 'dir' | 'project' | 'text' | 'post' | 'photo' | 'exe' | 'pdf'
 type Item = {
   name: string
   shown: string
+  kind: Kind
+  /** Where it is from anywhere: `~/writing/dijkstras-algorithm.md`. */
+  path: string
   open: (ctx: Ctx) => string[]
   cat?: (ctx: Ctx) => string[]
 }
+
+/** A folder's items as the files view shows them. A dir carries the folder it opens. */
+export type Entry = { name: string; kind: Kind; path: string }
+export const entries = (dir: string): Entry[] =>
+  folder(dir).map(({ name, kind, path }) => ({ name, kind, path }))
+/** The folders, home first, for the files view's sidebar. */
+export const DIRS = ['~', ...PAGES.slice(1).map((p) => `~/${p}`)]
+/** The photos with a file, in the photos page's order, for the viewer. */
+export const PRINTS = PHOTOS.filter((p) => p.src)
 
 const POSTS = [...BLOG_POSTS, ...EXPERIENCE_POSTS].sort((a, b) =>
   b.date.localeCompare(a.date),
@@ -213,22 +228,30 @@ function folder(path: string): Item[] {
         ...PAGES.slice(1).map((p) => ({
           name: `${p}/`,
           shown: `{h|${p}/}`,
+          kind: 'dir' as const,
+          path: `~/${p}`,
           open: (ctx: Ctx) => (ctx.go(`~/${p}`), []),
         })),
         ...Object.keys(FILES).map((f) => ({
           name: f,
           shown: f,
+          kind: 'text' as const,
+          path: `~/${f}`,
           open: () => [...FILES[f]],
           cat: () => [...FILES[f]],
         })),
         ...EXES.map((e) => ({
           name: e,
           shown: `{g|${e}}`,
+          kind: 'exe' as const,
+          path: `~/${e}`,
           open: (ctx: Ctx) => runExe(e, ctx),
         })),
         {
           name: 'resume.pdf',
           shown: 'resume.pdf',
+          kind: 'pdf' as const,
+          path: '~/resume.pdf',
           open: (ctx: Ctx) => (ctx.open('/resume'), ['Opening resume...']),
         },
       ]
@@ -236,6 +259,8 @@ function folder(path: string): Item[] {
       return PROJECTS.map((p) => ({
         name: `${p.slug}/`,
         shown: `{h|${p.slug}/}`,
+        kind: 'project' as const,
+        path: `~/projects/${p.slug}`,
         open: (ctx: Ctx) => (
           ctx.visit(`/projects#${p.slug}`), [`Opening ${p.name}...`]
         ),
@@ -246,6 +271,8 @@ function folder(path: string): Item[] {
         return {
           name,
           shown: name,
+          kind: 'post' as const,
+          path: `~/writing/${name}`,
           open: (ctx: Ctx) => (ctx.visit(p.link), [`Opening ${p.title}...`]),
           cat: (ctx: Ctx) => ctx.cat(source(p.link)),
         }
@@ -256,7 +283,9 @@ function folder(path: string): Item[] {
         return {
           name,
           shown: name,
-          open: (ctx: Ctx) => (ctx.go('~/photos'), [`Opening ${name}...`]),
+          kind: 'photo' as const,
+          path: `~/photos/${name}`,
+          open: (ctx: Ctx) => (ctx.photo(src), [`Opening ${name}...`]),
           cat: () => [`cat: ${name}: a photo, not text. Try 'open ${name}'`],
         }
       })
