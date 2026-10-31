@@ -152,6 +152,7 @@ const HELP = [
   '  {g|wind}      Set the breeze: wind 0.6',
   '  {g|weather}   Change the weather: weather rain',
   '  {g|regrow}    Grow a new meadow',
+  '  {g|reboot}    Restart the terminal',
   '',
   '{y|[tab]} complete  {y|[ctrl+l]} clear  {y|[`]} open or close',
 ]
