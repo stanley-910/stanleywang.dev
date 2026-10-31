@@ -529,7 +529,9 @@ export class Poppy extends Plant {
         cup: (u) => lerp(1.42, 0.42, open) + 0.32 * u * open,
         crinkle: lerp(0.55, 0.16, open),
         size: (k) => (k % 2 ? 0.84 : 1),
-        rotation: this.seed,
+        // One petal on the cup's near side, below the heart, so a cup turned toward you holds
+        // its heart in a bowl instead of showing it on a bare lower edge.
+        rotation: this.nearSide(axis) + (hash(this.seed, 13) - 0.5) * 0.4,
         seed: this.seed,
         front: poppy,
         // The outside is a deeper, duller red than the lit inside, so which way a cup faces
@@ -652,6 +654,12 @@ export class Poppy extends Plant {
   }
 
   /** A hairy, hanging, egg-shaped bud; `split` 0..1 parts the two sepals as the petals push out. */
+  /** Angle, in the petals' plane, of the side of the cup nearest the viewer. */
+  private nearSide(axis: Vec3) {
+    const [u, v] = basis(axis)
+    return Math.atan2(v[2], u[2])
+  }
+
   private drawBud(
     r: Raster,
     tx: number,
@@ -1010,6 +1018,7 @@ export class Cosmos extends Plant {
           veins: mix(p.cosmosVein, cosmos, 0.2),
           haze: p.haze,
           hazeAmount: 0,
+          underside: 0.4,
           attached: (k) => k >= h.shed,
         },
         list,
