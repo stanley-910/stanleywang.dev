@@ -10,6 +10,7 @@ import {
 import {
   clamp,
   easeOut,
+  hash,
   lerp,
   mulberry32,
   noise1,
@@ -332,9 +333,24 @@ export class Poppy extends Plant {
   private stem: Stem
   private shed = 0
   private head = 0
+  /**
+   * How far the cup turns toward the viewer, in radians: about a third turn away, showing the
+   * deeper red outside with the heart hidden; a quarter stand side-on; the rest look toward you.
+   * When nearly all faced the viewer, nothing showed the outside to tell the inside by. Drawn
+   * from the seed, not the plant's rng, so the meadows picked by hand keep their layout.
+   */
+  private readonly turn: number
 
   constructor(x: number, z: number, seed: number, env: Env) {
     super(x, z, seed)
+    const h = hash(seed, 11)
+    const t = hash(seed, 12)
+    this.turn =
+      h < 0.35
+        ? lerp(-0.65, -0.2, t)
+        : h < 0.6
+          ? lerp(-0.1, 0.15, t)
+          : lerp(0.3, 0.95, t)
     const r = this.rng
     this.G = lerp(8, 12, r())
     // Blooms hold a good while, so shedding stays occasional across the meadow.
@@ -491,7 +507,7 @@ export class Poppy extends Plant {
       this.drawBud(r, tx, ty, tip, H * ph.bud, stemColor, p, 0)
       return
     }
-    const axis = headAxis(tip, this.facing * ph.open)
+    const axis = headAxis(tip, this.turn * ph.open)
     const list: { depth: number; draw: () => void }[] = []
     const poppy = this.bloomed(p.poppy, p)
     // Furling as it closes; once mostly furled, the dark heart and blotches are wrapped inside.
@@ -519,9 +535,9 @@ export class Poppy extends Plant {
         // The outside is a deeper, duller red than the lit inside, so which way a cup faces
         // reads at a glance: bright red with a dark heart is looking in.
         back: mix(
-          mix(poppy, this.bloomed(p.poppyDeep, p), 0.62),
+          mix(poppy, this.bloomed(p.poppyDeep, p), 0.5),
           this.bloomed(p.stem, p),
-          0.12,
+          0.1,
         ),
         // The dark heart and blotches lean to the deep red, so they print as part of the cup
         // rather than as grey glyphs over it.
