@@ -73,6 +73,8 @@ export class AsciiRenderer {
   private cloudTick = -1
   /** Scene time of the last cloud refresh: a third of the rows at most twenty times a second. */
   private cloudAt = 0
+  /** The horizon at the last render, where the clouds end. */
+  private skyEdge = 0
   /** Per sky cell: whether a star can show there, how fast it twinkles, and whether it's a cross. */
   private star = new Float32Array(0)
   private starRate = new Float32Array(0)
@@ -102,6 +104,16 @@ export class AsciiRenderer {
   private font: string
 
   /** `font` is the glyph face's CSS family list. */
+
+  /** How much cloud is at a cell, 0 to 1, as the sky last drew it: where lightning starts (weather.ts). */
+  cloudShape = (c: number, r: number) => {
+    const { cols, rows, ch } = this
+    if (c < 0 || r < 0 || c >= cols || r >= rows) return 0
+    const y = r * ch + ch / 2
+    if (y >= this.skyEdge) return 0
+    const row = 1 - smoothstep(0.55, 1, y / this.skyEdge)
+    return smoothstep(0.5, 0.74, this.cloudBase[r * cols + c]) * row
+  }
   constructor(
     canvas: HTMLCanvasElement,
     font = 'ui-monospace, Menlo, monospace',
@@ -351,6 +363,8 @@ export class AsciiRenderer {
     const [glR, glG, glB] = p.grassLight
     const disc = weather?.disc
     const flash = weather ? weather.flash * FLASH : 0
+    const storm = weather?.glow
+    this.skyEdge = horizon
     for (let r = 0; r < rows; r++) {
       const y = r * ch + ch / 2
       const skyRow = y < horizon
@@ -367,6 +381,7 @@ export class AsciiRenderer {
       const py = y - pointer.y
       const lit = pointer.active && Math.abs(py) < lightR
       const discRow = disc && Math.abs(y - disc.y) < disc.R ? disc : null
+      const stormRow = storm && Math.abs(y - storm.y) < storm.R ? storm : null
       for (let c = 0; c < cols; c++) {
         const i = r * cols + c
         const o = i * 4
@@ -564,6 +579,22 @@ export class AsciiRenderer {
           cg += (BOLT_COL[1] - cg) * kk
           cb += (BOLT_COL[2] - cb) * kk
           a += (1 - a) * kk
+        }
+        // Lightning in a cloud lights the sky's glyphs round it, cloud most of all, from within.
+        if (stormRow && skyRow && g) {
+          const dx = c * cw + cw / 2 - stormRow.x
+          const dy = y - stormRow.y
+          const d2 = (dx * dx + dy * dy) / (stormRow.R * stormRow.R)
+          if (d2 < 1) {
+            const kk = stormRow.k * (1 - d2) ** 2
+            cr += (BOLT_COL[0] - cr) * kk
+            cg += (BOLT_COL[1] - cg) * kk
+            cb += (BOLT_COL[2] - cb) * kk
+            a += (1 - a) * 0.8 * kk
+            t = Math.max(t, 0.4 * kk)
+            over = 1
+            overCol = BOLT_COL
+          }
         }
         // A bird is a silhouette over anything in its band of sky: open sky, cloud or the sun.
         let shadow = false

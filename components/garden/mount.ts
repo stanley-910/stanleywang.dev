@@ -371,6 +371,8 @@ export function mountGarden({
         cw: ascii.cw,
         ch: ascii.ch,
         horizon: garden.horizon,
+        cloud: ascii.cloudShape,
+        tap: garden.tap,
         globe: garden.globe(scene),
       })
       ascii.render({
