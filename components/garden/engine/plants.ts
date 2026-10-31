@@ -10,6 +10,7 @@ import {
 import {
   clamp,
   easeOut,
+  hash,
   lerp,
   mulberry32,
   noise1,
@@ -53,7 +54,7 @@ type Leaf = {
 const HEAD = 1.6
 
 /** Seconds a sown plant takes to reach full flower. */
-export const RUSH = 3
+export const RUSH = 2
 /** Stem damping in the wind (Stem.damping). */
 const SWAY = 0.35
 /**
@@ -332,9 +333,24 @@ export class Poppy extends Plant {
   private stem: Stem
   private shed = 0
   private head = 0
+  /**
+   * How far the cup turns toward the viewer, in radians: about a third turn away, showing the
+   * deeper red outside with the heart hidden; a quarter stand side-on; the rest look toward you.
+   * When nearly all faced the viewer, nothing showed the outside to tell the inside by. Drawn
+   * from the seed, not the plant's rng, so the meadows picked by hand keep their layout.
+   */
+  private readonly turn: number
 
   constructor(x: number, z: number, seed: number, env: Env) {
     super(x, z, seed)
+    const h = hash(seed, 11)
+    const t = hash(seed, 12)
+    this.turn =
+      h < 0.35
+        ? lerp(-0.65, -0.2, t)
+        : h < 0.6
+          ? lerp(-0.1, 0.15, t)
+          : lerp(0.3, 0.95, t)
     const r = this.rng
     this.G = lerp(8, 12, r())
     // Blooms hold a good while, so shedding stays occasional across the meadow.
@@ -491,7 +507,7 @@ export class Poppy extends Plant {
       this.drawBud(r, tx, ty, tip, H * ph.bud, stemColor, p, 0)
       return
     }
-    const axis = headAxis(tip, this.facing * ph.open)
+    const axis = headAxis(tip, this.turn * ph.open)
     const list: { depth: number; draw: () => void }[] = []
     const poppy = this.bloomed(p.poppy, p)
     // Furling as it closes; once mostly furled, the dark heart and blotches are wrapped inside.
@@ -516,8 +532,17 @@ export class Poppy extends Plant {
         rotation: this.seed,
         seed: this.seed,
         front: poppy,
-        back: mix(poppy, this.bloomed(p.poppyDeep, p), 0.55),
-        blotch: hidden ? undefined : shade(p.disc, 0.9),
+        // The outside is a deeper, duller red than the lit inside, so which way a cup faces
+        // reads at a glance: bright red with a dark heart is looking in.
+        back: mix(
+          mix(poppy, this.bloomed(p.poppyDeep, p), 0.5),
+          this.bloomed(p.stem, p),
+          0.1,
+        ),
+        // The dark heart and blotches lean to the deep red, so they print as part of the cup
+        // rather than as grey glyphs over it.
+        blotch: hidden ? undefined : mix(shade(p.disc, 0.9), p.poppyDeep, 0.45),
+        throat: hidden ? 0 : 0.28,
         haze: p.haze,
         hazeAmount: 0,
         attached: (k) => k >= this.shed,
@@ -536,7 +561,9 @@ export class Poppy extends Plant {
       owner: this,
       depth: this.z,
     })
-    // Stigma disc and the ring of dark stamens, sorted in among the petals; never under two cells.
+    // The heart, sorted in among the petals: a near-black red ring of stamens flecked with gold
+    // pollen, around the seed pod's small violet-grey crown and its dark rays. Never under two
+    // cells. A flat grey crown with no ring to frame it read as a grey patch, not a centre.
     const centerDepth = axis[2] * H * 0.1
     if (!hidden)
       list.push({
@@ -546,13 +573,44 @@ export class Poppy extends Plant {
             tx,
             ty,
             axis,
-            Math.max(H * 0.27, 1.6 * r.minLine),
+            Math.max(H * 0.3, 1.6 * r.minLine),
             H * 0.06,
           )
-          r.fill(ring, this.bloomed(shade(p.disc, 1.1), p), Kind.Disc, 0.95)
-          const top = disc(tx, ty, axis, H * 0.14, H * 0.16)
-          r.fill(top, this.hazed(mix(p.stem, p.haze, 0.3), p), Kind.Disc)
+          r.fill(
+            ring,
+            this.bloomed(mix(shade(p.disc, 1.1), p.poppyDeep, 0.55), p),
+            Kind.Disc,
+            0.95,
+          )
           const [u, v] = basis(axis)
+          const pollen = new Shape()
+          const fleck = Math.max(H * 0.035, r.minLine * 0.45)
+          for (let i = 0; i < 12; i++) {
+            const a = (i / 12) * TAU + this.seed
+            const reach = H * (i % 2 ? 0.21 : 0.26)
+            const [x, y] = project(
+              tx,
+              ty,
+              axis,
+              [u, v],
+              Math.cos(a) * reach,
+              Math.sin(a) * reach,
+              H * 0.08,
+            )
+            pollen.moveTo(x + fleck, y)
+            pollen.ellipse(x, y, fleck, fleck, 0, 0, TAU)
+          }
+          r.fill(
+            pollen,
+            this.bloomed(mix(p.dandelion, p.poppy, 0.25), p),
+            Kind.Disc,
+          )
+          const top = disc(tx, ty, axis, H * 0.1, H * 0.16)
+          r.fill(
+            top,
+            this.bloomed(mix(p.cosmosVein, p.poppyDeep, 0.45), p),
+            Kind.Disc,
+          )
           const rays = new Shape()
           for (let i = 0; i < 8; i++) {
             const a = (i / 8) * TAU
@@ -562,8 +620,8 @@ export class Poppy extends Plant {
               ty,
               axis,
               [u, v],
-              Math.cos(a) * H * 0.14,
-              Math.sin(a) * H * 0.14,
+              Math.cos(a) * H * 0.1,
+              Math.sin(a) * H * 0.1,
               H * 0.16,
             )
             rays.moveTo(x0, y0)
@@ -571,7 +629,7 @@ export class Poppy extends Plant {
           }
           r.stroke(
             rays,
-            this.bloomed(p.disc, p),
+            this.bloomed(mix(p.disc, p.poppyDeep, 0.4), p),
             Kind.Disc,
             Math.max(0.5, H * 0.03),
           )
@@ -610,6 +668,13 @@ export class Poppy extends Plant {
     const cy = ty - Math.cos(tip) * len * 0.45
     const rot = tip
     const fade = 1 - split
+    // A poppy's colour from the first: the bud prints as flower, not as grass strokes in the
+    // stalk's grey, and warms toward the deep red as it swells.
+    const bud = mix(
+      color,
+      this.bloomed(p.poppyDeep, p),
+      lerp(0.4, 0.75, smoothstep(0, this.G + 11, this.age)),
+    )
     for (const sd of [-1, 1]) {
       const path = new Shape()
       const off = sd * split * wid * 1.2
@@ -622,7 +687,7 @@ export class Poppy extends Plant {
         0,
         TAU,
       )
-      r.fill(path, color, Kind.Foliage, Math.max(0.15, fade))
+      r.fill(path, bud, Kind.Petal, Math.max(0.15, fade))
     }
     if (split === 0) {
       // Red showing through the seam just before it opens.
@@ -643,7 +708,7 @@ export class Poppy extends Plant {
         wid * 0.55,
         len * 0.55,
         rot,
-        mix(color, p.fluff, 0.35),
+        mix(bud, p.fluff, 0.35),
         14,
       )
     }

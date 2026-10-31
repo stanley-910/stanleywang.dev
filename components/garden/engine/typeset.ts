@@ -552,9 +552,10 @@ export class Typesetter {
               if (L < 0.25) {
                 g = code(v > 0.6 ? '@' : '#')
                 alpha = 1
-                // A thin dark line drawn over a head (a rose's furled heart) sits among petals:
-                // it keeps a full tile of its own colour, or the field shows through as a hole.
-                const among = this.petalsAround(c, r) >= 3
+                // A thin dark line drawn over a head (a rose's furled heart), or a poppy's heart
+                // showing between its petals, sits among them: it keeps a full tile of its own
+                // colour, or the field shows through as a hole and the haze lift prints it grey.
+                const among = this.petalsAround(c, r) >= 2
                 // Otherwise on a tile of its own colour, lifted toward the haze by day so a dark
                 // centre reads solid rather than as a hole; after dark the haze is black, so no lift.
                 const lift = among

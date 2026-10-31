@@ -6,6 +6,8 @@ Built in `components/garden/engine/weather.ts` (colours, glyphs, particles, the 
 
 **Wind was cut** on 2026-11-01, at Stanley's request: it was the breeze turned up, too little change for a weather. The storm keeps its gale, gust bands and blown seed (`gale` 0.55; the band and seed code serve it), and the terminal's `wind` command still sets the breeze.
 
+**Sunshower was tried and cut** on 2026-11-01: light rain under a rainbow across from the sun, a moonbow by night. In cells the bow read either dull (glyphs alone) or as Lego blocks (lit tiles), and a pastel middle didn't earn its place. Stanley kept five weathers.
+
 **Fog was cut.** It was built and removed at Stanley's request: it hid the scene, and its dither read poorly. Don't bring it back as a weather; a haze band is a palette change if it's ever wanted again.
 
 ## Related

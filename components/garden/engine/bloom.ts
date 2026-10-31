@@ -60,6 +60,11 @@ export type PetalSpec = {
   veins?: Rgb
   /** Dark spot at the petal base, as in corn poppies. */
   blotch?: Rgb
+  /**
+   * How much darker the inner face runs toward its base (0..1), so a cup looked into reads as
+   * a hollow deepening to its heart rather than a flat shape. The outer face stays even.
+   */
+  throat?: number
   /** A line traced round each petal, so overlapping petals of one colour stay apart (the rose). */
   edge?: Rgb
   haze: Rgb
@@ -205,7 +210,25 @@ export function drawPetals(
             Kind.Petal,
             r.minLine,
           )
-        if (spec.blotch) {
+        if (spec.throat && !backside) {
+          // The base half of the inner face, a step darker; the blotch sits inside it.
+          const t = new Shape()
+          const m = 4
+          t.moveTo(left[0], left[1])
+          for (let i = 2; i <= m * 2; i += 2) t.lineTo(left[i], left[i + 1])
+          for (let i = m * 2; i >= 0; i -= 2) t.lineTo(right[i], right[i + 1])
+          t.closePath()
+          r.fill(
+            t,
+            shade(color, 1 - spec.throat),
+            spec.kind ?? Kind.Petal,
+            1,
+            meta,
+          )
+        }
+        // The blotch marks the inside of the cup only: printed on a petal's outer face too, a
+        // poppy turned away read as one opening toward you.
+        if (spec.blotch && !backside) {
           const b = new Shape()
           const j = 2 * 2
           b.moveTo(left[0], left[1])
