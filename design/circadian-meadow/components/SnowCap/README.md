@@ -1,6 +1,6 @@
 # SnowCap
 
-> Approved 2026-10-30. Built in `components/garden/engine/garden.ts` (`buildSnowline`, `snowCap`, `drawSnow`, `buildFaces`, `relief`, and `backdrop` in snow weather) and `typeset.ts`. Mock: the "Meadow peaks: snow and tree line" canvas in Claude Design.
+> Approved 2026-10-30. Built in `components/garden/engine/garden.ts` (`buildSnowline`, `drawSnow`, `buildFaces`, `relief`) and `typeset.ts`. Mock: the "Meadow peaks: snow and tree line" canvas in Claude Design.
 
 Snow on the far range's high tops, printed as its own material so it reads as snow and not as paler rock. Below it, the rock is split into broad lit and shaded faces.
 
@@ -84,9 +84,7 @@ By day the far range's rock is a step darker than before (about `#72818b`, was `
 
 ## Snow on the meadow
 
-The snow weather (Weather) lays snow on the meadow in the same colours: a cap on the top cell of each head and stem in this spec's crest colour (`*-snow` lightened 15%), its tile turned toward `*-snow`, and a cover on the ground and near ridge mixed toward `*-snow-shade`, with the grass's light toward `*-snow`.
-
-The far range's caps keep their cells, shape and colours, but while snow lies the backdrop also paints the cap's two flank polygons (`snowCap`, shared with `drawSnow`) under them: the shaded flank in `*-snow-shade`, the lit one in `*-snow`, at 85% of the snow lying. Without it, the rock's smooth painted silhouette showed through the stepped, part-covered snow cells as a dark outline behind the white. At 85% a little rock tints the paint, so the cap's glyphs still print on it. In clear weather nothing is painted, and the caps are cells only, as before.
+The snow weather (Weather) lays snow on the meadow in the same colours: a cap on the top cell of each head and stem in this spec's crest colour (`*-snow` lightened 15%), its tile turned toward `*-snow`, and a cover on the ground and near ridge mixed toward `*-snow-shade`, with the grass's light toward `*-snow`. The far range's caps don't change.
 
 ## Accessibility
 
@@ -97,8 +95,15 @@ Decorative, like the rest of the scene. No text sits over the range, so contrast
 - Day, golden, sunset, night: the caps read as snow at 1440px and 1024px wide.
 - Snow never prints over the moon or sun glyphs, and stays behind the middle ridge's trees.
 - The snowline and faces are built once per layout; only the lit side follows the light.
-- In snow weather, no dark ridge outline shows behind the cap at noon or at night, on a wide screen or a phone; the painted cap repaints only when the backdrop does.
 
 ## Open questions
 
-None. (Resolved: the phone shows the main summit, now that the range is composed and a narrow screen shows the stretch around it.)
+**Open: the rock's outline shows behind the cap** (Stanley, 2026-10-31, deferred). In snow weather especially, the far range's smooth painted silhouette shows as a dark outline behind the cap: the cap is cells, stepped and only part-covering the cells along the crest (the crest row has no tile), so the rock's edge peeks out above and between them. Stanley: "you can still clearly see the outline of the actual mountain behind the white." Kept as is for now, cells only. Tried and rejected:
+
+- A snow tile on the crest row (`typeset.ts`): the outline still showed. Reverted.
+- Painting the whole cap into the backdrop in `snow`/`snow-shade`, scaled by the snow lying: no outline, but the cap read as a clean painted shape against the ASCII ridges and trees. Reverted (c72a09f, reverted in the commit after it).
+- Painting only a one-cell strip along the crest, at 55% then 35% toward the snow: still read as an outline drawn round the cap.
+
+A fix probably has to come from the cells (or from how the backdrop's ridge meets them), not from more paint; if painting is ever the answer, the ridges and trees would need to be drawn the same way so the cap doesn't stand apart.
+
+Resolved: the phone shows the main summit, now that the range is composed and a narrow screen shows the stretch around it.
