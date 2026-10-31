@@ -36,7 +36,7 @@ Colour changes take `duration-quick` with `ease-calm`, and none with reduced mot
 
 ## Menu
 
-Four dots in a square (`components/ui/theme-switch.tsx`). A click opens the glass popover under them: ReadingTime's slider and readout; where there's a meadow (home, the poem), a hairline and the weather as two rows of items, `clear rain snow` / `storm eclipse`, the one set in `ink` (`lib/weather.ts`; what each does is in Weather); then on home a hairline and the "hide text" item. Items are rows in the readout's `meta` mono, `ink-muted`, lit to `ink` on a 9% `ink` wash on hover. Opening turns the dots a quarter round into a diamond as they spread, on a slight overshoot (320ms); none with reduced motion. The page theme still follows the hour (`lib/circadian.ts`), and the menu keeps painting it while closed.
+Four dots in a square (`components/ui/theme-switch.tsx`). A click opens the glass popover under them: ReadingTime's slider and readout; where there's a meadow (home, the poem), a hairline and the weather as two rows of items, `clear rain snow` / `storm sunshower eclipse`, the one set in `ink` (`lib/weather.ts`; what each does is in Weather); then on home a hairline and the "hide text" item. Items are rows in the readout's `meta` mono, `ink-muted`, lit to `ink` on a 9% `ink` wash on hover. Opening turns the dots a quarter round into a diamond as they spread, on a slight overshoot (320ms); none with reduced motion. The page theme still follows the hour (`lib/circadian.ts`), and the menu keeps painting it while closed.
 
 ## On home
 
