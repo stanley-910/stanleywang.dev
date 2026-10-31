@@ -251,6 +251,8 @@ export class Weather {
   band = new Float32Array(0)
   /** How much a lightning strike lights the whole sky this frame, 0 to 1. */
   flash = 0
+  /** Lightning goes yellow-white at every hour (the site menu's warm lightning). */
+  warm = false
   /** The strike's colour, for its flash. */
   flashCol: Rgb = BOLT_COL
   /** Lightning's light in the cloud this frame, a strike's or a flicker's. */
@@ -849,9 +851,12 @@ export class Weather {
 
   /**
    * A strike's colour: bluer near and by night, yellower far off, through more rain, and by day,
-   * with a little chance either way.
+   * with a little chance either way. With warm lightning on, yellow at any hour.
    */
   private boltCol(v: WeatherView, near: number): Rgb {
+    // Warm lightning goes past the warm end to `golden-globe` itself, so it reads yellow at night.
+    if (this.warm)
+      return mix(BOLT_WARM, GOLDEN.globe, 0.5 + 0.5 * Math.random())
     const warm = clamp(
       0.1 + 0.5 * v.globe.sun + 0.35 * (1 - near) + 0.3 * (Math.random() - 0.5),
       0,
