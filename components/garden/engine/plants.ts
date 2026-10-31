@@ -54,14 +54,13 @@ type Leaf = {
 const HEAD = 1.6
 
 /** Seconds a sown plant takes to reach full flower. */
-export const RUSH = 2
+export const RUSH = 1.2
 /** Stem damping in the wind (Stem.damping). */
 const SWAY = 0.35
-/**
- * Stem damping while the opening grows a plant in, or a click's flower comes up: its bud
- * straightens without a bounce.
- */
+/** Stem damping while the opening grows a plant in: its bud straightens without a bounce. */
 const SETTLED = 0.9
+/** Stem damping while a click's flower comes up: its head lifts with a little give and sways on. */
+const LIFT = 0.5
 /** Seconds after the opening for the stems to loosen back to SWAY. */
 const LOOSEN = 2
 
@@ -151,26 +150,32 @@ export abstract class Plant {
    * Sown by a click: grow straight to full flower over RUSH seconds instead of half a minute.
    * Its age runs evenly to just open, so the stalk draws up (its growth eases out) and then the
    * bud swells, lifts and opens, each in its own time; run on into the bloom, a poppy's nod
-   * straightened in a blink and the head sprang up and bobbed.
+   * straightened in a blink and the head sprang up and bobbed. The stalk starts already bent
+   * as the bud nods, so it doesn't droop while it rises, and it stays in the wind throughout.
    */
   hurry() {
     this.rush = { from: this.age, to: Math.max(this.age, this.openAge()), t: 0 }
   }
 
+  /** How far a click's flower has come up, 0..1, or null when it isn't coming up. */
+  protected get sowing() {
+    return this.rush?.t ?? null
+  }
+
   update(dt: number, env: Env) {
-    if (this.rush) {
-      const q = this.rush
+    const q = this.rush
+    const sown = q?.t === 0
+    if (q) {
       q.t = Math.min(1, q.t + dt / RUSH)
       this.age = lerp(q.from, q.to, q.t)
-      // Then it loosens to the wind's sway, as the opening's flowers do.
-      this.calm = 1
-      if (q.t >= 1) this.rush = null
     } else this.age += dt
-    const damping = lerp(SWAY, SETTLED, this.calm)
+    const damping = q ? LIFT : lerp(SWAY, SETTLED, this.calm)
     for (const s of this.stems) s.damping = damping
     this.calm = Math.max(0, this.calm - dt / LOOSEN)
     if (this.leaving) this.fade = Math.max(0, this.fade - dt / 1.5)
     this.live(env, dt)
+    if (sown) for (const s of this.stems) s.ang.set(s.rest)
+    if (q && q.t >= 1) this.rush = null
     const sub = 2
     for (let i = 0; i < sub; i++)
       for (const s of this.stems) s.step(dt / sub, env.wind)
@@ -397,6 +402,20 @@ export class Poppy extends Plant {
     const t = this.age
     const G = this.G
     const bloomEnd = G + 20 + this.B
+    // Sown by a click, the stalk rises evenly and the hooked bud starts lifting before it's
+    // done, swelling all the while, then opens as it comes upright: on its own clock the
+    // stalk shot up, stopped, and hung hooked before the head flicked up.
+    const u = this.sowing
+    if (u !== null)
+      return {
+        growth: 0.12 + 0.88 * smoothstep(0, 0.6, u),
+        nod: 1 - smoothstep(0.35, 0.8, u),
+        bud: lerp(0.35, 1, smoothstep(0, 0.55, u)),
+        open: smoothstep(0.55, 1, u),
+        shed: 0,
+        pod: 0,
+        wither: 0,
+      }
     return {
       growth: 0.12 + 0.88 * easeOut(t / G),
       nod: 1 - smoothstep(G + 8, G + 14, t),
@@ -544,7 +563,8 @@ export class Poppy extends Plant {
         // The dark heart and blotches lean to the deep red, so they print as part of the cup
         // rather than as grey glyphs over it.
         blotch: hidden ? undefined : mix(shade(p.disc, 0.9), p.poppyDeep, 0.45),
-        throat: hidden ? 0 : 0.28,
+        // Under a few cells across, the throat is too small to tell from the petal: left out.
+        throat: hidden || H < 3 * r.minLine ? 0 : 0.28,
         haze: p.haze,
         hazeAmount: 0,
         attached: (k) => k >= this.shed,
@@ -585,28 +605,31 @@ export class Poppy extends Plant {
             0.95,
           )
           const [u, v] = basis(axis)
-          const pollen = new Shape()
-          const fleck = Math.max(H * 0.035, r.minLine * 0.45)
-          for (let i = 0; i < 12; i++) {
-            const a = (i / 12) * TAU + this.seed
-            const reach = H * (i % 2 ? 0.21 : 0.26)
-            const [x, y] = project(
-              tx,
-              ty,
-              axis,
-              [u, v],
-              Math.cos(a) * reach,
-              Math.sin(a) * reach,
-              H * 0.08,
+          // On a far head the flecks are under a cell and print as nothing: left out.
+          const fleck = H * 0.035
+          if (fleck >= r.minLine * 0.45) {
+            const pollen = new Shape()
+            for (let i = 0; i < 12; i++) {
+              const a = (i / 12) * TAU + this.seed
+              const reach = H * (i % 2 ? 0.21 : 0.26)
+              const [x, y] = project(
+                tx,
+                ty,
+                axis,
+                [u, v],
+                Math.cos(a) * reach,
+                Math.sin(a) * reach,
+                H * 0.08,
+              )
+              pollen.moveTo(x + fleck, y)
+              pollen.ellipse(x, y, fleck, fleck, 0, 0, TAU)
+            }
+            r.fill(
+              pollen,
+              this.bloomed(mix(p.dandelion, p.poppy, 0.25), p),
+              Kind.Disc,
             )
-            pollen.moveTo(x + fleck, y)
-            pollen.ellipse(x, y, fleck, fleck, 0, 0, TAU)
           }
-          r.fill(
-            pollen,
-            this.bloomed(mix(p.dandelion, p.poppy, 0.25), p),
-            Kind.Disc,
-          )
           const top = disc(tx, ty, axis, H * 0.1, H * 0.16)
           r.fill(
             top,

@@ -203,7 +203,7 @@ const NIGHT: Palette = {
   roseLeaf: hex('#34443a'),
   cosmos: hex('#a9b1cf'),
   cosmosVein: hex('#6a6fa6'),
-  lace: hex('#d7dcf0'),
+  lace: hex('#a3a9c0'),
   dandelion: hex('#a9a77a'),
   disc: hex('#0b0f17'),
   fluff: hex('#e3e8ff'),
