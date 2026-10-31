@@ -757,6 +757,9 @@ export function mountGarden({
           n.matches('a, button, input, label, form, [data-no-sow]'),
       )
     if (interactive) return
+    // A click that selects text (the second of a double-click, say) is reading, not sowing.
+    const selection = window.getSelection()
+    if (selection && !selection.isCollapsed) return
     const origin = canvas.getBoundingClientRect()
     const x = toScene(e.clientX - origin.left)
     const y = toScene(e.clientY - origin.top)

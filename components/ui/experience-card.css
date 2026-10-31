@@ -40,7 +40,26 @@
   transform: translate(var(--shift-x, 0px), -4px);
 }
 
+/* A strip over the gap between the name and the card, so crossing it doesn't
+   count as leaving. */
+.xp-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: calc(var(--space-1) + 2px);
+}
+
+.xp-card[data-below]::before {
+  top: auto;
+  bottom: 100%;
+}
+
+/* Open, the card takes the pointer even inside home's hero (which lets the
+   pointer through to the meadow), so moving onto it keeps it open. */
 .xp-card[data-open] {
+  pointer-events: auto;
   visibility: visible;
   opacity: 1;
   transform: translate(var(--shift-x, 0px), 0);

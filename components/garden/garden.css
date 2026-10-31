@@ -116,6 +116,16 @@ html:has(.garden-home, .poem-page) body {
   pointer-events: auto;
 }
 
+/* With a mouse, the bio and links can be selected; a plain click on them still
+   reaches the garden (mount.ts listens on the whole of home) and sows, and only
+   a drag or a click that makes a selection doesn't. */
+@media (hover: hover) and (pointer: fine) {
+  .garden-hero .bio,
+  .garden-hero .link-row {
+    pointer-events: auto;
+  }
+}
+
 /* The bio and links, as one block the toggle fades. */
 .garden-text {
   display: flex;
