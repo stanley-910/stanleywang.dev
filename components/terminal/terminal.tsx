@@ -110,6 +110,21 @@ const LOADING = 'Loading portfolio...'
 // The loading line passes through these on its way to the English.
 const LOADING_ON = ['正在載入作品集', 'Завантаження портфоліо...']
 const GLITCH = '!@#$%^&*()_+-=[]{}|;:,.<>?~©λ'
+const VISITED_KEY = 'terminal-visited'
+let returning: boolean | undefined
+/** Stranger on the first visit this browser has made, as far as it can tell; friend after.
+ * Settled once a page load, so a reboot greets the same way. */
+const greeting = () => {
+  if (returning === undefined) {
+    try {
+      returning = localStorage.getItem(VISITED_KEY) !== null
+      localStorage.setItem(VISITED_KEY, '1')
+    } catch {
+      returning = false
+    }
+  }
+  return returning ? 'Good to see you again, friend!' : 'Welcome, stranger!'
+}
 
 const isNight = (h: number) => !(h >= LIGHT_FROM && h < DARK_FROM)
 
@@ -242,8 +257,11 @@ function Boot({
   onDone: () => void
 }) {
   const [lines] = useState(() => bootLines(hour, wind))
+  const [hello] = useState(greeting)
   const [shown, setShown] = useState(0)
+  const [ok, setOk] = useState(false)
   const [chars, setChars] = useState<string[]>([])
+  const [greeted, setGreeted] = useState(false)
   const done = useRef(onDone)
   done.current = onDone
 
@@ -251,32 +269,46 @@ function Boot({
     const timers: number[] = []
     const later = (ms: number, f: () => void) =>
       timers.push(window.setTimeout(f, ms))
-    lines.forEach((_, i) => later(90 + i * 110, () => setShown(i + 1)))
-    const t0 = 90 + lines.length * 110 + 200
-    // Each pass sweeps left to right, one character every STEP, glitching
-    // a moment before it lands; the next pass starts LAG behind it.
+    const r = (lo: number, hi: number) => lo + Math.random() * (hi - lo)
+    // The kernel lines come at the uneven pace of work being done; the
+    // interface sits a beat before its OK.
+    let t = r(150, 250)
+    lines.forEach((_, i) => {
+      t += i ? r(220, 520) : 0
+      later(t, () => setShown(i + 1))
+    })
+    t += r(500, 800)
+    later(t, () => setOk(true))
+    const t0 = t + r(450, 650)
+    // Each pass sweeps left to right, a character at a time, every one
+    // flickering for its own while before it lands; the next pass starts
+    // LAG behind, so one language is still settling as the next arrives.
     const passes = [...LOADING_ON, LOADING]
     const width = Math.max(...passes.map((p) => p.length))
-    const STEP = 30
-    const LAG = 360
+    const LAG = 1100
     const put = (i: number, ch: string) =>
       setChars((c) => {
         const n = [...c]
         n[i] = ch
         return n
       })
+    let end = 0
     passes.forEach((text, k) => {
+      let at = t0 + k * LAG
       for (let i = 0; i < width; i++) {
-        const at = t0 + k * LAG + i * STEP
-        for (let g = 0; g < 3; g++)
-          later(at + g * 24, () =>
+        at += r(35, 110)
+        const flicks = 2 + Math.floor(Math.random() * 4)
+        let f = at
+        for (let g = 0; g < flicks; g++, f += r(35, 70))
+          later(f, () =>
             put(i, GLITCH[Math.floor(Math.random() * GLITCH.length)]),
           )
-        later(at + 72, () => put(i, text[i] ?? ''))
+        later(f, () => put(i, text[i] ?? ''))
+        end = Math.max(end, f)
       }
     })
-    const end = t0 + (passes.length - 1) * LAG + width * STEP + 72
-    later(end + 600, () => done.current())
+    later(end + 450, () => setGreeted(true))
+    later(end + 1300, () => done.current())
     const skip = (e: KeyboardEvent) => {
       if (e.key === '`') return
       done.current()
@@ -293,12 +325,24 @@ function Boot({
   return (
     <>
       {lines.slice(0, shown).map((l, i) => (
-        <Line key={i} text={l} />
+        <Line
+          key={i}
+          text={
+            i === lines.length - 1 && !ok ? l.replace(/ \{g\|.*\}$/, '') : l
+          }
+        />
       ))}
       {chars.length > 0 && (
         <>
           {'\n'}
           {chars.join('')}
+          {!greeted && <span className="cur" aria-hidden />}
+          {'\n'}
+        </>
+      )}
+      {greeted && (
+        <>
+          {hello}
           <span className="cur" aria-hidden />
           {'\n'}
         </>
@@ -1045,6 +1089,7 @@ export function Terminal() {
                                         ...bootLines(hour, wind),
                                         '',
                                         LOADING,
+                                        greeting(),
                                         '',
                                         ...HINT,
                                       ],
