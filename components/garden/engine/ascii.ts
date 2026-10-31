@@ -8,7 +8,14 @@ import type { Birds } from './birds'
 import type { Meteors } from './meteors'
 import type { Raster } from './raster'
 
-export type Rect = { left: number; top: number; right: number; bottom: number }
+export type Rect = {
+  left: number
+  top: number
+  right: number
+  bottom: number
+  /** A lighter, closer fade, for a short word on the sky (the nav), not a block of text. */
+  light?: boolean
+}
 
 const CLOUD_CODES = [...CLOUD].map(code)
 const DOT = code('·')
@@ -197,7 +204,10 @@ export class AsciiRenderer {
   setDimBoxes(boxes: Rect[]) {
     // Measured every half second; the boxes rarely move.
     const key = boxes
-      .map((b) => `${b.left | 0},${b.top | 0},${b.right | 0},${b.bottom | 0}`)
+      .map(
+        (b) =>
+          `${b.left | 0},${b.top | 0},${b.right | 0},${b.bottom | 0}${b.light ? 'l' : ''}`,
+      )
       .join(';')
     if (key === this.dimKey) return
     this.dimKey = key
@@ -205,8 +215,12 @@ export class AsciiRenderer {
     dim.fill(1)
     // A wide, gentle fade: the garden recedes behind the text rather than stopping at a box. Kept
     // light, now the flowers stop under the tree line and rarely stand behind the bio.
-    const pad = cw * 11
+    const wide = cw * 11
     for (const b of boxes) {
+      // A nav word takes two-fifths of the bio's dimming, fading over 4 cells: enough to read on a
+      // busy sky without cutting a box out of the eclipse's glow.
+      const pad = b.light ? cw * 4 : wide
+      const floor = b.light ? 0.75 : 0.38
       const c0 = Math.max(0, Math.floor((b.left - pad) / cw))
       const c1 = Math.min(cols - 1, Math.floor((b.right + pad) / cw))
       const r0 = Math.max(0, Math.floor((b.top - pad) / ch))
@@ -220,7 +234,7 @@ export class AsciiRenderer {
             Math.max(b.top - y, 0, y - b.bottom),
           )
           const i = r * cols + c
-          dim[i] = Math.min(dim[i], 0.38 + 0.62 * smoothstep(0, pad, d))
+          dim[i] = Math.min(dim[i], floor + (1 - floor) * smoothstep(0, pad, d))
         }
       }
     }

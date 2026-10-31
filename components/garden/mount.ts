@@ -275,7 +275,11 @@ export function mountGarden({
       if (getComputedStyle(el).getPropertyValue('--avoid').trim() === 'none')
         continue
       const b = el.getBoundingClientRect()
-      if (b.width > 0 && b.height > 0) boxes.push(sceneRect(b, origin))
+      if (b.width > 0 && b.height > 0)
+        boxes.push({
+          ...sceneRect(b, origin),
+          light: el.dataset.avoid === 'light',
+        })
     }
     ascii.setDimBoxes(boxes)
   }

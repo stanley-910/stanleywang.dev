@@ -26,14 +26,15 @@ export function Header() {
 
   return (
     <header className="site-header">
-      {/* No dim box here: a halo round each word holds the ink (garden.css), since a box over the
-          row cut a dark rectangle out of the eclipse's glow. */}
+      {/* A halo round each word (garden.css) and a light fade behind it (garden/mount.ts), not
+          the bio's: a full box over the row cut a dark rectangle out of the eclipse's glow. */}
       <nav aria-label="Site" inert={hidden}>
         <ul>
           {NAV.map(({ href, label }) => (
             <li key={href}>
               <Link
                 href={href}
+                data-avoid="light"
                 aria-current={isCurrent(pathname, href) ? 'page' : undefined}
               >
                 {label}
