@@ -23,7 +23,7 @@ import {
   type Plant,
   type Species,
 } from './plants'
-import { type Head, Kind, LandMat, type Raster, Shape } from './raster'
+import { GLOBE, type Head, Kind, LandMat, type Raster, Shape } from './raster'
 
 import type { Rect } from './ascii'
 import type { Visitors } from './visitors'
@@ -1542,13 +1542,14 @@ export class Garden {
     const trees = this.forestColors(p, colors)
     const rock = { id: LandMat.Rock, light: 0.5, back: false }
     this.ridges.forEach((ridge, layer) => {
-      // The nearer ridges reset the material under them, so snow or forest behind doesn't show through.
+      // Each ridge resets the material under it, so snow or forest behind, or the sun and moon's
+      // mark (GLOBE), doesn't show through.
       r.fill(
         this.ridgePath(ridge, this.height + 10),
         colors[layer],
         Kind.Land,
         1,
-        layer ? rock : undefined,
+        rock,
       )
       // Four strips, each shallower and stronger, so the glyphs thicken toward the crest.
       const q = clamp(light / 0.45, 0, 1)
@@ -1822,22 +1823,22 @@ export class Garden {
       const { color, rx, ry } = this.sunLook(p)
       const halo = new Shape()
       halo.ellipse(cx, cy, rx * 1.45, ry * 1.45, 0, 0, TAU)
-      r.fill(halo, color, Kind.Fluff, 0.14 * sun)
+      r.fill(halo, color, Kind.Fluff, 0.14 * sun, GLOBE)
       const rim = new Shape()
       rim.ellipse(cx, cy, rx * 1.15, ry * 1.15, 0, 0, TAU)
-      r.fill(rim, color, Kind.Fluff, 0.35 * sun)
+      r.fill(rim, color, Kind.Fluff, 0.35 * sun, GLOBE)
       const disc = new Shape()
       disc.ellipse(cx, cy, rx, ry, 0, 0, TAU)
-      r.fill(disc, mix(color, [255, 250, 235], 0.25), Kind.Fluff, sun)
+      r.fill(disc, mix(color, [255, 250, 235], 0.25), Kind.Fluff, sun, GLOBE)
     }
     if (moon > 0) {
       // Lit by the phase: the bright limb on the right while waxing, on the left while waning,
       // and the terminator an ellipse that bows toward the light in a crescent, away in a gibbous.
       const { lit, dark, side, k } = this.moonShape()
       const { color, disc } = this.moonLook(p)
-      r.fill(lit, disc, Kind.Fluff, moon)
+      r.fill(lit, disc, Kind.Fluff, moon, GLOBE)
       // Earthshine on the dark side.
-      r.fill(dark, mix(color, p.skyTop, 0.85), Kind.Fluff, 0.22 * moon)
+      r.fill(dark, mix(color, p.skyTop, 0.85), Kind.Fluff, 0.22 * moon, GLOBE)
       // The seas, as darker patches wherever they fall on the lit face.
       const seas = new Shape()
       for (const [sx, sy, rx, ry] of SEAS) {
@@ -1847,7 +1848,7 @@ export class Garden {
         seas.moveTo(cx + (sx + rx) * R, cy + sy * R)
         seas.ellipse(cx + sx * R, cy + sy * R, rx * R, ry * R, 0, 0, TAU)
       }
-      r.fill(seas, mix(disc, p.skyTop, 0.6), Kind.Fluff, moon)
+      r.fill(seas, mix(disc, p.skyTop, 0.6), Kind.Fluff, moon, GLOBE)
     }
   }
 }
