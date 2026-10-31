@@ -250,13 +250,12 @@ export class Weather {
     }
   }
 
-  /** Whether anything is falling, blowing or crossing, so the page should draw every display frame. */
-  get moving() {
-    const a = this.amount
-    if (this.still) return false
-    // The eclipse moves only while the moon is on its way; at totality it holds.
-    const crossing = a.eclipse > 0 && a.eclipse < 1
-    return a.rain + a.snow + a.gale > 0 || crossing
+  /**
+   * Whether lightning is striking, the one thing that draws every display frame: at the plant
+   * rate a flash under a second long would stutter. Rain, snow and seed move with the plants.
+   */
+  get striking() {
+    return this.flash > 0
   }
 
   /** Whether any cell holds a drop, flake, seed, bolt or the corona this frame. */
@@ -281,7 +280,7 @@ export class Weather {
    */
   tint(p: Palette, sun: number): Palette {
     const a = this.amount
-    const grey = steps(Math.max(a.rain, 0.7 * a.snow), 12)
+    const grey = steps(Math.max(a.rain, 0.7 * a.snow), 24)
     const storm = steps(a.storm, 12)
     const cover = this.cover
     const ecl = steps(a.eclipse, 24)
