@@ -6,14 +6,7 @@ import { useSyncExternalStore } from 'react'
 // meadow (components/garden/engine/weather.ts). It holds for the visit and
 // isn't stored, so a reload is clear again.
 
-export const WEATHERS = [
-  'clear',
-  'rain',
-  'snow',
-  'storm',
-  'sunshower',
-  'eclipse',
-] as const
+export const WEATHERS = ['clear', 'rain', 'snow', 'storm', 'eclipse'] as const
 export type WeatherKind = (typeof WEATHERS)[number]
 
 /** Fired on window when the weather changes. */
