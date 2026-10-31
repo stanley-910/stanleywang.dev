@@ -55,9 +55,6 @@ const RATES = {
   cover: [1 / 20, 1 / 8],
   // The moon crosses the sun in five seconds and leaves in four.
   eclipse: [1 / 5, 1 / 4],
-  // A sunshower's light rain, and its bow, which comes up slower than the rain and goes sooner.
-  shower: [1 / 1.5, 1 / 1.5],
-  bow: [1 / 4, 1 / 2],
 } as const
 type Effect = keyof typeof RATES
 
@@ -90,29 +87,6 @@ const lateTwilight = (key: keyof Palette) =>
 const CORONA_COL = mix(DAY.fluff, DAY.globe, 0.4)
 /** The ring on the moon's edge and the glow round it, on their tiles: `sunset-globe`. */
 const RIM_COL = SUNSET.globe
-
-/**
- * A sunshower's bow, outside band to inside, its tiles: the palette's most saturated colours at
- * noon, the rose's red, the poppy's orange and the dandelion's yellow, the leaf's green warmed by
- * the dandelion, then the sky's blue into the night's violet blue. By night it's a moonbow, nearly
- * white: each band 75% toward `mix(fluff, snow, 0.5)` at night, as a real moonbow looks.
- */
-const BOW = [
-  DAY.rose,
-  DAY.poppy,
-  DAY.dandelion,
-  mix(DAY.roseLeaf, DAY.dandelion, 0.3),
-  mix(DAY.skyTop, NIGHT.cosmosVein, 0.4),
-  NIGHT.cosmosVein,
-]
-const MOONBOW = BOW.map((c) => mix(c, mix(NIGHT.fluff, NIGHT.snow, 0.5), 0.75))
-/**
- * The bow's glyphs: pastel, half toward `fluff`, so it reads bright rather than as blocks of
- * colour; its tiles only tint the sky behind them.
- */
-const BOW_INK = BOW.map((c) => mix(c, DAY.fluff, 0.5))
-const MOONBOW_INK = MOONBOW.map((c) => mix(c, NIGHT.fluff, 0.3))
-const BOW_GLYPH = [code('·'), code(':')]
 
 /**
  * The scene at a solar eclipse's totality: the land and upper sky at about 20:45, under a band
@@ -277,8 +251,6 @@ export class Weather {
     gale: 0,
     cover: 0,
     eclipse: 0,
-    shower: 0,
-    bow: 0,
   }
   /** Per cell, this frame: strength, glyph code and colour. Strength 0 is no particle. */
   alpha = new Float32Array(0)
@@ -288,10 +260,6 @@ export class Weather {
   tile = new Float32Array(0)
   /** Per cell: rain, which flowers keep out (ascii.ts draws the flower over it). */
   wet = new Uint8Array(0)
-  /** Per cell: the bow's band whose colour lights the tile, plus one; 0 takes `tileCol`. */
-  bowBand = new Uint8Array(0)
-  /** The bow's band colours this frame, its tiles' colours. */
-  bowCols: Rgb[] = BOW
   /** While the rain plots: its cells are wet. */
   private wetting = false
   /** The sun or moon this frame, which rain still falls in front of. */
@@ -349,9 +317,6 @@ export class Weather {
         return w === 'storm' ? 0.55 : 0
       case 'eclipse':
         return w === 'eclipse' ? 1 : 0
-      case 'shower':
-      case 'bow':
-        return w === 'sunshower' ? 1 : 0
     }
   }
 
@@ -382,16 +347,12 @@ export class Weather {
 
   /** Wind strength the weather adds: a gale, and a little with rain. */
   get gale() {
-    return (
-      GALE * this.amount.gale +
-      0.25 * this.amount.rain +
-      0.1 * this.amount.shower
-    )
+    return GALE * this.amount.gale + 0.25 * this.amount.rain
   }
 
   /** Rain's unsteady air: a push either way of 2% of the wind's range, in place of drops knocking the flowers. */
   get unsteady() {
-    return 0.04 * this.amount.rain + 0.02 * this.amount.shower
+    return 0.04 * this.amount.rain
   }
 
   /** Snow lying, in steps about a second apart while it settles. */
@@ -479,66 +440,11 @@ export class Weather {
     this.rgb = new Float32Array(n * 3)
     this.tile = new Float32Array(n)
     this.wet = new Uint8Array(n)
-    this.bowBand = new Uint8Array(n)
     this.band = new Float32Array(cols)
     this.touched = []
     this.drops = []
     this.flakes = []
     this.seeds = []
-  }
-
-  /**
-   * A sunshower's bow: six bands, a little over a cell deep each, on the far side of the sky from the sun (or the
-   * moon, as a faint moonbow), rising from below the land so only its arch shows above it. `:` in
-   * the middle bands and `·` at the edges, each band on tiles faintly tinted its own colour; the flowers and
-   * land stand in front.
-   */
-  private paintBow(k: number, v: WeatherView) {
-    const { W, cw, ch, horizon, globe } = v
-    const day = globe.sun > 0 || globe.moon <= 0 ? 1 : 0
-    const cols = day ? BOW_INK : MOONBOW_INK
-    this.bowCols = day ? BOW : MOONBOW
-    const strength = k * (day ? 1 : 0.5)
-    const lit = k * (day ? 0.16 : 0.12)
-    const cx = globe.cx < W / 2 ? 0.7 * W : 0.3 * W
-    const cy = horizon + 0.12 * v.H
-    const R = 0.78 * horizon
-    const width = ch * 1.2
-    const bands = cols.length
-    const c0 = Math.max(0, Math.floor((cx - R) / cw))
-    const c1 = Math.min(this.cols - 1, Math.floor((cx + R) / cw))
-    this.wetting = true
-    for (let c = c0; c <= c1; c++) {
-      const x = c * cw + cw / 2
-      const dx = x - cx
-      const sky = globe.skyline(x)
-      const inner = R - bands * width
-      const yTop = cy - Math.sqrt(Math.max(0, R * R - dx * dx))
-      const yBot =
-        Math.abs(dx) < inner ? cy - Math.sqrt(inner * inner - dx * dx) : cy
-      const r0 = Math.max(0, Math.floor(yTop / ch))
-      const r1 = Math.min(this.rows - 1, Math.floor(Math.min(yBot, sky) / ch))
-      for (let r = r0; r <= r1; r++) {
-        const y = r * ch + ch / 2
-        if (y > sky) break
-        const d = R - Math.hypot(dx, y - cy)
-        if (d < 0) continue
-        const b = Math.floor(d / width)
-        if (b >= bands) continue
-        // Softer toward the bow's feet, where it meets the land, and at its two edge bands.
-        const edge = b === 0 || b === bands - 1
-        const foot = smoothstep(0, 0.15 * v.H, sky - y)
-        const soft = (edge ? 0.6 : 1) * (0.5 + 0.5 * foot)
-        this.plot(c, r, BOW_GLYPH[edge ? 0 : 1], strength * soft, cols[b], 1)
-        // Each band tints its tiles faintly in its colour: lit fully, the cells read as blocks.
-        const i = r * this.cols + c
-        if (this.alpha[i] > 0 && !this.tile[i]) {
-          this.tile[i] = lit * soft
-          this.bowBand[i] = b + 1
-        }
-      }
-    }
-    this.wetting = false
   }
 
   /** Lights a cell's tile, if this frame's overlay holds the cell. */
@@ -589,8 +495,7 @@ export class Weather {
 
   /** Moves everything in the air to `now` (s) and lays it into the cells. */
   paint(now: number, p: Palette, wind: Wind, v: WeatherView) {
-    for (const i of this.touched)
-      this.alpha[i] = this.tile[i] = this.wet[i] = this.bowBand[i] = 0
+    for (const i of this.touched) this.alpha[i] = this.tile[i] = this.wet[i] = 0
     this.touched = []
     const dt = this.lastPaint < 0 ? 0 : clamp(now - this.lastPaint, 0, 0.1)
     this.lastPaint = now
@@ -680,9 +585,6 @@ export class Weather {
       }
     }
 
-    // A sunshower's bow, across the sky from the sun or moon, behind the land and the flowers.
-    if (a.bow > 0 && W > 0) this.paintBow(a.bow, v)
-
     this.flash = 0
     this.glow = null
     if (this.still || W === 0) return
@@ -739,10 +641,7 @@ export class Weather {
 
     // Rain: streaks a few cells long, leaning with the wind, and a dot where each lands.
     // A storm's rain is heavier.
-    // A sunshower's rain is light: a third of a shower's drops, out of a clear sky.
-    const rainN = Math.round(
-      DROPS * (a.rain * (0.8 + 0.2 * a.storm) + 0.35 * a.shower),
-    )
+    const rainN = Math.round(DROPS * a.rain * (0.8 + 0.2 * a.storm))
     if (rainN > 0 || this.drops.length) {
       const slant = clamp(0.1 + 0.3 * breeze, 0.08, 0.8)
       while (this.drops.length < DROPS) {
@@ -1212,8 +1111,7 @@ export class Weather {
   }
 
   clear() {
-    for (const i of this.touched)
-      this.alpha[i] = this.tile[i] = this.wet[i] = this.bowBand[i] = 0
+    for (const i of this.touched) this.alpha[i] = this.tile[i] = this.wet[i] = 0
     this.touched = []
     this.lastPaint = -1
     this.glow = null
