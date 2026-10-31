@@ -116,6 +116,72 @@ html:has(.garden-home, .poem-page) body {
   pointer-events: auto;
 }
 
+/* The bio and links, as one block the toggle fades. */
+.garden-text {
+  display: flex;
+  flex-direction: column;
+  gap: inherit;
+  transition:
+    opacity 400ms var(--ease-calm),
+    visibility 0s linear 0s;
+}
+
+/* Hidden, the text fades out and the garden stops receding behind it
+   (mount.ts skips boxes whose --avoid is none). */
+.garden-hero[data-hidden] {
+  --avoid: none;
+}
+
+.garden-hero[data-hidden] .garden-text {
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 400ms var(--ease-calm),
+    visibility 0s linear 400ms;
+}
+
+/* The toggle: one muted mono word pair in the hero's bottom corner, out of
+   the text's way, quieter still once the text is gone. */
+.garden-hide {
+  position: absolute;
+  right: 0;
+  bottom: var(--space-4);
+  padding: 4px 6px;
+  margin-right: -6px;
+  border: 0;
+  background: none;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  cursor: pointer;
+  opacity: 0.8;
+  transition:
+    color var(--duration-quick) var(--ease-calm),
+    opacity var(--duration-quick) var(--ease-calm);
+}
+
+.garden-hide:hover,
+.garden-hide:focus-visible {
+  color: var(--ink);
+  opacity: 1;
+}
+
+.garden-hide:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.garden-hero[data-hidden] .garden-hide {
+  opacity: 0.55;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .garden-text,
+  .garden-hero[data-hidden] .garden-text {
+    transition: none;
+  }
+}
+
 .garden-hero .bio {
   max-width: var(--measure);
 }
@@ -129,6 +195,10 @@ html:has(.garden-home, .poem-page) body {
 @media (max-height: 720px), (max-width: 760px) {
   .garden-hero {
     padding-bottom: 48px;
+  }
+  /* Under the links, in the shorter padding. */
+  .garden-hide {
+    bottom: 10px;
   }
 }
 

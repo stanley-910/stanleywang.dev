@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { mountGarden } from './mount'
 
@@ -11,10 +11,12 @@ type GardenHomeProps = {
 }
 
 // The home page's first screen: the meadow behind the top bar, with the bio
-// over its ground (design/circadian-meadow, "Site pages").
+// over its ground (design/circadian-meadow, "Site pages"). A quiet toggle in
+// the corner fades the text away, to play in the meadow alone, and back.
 export function GardenHome({ children }: GardenHomeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
+  const [hidden, setHidden] = useState(false)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -36,7 +38,19 @@ export function GardenHome({ children }: GardenHomeProps) {
       {/* Safari tints its bars from fixed elements at the window's edges. */}
       <div className="garden-tint garden-tint-top" aria-hidden="true" />
       <div className="garden-tint garden-tint-bottom" aria-hidden="true" />
-      <div className="garden-hero">{children}</div>
+      <div className="garden-hero" data-hidden={hidden || undefined}>
+        <div className="garden-text" inert={hidden}>
+          {children}
+        </div>
+        <button
+          type="button"
+          className="garden-hide"
+          aria-pressed={hidden}
+          onClick={() => setHidden((h) => !h)}
+        >
+          {hidden ? 'show text' : 'hide text'}
+        </button>
+      </div>
     </div>
   )
 }
