@@ -58,7 +58,6 @@ const PLACES: [string, string][] = [
 ]
 const cdTo = (path: string) => (path === '~' ? 'cd ~' : `cd ${path.slice(2)}`)
 const SHEETS: [string, string][] = [
-  ['about.txt', 'about'],
   ['resume.pdf', 'resume'],
   ['real-testimonials.txt', 'cat real-testimonials.txt'],
   ['enjoy-your-stay.txt', 'cat enjoy-your-stay.txt'],
@@ -93,7 +92,6 @@ const MENUS: [string, Item[]][] = [
     'Help',
     [
       ['Commands', 'help'],
-      ['About', 'about'],
       ['Work', 'work'],
       ['Projects', 'projects'],
     ],
@@ -336,6 +334,7 @@ export function Terminal() {
   const [follow, setFollow] = useState(true)
   const [wind, setWindState] = useState(0.2)
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null)
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null)
 
   const win = useRef<HTMLElement>(null)
   const word = useRef<HTMLButtonElement>(null)
@@ -565,7 +564,41 @@ export function Terminal() {
     bar.addEventListener('pointerup', up)
   }
 
+  // Resize from the grow box in the status bar's corner: the window pins its top-left where
+  // it is and the corner follows the pointer, no smaller than it opens, kept on screen and
+  // clear of the power button below it.
+  const onGrowStart = (e: React.PointerEvent) => {
+    if (!win.current) return
+    e.preventDefault()
+    const r = rectOf(win.current)
+    const min = { w: Math.min(r.w, 520), h: Math.min(r.h, 300) }
+    setPos({ x: r.x, y: r.y })
+    const sx = e.clientX
+    const sy = e.clientY
+    const grip = e.currentTarget as HTMLElement
+    grip.setPointerCapture(e.pointerId)
+    const move = (ev: PointerEvent) =>
+      setSize({
+        w: Math.max(
+          min.w,
+          Math.min(window.innerWidth - r.x - 8, r.w + ev.clientX - sx),
+        ),
+        h: Math.max(
+          min.h,
+          Math.min(window.innerHeight - r.y - 62, r.h + ev.clientY - sy),
+        ),
+      })
+    const up = () => {
+      grip.removeEventListener('pointermove', move)
+      grip.removeEventListener('pointerup', up)
+    }
+    grip.addEventListener('pointermove', move)
+    grip.addEventListener('pointerup', up)
+  }
+
   const night = isNight(hour)
+  // The info strip names home in words; elsewhere it shows the path.
+  const place = path === '~' ? 'home' : path
   const items = [
     ...PLACES.map(([n, p]) => ({ name: n, folder: true, run: cdTo(p), at: p })),
     ...SHEETS.map(([n, c]) => ({ name: n, folder: false, run: c, at: '' })),
@@ -582,11 +615,16 @@ export function Terminal() {
           className={focused ? 'terminal-win focus' : 'terminal-win'}
           role="dialog"
           aria-label="Terminal"
-          style={
-            pos
-              ? { left: pos.x, top: pos.y, right: 'auto', bottom: 'auto' }
-              : undefined
-          }
+          data-own-scroll
+          style={{
+            ...(pos && {
+              left: pos.x,
+              top: pos.y,
+              right: 'auto',
+              bottom: 'auto',
+            }),
+            ...(size && { width: size.w, height: size.h }),
+          }}
           data-closing={closing ? '' : undefined}
           onAnimationEnd={(e) => {
             if (closing && e.target === e.currentTarget) shut()
@@ -597,7 +635,23 @@ export function Terminal() {
           <div className="terminal-pane">
             <header className="terminal-tb" onPointerDown={onDragStart}>
               <span className="boxes">
-                <button className="box" aria-label="Close" onClick={hide} />
+                <button className="box" aria-label="Close" onClick={hide}>
+                  <svg viewBox="0 0 7 7" width="7" height="7" aria-hidden>
+                    <rect x="0" y="0" width="1" height="1" />
+                    <rect x="1" y="1" width="1" height="1" />
+                    <rect x="2" y="2" width="1" height="1" />
+                    <rect x="3" y="3" width="1" height="1" />
+                    <rect x="4" y="4" width="1" height="1" />
+                    <rect x="5" y="5" width="1" height="1" />
+                    <rect x="6" y="6" width="1" height="1" />
+                    <rect x="0" y="6" width="1" height="1" />
+                    <rect x="1" y="5" width="1" height="1" />
+                    <rect x="2" y="4" width="1" height="1" />
+                    <rect x="4" y="2" width="1" height="1" />
+                    <rect x="5" y="1" width="1" height="1" />
+                    <rect x="6" y="0" width="1" height="1" />
+                  </svg>
+                </button>
               </span>
               <h2>Terminal{path !== '~' && <i> — {path.slice(2)}</i>}</h2>
             </header>
@@ -655,7 +709,9 @@ export function Terminal() {
 
             <div className="terminal-info">
               <span>
-                {view === 'files' ? `${items.length} items  ·  ${path}` : path}
+                {view === 'files'
+                  ? `${items.length} items  ·  ${place}`
+                  : place}
               </span>
               <span>{`${phase(hour)}  ·  wind ${wind.toFixed(2)}`}</span>
             </div>
@@ -824,7 +880,7 @@ export function Terminal() {
                 {hhmm(hour)}
                 {night ? '  ☾' : '  ☼'}
               </span>
-              <span className="grow" />
+              <span className="grow" aria-hidden onPointerDown={onGrowStart} />
             </footer>
           </div>
         </section>

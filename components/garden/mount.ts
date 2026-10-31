@@ -492,6 +492,9 @@ export function mountGarden({
   const onWheel = (e: WheelEvent) => {
     // The time slider handles its own scroll.
     if (!scrub || !visible || e.defaultPrevented) return
+    // Nor does the meadow take a scroll over something that scrolls itself (the terminal).
+    if (e.target instanceof Element && e.target.closest('[data-own-scroll]'))
+      return
     // Sideways always scrubs; up and down scrub too while the page has
     // nowhere to scroll, as home's single screen doesn't. Down and right run
     // later, like the slider.
@@ -523,8 +526,12 @@ export function mountGarden({
     holding = false
     if (!visible || e.touches.length !== 1) return
     const t = e.target
-    // The time slider takes its own drags.
-    if (t instanceof Element && t.closest('.time-control-pop, input')) return
+    // The time slider and anything that scrolls itself (the terminal) take their own drags.
+    if (
+      t instanceof Element &&
+      t.closest('.time-control-pop, input, [data-own-scroll]')
+    )
+      return
     const { clientX: x, clientY: y } = e.touches[0]
     if (
       t instanceof Element &&

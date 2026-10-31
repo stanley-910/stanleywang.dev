@@ -115,36 +115,20 @@ export function hhmm(h: number) {
 const pad = (s: string, n: number) => s + ' '.repeat(Math.max(1, n - s.length))
 
 const HELP = [
-  '',
   'Available commands:',
+  '  {g|projects}  List my most recent projects',
+  '  {g|work}      List a timeline of my work experience',
+  '  {g|github}  {g|linkedin}  {g|resume}  {g|email}',
+  '  {g|cd}  {g|ls}  {g|cat}  {g|tree}',
   '',
-  '  {g|about}          - Display information about me',
-  '  {g|help}           - Self-explanatory',
-  '  {g|projects}       - List my most recent projects',
-  '  {g|work}           - List a timeline of my work experience',
+  '  {g|time}      Set the hour: time 19:00, or time now',
+  '  {g|wind}      Set the breeze: wind 0.6',
+  '  {g|regrow}    Grow a new meadow',
   '',
-  '  {g|github}         - Visit my Github profile',
-  '  {g|linkedin}       - View my LinkedIn profile',
-  '  {g|resume}         - Open my resume',
-  '  {g|email}          - Copy my email address',
-  '',
-  '  {g|cd}             - Change directory',
-  '  {g|ls}             - List content of current directory',
-  '  {g|cat}            - Read a file',
-  '  {g|tree}           - Display directory structure in a tree-like format',
-  '',
-  '  {g|time}           - Set the hour: time 19:00, or time now',
-  '  {g|wind}           - Set the breeze: wind 0.6',
-  '  {g|regrow}         - Grow a new meadow',
-  '',
-  '{y|[tab]}: Trigger completion',
-  '{y|[ctrl+l]}/{y|clear}: Clear terminal',
-  '{y|[`]}: Open or close the terminal',
-  '',
+  '{y|[tab]} complete  {y|[ctrl+l]} clear  {y|[`]} open or close',
 ]
 
 const NAMES = [
-  'about',
   'help',
   'projects',
   'work',
@@ -211,17 +195,6 @@ export function run(input: string, ctx: Ctx): string[] {
   switch (cmd) {
     case 'help':
       return [...HELP]
-    case 'about':
-      return [
-        '你好, I’m Stanley.',
-        '',
-        'I’m currently studying Computer Science at {h|McGill University.} Most recently,',
-        'I interned on Commerce & Identity at {h|Electronic Arts.} Before that, I wrote',
-        'software with the {h|Flow PT team} at Autodesk and engineered structural tooling',
-        'for {h|BETA Technologies.}',
-        '',
-        `{m|github / linkedin / ${EMAIL}}`,
-      ]
     case 'work': {
       if (a) {
         const job = WORK.find((w) => w.key === a)

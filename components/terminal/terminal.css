@@ -315,19 +315,30 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
   background: var(--k-hi);
 }
 
-/* Empty, as the old close boxes were; held down, it shows the burst they drew. */
+/* The close box carries a pixel x, drawn on the same grid as the bitmap face; held
+   down, the box inverts. */
+.terminal-root .box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--k-ink);
+}
+
+.terminal-root .box svg {
+  display: block;
+  fill: currentColor;
+  shape-rendering: crispEdges;
+}
+
 .terminal-root .box:active {
-  background:
-    linear-gradient(var(--k-ink), var(--k-ink)) center / 1px 100% no-repeat,
-    linear-gradient(var(--k-ink), var(--k-ink)) center / 100% 1px no-repeat,
-    linear-gradient(45deg, transparent calc(50% - 0.5px), var(--k-ink) 0 calc(50% + 0.5px), transparent 0),
-    linear-gradient(-45deg, transparent calc(50% - 0.5px), var(--k-ink) 0 calc(50% + 0.5px), transparent 0),
-    var(--k-chrome);
+  background: var(--k-plate);
+  color: var(--k-on-plate);
   box-shadow: inset 1px 1px 0 var(--k-lo);
 }
 
 .terminal-win:not(.focus) .box {
   border-color: var(--k-hair);
+  color: var(--k-muted);
 }
 
 /* The menu strip, with Shell and Files as two keys at its end. */
@@ -703,6 +714,7 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
 }
 
 .terminal-status .grow {
+  position: relative;
   width: 12px;
   height: 12px;
   flex: none;
@@ -717,6 +729,15 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
     transparent 90%
   );
   opacity: 0.6;
+  cursor: nwse-resize;
+  touch-action: none;
+}
+
+/* A bigger grip than the box it draws. */
+.terminal-status .grow::before {
+  content: '';
+  position: absolute;
+  inset: -8px -6px -6px -8px;
 }
 
 /* On a phone it takes the width above the word. */
