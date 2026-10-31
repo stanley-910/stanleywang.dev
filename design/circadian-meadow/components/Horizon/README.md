@@ -10,20 +10,18 @@ A river in the far landscape: it comes in from off the left edge and crosses the
 - **Sized to the flowers.** It read as a pipe, not a river.
 - **Behind the flowers, or out of the trees and off the left edge only.** With the bio's top about 116px under the horizon at 1512×860, a long run above the text flattens into a stripe along the horizon.
 - **Rimmed spruce on the banks** didn't match the forest's trees.
+- **Laid out around the bio.** Browser zoom changes the CSS viewport, so the bio's box moves relative to the scene. A course fitted to the room above it changed with zoom: sharp and kinked at 100%, closer at 90%.
 
 ## Course
 
-The course is a Catmull-Rom curve through hand-placed points. Each point is a share of the width across, and a px depth below the horizon:
-- It starts at the forest's middle, at 0.5 of the width.
-- It runs left within the room above the bio (`clear.top − 0.04H − horizon`), dipping once.
-- Past the bio's left edge it falls in a broad bend.
-- It leaves past the left edge at `room + 0.17H`.
+The course is laid out like the mountains and trees, so it looks the same at any zoom and on any screen. It ignores the bio.
+- Each point is a share of the range across (`rangeX`) and a depth below the horizon in units of `U = min(H, 0.62 × rangeWidth)`, the unit the trees use.
+- It's a Catmull-Rom curve: from the forest's middle (0.52 of the range) it runs left, bends down toward us, levels, and leaves past the left edge at `0.17U`. One broad S.
+- A phone shows the middle of the range, so it sees the last bend, as it sees the middle of the mountains.
 
-Where the text spans the screen (a phone) the same points keep it above the text.
+The course is resampled every 1.5px along its length, then smoothed.
 
-The course is resampled every 1.5px along its length and held above the bio, banks and all, then smoothed.
-
-Half-width is `(2 + 0.24d)` px at depth `d` below the horizon. That's the far landscape's perspective, not the flowers'. A breadth noise of 0.85 to 1.2 pools it in the bends, and each bank has its own ragged edge.
+Half-width is `(0.0015U + 0.24d)` px at depth `d` below the horizon. That's the far landscape's perspective, not the flowers'. A breadth noise of 0.85 to 1.2 pools it in the bends, and each bank has its own ragged edge.
 
 ## Across the flow
 
@@ -48,5 +46,5 @@ The water mirrors the sky: the horizon's glow far off and the higher sky nearer,
 ## Checked
 
 - 1512×860 at noon, sunset and night, at 1:1. Judge it at full resolution: half-size captures hid how coarse it looked.
-- 375×812: it stays above the bio's top.
+- The same shape in proportion at 1512×860 (100%), 1680×956 (90%) and 2560×1440. On a 375×812 phone, the middle of the range shows.
 - The poem page and rain are not checked.
