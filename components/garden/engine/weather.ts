@@ -115,6 +115,10 @@ const TOTALITY: Partial<Record<keyof Palette, Rgb>> = {
 const MOON_DARK = NIGHT.disc
 /** A lightning bolt and its flash: `night-fluff`, the coldest white in the palette. */
 export const BOLT_COL = NIGHT.fluff
+/** A bolt at its bluest, near and at night: `night-fluff` 30% toward `night-cosmos-vein`, a violet blue. */
+const BOLT_BLUE = mix(NIGHT.fluff, NIGHT.cosmosVein, 0.3)
+/** A bolt at its yellowest, far off through the rain by day: `night-fluff` 75% toward `golden-globe`. */
+const BOLT_WARM = mix(NIGHT.fluff, GOLDEN.globe, 0.75)
 /**
  * The moon in Earth's shadow, lit only by the sunsets round the Earth's rim: `sunset-sky-horizon`
  * a third of the way into `night-sky-top`.
@@ -176,7 +180,7 @@ export type WeatherView = {
 }
 
 /** Lightning's light in the cloud this frame: lighting the sky's glyphs round a point. */
-export type Glow = { x: number; y: number; R: number; k: number }
+export type Glow = { x: number; y: number; R: number; k: number; col: Rgb }
 
 /** A lightning event: its channels and the return strokes that light them. */
 type Flash = {
@@ -192,6 +196,8 @@ type Flash = {
   R: number
   /** Near (1) or far (0): how wide and bright the channel prints, and how far its flash reaches. */
   near: number
+  /** Its colour, bluer near and at night, yellower far off and by day. */
+  col: Rgb
 }
 
 /**
@@ -245,6 +251,8 @@ export class Weather {
   band = new Float32Array(0)
   /** How much a lightning strike lights the whole sky this frame, 0 to 1. */
   flash = 0
+  /** The strike's colour, for its flash. */
+  flashCol: Rgb = BOLT_COL
   /** Lightning's light in the cloud this frame, a strike's or a flicker's. */
   glow: Glow | null = null
   disc: Disc | null = null
@@ -561,28 +569,33 @@ export class Weather {
       if (!f) continue
       const b = strokeAt(f.strokes, now - f.at)
       if (b <= 0) continue
-      if (f === this.bolt) this.flash = b * (0.35 + 0.65 * f.near)
+      if (f === this.bolt) {
+        this.flash = b * (0.35 + 0.65 * f.near)
+        this.flashCol = f.col
+      }
       const k = b * (f === this.bolt ? 0.9 : 1)
       if (!this.glow || k > this.glow.k)
-        this.glow = { x: f.x, y: f.y, R: f.R, k }
+        this.glow = { x: f.x, y: f.y, R: f.R, k, col: f.col }
       // The channel shows while its stroke is bright, a little brighter than the stroke itself.
       const seen = Math.min(1, 1.4 * b)
       if (seen < 0.08) continue
-      this.tileCol = BOLT_COL
+      this.tileCol = f.col
       const wide = f === this.bolt ? f.near : 0
+      // A flicker's channel is a short bright crawl inside the cloud; a bolt's core is lit by depth.
+      const lit = f === this.bolt ? 0.3 + 0.4 * wide : 0.15
       const p = f.path
       for (let j = 0; j < p.length; j += 4) {
         const [c, r, g] = [p[j], p[j + 1], p[j + 2]]
         const s = p[j + 3] * seen
         // Near, three cells wide; middling, two; far, a single thin line. The core lights its
         // tile, so it reads on the fine grid.
-        if (wide > 0.35) this.plot(c + 1, r, g, 0.5 * s, BOLT_COL, 1)
-        if (wide > 0.7) this.plot(c - 1, r, g, 0.5 * s, BOLT_COL, 1)
-        this.plot(c, r, g, s, BOLT_COL, 1)
+        if (wide > 0.35) this.plot(c + 1, r, g, 0.5 * s, f.col, 1)
+        if (wide > 0.7) this.plot(c - 1, r, g, 0.5 * s, f.col, 1)
+        this.plot(c, r, g, s, f.col, 1)
         if (c >= 0 && c < this.cols && r >= 0 && r < this.rows)
           this.tile[r * this.cols + c] = Math.max(
             this.tile[r * this.cols + c],
-            (0.3 + 0.4 * wide) * s,
+            lit * s,
           )
       }
     }
@@ -763,8 +776,10 @@ export class Weather {
    * meadow's edge; a far one goes behind them; one in five never reaches the ground.
    */
   private strike(v: WeatherView, now: number): Flash {
+    // Its depth sets which cloud it comes from: a near one out of cloud high overhead, a far one
+    // out of cloud low over the ridges, so the bolt and its cloud sit at the same distance.
     const near = Math.random()
-    const { c, r } = this.cloudSpot(v)
+    const { c, r } = this.cloudSpot(v, near)
     const ground = Math.random() < 0.8
     const bottom = Math.floor(v.horizon / v.ch) - 1
     const rows = ground
@@ -778,9 +793,9 @@ export class Weather {
       r,
       Math.random() < 0.5 ? -1 : 1,
       rows,
-      1,
+      0.6 + 0.4 * near,
       0,
-      near < 0.7,
+      near < 0.6,
     )
     // One stroke, then up to two more down the same channel, at least a tenth of a second apart,
     // so it never flashes more than three times a second.
@@ -798,6 +813,7 @@ export class Weather {
       y: (r + 0.5) * v.ch,
       R: (0.08 + 0.1 * near) * v.W,
       near,
+      col: this.boltCol(v, near),
     }
   }
 
@@ -806,16 +822,18 @@ export class Weather {
    * channel shows faintly through it, crawling sideways as cloud-to-cloud lightning does.
    */
   private flicker(v: WeatherView, now: number): Flash {
-    const { c, r } = this.cloudSpot(v)
+    const near = Math.random()
+    const { c, r } = this.cloudSpot(v, near)
     const path: number[] = []
-    if (Math.random() < 0.75)
-      for (let arm = 2 + Math.floor(Math.random() * 3); arm > 0; arm--)
-        this.crawl(path, v, c, r, 4 + Math.floor(Math.random() * 10))
+    if (Math.random() < 0.6)
+      for (let arm = 1 + Math.floor(Math.random() * 3); arm > 0; arm--)
+        this.crawl(path, v, c, r, 3 + Math.floor(Math.random() * 7))
+    // It flutters: two to four pulses, quick and uneven, as light jumps about inside the cloud.
     const strokes: number[] = []
     let t = 0
-    for (let n = 1 + Math.floor(Math.random() * 3); n > 0; n--) {
-      strokes.push(t, 0.4 + 0.6 * Math.random())
-      t += 0.12 + 0.25 * Math.random()
+    for (let n = 2 + Math.floor(Math.random() * 3); n > 0; n--) {
+      strokes.push(t, 0.5 + 0.5 * Math.random())
+      t += 0.1 + 0.2 * Math.random()
     }
     return {
       path,
@@ -823,22 +841,38 @@ export class Weather {
       at: now,
       x: (c + 0.5) * v.cw,
       y: (r + 0.5) * v.ch,
-      R: (0.07 + 0.08 * Math.random()) * v.W,
+      R: (0.06 + 0.08 * near) * v.W,
       near: 0,
+      col: this.boltCol(v, near),
     }
+  }
+
+  /**
+   * A strike's colour: bluer near and by night, yellower far off, through more rain, and by day,
+   * with a little chance either way.
+   */
+  private boltCol(v: WeatherView, near: number): Rgb {
+    const warm = clamp(
+      0.1 + 0.5 * v.globe.sun + 0.35 * (1 - near) + 0.3 * (Math.random() - 0.5),
+      0,
+      1,
+    )
+    return mix(BOLT_BLUE, BOLT_WARM, warm)
   }
 
   /**
    * The cloudiest of a few dozen sky cells, away from the sun and moon, where lightning starts;
    * with no cloud about, a cell on the top edge, so it comes from above the frame.
    */
-  private cloudSpot(v: WeatherView) {
+  private cloudSpot(v: WeatherView, near: number) {
     const { cx, cy, R } = v.globe
     const shown = v.globe.sun + v.globe.moon > 0
+    // Cloud overhead is near and cloud low in the sky far: look in a band at the depth's height.
+    const mid = 0.04 + 0.5 * (1 - near)
     let best = { c: 0, r: 0, k: -1 }
     for (let n = 0; n < 48; n++) {
       const x = (0.06 + 0.88 * Math.random()) * v.W
-      const y = (0.04 + 0.5 * Math.random()) * v.horizon
+      const y = clamp(mid + 0.2 * (Math.random() - 0.5), 0.02, 0.6) * v.horizon
       if (shown && Math.hypot(x - cx, (y - cy) * 0.8) < 2 * R) continue
       const c = Math.floor(x / v.cw)
       const r = Math.floor(y / v.ch)
@@ -849,7 +883,9 @@ export class Weather {
       let x = (0.1 + 0.8 * Math.random()) * v.W
       if (shown && Math.abs(x - cx) < 2 * R)
         x = cx + Math.sign(x - cx || 1) * 2 * R
-      best = { c: Math.floor(x / v.cw), r: 0, k: 0 }
+      // Out of overcast at its depth's height: from above the frame if near.
+      const y = near > 0.8 ? 0 : mid * v.horizon
+      best = { c: Math.floor(x / v.cw), r: Math.floor(y / v.ch), k: 0 }
     }
     return best
   }
@@ -901,7 +937,8 @@ export class Weather {
           v,
           c,
           r,
-          Math.random() < 0.5 ? -1 : 1,
+          // Away from the channel it left, so it never runs alongside and rejoins it.
+          -lean,
           Math.round((4 + Math.random() * 0.5 * (rows - k)) / (depth + 1)),
           s * 0.6,
           depth + 1,
@@ -922,11 +959,11 @@ export class Weather {
     for (; n > 0; n--) {
       const roll = Math.random()
       if (roll < 0.12) dc = -dc
-      const dr = roll < 0.3 ? 1 : roll < 0.45 ? -1 : 0
+      const dr = roll < 0.25 ? 1 : roll < 0.42 ? -1 : 0
       const glyph =
         dr === 0 ? BOLT.across : dc * dr > 0 ? BOLT.right : BOLT.left
       const k = v.cloud(c, r)
-      if (k > 0.1) path.push(c, r, glyph, 0.5 + 0.4 * k)
+      if (k > 0.1) path.push(c, r, glyph, 0.75 + 0.25 * k)
       c += dc
       r = Math.max(0, r + dr)
     }
