@@ -49,7 +49,7 @@ By day is `night < 0.3`: from about 06:45 to about 19:00, so golden hour and sun
 
 A distant bird, as people draw one: a body cell and a wing either side, traced at the wings' current angle.
 
-- **Wingspan** `S = clamp(0.009 W, 12, 20)` scene px: 4 cells across on a desktop, 3 on a phone. It was `clamp(0.012 W, 16, 28)`, which read as too big a bird for the sky.
+- **Wingspan** `S = clamp(0.0075 W, 10, 17)` scene px: 3 cells across on a 1000 px window and on a phone, 5 with the wings level on a wide desktop. It was `clamp(0.012 W, 16, 28)`, then `clamp(0.009 W, 12, 20)`; both read as too big a bird for the sky.
 - **Body:** one cell, `v` with the wings up or level, `^` with them down.
 - **Wings:** each a straight line from the body to its tip at angle `θ` above horizontal (negative is down), a glyph per column by ShootingStar's rule: steep cells (over 0.6 rows per column) print `/` or `\`, shallow ones `` ` `` / `'` high in the cell, `-` mid, `.` low. With the wings up the tips step a row above the body; down, a row below.
 - **Wingbeat:** it flaps, then glides, as a crow or a gull does at a distance: 2 to 4 whole beats at 3 a second, `θ = 0.15 + 0.65 sin(2π · 3 t)` rad, then a glide of 0.6 to 1.2 s with the wings held at `θ = 0.45`, a V whose tips sit a row up. Each bird starts at a random point in its cycle.
@@ -57,7 +57,7 @@ A distant bird, as people draw one: a body cell and a wing either side, traced a
 
 ### Colour and weight
 
-A silhouette, not a light: `pine` taken 40% toward black (it was 20%, which read pale), at full strength, mixed toward the sky behind it as the sky's other glyphs are. It isn't boosted by `ink` (that's for light glyphs) and the cursor's light doesn't lift it. The glyphs carry the shape, over a light tile: the body at 0.45, the wings at 0.22 (at 0.35 and 0.15 it read see-through). A first pass shaded every cell (body 0.7, wings 0.55) and the bird printed as a row of solid blocks, coarser than anything else in the sky; then only the body at 0.1, and in `mix(pine, ground, 0.7)` the bird was too thin to find. It sits under the text fade (`dim`) like the rest of the sky.
+A silhouette, not a light: `pine` taken 55% toward black (20% read pale, 40% still a touch light), at full strength, mixed toward the sky behind it as the sky's other glyphs are. It isn't boosted by `ink` (that's for light glyphs) and the cursor's light doesn't lift it. The glyphs carry the shape, over a light tile: the body at 0.45, the wings at 0.22 (at 0.35 and 0.15 it read see-through). A first pass shaded every cell (body 0.7, wings 0.55) and the bird printed as a row of solid blocks, coarser than anything else in the sky; then only the body at 0.1, and in `mix(pine, ground, 0.7)` the bird was too thin to find. It sits under the text fade (`dim`) like the rest of the sky.
 
 ### How many
 
@@ -85,11 +85,11 @@ Not in the raster or workers; nothing in `garden.ts` or `typeset.ts` changes.
 | Click          | open sky by day; fades in over 0.4 s, `0.1 W` behind the click        |
 | Band           | `0.14 H` to `min(0.3 H, highest ridge − 3 rows)`                      |
 | Speed          | `clamp(W / 8, 110, 280)` px/s, ±12%                                   |
-| Wingspan       | `clamp(0.009 W, 12, 20)` px                                           |
+| Wingspan       | `clamp(0.0075 W, 10, 17)` px                                          |
 | Wingbeat       | 3 Hz, `θ = 0.15 + 0.65 sin`, 2 to 4 beats; glide 0.6 to 1.2 s at 0.45 |
 | Drift          | ±0.6 row over the crossing                                            |
 | Pair           | 1 in 4, 2.5 spans behind, a row lower                                 |
-| Colour         | `mix(pine, black, 0.4)`, strength 1, tiles 0.45 body, 0.22 wings      |
+| Colour         | `mix(pine, black, 0.55)`, strength 1, tiles 0.45 body, 0.22 wings     |
 | Limits         | 2 alive on its own; 3 from clicks, 0.5 s apart                        |
 | Reduced motion | none; a day sky click sows                                            |
 

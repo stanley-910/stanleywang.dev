@@ -70,7 +70,7 @@ type Bird = {
 }
 
 const between = ([lo, hi]: number[]) => lo + (hi - lo) * Math.random()
-const spanFor = (sky: Sky) => clamp(0.009 * sky.W, 12, 20)
+const spanFor = (sky: Sky) => clamp(0.0075 * sky.W, 10, 17)
 
 /** Wing angle above horizontal, in radians: a few beats, then a glide with the wings held in a shallow v. */
 const wingAt = (b: Bird, t: number) => {
@@ -207,7 +207,7 @@ export class Birds {
     for (const i of this.touched) this.alpha[i] = 0
     this.touched = []
     if (!this.list.length) return
-    this.col = mix(p.pine, [0, 0, 0], 0.4)
+    this.col = mix(p.pine, [0, 0, 0], 0.55)
     const { cw, ch } = this
     let a = STRENGTH
     const put = (c: number, r: number, g: number, tile: number) => {
