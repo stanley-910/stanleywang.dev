@@ -201,7 +201,7 @@ const NIGHT: Palette = {
   rose: hex('#a8263c'),
   roseDeep: hex('#4e1424'),
   roseLeaf: hex('#34443a'),
-  cosmos: hex('#7f85a2'),
+  cosmos: hex('#a9b1cf'),
   cosmosVein: hex('#6a6fa6'),
   lace: hex('#a3a9c0'),
   dandelion: hex('#a9a77a'),
