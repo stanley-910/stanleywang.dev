@@ -106,10 +106,13 @@ const BOW = [
   NIGHT.cosmosVein,
 ]
 const MOONBOW = BOW.map((c) => mix(c, mix(NIGHT.fluff, NIGHT.snow, 0.5), 0.75))
-/** The bow's glyphs, a little lighter than their tiles (30% toward `fluff`) so they show on them. */
-const BOW_INK = BOW.map((c) => mix(c, DAY.fluff, 0.3))
+/**
+ * The bow's glyphs: pastel, half toward `fluff`, so it reads bright rather than as blocks of
+ * colour; its tiles only tint the sky behind them.
+ */
+const BOW_INK = BOW.map((c) => mix(c, DAY.fluff, 0.5))
 const MOONBOW_INK = MOONBOW.map((c) => mix(c, NIGHT.fluff, 0.3))
-const BOW_GLYPH = [code(':'), code('o')]
+const BOW_GLYPH = [code('·'), code(':')]
 
 /**
  * The scene at a solar eclipse's totality: the land and upper sky at about 20:45, under a band
@@ -486,8 +489,8 @@ export class Weather {
 
   /**
    * A sunshower's bow: six bands, a little over a cell deep each, on the far side of the sky from the sun (or the
-   * moon, as a faint moonbow), rising from below the land so only its arch shows above it. `o` in
-   * the middle bands and `:` at the edges, each band on tiles of its own colour; the flowers and
+   * moon, as a faint moonbow), rising from below the land so only its arch shows above it. `:` in
+   * the middle bands and `·` at the edges, each band on tiles faintly tinted its own colour; the flowers and
    * land stand in front.
    */
   private paintBow(k: number, v: WeatherView) {
@@ -496,7 +499,7 @@ export class Weather {
     const cols = day ? BOW_INK : MOONBOW_INK
     this.bowCols = day ? BOW : MOONBOW
     const strength = k * (day ? 1 : 0.5)
-    const lit = k * (day ? 0.5 : 0.2)
+    const lit = k * (day ? 0.16 : 0.12)
     const cx = globe.cx < W / 2 ? 0.7 * W : 0.3 * W
     const cy = horizon + 0.12 * v.H
     const R = 0.78 * horizon
@@ -527,7 +530,7 @@ export class Weather {
         const foot = smoothstep(0, 0.15 * v.H, sky - y)
         const soft = (edge ? 0.6 : 1) * (0.5 + 0.5 * foot)
         this.plot(c, r, BOW_GLYPH[edge ? 0 : 1], strength * soft, cols[b], 1)
-        // Each band lights its own tiles in its colour, so the bow reads as colour, not as dots.
+        // Each band tints its tiles faintly in its colour: lit fully, the cells read as blocks.
         const i = r * this.cols + c
         if (this.alpha[i] > 0 && !this.tile[i]) {
           this.tile[i] = lit * soft
