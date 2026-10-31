@@ -548,9 +548,11 @@ export class AsciiRenderer {
             }
           }
         }
+        // Flowers keep the rain out: a drop or splash on a petal, stem or head isn't drawn.
         if (
           fall &&
           fall.alpha[i] > 0 &&
+          !(fall.wet[i] && f & PLANT) &&
           !(
             disc &&
             nearDisc(c * cw + cw / 2, y, disc) &&

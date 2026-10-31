@@ -147,8 +147,6 @@ type Drop = {
   z: number
   land: number
   splash: number
-  /** Whether it landed on a flower head. */
-  hit: boolean
 }
 type Flake = {
   x: number
@@ -175,9 +173,6 @@ export type WeatherView = {
   ch: number
   horizon: number
   /** A drop landing at a point knocks the flower head there, by `k`; whether there was one. */
-  tap: (x: number, y: number, k: number) => boolean
-  /** Where a drop's path first meets a flower head, or -1 (garden.headOn). */
-  headOn: (x: number, y: number, slant: number, end: number) => number
   /** How much cloud is at a cell, 0 to 1, as the sky last drew it (ascii.ts). */
   cloud: (c: number, r: number) => number
   /** Where the sun or moon is, and how much of each shows (garden.ts). */
@@ -258,6 +253,14 @@ export class Weather {
   rgb = new Float32Array(0)
   /** Per cell, this frame: how strongly the corona or a bolt lights the tile behind its glyph. */
   tile = new Float32Array(0)
+  /** Per cell: rain, which flowers keep out (ascii.ts draws the flower over it). */
+  wet = new Uint8Array(0)
+  /** While the rain plots: its cells are wet. */
+  private wetting = false
+  /** The sun or moon this frame, which rain still falls in front of. */
+  private globeAt = { cx: 0, cy: 0, R: 0 }
+  private cw = 1
+  private ch = 1
   /** The colour those tiles take: the corona's, or a bolt's while one strikes. */
   tileCol: Rgb = RIM_COL
   /** Per cell column, this frame: how much a gust band lights the grass. Empty without a gale. */
@@ -340,6 +343,11 @@ export class Weather {
   /** Wind strength the weather adds: a gale, and a little with rain. */
   get gale() {
     return GALE * this.amount.gale + 0.25 * this.amount.rain
+  }
+
+  /** Rain's unsteady air: a push either way of 2% of the wind's range, in place of drops knocking the flowers. */
+  get unsteady() {
+    return 0.04 * this.amount.rain
   }
 
   /** Snow lying, in steps about a second apart while it settles. */
@@ -426,6 +434,7 @@ export class Weather {
     this.glyph = new Uint8Array(n)
     this.rgb = new Float32Array(n * 3)
     this.tile = new Float32Array(n)
+    this.wet = new Uint8Array(n)
     this.band = new Float32Array(cols)
     this.touched = []
     this.drops = []
@@ -453,6 +462,13 @@ export class Weather {
     if (a <= this.alpha[i]) return
     if (this.alpha[i] === 0) this.touched.push(i)
     this.alpha[i] = a
+    const gl = this.globeAt
+    this.wet[i] =
+      this.wetting &&
+      Math.hypot((c + 0.5) * this.cw - gl.cx, (r + 0.5) * this.ch - gl.cy) >
+        1.3 * gl.R
+        ? 1
+        : 0
     this.glyph[i] = g
     this.rgb[i * 3] = Math.min(255, col[0] * k)
     this.rgb[i * 3 + 1] = Math.min(255, col[1] * k)
@@ -474,12 +490,15 @@ export class Weather {
 
   /** Moves everything in the air to `now` (s) and lays it into the cells. */
   paint(now: number, p: Palette, wind: Wind, v: WeatherView) {
-    for (const i of this.touched) this.alpha[i] = this.tile[i] = 0
+    for (const i of this.touched) this.alpha[i] = this.tile[i] = this.wet[i] = 0
     this.touched = []
     const dt = this.lastPaint < 0 ? 0 : clamp(now - this.lastPaint, 0, 0.1)
     this.lastPaint = now
     const a = this.amount
     const { W, cw, ch } = v
+    this.cw = cw
+    this.ch = ch
+    this.globeAt = v.globe
     const k = p.ink
     const breeze = wind.base()
 
@@ -628,7 +647,6 @@ export class Weather {
           z: 0,
           land: 0,
           splash: 0,
-          hit: false,
         }
         this.dropFrom(d, v, slant)
         d.y = Math.random() * d.land
@@ -658,6 +676,7 @@ export class Weather {
         slant < 0.3
           ? [RAIN_HEAD, RAIN, RAIN_TAIL]
           : [SLANT_HEAD, SLANT_HEAD, SLANT_TAIL]
+      this.wetting = true
       for (let n = 0; n < this.drops.length; n++) {
         const d = this.drops[n]
         if (d.splash > 0) {
@@ -669,9 +688,6 @@ export class Weather {
           if (d.y >= d.land) {
             d.y = d.land
             d.splash = SPLASH_FOR * (1 + d.z)
-            // A drop aimed at a flower head taps it: a gentle nudge, a few hundredths of a
-            // click's, felt more than seen. (A third of a click's laid the meadow over.)
-            d.hit = d.hit && n < rainN && v.tap(d.x, d.y, 0.012 + 0.02 * d.z)
           }
         }
         if (n >= rainN) continue
@@ -684,14 +700,13 @@ export class Weather {
         const lc = d.z < 0.4 ? landFar : light
         if (d.splash > 0) {
           // A dot where it lands; most drops throw two droplets up and out, which fall back.
-          // On a flower, the droplets sit on the petals.
           const t = 1 - d.splash / (SPLASH_FOR * (1 + d.z))
           const sc = r >= landRow ? lc : dc
           const ss = r >= landRow ? Math.min(1, base * 1.3) : s
           this.plot(c, r, SPLASH, ss * (1 - 0.6 * t), sc, k)
           if (splashTile && d.z > 0.3)
             this.lightTile(c, r, (0.1 + 0.2 * d.z) * (1 - t))
-          if (d.z > 0.4 || d.hit) {
+          if (d.z > 0.4) {
             const up = t < 0.5 ? 1 : 0
             this.plot(c - 1, r - up, SPRAY, ss * 0.7 * (1 - t), sc, k)
             this.plot(c + 1, r - up, SPRAY, ss * 0.7 * (1 - t), sc, k)
@@ -714,6 +729,7 @@ export class Weather {
           )
         }
       }
+      this.wetting = false
       if (rainN === 0) this.drops = []
     }
 
@@ -1027,10 +1043,6 @@ export class Weather {
     // Leaning drops start further left, so they cover the left edge too.
     d.x = Math.random() * (v.W + slant * v.H) - slant * v.H
     d.splash = 0
-    // A drop in the meadow whose path crosses a flower head lands on it instead of the ground.
-    const head = d.z > 0.3 ? v.headOn(d.x, d.y, slant, d.land) : -1
-    d.hit = head >= 0
-    if (d.hit) d.land = head
   }
 
   private flakeFrom(f: Flake, v: WeatherView) {
@@ -1052,7 +1064,7 @@ export class Weather {
   }
 
   clear() {
-    for (const i of this.touched) this.alpha[i] = this.tile[i] = 0
+    for (const i of this.touched) this.alpha[i] = this.tile[i] = this.wet[i] = 0
     this.touched = []
     this.lastPaint = -1
     this.glow = null

@@ -374,8 +374,6 @@ export function mountGarden({
         ch: ascii.ch,
         horizon: garden.horizon,
         cloud: ascii.cloudShape,
-        tap: garden.tap,
-        headOn: garden.headOn,
         globe: garden.globe(scene),
       })
       ascii.render({
@@ -675,6 +673,7 @@ export function mountGarden({
     while (acc >= STEP && steps < MAX_STEPS) {
       if (gust > 0) gust = Math.max(0, gust - STEP / 5)
       const calmWind = breeze + weather.gale
+      wind.unsteady = weather.unsteady
       wind.strength =
         gust > 0
           ? calmWind +
