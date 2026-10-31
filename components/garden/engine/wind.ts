@@ -21,6 +21,8 @@ const GUST_CAP = 0.45
 export class Wind {
   /** User-set strength multiplier. */
   strength = 1
+  /** A small push either way, varying along the meadow and over time: rain's unsteady air. */
+  unsteady = 0
   time = 0
   width = 1
   pointer: Pointer = {
@@ -60,6 +62,7 @@ export class Wind {
     // flat: uncapped, the strongest bent a cosmos 40° and laid its head on the bio.
     const g = gust * envelope * 1.25
     let w = this.base() + s * (GUST_CAP * Math.tanh(g / GUST_CAP) + flutter)
+    if (this.unsteady) w += this.unsteady * noise1(x * 0.012 + t * 1.3, 17)
 
     const p = this.pointer
     if (p.active && p.pressed) {

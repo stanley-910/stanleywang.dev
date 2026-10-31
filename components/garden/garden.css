@@ -88,6 +88,15 @@ html:has(.garden-home, .poem-page) body {
   --glass: #ebeae6;
 }
 
+/* The garden doesn't recede behind the bar (a box there cut a dim rectangle out of the eclipse's
+   glow); a halo close round each glyph holds the words instead, as on the phone's bio. */
+:root[data-sky] .site-header a {
+  text-shadow:
+    0 0 1px color-mix(in srgb, var(--glass) 60%, transparent),
+    0 0 4px color-mix(in srgb, var(--glass) 45%, transparent),
+    0 0 10px color-mix(in srgb, var(--glass) 28%, transparent);
+}
+
 /* The home text sits on the scene's dark ground at every hour, so it keeps
    the night page's colours; its hover cards take the hour's panel. */
 .garden-hero {
