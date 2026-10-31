@@ -902,6 +902,11 @@ export function mountGarden({
 
   const onVisibility = () => (document.hidden ? stop() : start())
 
+  // A page that scrolls over a fixed scene (the poem) carries the top bar away under it, so its
+  // fade follows as it goes rather than every half second. Read here, before the frame writes
+  // the hour's colours, the boxes cost no extra restyle.
+  const onScroll = () => measure()
+
   // The terminal's meadow commands (lib/meadow-control.ts).
   const onControl = (e: Event) => {
     const command = (e as CustomEvent<MeadowCommand>).detail
@@ -951,6 +956,7 @@ export function mountGarden({
   sized.observe(canvas)
 
   window.addEventListener('wheel', onWheel, { passive: false })
+  window.addEventListener('scroll', onScroll, { passive: true })
   window.addEventListener('touchstart', onTouchStart, { passive: true })
   window.addEventListener('touchmove', onTouchMove, { passive: false })
   window.addEventListener('touchend', onTouchEnd)
@@ -1002,6 +1008,7 @@ export function mountGarden({
     seen.disconnect()
     sized.disconnect()
     window.removeEventListener('wheel', onWheel)
+    window.removeEventListener('scroll', onScroll)
     window.removeEventListener('touchstart', onTouchStart)
     window.removeEventListener('touchmove', onTouchMove)
     window.removeEventListener('touchend', onTouchEnd)

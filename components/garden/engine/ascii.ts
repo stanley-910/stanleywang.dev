@@ -201,8 +201,22 @@ export class AsciiRenderer {
     }
   }
 
-  setDimBoxes(boxes: Rect[]) {
-    // Measured every half second; the boxes rarely move.
+  setDimBoxes(all: Rect[]) {
+    // Measured every half second, and as the page scrolls.
+    const { cols, rows, cw, ch, dim } = this
+    // A wide, gentle fade: the garden recedes behind the text rather than stopping at a box. Kept
+    // light, now the flowers stop under the tree line and rarely stand behind the bio. A nav word
+    // fades over 4 cells instead.
+    const padOf = (b: Rect) => (b.light ? cw * 4 : cw * 11)
+    // A box whose fade lies off the grid (the top bar scrolled away over the poem) drops out, so
+    // the key settles once it's gone rather than changing with every scroll.
+    const boxes = all.filter(
+      (b) =>
+        b.right + padOf(b) > 0 &&
+        b.left - padOf(b) < cols * cw &&
+        b.bottom + padOf(b) > 0 &&
+        b.top - padOf(b) < rows * ch,
+    )
     const key = boxes
       .map(
         (b) =>
@@ -211,15 +225,11 @@ export class AsciiRenderer {
       .join(';')
     if (key === this.dimKey) return
     this.dimKey = key
-    const { cols, rows, cw, ch, dim } = this
     dim.fill(1)
-    // A wide, gentle fade: the garden recedes behind the text rather than stopping at a box. Kept
-    // light, now the flowers stop under the tree line and rarely stand behind the bio.
-    const wide = cw * 11
     for (const b of boxes) {
       // A nav word takes two-fifths of the bio's dimming, fading over 4 cells: enough to read on a
       // busy sky without cutting a box out of the eclipse's glow.
-      const pad = b.light ? cw * 4 : wide
+      const pad = padOf(b)
       const floor = b.light ? 0.75 : 0.38
       const c0 = Math.max(0, Math.floor((b.left - pad) / cw))
       const c1 = Math.min(cols - 1, Math.floor((b.right + pad) / cw))
