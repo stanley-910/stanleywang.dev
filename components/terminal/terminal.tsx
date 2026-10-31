@@ -76,36 +76,36 @@ const SHEETS: [string, string][] = [
   ['waves.exe', './waves.exe'],
 ]
 type Item = [string, string, string?] | null
+// file holds the preferences, as a File menu would: the hour, the breeze, the weather.
 const MENUS: [string, Item[]][] = [
-  ['Shell', [['Clear', 'clear', '⌃L'], null, ['Close', 'exit', '`']]],
-  ['Go', PLACES.map(([n, p]) => [n[0].toUpperCase() + n.slice(1), cdTo(p)])],
   [
-    'Meadow',
+    'file',
     [
-      ['Follow my clock', 'time now'],
-      ['Sunrise', 'time 6:30'],
-      ['Sunset', 'time 19:05'],
-      ['Midnight', 'time 0:00'],
+      ['follow my clock', 'time now'],
+      ['sunrise', 'time 6:30'],
+      ['sunset', 'time 19:05'],
+      ['midnight', 'time 0:00'],
       null,
-      ['Gust', './waves.exe'],
-      ['Calm', 'wind 0.05'],
-      ['Breezy', 'wind 0.6'],
+      ['gust', './waves.exe'],
+      ['calm', 'wind 0.05'],
+      ['breezy', 'wind 0.6'],
       null,
-      ['Rain', 'weather rain'],
-      ['Snow', 'weather snow'],
-      ['Storm', 'weather storm'],
-      ['Eclipse', 'weather eclipse'],
-      ['Clear', 'weather clear'],
+      ['rain', 'weather rain'],
+      ['snow', 'weather snow'],
+      ['storm', 'weather storm'],
+      ['eclipse', 'weather eclipse'],
+      ['clear', 'weather clear'],
       null,
-      ['Regrow', 'regrow'],
+      ['regrow', 'regrow'],
     ],
   ],
+  ['go', PLACES.map(([n, p]) => [n, cdTo(p)])],
   [
-    'Help',
+    'help',
     [
-      ['Commands', 'help'],
-      ['Work', 'work'],
-      ['Projects', 'projects'],
+      ['commands', 'help'],
+      ['work', 'work'],
+      ['projects', 'projects'],
     ],
   ],
 ]
@@ -859,9 +859,7 @@ export function Terminal() {
               </span>
               <h2>
                 Terminal {RELEASE}
-                {path !== '~' && (
-                  <i> — {path[2].toUpperCase() + path.slice(3)}</i>
-                )}
+                {path !== '~' && <i> — {path.slice(2)}</i>}
               </h2>
             </header>
 
