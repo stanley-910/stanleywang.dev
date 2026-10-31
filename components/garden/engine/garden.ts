@@ -205,6 +205,9 @@ export class Garden {
   } | null = null
   /** The middle ridge's forest rows, back to front, and the spruce stands on the near ridge. */
   private forest: Shape[] = []
+  /** A low treeline along the near ridge's crest, and the highest point of it. */
+  private scrub = new Shape()
+  private scrubTop = 0
   private spruce: Shape[] = []
   private treeTop = 0
   /** Plants sown by clicking, oldest first. */
@@ -859,6 +862,27 @@ export class Garden {
       }
       return shape
     })
+    // The near ridge's crest, bare, ran under the forest as one smooth pale arc. A low treeline
+    // along it, small spires on a canopy that rises in groves, breaks it into tree tops; it fills
+    // down to the horizon, where drawLand eases it into the meadow's colour.
+    const scrub = new Shape()
+    let scrubTop = hz
+    scrub.moveTo(-FOREST_STEP, hz + 2)
+    for (let x = -FOREST_STEP; x <= W + FOREST_STEP; x += FOREST_STEP) {
+      const grove = Math.max(0, fbm1(x / 60, seed + 909, 2) - 0.35) * 2.2 * CH
+      const rise = Math.max(
+        spire(x, 41, 1, 0.3, 0.7, 0.8 * tw),
+        0.7 * spire(x + 0.4 * tw, 42, 1, 0.3, 0.7, 0.6 * tw),
+      )
+      const y = Math.min(hz - 1, nearAt(x) - 0.25 * CH - grove - rise)
+      scrub.lineTo(x, y)
+      scrubTop = Math.min(scrubTop, y)
+    }
+    scrub.lineTo(W + FOREST_STEP, hz + 2)
+    scrub.closePath()
+    this.scrub = scrub
+    this.scrubTop = scrubTop
+    treeTop = Math.min(treeTop, scrubTop)
     // A few stands, placed by hand along the range, so the flowers keep open sky behind most of
     // them. A stand is left out only where it would stand over the home page's bio; the poem's text
     // crosses the whole scene, peaks and all, so it keeps them all.
@@ -1311,6 +1335,12 @@ export class Garden {
           ctx.fill(shape.toPath2D())
         })
       if (layer === 2) {
+        const fade = ctx.createLinearGradient(0, this.scrubTop, 0, this.horizon)
+        fade.addColorStop(0, css(trees.rows[2]))
+        fade.addColorStop(0.55, css(trees.rows[2]))
+        fade.addColorStop(1, css(colors[2]))
+        ctx.fillStyle = fade
+        ctx.fill(this.scrub.toPath2D())
         ctx.fillStyle = css(trees.spruce)
         for (const shape of this.spruce) ctx.fill(shape.toPath2D())
       }
@@ -1496,13 +1526,24 @@ export class Garden {
             back: false,
           }),
         )
-      if (layer === 2)
+      if (layer === 2) {
+        r.fill(this.scrub, trees.rows[2], Kind.Land, 1, {
+          id: LandMat.Canopy,
+          light: 0.5,
+          back: false,
+        })
+        r.gradient(this.scrub, this.scrubTop, this.horizon, [
+          [0, trees.rows[2], 1],
+          [0.55, trees.rows[2], 1],
+          [1, colors[2], 1],
+        ])
         for (const shape of this.spruce)
           r.fill(shape, trees.spruce, Kind.Land, 1, {
             id: LandMat.Spruce,
             light: 0.5,
             back: false,
           })
+      }
     })
     // The land's materials and slope light live in the meta layer, over the whole range.
     let top = this.treeTop
