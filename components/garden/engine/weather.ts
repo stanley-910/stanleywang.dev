@@ -314,7 +314,7 @@ export class Weather {
       case 'storm':
         return w === 'storm' ? 1 : 0
       case 'gale':
-        return w === 'wind' ? 1 : w === 'storm' ? 0.55 : 0
+        return w === 'storm' ? 0.55 : 0
       case 'eclipse':
         return w === 'eclipse' ? 1 : 0
     }
