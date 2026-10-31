@@ -1606,18 +1606,18 @@ export class Garden {
     }
   }
 
+  /** Where the sun or moon is and how much of each shows, for the weather's eclipse. */
+  globe(p: Palette) {
+    return { ...this.globeAt(), ...this.lights(p) }
+  }
+
   /** How strongly the ridge crest catches the light: under the moon, or as the sun sets behind it. */
   /** How much of the sun and the moon shows: the sun by day, the moon once the night is deep. */
   private lights(p: Palette) {
     const h = this.hour
     const day = h >= 6 && h < 18.5
     const moon = day ? 0 : smoothstep(0.5, 0.9, p.night) * p.moonlight
-    // The sun comes up over three quarters of an hour and goes down the same way, rather than
-    // switching on at six like a lamp.
-    const sun = day
-      ? smoothstep(6, 6.75, h) * (1 - smoothstep(17.75, 18.5, h))
-      : 0
-    return { sun, moon }
+    return { sun: sunAt(h), moon }
   }
 
   /** The sun's look by height: pale and round overhead; low, it swells, flattens and reddens. */
@@ -1704,6 +1704,16 @@ export class Garden {
       r.fill(seas, mix(p.globe, p.skyTop, 0.6), Kind.Fluff, moon)
     }
   }
+}
+
+/**
+ * How much of the sun shows at `hour`: it comes up over three quarters of an hour and goes down
+ * the same way, rather than switching on at six like a lamp.
+ */
+export function sunAt(hour: number) {
+  return hour >= 6 && hour < 18.5
+    ? smoothstep(6, 6.75, hour) * (1 - smoothstep(17.75, 18.5, hour))
+    : 0
 }
 
 /** Darker seas on the moon's face, as [x, y, rx, ry] in moon radii from its centre. */

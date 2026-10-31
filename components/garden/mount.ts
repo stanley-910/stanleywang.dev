@@ -11,7 +11,7 @@ import {
 
 import { AsciiRenderer, type Rect } from './engine/ascii'
 import { Birds, BY_DAY } from './engine/birds'
-import { Garden } from './engine/garden'
+import { Garden, sunAt } from './engine/garden'
 import { smoothstep } from './engine/math'
 import { Meteors, STILL_FOR } from './engine/meteors'
 import { mix, paletteAt, type Palette, type Rgb } from './engine/palette'
@@ -149,7 +149,7 @@ export function mountGarden({
   const weather = new Weather()
   weather.set(currentWeather(), true, reduced.matches)
   /** The hour's palette under the weather. */
-  const sceneAt = (h: number) => weather.tint(paletteAt(h))
+  const sceneAt = (h: number) => weather.tint(paletteAt(h), sunAt(h))
   const raster = new Raster()
   const ascii = new AsciiRenderer(canvas, font)
   const meteors = new Meteors()
@@ -369,6 +369,7 @@ export function mountGarden({
         cw: ascii.cw,
         ch: ascii.ch,
         horizon: garden.horizon,
+        globe: garden.globe(scene),
       })
       ascii.render({
         raster,

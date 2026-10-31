@@ -1,9 +1,10 @@
 // The meadow's weather (design/circadian-meadow/components/Terminal, Meadow effects): rain, snow,
-// fog and a gale, set from lib/weather.ts. Falling rain and snow and blown seed are overlay
-// glyphs, moved and painted here on the main thread each page draw like the shooting stars, a
-// few hundred at most and never one per cell. What changes the land or the sky (an overcast sky,
-// fog over the ridges, snow lying) is a palette shift in steps, so the cached backdrop repaints a
-// few dozen times over a change rather than every frame. Nothing here touches the grid.
+// a storm, a gale and an eclipse, set from lib/weather.ts. Falling rain and snow, blown seed,
+// lightning and the eclipse's corona are overlay glyphs, moved and painted here on the main thread
+// each page draw like the shooting stars, a few hundred at most and never one per cell. What
+// changes the land or the sky (an overcast sky, snow lying, the eclipse's light) is a palette shift
+// in steps, so the cached backdrop repaints a few dozen times over a change rather than every
+// frame. Nothing here touches the grid.
 
 import { clamp, hash, smoothstep } from './math'
 import { mix, type Palette, type Rgb } from './palette'
@@ -20,6 +21,10 @@ const SLANT_TAIL = code('`')
 const SPLASH = code('.')
 const FLAKES = [code('.'), code('·'), code('*')]
 const SEEDS = [code('~'), code(','), code('.')]
+const BOLT = { left: code('/'), right: code('\\'), down: code('|') }
+const CORONA = [code('·'), code(':')]
+/** What the moon's disc prints over the sun: a dim dot on a solid dark tile. */
+export const DISC = code('·')
 
 /** Most drops, flakes and seeds in the air at once. */
 const DROPS = 560
@@ -32,16 +37,52 @@ const SPLASH_FOR = 0.12
 const RATES = {
   rain: [1 / 3, 1 / 3],
   snow: [1 / 4, 1 / 4],
-  // Fog rolls in over twenty seconds and lifts in eight.
-  fog: [1 / 20, 1 / 8],
+  storm: [1 / 4, 1 / 4],
   gale: [1 / 3, 1 / 3],
   // Snow lies over a minute and melts in twenty seconds.
   cover: [1 / 60, 1 / 20],
+  // The moon crosses the sun in twelve seconds and leaves in eight.
+  eclipse: [1 / 12, 1 / 8],
 } as const
 type Effect = keyof typeof RATES
 
 /** Wind strength a full gale adds to the meadow's 0.2 breeze: strong, short of laying heads flat. */
 const GALE = 0.9
+/** Seconds between lightning strikes in a storm, at least and at most. */
+const STRIKE_GAP = [4, 11]
+/** How bright a strike lights the sky's glyphs at its peak; kept soft, never a white-out. */
+export const FLASH = 0.45
+
+/**
+ * The scene at a solar eclipse's totality: a deep indigo sky over a copper band all round the
+ * horizon (the sunset an eclipse throws on every side), the land gone to dusk, the corona pale.
+ */
+const hex = (h: string): Rgb => [
+  parseInt(h.slice(1, 3), 16),
+  parseInt(h.slice(3, 5), 16),
+  parseInt(h.slice(5, 7), 16),
+]
+const TOTALITY: Partial<Record<keyof Palette, Rgb>> = {
+  skyTop: hex('#151a33'),
+  skyHorizon: hex('#b8683e'),
+  haze: hex('#5b4a63'),
+  cloud: hex('#6c6386'),
+  hillFar: hex('#33324a'),
+  hillNear: hex('#22222b'),
+  ground: hex('#141416'),
+  pine: hex('#17181e'),
+  grassDark: hex('#25261f'),
+  grassLight: hex('#625d72'),
+  stem: hex('#4f5263'),
+  snow: hex('#a3a6c8'),
+  snowShade: hex('#4b4f70'),
+  globe: hex('#f4ead2'),
+  panelBg: hex('#141416'),
+}
+/** The moon's disc against the corona, and the copper of the moon in Earth's shadow. */
+const MOON_DARK = hex('#0c0d16')
+const BOLT_COL: Rgb = [238, 236, 255]
+const BLOOD = hex('#9a3f24')
 
 /** The palette moves in steps of this share, so the backdrop repaints only on a step. */
 const steps = (v: number, n: number) => Math.round(v * n) / n
@@ -78,7 +119,12 @@ export type WeatherView = {
   cw: number
   ch: number
   horizon: number
+  /** Where the sun or moon is, and how much of each shows (garden.ts). */
+  globe: { cx: number; cy: number; R: number; sun: number; moon: number }
 }
+
+/** A disc laid over the sun or moon this frame: the moon's, or Earth's shadow on the moon. */
+export type Disc = { x: number; y: number; R: number; col: Rgb; k: number }
 
 export class Weather {
   kind: WeatherKind = 'clear'
@@ -86,22 +132,34 @@ export class Weather {
   private amount: Record<Effect, number> = {
     rain: 0,
     snow: 0,
-    fog: 0,
+    storm: 0,
     gale: 0,
     cover: 0,
+    eclipse: 0,
   }
   /** Per cell, this frame: strength, glyph code and colour. Strength 0 is no particle. */
   alpha = new Float32Array(0)
   glyph = new Uint8Array(0)
   rgb = new Float32Array(0)
+  /** Per cell, this frame: how strongly the corona or a bolt lights the tile behind its glyph. */
+  tile = new Float32Array(0)
+  /** The colour those tiles take: the corona's, near enough a bolt's. */
+  readonly tileCol = TOTALITY.globe as Rgb
   /** Per cell column, this frame: how much a gust band lights the grass. Empty without a gale. */
   band = new Float32Array(0)
+  /** How much a lightning strike lights the sky this frame, 0 to 1. */
+  flash = 0
+  disc: Disc | null = null
   private touched: number[] = []
   private cols = 0
   private rows = 0
   private drops: Drop[] = []
   private flakes: Flake[] = []
   private seeds: Seed[] = []
+  /** The last strike's path, as cell column, row and glyph in turn, and when it struck. */
+  private bolt: number[] = []
+  private struck = -Infinity
+  private nextStrike = 0
   private lastPaint = -1
   /** Under reduced motion the weather is a still state: nothing falls or blows. */
   private still = false
@@ -116,16 +174,19 @@ export class Weather {
   }
 
   private target(k: Effect) {
+    const w = this.kind
     switch (k) {
       case 'rain':
-        return this.kind === 'rain' ? 1 : 0
+        return w === 'rain' || w === 'storm' ? 1 : 0
       case 'snow':
       case 'cover':
-        return this.kind === 'snow' ? 1 : 0
-      case 'fog':
-        return this.kind === 'fog' ? 1 : 0
+        return w === 'snow' ? 1 : 0
+      case 'storm':
+        return w === 'storm' ? 1 : 0
       case 'gale':
-        return this.kind === 'wind' ? 1 : 0
+        return w === 'wind' ? 1 : w === 'storm' ? 0.55 : 0
+      case 'eclipse':
+        return w === 'eclipse' ? 1 : 0
     }
   }
 
@@ -141,16 +202,18 @@ export class Weather {
     }
   }
 
-  /** Whether anything is falling or blowing, so the page should draw every display frame. */
+  /** Whether anything is falling, blowing or crossing, so the page should draw every display frame. */
   get moving() {
     const a = this.amount
-    return !this.still && a.rain + a.snow + a.gale > 0
+    if (this.still) return false
+    // The eclipse moves only while the moon is on its way; at totality it holds.
+    const crossing = a.eclipse > 0 && a.eclipse < 1
+    return a.rain + a.snow + a.gale > 0 || crossing
   }
 
-  /** Whether the weather differs from clear at all, or is still clearing. */
-  get any() {
-    const a = this.amount
-    return a.rain + a.snow + a.fog + a.gale + a.cover > 0
+  /** Whether any cell holds a drop, flake, seed, bolt or the corona this frame. */
+  get painted() {
+    return this.touched.length > 0
   }
 
   /** Wind strength the weather adds: a gale, and a little with rain. */
@@ -163,29 +226,33 @@ export class Weather {
     return steps(this.amount.cover, 60)
   }
 
-  /** The hour's palette under this weather: an overcast sky, fog over the ridges, snow lying. */
-  tint(p: Palette): Palette {
+  /**
+   * The hour's palette under this weather: an overcast sky, snow lying, an eclipse's light. `sun`
+   * is how much of the sun is up (garden.ts's sunAt): an eclipse by day is the sun's, by night
+   * the moon's.
+   */
+  tint(p: Palette, sun: number): Palette {
     const a = this.amount
     const grey = steps(Math.max(a.rain, 0.7 * a.snow), 12)
-    const fog = steps(a.fog, 16)
+    const storm = steps(a.storm, 12)
     const cover = this.cover
-    if (grey + fog + cover === 0) return p
+    const ecl = steps(a.eclipse, 24)
+    if (grey + cover + ecl === 0) return p
     const out = { ...p }
-    const mist = mix(p.haze, p.skyHorizon, 0.35)
-    // Rain and snow clouds: the haze in the ridges' shadow, so falling light marks read on them.
-    const overcast = mix(p.haze, p.hillNear, 0.45)
-    out.skyTop = mix(mix(p.skyTop, overcast, 0.55 * grey), p.haze, 0.3 * fog)
-    out.skyHorizon = mix(
-      mix(p.skyHorizon, overcast, 0.35 * grey),
-      mist,
-      0.6 * fog,
-    )
-    out.cloud = mix(p.cloud, overcast, 0.3 * grey)
-    out.haze = mix(p.haze, mist, fog)
-    // Far ridges first, then the near one.
-    out.hillFar = mix(p.hillFar, out.skyHorizon, 0.2 * grey + 0.75 * fog)
-    out.hillNear = mix(p.hillNear, out.skyHorizon, 0.08 * grey + 0.4 * fog)
-    out.pine = mix(p.pine, out.skyHorizon, 0.6 * fog)
+    if (grey > 0) {
+      // Rain and snow clouds: the haze in the ridges' shadow, so falling light marks read on
+      // them; a storm's darker still.
+      const overcast = mix(
+        mix(p.haze, p.hillNear, 0.45),
+        p.ground,
+        0.45 * storm,
+      )
+      out.skyTop = mix(p.skyTop, overcast, (0.55 + 0.3 * storm) * grey)
+      out.skyHorizon = mix(p.skyHorizon, overcast, (0.35 + 0.3 * storm) * grey)
+      out.cloud = mix(p.cloud, overcast, (0.3 + 0.2 * storm) * grey)
+      out.hillFar = mix(p.hillFar, out.skyHorizon, 0.2 * grey)
+      out.hillNear = mix(p.hillNear, out.skyHorizon, 0.08 * grey)
+    }
     if (cover > 0) {
       // A pale cover on the ground and the near ridge; the grass's tips take it most.
       out.hillNear = mix(out.hillNear, p.snowShade, 0.45 * cover)
@@ -194,21 +261,40 @@ export class Weather {
       out.grassLight = mix(p.grassLight, p.snow, 0.5 * cover)
       out.stem = mix(p.stem, p.snowShade, 0.2 * cover)
     }
-    return out
-  }
-
-  /** How thick the fog is at height `y`: pooled at the horizon, reaching back to front as it rolls in. */
-  fogAt(y: number, horizon: number, H: number) {
-    const f = this.amount.fog
-    if (f <= 0) return 0
-    if (y < horizon) {
-      const up = (horizon - y) / Math.max(1, horizon)
-      // It climbs the ridges as it thickens, so the far range goes before the near one.
-      return 0.85 * f * (1 - smoothstep(0.1 * f, 0.8 * f, up))
+    if (ecl > 0) {
+      if (sun <= 0) {
+        // At night the sky only warms a little toward the moon's copper.
+        out.skyTop = mix(out.skyTop, mix(out.skyTop, BLOOD, 0.25), ecl)
+        out.haze = mix(out.haze, BLOOD, 0.2 * ecl)
+      } else {
+        // The light goes most of the way to totality's only near the end of the crossing.
+        const k = smoothstep(0.35, 1, ecl) * sun
+        for (const key of Object.keys(TOTALITY) as (keyof Palette)[])
+          (out as Record<string, unknown>)[key] = mix(
+            out[key] as Rgb,
+            TOTALITY[key] as Rgb,
+            k,
+          )
+        // Flowers lose their colour toward the dusk ground; the stars come out.
+        for (const key of [
+          'poppy',
+          'poppyDeep',
+          'rose',
+          'roseDeep',
+          'roseLeaf',
+          'cosmos',
+          'cosmosVein',
+          'lace',
+          'dandelion',
+          'disc',
+          'fluff',
+        ] as const)
+          out[key] = mix(out[key], TOTALITY.ground as Rgb, 0.45 * k)
+        out.night = Math.max(p.night, 0.85 * k)
+        out.ink = p.ink + (Math.max(p.ink, 1.15) - p.ink) * k
+      }
     }
-    // The front of the meadow stays clear.
-    const into = (y - horizon) / Math.max(1, H - horizon)
-    return 0.8 * smoothstep(0, 0.3, 0.75 * f - into)
+    return out
   }
 
   resize(cols: number, rows: number) {
@@ -218,6 +304,7 @@ export class Weather {
     this.alpha = new Float32Array(n)
     this.glyph = new Uint8Array(n)
     this.rgb = new Float32Array(n * 3)
+    this.tile = new Float32Array(n)
     this.band = new Float32Array(cols)
     this.touched = []
     this.drops = []
@@ -252,7 +339,7 @@ export class Weather {
 
   /** Moves everything in the air to `now` (s) and lays it into the cells. */
   paint(now: number, p: Palette, wind: Wind, v: WeatherView) {
-    for (const i of this.touched) this.alpha[i] = 0
+    for (const i of this.touched) this.alpha[i] = this.tile[i] = 0
     this.touched = []
     const dt = this.lastPaint < 0 ? 0 : clamp(now - this.lastPaint, 0, 0.1)
     this.lastPaint = now
@@ -272,10 +359,94 @@ export class Weather {
     } else if (this.band[0] !== 0 || this.band[this.cols - 1] !== 0)
       this.band.fill(0)
 
+    // The eclipse: by day the moon's disc crosses the sun and a corona holds round it at
+    // totality; by night Earth's shadow reddens the moon. A still state under reduced motion.
+    this.disc = null
+    const e = a.eclipse
+    const globe = v.globe
+    if (e > 0 && W > 0 && globe.sun > 0) {
+      // A touch over the sun's radius, which swells a little as it sinks.
+      const R = globe.R * 1.12
+      // In from up and to the right.
+      const off = 1 - smoothstep(0, 1, e)
+      this.disc = {
+        x: globe.cx + off * 2.4 * R,
+        y: globe.cy - off * 0.7 * R,
+        R,
+        col: MOON_DARK,
+        k: 0.96 * smoothstep(0, 0.15, e) * globe.sun,
+      }
+      const ring = smoothstep(0.92, 1, e) * globe.sun
+      if (ring > 0) {
+        const reach = 1.75 * R
+        const c0 = Math.max(0, Math.floor((globe.cx - reach) / cw))
+        const c1 = Math.min(this.cols - 1, Math.ceil((globe.cx + reach) / cw))
+        const r0 = Math.max(0, Math.floor((globe.cy - reach) / ch))
+        const r1 = Math.min(this.rows - 1, Math.ceil((globe.cy + reach) / ch))
+        for (let r = r0; r <= r1; r++)
+          for (let c = c0; c <= c1; c++) {
+            const dx = (c + 0.5) * cw - globe.cx
+            const dy = (r + 0.5) * ch - globe.cy
+            const d = Math.hypot(dx, dy) / R
+            if (d < 1.02 || d > 1.75) continue
+            const fall = 1 - smoothstep(1.02, 1.75, d)
+            // Streamers: longer along a few directions, as a corona's are.
+            const streak = 0.55 + 0.45 * Math.cos(4 * Math.atan2(dy, dx) + 0.7)
+            if (hash(c, r, 31) > 0.2 + 0.7 * fall * streak) continue
+            const s = ring * (0.45 + 0.55 * fall)
+            this.plot(c, r, CORONA[d < 1.25 ? 1 : 0], s, this.tileCol, 1)
+            const i = r * this.cols + c
+            if (this.alpha[i] === Math.fround(s)) this.tile[i] = 0.5 * s * fall
+          }
+      }
+    } else if (e > 0 && W > 0 && globe.moon > 0) {
+      this.disc = {
+        x: globe.cx,
+        y: globe.cy,
+        R: globe.R,
+        col: BLOOD,
+        k: 0.7 * e * globe.moon,
+      }
+    }
+
+    this.flash = 0
     if (this.still || W === 0) return
 
+    // A storm's lightning: now and then a jagged bolt from the cloud down to the ridges, and the
+    // sky's glyphs flashing with it, twice and fading.
+    if (a.storm > 0.8 && now >= this.nextStrike) {
+      this.strike(v, now)
+      this.nextStrike =
+        now + STRIKE_GAP[0] + Math.random() * (STRIKE_GAP[1] - STRIKE_GAP[0])
+    }
+    const since = now - this.struck
+    if (since >= 0 && since < 1) {
+      this.flash =
+        since < 0.07
+          ? 1
+          : since < 0.14
+            ? 0.25
+            : since < 0.22
+              ? 0.8
+              : 0.8 * Math.exp(-(since - 0.22) * 7)
+      if (since < 0.3) {
+        const fade = since < 0.22 ? 1 : 1 - (since - 0.22) / 0.08
+        const b = this.bolt
+        // Three cells wide, its core lighting its tiles, so it reads on the fine grid.
+        for (let j = 0; j < b.length; j += 3) {
+          const [c, r, g] = [b[j], b[j + 1], b[j + 2]]
+          this.plot(c - 1, r, g, 0.55 * fade, BOLT_COL, 1)
+          this.plot(c + 1, r, g, 0.55 * fade, BOLT_COL, 1)
+          this.plot(c, r, g, fade, BOLT_COL, 1)
+          if (c >= 0 && c < this.cols && r >= 0 && r < this.rows)
+            this.tile[r * this.cols + c] = 0.7 * fade
+        }
+      }
+    }
+
     // Rain: streaks a few cells long, leaning with the wind, and a dot where each lands.
-    const rainN = Math.round(DROPS * a.rain)
+    // A storm's rain is heavier.
+    const rainN = Math.round(DROPS * a.rain * (0.8 + 0.2 * a.storm))
     if (rainN > 0 || this.drops.length) {
       const slant = clamp(0.1 + 0.3 * breeze, 0.08, 0.8)
       while (this.drops.length < DROPS) {
@@ -389,6 +560,25 @@ export class Weather {
     }
   }
 
+  /** A bolt from under the cloud to the ridges, one cell down a row, wandering as it goes. */
+  private strike(v: WeatherView, now: number) {
+    this.struck = now
+    let c = Math.floor(((0.15 + 0.7 * Math.random()) * v.W) / v.cw)
+    let r = Math.floor((0.12 * v.H) / v.ch)
+    const end = Math.floor((v.horizon - 0.05 * v.H * Math.random()) / v.ch)
+    const path: number[] = []
+    let lean = Math.random() < 0.5 ? -1 : 1
+    while (r < end) {
+      const roll = Math.random()
+      if (roll < 0.08) lean = -lean
+      const dc = roll < 0.45 ? lean : roll < 0.6 ? -lean : 0
+      path.push(c, r, dc < 0 ? BOLT.left : dc > 0 ? BOLT.right : BOLT.down)
+      c += dc
+      r++
+    }
+    this.bolt = path
+  }
+
   private dropFrom(d: Drop, v: WeatherView, slant: number) {
     d.z = Math.random()
     d.v = (0.7 + 0.5 * d.z) * v.H * 1.1
@@ -418,7 +608,7 @@ export class Weather {
   }
 
   clear() {
-    for (const i of this.touched) this.alpha[i] = 0
+    for (const i of this.touched) this.alpha[i] = this.tile[i] = 0
     this.touched = []
     this.lastPaint = -1
   }

@@ -2,11 +2,11 @@ import { createCompositor, type Compositor } from './gl'
 import { bayer, clamp, fbm2, hash, smoothstep } from './math'
 import { mix, type Palette, type Rgb } from './palette'
 import { CLOUD, code, GLYPHS, MAT, PLANT } from './typeset'
+import { DISC, FLASH, type Weather } from './weather'
 
 import type { Birds } from './birds'
 import type { Meteors } from './meteors'
 import type { Raster } from './raster'
-import type { Weather } from './weather'
 
 export type Rect = { left: number; top: number; right: number; bottom: number }
 
@@ -34,7 +34,7 @@ export type FrameInput = {
   meteors?: Meteors
   /** Birds in the day sky, already painted for this frame. */
   birds?: Birds
-  /** Rain, snow, fog and gusts, already painted for this frame. */
+  /** Rain, snow, gusts, lightning and the eclipse, already painted for this frame. */
   weather?: Weather
   /** Paints smooth shapes (hill silhouettes) between the sky gradient and the glyphs. */
   backdrop?: (ctx: CanvasRenderingContext2D) => void
@@ -332,11 +332,13 @@ export class AsciiRenderer {
     const flock = birds?.alive ? birds : null
     const reach = 0.3 * H
     // Weather: drops and flakes in the air, snow capping whatever stands, gust bands in the grass.
-    const fall = weather?.moving ? weather : null
+    const fall = weather?.painted ? weather : null
     const cover = weather?.cover ?? 0
     const band = weather && weather.gale > 0 ? weather.band : null
     const [snR, snG, snB] = p.snow
     const [glR, glG, glB] = p.grassLight
+    const disc = weather?.disc
+    const flash = weather ? weather.flash * FLASH : 0
     for (let r = 0; r < rows; r++) {
       const y = r * ch + ch / 2
       const skyRow = y < horizon
@@ -352,8 +354,7 @@ export class AsciiRenderer {
       const refresh = tick === -1 || r % 3 === tick
       const py = y - pointer.y
       const lit = pointer.active && Math.abs(py) < lightR
-      const fog = weather ? weather.fogAt(y, horizon, H) : 0
-      const [fgR, fgG, fgB] = p.skyHorizon
+      const discRow = disc && Math.abs(y - disc.y) < disc.R ? disc : null
       for (let c = 0; c < cols; c++) {
         const i = r * cols + c
         const o = i * 4
@@ -365,8 +366,9 @@ export class AsciiRenderer {
         let t = 0
         // A shooting star lights its cell's tile, in place of the raster's.
         let glowing = false
-        // How far snow lying on this cell turns its tile white.
-        let capped = 0
+        // How far snow lying on this cell, or the eclipse's disc, turns its tile their colour.
+        let over = 0
+        let overCol = p.snow
         const f = flags[i]
         if (f & MAT) {
           g = glyph[i]
@@ -463,7 +465,7 @@ export class AsciiRenderer {
             bayer(c, r) < cover * 1.1
           ) {
             const kk = 0.8 * cover
-            capped = kk
+            over = kk
             cr += (snR * k - cr) * kk
             cg += (snG * k - cg) * kk
             cb += (snB * k - cb) * kk
@@ -478,16 +480,27 @@ export class AsciiRenderer {
             a += (1 - a) * 0.4 * band[c]
           }
         }
-        // Fog thins the glyphs out in a dither and fades the rest toward itself.
-        if (g && fog > 0) {
-          if (bayer(c, r) < fog * 0.75) {
-            g = 0
-            t = 0
-          } else {
-            cr += (fgR - cr) * fog
-            cg += (fgG - cg) * fog
-            cb += (fgB - cb) * fog
-            t *= 1 - fog
+        // The moon over the sun, or Earth's shadow on the moon: a solid disc of its colour.
+        if (discRow) {
+          const dx = c * cw + cw / 2 - discRow.x
+          const dy = y - discRow.y
+          if (dx * dx + dy * dy < discRow.R * discRow.R) {
+            const [dr, dg, db] = discRow.col
+            const kk = discRow.k
+            if (!g) {
+              g = DISC
+              cr = dr
+              cg = dg
+              cb = db
+              a = 0.3
+            } else {
+              cr += (dr - cr) * kk
+              cg += (dg - cg) * kk
+              cb += (db - cb) * kk
+            }
+            t = Math.max(t, kk)
+            over = kk
+            overCol = discRow.col
           }
         }
         if (fall && fall.alpha[i] > 0) {
@@ -498,7 +511,21 @@ export class AsciiRenderer {
             cg = fall.rgb[i * 3 + 1]
             cb = fall.rgb[i * 3 + 2]
             a = wa
+            // The corona lights its tiles, as a shooting star does.
+            if (fall.tile[i] > 0) {
+              t = Math.max(t, fall.tile[i] * dim[i])
+              over = 1
+              overCol = fall.tileCol
+            }
           }
+        }
+        // Lightning lights the sky's glyphs, and the land's a little.
+        if (flash > 0 && g) {
+          const kk = flash * (skyRow ? 1 : 0.35)
+          cr += (240 - cr) * kk
+          cg += (238 - cg) * kk
+          cb += (255 - cb) * kk
+          a += (1 - a) * kk
         }
         // A bird is a silhouette over anything in its band of sky: open sky, cloud or the sun.
         let shadow = false
@@ -550,9 +577,9 @@ export class AsciiRenderer {
           const tr = tc[i * 3]
           const tg = tc[i * 3 + 1]
           const tb = tc[i * 3 + 2]
-          tileData[o] = tr + (snR - tr) * capped
-          tileData[o + 1] = tg + (snG - tg) * capped
-          tileData[o + 2] = tb + (snB - tb) * capped
+          tileData[o] = tr + (overCol[0] - tr) * over
+          tileData[o + 1] = tg + (overCol[1] - tg) * over
+          tileData[o + 2] = tb + (overCol[2] - tb) * over
           tileData[o + 3] = t * 255
         } else tileData[o + 3] = 0
       }

@@ -245,21 +245,16 @@
   outline-offset: 0;
 }
 
-/* The weather: its five words as one row of items, the one set in ink. */
+/* The weather: its six words as two rows of items, the one set in ink. */
 .time-control-weather {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   margin: 0 calc(var(--inset) / -2) calc(var(--inset) / -2);
 }
 
 .time-control-weather .time-control-item {
   width: auto;
-  flex: 1 1 auto;
-  justify-content: center;
   margin: 0;
-}
-
-.time-control-weather .time-control-item:first-child {
-  justify-content: flex-start;
 }
 
 .time-control-weather .time-control-item[aria-pressed='true'] {
