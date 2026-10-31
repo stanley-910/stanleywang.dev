@@ -10,11 +10,11 @@ The three ridges (`buildRidges`) were bare halftone silhouettes. They differed b
 
 ## Related
 
-| Component | Shared | Missing |
-|---|---|---|
-| Grass tufts | clumps of line glyphs with bare ground between | trees are rigid, upright and stacked by depth; they don't sway |
-| Far flowers | a bare motif with no tile, behind nearer heads | trees aren't subjects; they're a texture with an edge |
-| Land halftone | dithered fill on the painted ridge | the forest needs a silhouette of its own: a serrated top edge |
+| Component     | Shared                                         | Missing                                                        |
+| ------------- | ---------------------------------------------- | -------------------------------------------------------------- |
+| Grass tufts   | clumps of line glyphs with bare ground between | trees are rigid, upright and stacked by depth; they don't sway |
+| Far flowers   | a bare motif with no tile, behind nearer heads | trees aren't subjects; they're a texture with an edge          |
+| Land halftone | dithered fill on the painted ridge             | the forest needs a silhouette of its own: a serrated top edge  |
 
 ## Design
 
@@ -28,12 +28,16 @@ The three ridges (`buildRidges`) were bare halftone silhouettes. They differed b
 
 **How it prints.** Forests are a painted silhouette like the ridges, with sparse glyphs over it. A first try with glyphs alone (one `^` per tree) was nearly invisible: a 7px caret in a colour close to the ridge's. Trees size to about one glyph cell per 1.25% of the screen height, or of 0.62 × the range's drawn width when that's smaller, so a stand doesn't tower over a tall phone's peaks.
 
-| Where | Painted | Glyphs |
-|---|---|---|
-| Near stands | each tree's tiered outline in `*-pine` mixed 35% toward `*-ground`, the darkest mark on the land | `/` and `\` down the flanks, sparse `:` inside |
-| Middle ridge | three staggered rows of low canopy, back to front, each starting lower on the slope than the one behind (0, 12% and 30% of the ridge's height). The back row runs the full width; the second covers 0–18%, 27–60% and 74–100% of it; the front 10–20%, 42–56% and 82–95% and one narrow spire per 2.6-cell slot (0.8–2, 0.9–2.3 and 1–2.6 cells tall). The back row is `*-pine` mixed 38% toward the ridge colour and 12% toward `*-haze`; the middle row 16% toward the ridge colour; the front row 14% toward `*-ground`. | sparse `^` and `|` inside, none on the top row |
+| Where        | Painted                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Glyphs                                         |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ----------------------------- |
+| Near stands  | each tree's tiered outline in `*-pine` mixed 35% toward `*-ground`, the darkest mark on the land                                                                                                                                                                                                                                                                                                                                                                                                                            | `/` and `\` down the flanks, sparse `:` inside |
+| Middle ridge | three staggered rows of low canopy, back to front, each starting lower on the slope than the one behind (0, 12% and 30% of the ridge's height). The back row runs the full width; the second covers 0–18%, 27–60% and 74–100% of it; the front 10–20%, 42–56% and 82–95% and one narrow spire per 2.6-cell slot (0.8–2, 0.9–2.3 and 1–2.6 cells tall). The back row is `*-pine` mixed 38% toward the ridge colour and 12% toward `*-haze`; the middle row 16% toward the ridge colour; the front row 14% toward `*-ground`. | sparse `^` and `                               | ` inside, none on the top row |
 
-Toward the end of a stretch, the spires drop out one by one and the canopy sinks into the ridge, so a stand thins to single trees. Don't round the band off: an earlier version lowered the whole band's top toward the ends and every short stretch read as a hedge-shaped mound. 
+Each row has two ranks of spires, the second shorter (70%) and set between the first at 0.8 × the pitch, so crowns overlap and the row reads as a mass of trees, not a fence of single ones. The canopy rises by up to about a cell in groves every few trees, and only rises: groves that also dipped sank the canopy below the ridge's crest and bared it as smooth pale domes.
+
+**The ridges under it.** The middle ridge's swell is shallow (±1% of the height, with a ±0.6% shorter roll), and the near ridge stays a low rise (1.6% ± 0.6%) under the middle crest. When the near ridge swelled to 5%, it hid the forest except for humps poking over it, and its edge read as one smooth arc.
+
+Toward the end of a stretch, the spires drop out one by one and the canopy sinks into the ridge, so a stand thins to single trees. Don't round the band off: an earlier version lowered the whole band's top toward the ends and every short stretch read as a hedge-shaped mound.
 
 No glyphs on the top edges: the painted silhouettes draw the serration. (Tried `^` tips along the top; they doubled the edge.)
 
@@ -49,8 +53,8 @@ Glyphs are the tree's colour mixed toward `*-cloud`. A tree wins its cell from t
 
 New, per keyframe, in `palette.ts` and `tokens.json`:
 
-| Token | day | golden | sunset | twilight | night | dawn |
-|---|---|---|---|---|---|---|
+| Token    | day       | golden    | sunset    | twilight  | night     | dawn      |
+| -------- | --------- | --------- | --------- | --------- | --------- | --------- |
 | `*-pine` | `#3c4744` | `#3d3a35` | `#2a1a29` | `#191322` | `#0f161d` | `#3a3f43` |
 
 The palette's midnight keyframe takes `#06090d`. `*-pine` keeps the land's rule: little hue by day, a cool dark grey-green, never a saturated green.

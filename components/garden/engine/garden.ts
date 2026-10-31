@@ -608,10 +608,18 @@ export class Garden {
     }
     // The middle ridge is a low, gently rolling band, forested along its crest. With knolls, the
     // tree rows piled up on each one into a dark spiked pyramid.
+    // A single broad swell read as one smooth arc under the trees, so the swell is shallow and a
+    // shorter roll breaks it up.
     const midAt = (x: number) =>
-      this.horizon - H * (0.042 + 0.036 * (fbm1(x / 420, seed + 101, 3) - 0.5))
+      this.horizon -
+      H *
+        (0.042 +
+          0.02 * (fbm1(x / 420, seed + 101, 3) - 0.5) +
+          0.012 * (fbm1(x / 130, seed + 103, 2) - 0.5))
+    // The near ridge stays a low, gentle rise under the middle ridge's crest. Taller, its swell
+    // hid the forest but for pale humps poking over it, and read as one smooth arc.
     const nearAt = (x: number) =>
-      this.horizon - H * 0.035 * (0.55 + fbm1(x / 680, seed + 202, 3) * 0.9)
+      this.horizon - H * (0.016 + 0.012 * (fbm1(x / 680, seed + 202, 3) - 0.5))
     const far = new Float32Array(n)
     const mid = new Float32Array(n)
     const near = new Float32Array(n)
@@ -798,6 +806,7 @@ export class Garden {
       t: number,
       hMin: number,
       hVar: number,
+      tw: number,
     ) => {
       const i = Math.floor(x / tw + hash(salt, 3, seed) * 0.5)
       if (hash(i, salt * 11 + 5, seed) > 0.15 + 0.85 * t) return 0
@@ -824,13 +833,21 @@ export class Garden {
           k === 0
             ? 0.03
             : 0.12 + 0.2 * (fbm1(x / 45, seed + 505 + k * 9, 3) - 0.5)
-        const top = m + Math.min(0.92, f + R.drop) * (hz - m)
+        // Groves: the canopy rises a cell or so here and there, every few trees, so the treetops
+        // don't trace the ridge's curve as one smooth line. Only up: sunk below the crest, it
+        // bared the ridge behind as smooth domes.
+        const grove =
+          Math.max(0, fbm1(x / 70, seed + 707 + k * 9, 2) - 0.4) * 3 * CH
+        const top = m + Math.min(0.92, f + R.drop) * (hz - m) - grove
         const t = taper(k, x)
         const canopy = top + (1 - smoothstep(0.5, 1, t)) * (hz - top)
-        const y = Math.max(
-          m - 2.4 * CH,
-          Math.min(canopy, hz - 2) - spire(x, 1 + k * 10, t, R.hMin, R.hVar),
+        // Two ranks of spires, the second shorter and set between the first, so crowns overlap
+        // and the row reads as a mass of trees rather than a fence of single ones.
+        const rise = Math.max(
+          spire(x, 1 + k * 10, t, R.hMin, R.hVar, tw),
+          0.7 * spire(x + 0.5 * tw, 2 + k * 10, t, R.hMin, R.hVar, 0.8 * tw),
         )
+        const y = Math.max(m - 2.4 * CH, Math.min(canopy, hz - 2) - rise)
         if (last < 0) shape.moveTo(x, hz + 2)
         shape.lineTo(x, y)
         treeTop = Math.min(treeTop, y)

@@ -57,7 +57,7 @@ A distant bird, as people draw one: a body cell and a wing either side, traced a
 
 ### Colour and weight
 
-A silhouette, not a light: `mix(pine, ground, 0.7)` at full strength, mixed toward the sky behind it as the sky's other glyphs are. It isn't boosted by `ink` (that's for light glyphs) and the cursor's light doesn't lift it. The glyphs carry the shape. Only the body shades its tile, at 0.1: a first pass shaded every cell (body 0.7, wings 0.55) and the bird printed as a row of solid blocks, coarser than anything else in the sky. It sits under the text fade (`dim`) like the rest of the sky.
+A silhouette, not a light: `pine` taken 20% toward black, at full strength, mixed toward the sky behind it as the sky's other glyphs are. It isn't boosted by `ink` (that's for light glyphs) and the cursor's light doesn't lift it. The glyphs carry the shape, over a light tile: the body at 0.35, the wings at 0.15. A first pass shaded every cell (body 0.7, wings 0.55) and the bird printed as a row of solid blocks, coarser than anything else in the sky; then only the body at 0.1, and in `mix(pine, ground, 0.7)` the bird was too thin to find. It sits under the text fade (`dim`) like the rest of the sky.
 
 ### How many
 

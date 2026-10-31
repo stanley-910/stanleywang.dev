@@ -35,8 +35,12 @@ const BEAT = 3
 /** How far the height drifts over a crossing, in rows. */
 const DRIFT = 0.6
 const STRENGTH = 1
-/** How strongly the body shades its tile, so the bird keeps a little weight at the scene's small cells. */
-const TILE = 0.1
+/**
+ * How strongly the body and the wings shade their tiles, so the bird keeps its weight at the
+ * scene's small cells instead of thinning to a stroke.
+ */
+const TILE = 0.35
+const WING_TILE = 0.15
 
 /** Where birds may fly this frame, in scene px: the scene's size, its cells and the height band. */
 export type Sky = {
@@ -203,7 +207,7 @@ export class Birds {
     for (const i of this.touched) this.alpha[i] = 0
     this.touched = []
     if (!this.list.length) return
-    this.col = mix(p.pine, p.ground, 0.7)
+    this.col = mix(p.pine, [0, 0, 0], 0.2)
     const { cw, ch } = this
     let a = STRENGTH
     const put = (c: number, r: number, g: number, tile: number) => {
@@ -251,7 +255,7 @@ export class Birds {
                     ? STEEP_L
                     : STEEP_R
                   : MID
-          put(c0 + d * j, r, g, 0)
+          put(c0 + d * j, r, g, WING_TILE)
         }
       }
       return true

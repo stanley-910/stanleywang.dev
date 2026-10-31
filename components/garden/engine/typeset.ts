@@ -374,7 +374,10 @@ export class Typesetter {
   private back = new Uint8Array(0)
   /** Motif glyphs stamped over far heads and insects this frame: glyph code, ink, tile and its colour. */
   private stamp = new Uint16Array(0)
-  /** Cells under a nearer, fully drawn head, which a far head's motif must not print over. */
+  /**
+   * Cells under a nearer, fully drawn head, which a far head's motif must not print over: 1, or 2
+   * under a head still opening, whose rim prints solid.
+   */
   private nearHead = new Uint8Array(0)
   private stampCol = new Float32Array(0)
   private stampTile = new Float32Array(0)
@@ -509,8 +512,10 @@ export class Typesetter {
                 g = code(LINES[edge])
                 // A rim inside the head, where one petal's edge lies over another, keeps the
                 // body under it; only the head's outer rim thins, so the field never shows inside.
+                // A head still opening is nearly all rim, its petals cupped slivers: thinned, it
+                // printed as a see-through outline over the flowers behind, so it stays solid.
                 tile[i] =
-                  this.petalsAround(c, r) >= 3
+                  this.petalsAround(c, r) >= 3 || this.nearHead[i] === 2
                     ? body
                     : body * 0.7 * Math.min(1, v * 1.4)
                 ;[cr, cg, cb] = mix([cr, cg, cb], ink, 0.7 * reach)
@@ -945,10 +950,12 @@ export class Typesetter {
     const { cols, rows, cw, ch, kinds, stamp, stampCol, stampTile, nearHead } =
       this
     stamp.fill(0)
-    // Heads big enough to draw in full are nearer than any motif, so mark what they cover first.
+    // Heads drawn in full are nearer than any motif, so mark what they cover first: those big
+    // enough, and small ones still opening, which draw their petals before they take a motif.
     nearHead.fill(0)
     for (const h of heads) {
-      if ((2 * h.r) / cw < 5.5) continue
+      if ((2 * h.r) / cw < 5.5 && h.alpha >= 0.3) continue
+      const mark = h.alpha < 1 ? 2 : 1
       const cc = h.x / cw
       const rr = h.y / ch
       const rx = h.r / cw
@@ -964,7 +971,7 @@ export class Typesetter {
           c++
         )
           if (((c + 0.5 - cc) / rx) ** 2 + ((r + 0.5 - rr) / ry) ** 2 <= 1)
-            nearHead[r * cols + c] = 1
+            nearHead[r * cols + c] = Math.max(nearHead[r * cols + c], mark)
     }
     for (const h of heads) {
       const across = (2 * h.r) / cw
