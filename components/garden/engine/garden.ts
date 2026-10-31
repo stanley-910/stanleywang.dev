@@ -724,30 +724,30 @@ export class Garden {
    */
   private buildRiver() {
     const H = this.height
-    const W = this.width
     const hz = this.horizon
     const seed = LAND_SEED * 17
     const CH = Math.min(H, 0.62 * this.rangeWidth) * 0.0125
-    const clear = this.keepClearColumn ? null : this.keepClear
+    // Laid out like the range, on its own proportions and never the text's, so every screen and
+    // zoom shows the same river, a phone a crop of it as it is of the hills.
+    const U = Math.min(H, 0.62 * this.rangeWidth)
     // Half its breadth: the far landscape's perspective, not the flowers', which are inches tall
     // and close. In proportion to how far below the horizon it lies, so it opens up as it nears.
     const width = (y: number, breadth: number) =>
-      (2 + 0.24 * (y - hz)) * breadth
+      (0.0015 * U + 0.24 * (y - hz)) * breadth
     // It comes in from off the left edge and crosses in two broad bends into the middle of the
-    // forest: it turns from coming toward us to running across, dips once above the bio, and
-    // slips in under the central trees. Placed by hand: across the screen, and down in px, kept
-    // within the room above the text where it crosses over it.
-    const room = clear ? Math.max(24, clear.top - 0.04 * H - hz) : 0.1 * H
-    const left = clear && clear.left > 0.12 * W ? clear.left : 0.25 * W
-    const pts: [number, number][] = [
-      [0.5 * W, 0],
-      [0.44 * W, 0.3 * room],
-      [0.34 * W, 0.75 * room],
-      [left + 0.04 * W, 0.8 * room],
-      [0.6 * left, room + 0.03 * H],
-      [0.15 * left, room + 0.09 * H],
-      [-0.12 * W, room + 0.17 * H],
-    ]
+    // forest. Placed by hand: shares of the range across, and of U down from the horizon.
+    const pts: [number, number][] = (
+      [
+        [0.52, 0],
+        [0.43, 0.01],
+        [0.35, 0.026],
+        [0.3, 0.052],
+        [0.21, 0.078],
+        [0.1, 0.092],
+        [0, 0.12],
+        [-0.1, 0.17],
+      ] as const
+    ).map(([u, f]) => [this.rangeX(u), f * U])
     const raw: [number, number][] = []
     for (let j = 0; j < pts.length - 1; j++)
       for (let q = 0; q < 40; q++) {
@@ -788,18 +788,7 @@ export class Garden {
         // Its breadth swells and narrows along the way, pools in the bends and runs at the necks.
         line[k][2] = 0.85 + 0.35 * fbm1((k / L) * 6, seed + 3, 2)
     }
-    // Kept clear of the bio, banks and all: over the text it's held up toward the trees.
-    if (clear)
-      for (const q of line) {
-        const w = width(q[1], q[2])
-        if (
-          q[0] + 1.9 * w > clear.left - 0.01 * W &&
-          q[0] - 1.9 * w < clear.right
-        )
-          q[1] = Math.min(q[1], clear.top - 0.025 * H - 0.6 * w)
-        q[1] = Math.max(q[1], hz + 3)
-      }
-    // Smoothed, so the course bends without kinks where it was held.
+    // Smoothed, so the bends run without kinks where the points meet.
     for (let pass = 0; pass < 24; pass++)
       for (let k = 1; k < line.length - 1; k++)
         for (const d of [0, 1])
