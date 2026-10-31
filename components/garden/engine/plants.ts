@@ -157,6 +157,11 @@ export abstract class Plant {
     this.rush = { from: this.age, to: Math.max(this.age, this.openAge()), t: 0 }
   }
 
+  /** How far a click's flower has come up, 0..1, or null when it isn't coming up. */
+  protected get sowing() {
+    return this.rush?.t ?? null
+  }
+
   update(dt: number, env: Env) {
     const q = this.rush
     const sown = q?.t === 0
@@ -397,6 +402,20 @@ export class Poppy extends Plant {
     const t = this.age
     const G = this.G
     const bloomEnd = G + 20 + this.B
+    // Sown by a click, the stalk rises evenly and the hooked bud starts lifting before it's
+    // done, swelling all the while, then opens as it comes upright: on its own clock the
+    // stalk shot up, stopped, and hung hooked before the head flicked up.
+    const u = this.sowing
+    if (u !== null)
+      return {
+        growth: 0.12 + 0.88 * smoothstep(0, 0.6, u),
+        nod: 1 - smoothstep(0.35, 0.8, u),
+        bud: lerp(0.35, 1, smoothstep(0, 0.55, u)),
+        open: smoothstep(0.55, 1, u),
+        shed: 0,
+        pod: 0,
+        wither: 0,
+      }
     return {
       growth: 0.12 + 0.88 * easeOut(t / G),
       nod: 1 - smoothstep(G + 8, G + 14, t),
