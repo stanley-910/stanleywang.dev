@@ -58,7 +58,7 @@ const shellFont = JetBrains_Mono({
 type Entry =
   | { kind: 'cmd'; path: string; text: string }
   | { kind: 'out'; lines: string[] }
-  | { kind: 'boot' }
+  | { kind: 'boot'; id: number }
 
 const PLACES: [string, string][] = [
   ['meadow', '~'],
@@ -90,6 +90,8 @@ const MENUS: [string, Item[]][] = [
       ['clear', 'weather clear'],
       null,
       ['regrow', 'regrow'],
+      null,
+      ['reboot', 'reboot'],
     ],
   ],
   ['Go', PLACES.map(([n, p]) => [n, cdTo(p)])],
@@ -104,8 +106,9 @@ const MENUS: [string, Item[]][] = [
 ]
 
 const BOOT_KEY = 'terminal-booted'
-const LOADING = 'Entering the simulation...'
-const LOADING_ZH = '正在進入模擬'
+const LOADING = 'Loading portfolio...'
+// The loading line passes through these on its way to the English.
+const LOADING_ON = ['正在載入作品集', 'Завантаження портфоліо...']
 const GLITCH = '!@#$%^&*()_+-=[]{}|;:,.<>?~©λ'
 
 const isNight = (h: number) => !(h >= LIGHT_FROM && h < DARK_FROM)
@@ -213,12 +216,17 @@ function Prompt({ path }: { path: string }) {
 /**
  * The old site's opening, cut to a couple of seconds and told as a small OS
  * starting its simulation: a few kernel lines with the real hour and wind, then the loading line
- * types itself in Chinese and glitches over into English. Any key skips it.
+ * turns over like a dial, Chinese to Ukrainian to English, each pass starting from the left
+ * before the last one reaches the end. Any key skips it.
  */
+const zone = () =>
+  new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' })
+    .formatToParts(new Date())
+    .find((p) => p.type === 'timeZoneName')?.value ?? ''
 const bootLines = (hour: number, wind: number) => [
   `{m|[ 0.000000]} stanley-wang ${VERSION} {m|(dev@adm-3a)}`,
   `{m|[ 0.000412]} mounting {h|/dev/sda1}`,
-  `{m|[ 0.001187]} clock {y|${hhmm(hour)}} {m|· ${phase(hour)}}`,
+  `{m|[ 0.001187]} clock {y|${hhmm(hour)} ${zone()}}{m|, ${phase(hour)}}`,
   `{m|[ 0.001903]} wind {y|${wind.toFixed(2)}}`,
   `{m|[ 0.002260]} starting interface {g|[ OK ]}`,
 ]
@@ -245,34 +253,30 @@ function Boot({
       timers.push(window.setTimeout(f, ms))
     lines.forEach((_, i) => later(90 + i * 110, () => setShown(i + 1)))
     const t0 = 90 + lines.length * 110 + 200
-    // The Chinese types in, then each character glitches over to the English.
-    for (let i = 0; i < LOADING.length; i++) {
-      if (i < LOADING_ZH.length)
-        later(t0 + i * 40, () =>
-          setChars((c) => {
-            const n = [...c]
-            n[i] = LOADING_ZH[i]
-            return n
-          }),
-        )
-      const at = t0 + 700 + i * 22
-      for (let g = 0; g < 5; g++)
-        later(at + g * 24, () =>
-          setChars((c) => {
-            const n = [...c]
-            n[i] = GLITCH[Math.floor(Math.random() * GLITCH.length)]
-            return n
-          }),
-        )
-      later(at + 120, () =>
-        setChars((c) => {
-          const n = [...c]
-          n[i] = LOADING[i]
-          return n
-        }),
-      )
-    }
-    later(t0 + 700 + LOADING.length * 22 + 600, () => done.current())
+    // Each pass sweeps left to right, one character every STEP, glitching
+    // a moment before it lands; the next pass starts LAG behind it.
+    const passes = [...LOADING_ON, LOADING]
+    const width = Math.max(...passes.map((p) => p.length))
+    const STEP = 30
+    const LAG = 360
+    const put = (i: number, ch: string) =>
+      setChars((c) => {
+        const n = [...c]
+        n[i] = ch
+        return n
+      })
+    passes.forEach((text, k) => {
+      for (let i = 0; i < width; i++) {
+        const at = t0 + k * LAG + i * STEP
+        for (let g = 0; g < 3; g++)
+          later(at + g * 24, () =>
+            put(i, GLITCH[Math.floor(Math.random() * GLITCH.length)]),
+          )
+        later(at + 72, () => put(i, text[i] ?? ''))
+      }
+    })
+    const end = t0 + (passes.length - 1) * LAG + width * STEP + 72
+    later(end + 600, () => done.current())
     const skip = (e: KeyboardEvent) => {
       if (e.key === '`') return
       done.current()
@@ -490,7 +494,9 @@ export function Terminal() {
       '(prefers-reduced-motion: reduce)',
     ).matches
     setEntries(
-      booted || reduced ? [{ kind: 'out', lines: HINT }] : [{ kind: 'boot' }],
+      booted || reduced
+        ? [{ kind: 'out', lines: HINT }]
+        : [{ kind: 'boot', id: Date.now() }],
     )
   }, [open, closing, focusInput])
 
@@ -605,6 +611,7 @@ export function Terminal() {
         return
       }
       let cleared = false
+      let rebooted = false
       const print = (lines: string[]) =>
         setEntries((e) => [...e, { kind: 'out', lines }])
       const ctx: Ctx = {
@@ -651,6 +658,7 @@ export function Terminal() {
         open: (url) => window.open(url, '_blank', 'noopener,noreferrer'),
         copy: (s) => void navigator.clipboard?.writeText(s).catch(() => {}),
         clear: () => (cleared = true),
+        reboot: () => (rebooted = true),
         close: () => hide(),
       }
       const out = run(text, ctx)
@@ -659,7 +667,8 @@ export function Terminal() {
         hist.current.at = hist.current.list.length
       }
       if (head === 'exit') return
-      if (cleared) setEntries([])
+      if (rebooted) setEntries([{ kind: 'boot', id: Date.now() }])
+      else if (cleared) setEntries([])
       else
         setEntries((e) => [
           ...e,
@@ -1023,7 +1032,7 @@ export function Terminal() {
                     {entries.map((e, i) =>
                       e.kind === 'boot' ? (
                         <Boot
-                          key={i}
+                          key={e.id}
                           hour={hour}
                           wind={wind}
                           onDone={() =>
