@@ -6,6 +6,7 @@ import { CLOUD, code, GLYPHS, MAT, PLANT } from './typeset'
 import type { Birds } from './birds'
 import type { Meteors } from './meteors'
 import type { Raster } from './raster'
+import type { Weather } from './weather'
 
 export type Rect = { left: number; top: number; right: number; bottom: number }
 
@@ -33,6 +34,8 @@ export type FrameInput = {
   meteors?: Meteors
   /** Birds in the day sky, already painted for this frame. */
   birds?: Birds
+  /** Rain, snow, fog and gusts, already painted for this frame. */
+  weather?: Weather
   /** Paints smooth shapes (hill silhouettes) between the sky gradient and the glyphs. */
   backdrop?: (ctx: CanvasRenderingContext2D) => void
   /** Changes whenever the backdrop would paint differently, beyond the palette. */
@@ -257,6 +260,7 @@ export class AsciiRenderer {
       pointer,
       meteors,
       birds,
+      weather,
     } = input
     if (veil >= 1) {
       // Another page: nothing but the page colour.
@@ -327,6 +331,12 @@ export class AsciiRenderer {
     const glint = streaks?.glint
     const flock = birds?.alive ? birds : null
     const reach = 0.3 * H
+    // Weather: drops and flakes in the air, snow capping whatever stands, gust bands in the grass.
+    const fall = weather?.moving ? weather : null
+    const cover = weather?.cover ?? 0
+    const band = weather && weather.gale > 0 ? weather.band : null
+    const [snR, snG, snB] = p.snow
+    const [glR, glG, glB] = p.grassLight
     for (let r = 0; r < rows; r++) {
       const y = r * ch + ch / 2
       const skyRow = y < horizon
@@ -342,6 +352,8 @@ export class AsciiRenderer {
       const refresh = tick === -1 || r % 3 === tick
       const py = y - pointer.y
       const lit = pointer.active && Math.abs(py) < lightR
+      const fog = weather ? weather.fogAt(y, horizon, H) : 0
+      const [fgR, fgG, fgB] = p.skyHorizon
       for (let c = 0; c < cols; c++) {
         const i = r * cols + c
         const o = i * 4
@@ -353,6 +365,8 @@ export class AsciiRenderer {
         let t = 0
         // A shooting star lights its cell's tile, in place of the raster's.
         let glowing = false
+        // How far snow lying on this cell turns its tile white.
+        let capped = 0
         const f = flags[i]
         if (f & MAT) {
           g = glyph[i]
@@ -440,6 +454,52 @@ export class AsciiRenderer {
             cb = Math.min(255, cb)
           }
         }
+        if (g && f & MAT) {
+          // Snow settles on the top of each head and stem, a few more cells each step.
+          if (
+            cover > 0 &&
+            f & PLANT &&
+            (r === 0 || !(flags[i - cols] & PLANT)) &&
+            bayer(c, r) < cover * 1.1
+          ) {
+            const kk = 0.8 * cover
+            capped = kk
+            cr += (snR * k - cr) * kk
+            cg += (snG * k - cg) * kk
+            cb += (snB * k - cb) * kk
+            a = Math.max(a, 0.75 * cover * dim[i])
+          }
+          // A gust band lights the grass it passes over.
+          if (band && !skyRow && !(f & PLANT) && band[c] > 0) {
+            const kk = 0.6 * band[c]
+            cr += (glR * k - cr) * kk
+            cg += (glG * k - cg) * kk
+            cb += (glB * k - cb) * kk
+            a += (1 - a) * 0.4 * band[c]
+          }
+        }
+        // Fog thins the glyphs out in a dither and fades the rest toward itself.
+        if (g && fog > 0) {
+          if (bayer(c, r) < fog * 0.75) {
+            g = 0
+            t = 0
+          } else {
+            cr += (fgR - cr) * fog
+            cg += (fgG - cg) * fog
+            cb += (fgB - cb) * fog
+            t *= 1 - fog
+          }
+        }
+        if (fall && fall.alpha[i] > 0) {
+          const wa = fall.alpha[i] * dim[i]
+          if (wa >= 0.06 && (!g || wa > a * 0.6)) {
+            g = fall.glyph[i]
+            cr = fall.rgb[i * 3]
+            cg = fall.rgb[i * 3 + 1]
+            cb = fall.rgb[i * 3 + 2]
+            a = wa
+          }
+        }
         // A bird is a silhouette over anything in its band of sky: open sky, cloud or the sun.
         let shadow = false
         if (flock && skyRow && flock.alpha[i] > 0) {
@@ -487,9 +547,12 @@ export class AsciiRenderer {
           tileData[o + 3] = t * 255
         } else if (t > 0) {
           const tc = glowing && streaks ? streaks.rgb : tileCol
-          tileData[o] = tc[i * 3]
-          tileData[o + 1] = tc[i * 3 + 1]
-          tileData[o + 2] = tc[i * 3 + 2]
+          const tr = tc[i * 3]
+          const tg = tc[i * 3 + 1]
+          const tb = tc[i * 3 + 2]
+          tileData[o] = tr + (snR - tr) * capped
+          tileData[o + 1] = tg + (snG - tg) * capped
+          tileData[o + 2] = tb + (snB - tb) * capped
           tileData[o + 3] = t * 255
         } else tileData[o + 3] = 0
       }

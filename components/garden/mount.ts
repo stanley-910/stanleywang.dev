@@ -2,6 +2,12 @@
 // ascii-garden prototype (its main.ts, minus the dev control panel).
 
 import { currentHour, HOUR_EVENT, setHour } from '@/lib/circadian'
+import {
+  currentWeather,
+  isWeather,
+  setWeather,
+  WEATHER_EVENT,
+} from '@/lib/weather'
 
 import { AsciiRenderer, type Rect } from './engine/ascii'
 import { Birds, BY_DAY } from './engine/birds'
@@ -10,6 +16,7 @@ import { smoothstep } from './engine/math'
 import { Meteors, STILL_FOR } from './engine/meteors'
 import { mix, paletteAt, type Palette, type Rgb } from './engine/palette'
 import { Raster } from './engine/raster'
+import { Weather } from './engine/weather'
 import { Wind } from './engine/wind'
 import { playIntro } from './intro'
 import { Quality } from './quality'
@@ -137,6 +144,12 @@ export function mountGarden({
   let starTimer = 0
   const wind = new Wind()
   wind.strength = windStrength
+  /** The breeze without the weather's gale, which eases in on top of it. */
+  const breeze = windStrength
+  const weather = new Weather()
+  weather.set(currentWeather(), true, reduced.matches)
+  /** The hour's palette under the weather. */
+  const sceneAt = (h: number) => weather.tint(paletteAt(h))
   const raster = new Raster()
   const ascii = new AsciiRenderer(canvas, font)
   const meteors = new Meteors()
@@ -272,7 +285,7 @@ export function mountGarden({
   /** The plant frame the page last drew. */
   let drawn = -1
   /** The palette of the plant frame on screen, worked out once per frame that comes back. */
-  let shownPalette = { version: -1, palette: paletteAt(hour) }
+  let shownPalette = { version: -1, palette: sceneAt(hour) }
 
   /**
    * Records the scene and draws the latest rasterised frame. In the loop the
@@ -283,7 +296,7 @@ export function mountGarden({
   const draw = (now = false, fresh = false) => {
     // Nothing to draw into until the canvas has a size.
     if (width === 0) return
-    const palette = paletteAt(hour)
+    const palette = sceneAt(hour)
     const page = pageFor(palette)
     matchEdge(palette)
     matchSky(palette)
@@ -338,7 +351,7 @@ export function mountGarden({
     if (shownPalette.version !== raster.version)
       shownPalette = {
         version: raster.version,
-        palette: Number.isNaN(shown) ? palette : paletteAt(shown),
+        palette: Number.isNaN(shown) ? palette : sceneAt(shown),
       }
     const scene = shown === hour ? palette : shownPalette.palette
     garden.hour = Number.isNaN(shown) ? hour : shown
@@ -350,6 +363,13 @@ export function mountGarden({
         scene.night < BY_DAY && !reduced.matches ? skyFor() : null,
       )
       birds.paint(secs, scene)
+      weather.paint(secs, scene, wind, {
+        W: width,
+        H: height,
+        cw: ascii.cw,
+        ch: ascii.ch,
+        horizon: garden.horizon,
+      })
       ascii.render({
         raster,
         palette: scene,
@@ -360,6 +380,7 @@ export function mountGarden({
         pointer: wind.pointer,
         meteors,
         birds,
+        weather,
         backdrop: (ctx) => garden.backdrop(ctx, scene),
         backdropKey: garden.backdropKey(scene),
       })
@@ -400,6 +421,7 @@ export function mountGarden({
     raster.resize(ascii.cols, ascii.rows, ascii.cw, ascii.ch)
     meteors.resize(ascii.cols, ascii.rows)
     birds.resize(ascii.cols, ascii.rows)
+    weather.resize(ascii.cols, ascii.rows)
     if (w !== width || h !== height) {
       width = w
       height = h
@@ -632,9 +654,11 @@ export function mountGarden({
       hour = localHour()
       showHour()
     }
-    const palette = paletteAt(hour)
+    weather.step(dt)
+    const palette = sceneAt(hour)
     let steps = 0
     while (acc >= STEP && steps < MAX_STEPS) {
+      wind.strength = breeze + weather.gale
       wind.step(STEP)
       garden.step(STEP, palette)
       acc -= STEP
@@ -652,7 +676,12 @@ export function mountGarden({
     // Between plant frames only the cursor's light and a shooting star move, so a new hour alone
     // (the poem's scroll) draws the page only when a plant frame comes back. A shooting star needs
     // every display frame, but doesn't move the plants.
-    quality.calm = touched > LIVELY_FOR && scrubVel === 0 && !meteors.alive
+    // Rain, snow and blown seed likewise.
+    quality.calm =
+      touched > LIVELY_FOR &&
+      scrubVel === 0 &&
+      !meteors.alive &&
+      !weather.moving
     quality.idle = quality.calm && still > IDLE_AFTER
     quality.frameMs = raster.frameMs
     // A window out of use but under the cursor or the wheel isn't away.
@@ -672,19 +701,23 @@ export function mountGarden({
     // None hangs half drawn when the scene comes back.
     meteors.clear()
     birds.clear()
+    weather.clear()
     sendHour()
   }
 
   const start = () => {
     stop()
     garden.holdStill(reduced.matches)
+    // Reduced motion turned on or off: the weather becomes a still state, or moves again.
+    weather.set(currentWeather(), reduced.matches, reduced.matches)
     if (!visible || document.hidden) return
     if (reduced.matches) {
       garden.skipIntro()
       // Let the stems settle into the breeze, then hold still.
+      wind.strength = breeze + weather.gale
       for (let i = 0; i < 2 / STEP; i++) {
         wind.step(STEP)
-        garden.step(STEP, paletteAt(hour))
+        garden.step(STEP, sceneAt(hour))
       }
       draw(true)
       return
@@ -826,6 +859,21 @@ export function mountGarden({
 
   const onVisibility = () => (document.hidden ? stop() : start())
 
+  // The terminal's meadow commands, a `meadowcontrol` event on window: the weather here.
+  const onControl = (e: Event) => {
+    const command = (e as CustomEvent<{ kind?: string; value?: unknown }>)
+      .detail
+    if (command?.kind === 'weather' && isWeather(command.value))
+      setWeather(command.value)
+  }
+
+  // The weather set here, from the site menu or the terminal (lib/weather.ts).
+  const onWeather = () => {
+    weather.set(currentWeather(), reduced.matches, reduced.matches)
+    // Held still, it's a still state, drawn once; otherwise it eases in over the next frames.
+    if (reduced.matches) start()
+  }
+
   // A window on screen but out of use keeps its meadow moving, slowly (quality.ts).
   let unfocused = false
   /** When the window last went out of use. */
@@ -863,6 +911,8 @@ export function mountGarden({
   reduced.addEventListener('change', start)
   document.addEventListener('visibilitychange', onVisibility)
   window.addEventListener(HOUR_EVENT, onHourChange)
+  window.addEventListener('meadowcontrol', onControl)
+  window.addEventListener(WEATHER_EVENT, onWeather)
 
   showHour()
   onFocus()
@@ -874,7 +924,7 @@ export function mountGarden({
       // With reduced motion it stands at the stage scrolled to rather than easing there.
       if (!reduced.matches) return
       rose.age = rose.goal
-      for (let i = 0; i < 30; i++) garden.step(STEP, paletteAt(hour))
+      for (let i = 0; i < 30; i++) garden.step(STEP, sceneAt(hour))
       draw(true)
     },
   })
@@ -887,7 +937,7 @@ export function mountGarden({
   })
 
   if (process.env.NODE_ENV === 'development') {
-    Object.assign(window, { garden, ascii, wind })
+    Object.assign(window, { garden, ascii, wind, weather })
   }
 
   return () => {
@@ -915,6 +965,8 @@ export function mountGarden({
     document.removeEventListener('visibilitychange', onVisibility)
     raster.dispose()
     window.removeEventListener(HOUR_EVENT, onHourChange)
+    window.removeEventListener('meadowcontrol', onControl)
+    window.removeEventListener(WEATHER_EVENT, onWeather)
     delete html.dataset.sky
     html.style.removeProperty('--garden-ink')
     html.style.removeProperty('--garden-ink-muted')
