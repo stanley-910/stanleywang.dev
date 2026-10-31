@@ -22,6 +22,8 @@ import {
   itemsAt,
   markdownLines,
   POST_SOURCES,
+  RELEASE,
+  VERSION,
   parse,
   pathFor,
   phase,
@@ -115,11 +117,61 @@ const GLITCH = '!@#$%^&*()_+-=[]{}|;:,.<>?~©λ'
 
 const isNight = (h: number) => !(h >= LIGHT_FROM && h < DARK_FROM)
 
+/** A small icon drawn cell by cell, on the bitmap face's grid like the close x: `#` is ink. */
+function Pixels({ rows }: { rows: string[] }) {
+  const w = rows[0].length
+  return (
+    <svg
+      viewBox={`0 0 ${w} ${rows.length}`}
+      width={w}
+      height={rows.length}
+      aria-hidden
+    >
+      {rows.flatMap((row, y) =>
+        [...row].map((c, x) =>
+          c === '#' ? (
+            <rect key={`${x},${y}`} x={x} y={y} width="1" height="1" />
+          ) : null,
+        ),
+      )}
+    </svg>
+  )
+}
+
+const PROMPT_ICON = [
+  '#........',
+  '.#.......',
+  '..#......',
+  '...#.....',
+  '..#......',
+  '.#.......',
+  '#...#####',
+]
+const FOLDER_ICON = [
+  '###......',
+  '#########',
+  '#.......#',
+  '#.......#',
+  '#.......#',
+  '#.......#',
+  '#########',
+]
+
 function Line({ text }: { text: string }) {
   return (
     <>
       {parse(text).map(([t, c], i) =>
-        c ? (
+        c === 'l' ? (
+          <a
+            key={i}
+            className="l"
+            href={t}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {t}
+          </a>
+        ) : c ? (
           <span key={i} className={c}>
             {t}
           </span>
@@ -149,7 +201,7 @@ function Prompt({ path }: { path: string }) {
  * types itself in Chinese and glitches over into English. Any key skips it.
  */
 const bootLines = (hour: number, wind: number) => [
-  `{m|[ 0.000000]} stanley-wang 26.10 {m|(dev@sim)}`,
+  `{m|[ 0.000000]} stanley-wang ${VERSION} {m|(dev@sim)}`,
   `{m|[ 0.000412]} mounting {h|/dev/sim0}`,
   `{m|[ 0.001187]} clock {y|${hhmm(hour)}} {m|· ${phase(hour)}}`,
   `{m|[ 0.001903]} wind {y|${wind.toFixed(2)}}`,
@@ -803,7 +855,7 @@ export function Terminal() {
                 </button>
               </span>
               <h2>
-                stanley-wang 26.10
+                stanley-wang {RELEASE}
                 {path !== '~' && <i> — {path.slice(2)}</i>}
               </h2>
             </header>
@@ -846,15 +898,19 @@ export function Terminal() {
               <span className="views">
                 <button
                   aria-pressed={view === 'shell'}
+                  aria-label="Shell"
+                  title="Shell"
                   onClick={() => setView('shell')}
                 >
-                  Shell
+                  <Pixels rows={PROMPT_ICON} />
                 </button>
                 <button
                   aria-pressed={view === 'files'}
+                  aria-label="Files"
+                  title="Files"
                   onClick={() => setView('files')}
                 >
-                  Files
+                  <Pixels rows={FOLDER_ICON} />
                 </button>
               </span>
             </nav>

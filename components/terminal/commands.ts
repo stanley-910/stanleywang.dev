@@ -10,7 +10,8 @@ import { isWeather, WEATHERS, type WeatherKind } from '@/lib/weather'
 
 // The terminal's commands (design/circadian-meadow/components/Terminal). Each
 // returns its output as lines of light markup: {g|text} a command, {u|text}
-// you, {h|text} a place, {m|text} muted, {y|text} a value, {e|text} an error.
+// you, {h|text} a place, {m|text} muted, {y|text} a value, {e|text} an error,
+// {l|url} a link.
 // Help's descriptions are the old terminal site's words; the meadow's lines
 // are drafts.
 
@@ -57,6 +58,13 @@ export const pathFor = (route: string) =>
 export const routeFor = (path: string) => ROUTES[path] ?? '/'
 
 const GITHUB = 'https://github.com/stanley-910'
+
+/** The build this is (next.config.mjs): its month's release and its commit. */
+export const RELEASE = process.env.NEXT_PUBLIC_RELEASE ?? 'dev'
+const COMMIT = process.env.NEXT_PUBLIC_COMMIT ?? ''
+export const VERSION = COMMIT ? `${RELEASE}-${COMMIT.slice(0, 7)}` : RELEASE
+const BUILT = process.env.NEXT_PUBLIC_BUILT
+const SOURCE = 'https://github.com/stanley-910/stanleywang.dev'
 const LINKEDIN = 'https://www.linkedin.com/in/notstanleywang/'
 
 // Kept from the old site's docs, word for word. The poems live only here, not
@@ -159,6 +167,7 @@ const NAMES = [
   'pwd',
   'echo',
   'whoami',
+  'uname',
   'date',
   'history',
   'clear',
@@ -435,6 +444,20 @@ export function run(input: string, ctx: Ctx): string[] {
       return [args.slice(1).join(' ')]
     case 'whoami':
       return ['dev']
+    case 'uname': {
+      if (a !== '-a') return ['stanley-wang']
+      const when = BUILT
+        ? new Date(BUILT).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+          })
+        : 'now'
+      return [
+        `stanley-wang sim ${VERSION} {m|built ${when}}`,
+        ...(COMMIT ? [`{l|${SOURCE}/commit/${COMMIT.slice(0, 7)}}`] : []),
+      ]
+    }
     case 'date': {
       const d = new Date()
       return [
@@ -562,7 +585,7 @@ export function markdownLines(md: string) {
 /** One output line's markup as [text, class] runs. */
 export function parse(line: string): [string, string][] {
   const out: [string, string][] = []
-  const re = /\{([gumhye])\|([^{}]*)\}/g
+  const re = /\{([gumhyel])\|([^{}]*)\}/g
   let last = 0
   let m: RegExpExecArray | null
   while ((m = re.exec(line))) {
