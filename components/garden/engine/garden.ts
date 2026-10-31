@@ -245,11 +245,12 @@ export class Garden {
   /** Overrides the moon's phase (0 new, 0.5 full) for testing; null follows the calendar. */
   moonPhase: number | null = null
   private grownFor = 0
-  /** The glow's dithered alpha, cached by its size, and the same tinted for this frame. */
+  /** The glow's dithered alpha, cached by its size, and the same tinted, with the tint's colour. */
   private glow: {
     key: string
     mask: HTMLCanvasElement
     tint: HTMLCanvasElement
+    tinted: string
   } | null = null
   readonly env: Env
 
@@ -1736,13 +1737,16 @@ export class Garden {
         }
         mctx.putImageData(img, 0, 0)
       }
-      this.glow = { key, mask, tint }
+      this.glow = { key, mask, tint, tinted: '' }
     }
     const { mask, tint } = this.glow
-    const tctx = tint.getContext('2d')
+    // A repaint that only moves the glow keeps its tint.
+    const fill = css(col)
+    const tctx = this.glow.tinted === fill ? null : tint.getContext('2d')
     if (tctx) {
+      this.glow.tinted = fill
       tctx.globalCompositeOperation = 'copy'
-      tctx.fillStyle = css(col)
+      tctx.fillStyle = fill
       tctx.fillRect(0, 0, tint.width, tint.height)
       tctx.globalCompositeOperation = 'destination-in'
       tctx.drawImage(mask, 0, 0)
@@ -1785,8 +1789,9 @@ export class Garden {
     const { sun, moon } = this.lights(p)
     if (sun + moon <= 0) return ''
     const { cx, cy } = this.globeAt()
+    // In steps of 8, so the moon's colour drifting with the clock doesn't repaint it every tick.
     const col = (sun ? this.sunLook(p) : this.moonLook(p)).color.map(
-      (v) => v | 0,
+      (v) => (v | 0) >> 3,
     )
     return `${Math.round(cx / 4)},${Math.round(cy / 4)},${sun.toFixed(2)},${moon.toFixed(2)},${(this.moonPhase ?? moonPhaseNow()).toFixed(3)},${col}`
   }

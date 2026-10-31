@@ -544,7 +544,8 @@ export class Poppy extends Plant {
         // The dark heart and blotches lean to the deep red, so they print as part of the cup
         // rather than as grey glyphs over it.
         blotch: hidden ? undefined : mix(shade(p.disc, 0.9), p.poppyDeep, 0.45),
-        throat: hidden ? 0 : 0.28,
+        // Under a few cells across, the throat is too small to tell from the petal: left out.
+        throat: hidden || H < 3 * r.minLine ? 0 : 0.28,
         haze: p.haze,
         hazeAmount: 0,
         attached: (k) => k >= this.shed,
@@ -585,28 +586,31 @@ export class Poppy extends Plant {
             0.95,
           )
           const [u, v] = basis(axis)
-          const pollen = new Shape()
-          const fleck = Math.max(H * 0.035, r.minLine * 0.45)
-          for (let i = 0; i < 12; i++) {
-            const a = (i / 12) * TAU + this.seed
-            const reach = H * (i % 2 ? 0.21 : 0.26)
-            const [x, y] = project(
-              tx,
-              ty,
-              axis,
-              [u, v],
-              Math.cos(a) * reach,
-              Math.sin(a) * reach,
-              H * 0.08,
+          // On a far head the flecks are under a cell and print as nothing: left out.
+          const fleck = H * 0.035
+          if (fleck >= r.minLine * 0.45) {
+            const pollen = new Shape()
+            for (let i = 0; i < 12; i++) {
+              const a = (i / 12) * TAU + this.seed
+              const reach = H * (i % 2 ? 0.21 : 0.26)
+              const [x, y] = project(
+                tx,
+                ty,
+                axis,
+                [u, v],
+                Math.cos(a) * reach,
+                Math.sin(a) * reach,
+                H * 0.08,
+              )
+              pollen.moveTo(x + fleck, y)
+              pollen.ellipse(x, y, fleck, fleck, 0, 0, TAU)
+            }
+            r.fill(
+              pollen,
+              this.bloomed(mix(p.dandelion, p.poppy, 0.25), p),
+              Kind.Disc,
             )
-            pollen.moveTo(x + fleck, y)
-            pollen.ellipse(x, y, fleck, fleck, 0, 0, TAU)
           }
-          r.fill(
-            pollen,
-            this.bloomed(mix(p.dandelion, p.poppy, 0.25), p),
-            Kind.Disc,
-          )
           const top = disc(tx, ty, axis, H * 0.1, H * 0.16)
           r.fill(
             top,
