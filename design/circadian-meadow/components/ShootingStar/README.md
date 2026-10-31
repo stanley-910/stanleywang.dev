@@ -128,7 +128,7 @@ The sky branch mixes ink toward the row's background by `a`, as it does for star
 | 00:00 midnight | 1 | `#d2d9e7` | `#767c8c` | Grey-white on near black. The brightest thing in the sky, with the moon at 0.45 |
 | 05:45 | 0.56 | `#ece8e5` | `#d4d0d3` | Warm white against the paling sky; the last of the night |
 
-`tokens.json` gains no tokens: every colour is a mix of palette fields, as the stars' and ridges' are. The eclipse's diamond (Weather) reuses the head's formula at noon.
+`tokens.json` gains no tokens: every colour is a mix of palette fields, as the stars' and ridges' are. The eclipse's globe at totality (Weather) reuses the head's formula at noon.
 
 ### Clouds and stars
 
