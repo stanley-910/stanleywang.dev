@@ -1,7 +1,7 @@
 'use client'
 import './terminal.css'
 
-import { Pixelify_Sans } from 'next/font/google'
+import { JetBrains_Mono, Pixelify_Sans } from 'next/font/google'
 import { usePathname, useRouter } from 'next/navigation'
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 
@@ -35,6 +35,13 @@ const bitmap = Pixelify_Sans({
   subsets: ['latin'],
   weight: ['400', '500'],
   variable: '--font-bitmap',
+})
+
+// The shell's own face, so what you type reads apart from the site's Geist; it carries
+// the IPA and Greek the poems use.
+const shellFont = JetBrains_Mono({
+  subsets: ['latin', 'latin-ext', 'greek'],
+  variable: '--font-shell',
 })
 
 type Entry =
@@ -230,6 +237,89 @@ function Boot({
   )
 }
 
+const WAVE_CHARS = ' _abcöõö#$%123ABC'
+const WAVE_INKS = ['g', 'u', 'y', 'h']
+
+/**
+ * The old site's waves.exe: a field of interfering sine waves in letters, here filling the
+ * shell's screen in one of its colours until a key or a click. 30 frames a second is plenty
+ * for it; held still, it shows one frame.
+ */
+function Waves({ onDone }: { onDone: () => void }) {
+  const pre = useRef<HTMLPreElement>(null)
+  const done = useRef(onDone)
+  done.current = onDone
+  const [ink] = useState(
+    () => WAVE_INKS[Math.floor(Math.random() * WAVE_INKS.length)],
+  )
+
+  useEffect(() => {
+    const el = pre.current
+    if (!el) return
+    const probe = document.createElement('span')
+    probe.textContent = 'M'
+    el.appendChild(probe)
+    const cw = probe.getBoundingClientRect().width || 7
+    const ch = parseFloat(getComputedStyle(el).lineHeight) || 17
+    probe.remove()
+    const cols = Math.max(1, Math.floor(el.clientWidth / cw))
+    const rows = Math.max(1, Math.floor(el.clientHeight / ch))
+    const frame = (time: number) => {
+      let out = ''
+      for (let r = 1; r <= rows; r++) {
+        const row = r / rows
+        for (let c = 1; c <= cols; c++) {
+          const col = c / cols
+          const i =
+            0.7 * Math.sin(0.5 * row + time / 5) +
+            3 * Math.sin(1.6 * col + time / 5) +
+            Math.sin(
+              10 * (col * Math.sin(time / 2) + row * Math.cos(time / 5)) +
+                time / 2,
+            )
+          const v =
+            17 * (0.5 + 0.499 * Math.sin(i)) * (0.7 + Math.sin(time) * 0.3)
+          out +=
+            WAVE_CHARS[
+              Math.max(0, Math.min(Math.floor(v) - 1, WAVE_CHARS.length - 1))
+            ]
+        }
+        if (r < rows) out += '\n'
+      }
+      el.textContent = out
+    }
+    let raf = 0
+    let last = 0
+    const t0 = performance.now()
+    const tick = (now: number) => {
+      raf = requestAnimationFrame(tick)
+      if (now - last < 1000 / 30) return
+      last = now
+      frame((now - t0) / 1000)
+    }
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) frame(2)
+    else raf = requestAnimationFrame(tick)
+    // The keystroke that started it is still on its way up; listen from the next one.
+    // The key that stops it is only for that; it doesn't reach the prompt.
+    const stop = (e: Event) => {
+      e.preventDefault()
+      done.current()
+    }
+    const arm = window.setTimeout(() => {
+      window.addEventListener('keydown', stop)
+      el.addEventListener('pointerdown', stop)
+    }, 150)
+    return () => {
+      cancelAnimationFrame(raf)
+      clearTimeout(arm)
+      window.removeEventListener('keydown', stop)
+      el.removeEventListener('pointerdown', stop)
+    }
+  }, [])
+
+  return <pre ref={pre} className={`terminal-waves ${ink}`} aria-hidden />
+}
+
 type Rect = { x: number; y: number; w: number; h: number }
 const rectOf = (el: Element): Rect => {
   const r = el.getBoundingClientRect()
@@ -243,6 +333,7 @@ export function Terminal() {
   const [open, setOpen] = useState(false)
   /** Popping out, before it unmounts. */
   const [closing, setClosing] = useState(false)
+  const [waving, setWaving] = useState(false)
   const [entries, setEntries] = useState<Entry[]>([])
   const [typed, setTyped] = useState('')
   const [view, setView] = useState<'shell' | 'files'>('shell')
@@ -404,6 +495,7 @@ export function Terminal() {
           sendMeadow({ kind: 'wind', value: w })
         },
         gust: () => sendMeadow({ kind: 'gust' }),
+        waves: () => setWaving(true),
         regrow: (seed) => sendMeadow({ kind: 'regrow', seed }),
         meadowHere,
         open: (url) => window.open(url, '_blank', 'noopener,noreferrer'),
@@ -490,7 +582,7 @@ export function Terminal() {
 
   return (
     <div
-      className={`terminal-root ${bitmap.variable}`}
+      className={`terminal-root ${bitmap.variable} ${shellFont.variable}`}
       data-night={night ? '' : undefined}
     >
       {open && (
@@ -578,6 +670,14 @@ export function Terminal() {
             </div>
 
             <div className="terminal-body">
+              {waving && view === 'shell' && (
+                <Waves
+                  onDone={() => {
+                    setWaving(false)
+                    focusInput()
+                  }}
+                />
+              )}
               {view === 'shell' ? (
                 <div
                   ref={screen}

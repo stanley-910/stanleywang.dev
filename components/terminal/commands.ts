@@ -18,6 +18,8 @@ export type Ctx = {
   setHour: (hour: number | null) => void
   setWind: (wind: number) => void
   gust: () => void
+  /** The old site's wave field, over the screen until a key. */
+  waves: () => void
   regrow: (seed: number) => void
   meadowHere: () => boolean
   open: (url: string) => void
@@ -188,9 +190,15 @@ export function run(input: string, ctx: Ctx): string[] {
   if (cmd.startsWith('./')) {
     const exe = cmd.slice(2)
     if (exe === 'waves.exe') {
-      if (!ctx.meadowHere()) return ['Running waves.exe...', ...elsewhere]
+      ctx.waves()
+      if (!ctx.meadowHere())
+        return ['Running waves.exe...', '{m|press any key to stop}']
       ctx.gust()
-      return ['Running waves.exe...', '  {m|a gust rolls across the grass}']
+      return [
+        'Running waves.exe...',
+        '  {m|a gust rolls across the grass}',
+        '{m|press any key to stop}',
+      ]
     }
     if (exe === 'datamines.exe') {
       ctx.go('~/projects')
