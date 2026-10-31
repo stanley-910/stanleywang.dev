@@ -184,12 +184,13 @@ function Line({ text }: { text: string }) {
   )
 }
 
+/** The visitor's prompt: a guest logged in to the sim, since the title bar already says whose it is. */
 function Prompt({ path }: { path: string }) {
   return (
     <span className="ps1">
-      <span className="u">dev</span>
+      <span className="u">guest</span>
       <span className="m">@</span>
-      <span className="h">stanley-wang</span>
+      <span className="h">sim</span>
       <span className="m"> {path} $ </span>
     </span>
   )
