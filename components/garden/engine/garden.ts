@@ -1363,8 +1363,11 @@ export class Garden {
     return { sunrise, sunset, moonset }
   }
 
-  /** Hill silhouettes painted smooth under the glyphs, as solid as the poster's mountains. */
-  backdrop(ctx: CanvasRenderingContext2D, p: Palette) {
+  /**
+   * Hill silhouettes painted smooth under the glyphs, as solid as the poster's mountains. `snow`
+   * is the weather's snow lying (0 to 1), which paints the far range's caps white under their cells.
+   */
+  backdrop(ctx: CanvasRenderingContext2D, p: Palette, snow = 0) {
     // A soft glow around the moon, or a warmer, wider one around the sun that grows as it sinks.
     const { sun, moon } = this.lights(p)
     if (sun + moon > 0) {
@@ -1389,6 +1392,19 @@ export class Garden {
     for (const [layer, ridge] of this.ridges.entries()) {
       ctx.fillStyle = `rgb(${colors[layer].map((v) => v | 0).join(',')})`
       ctx.fill(this.ridgePath(ridge, this.horizon + 2).toPath2D())
+      // In snow the caps are painted too, so the rock's outline doesn't show through their
+      // stepped, part-covered cells; the cells only add the snow's texture over it. At 85% the
+      // rock tints the paint a little, so the snow's own glyphs still read on it.
+      const cap =
+        layer === 0 && snow > 0 && this.snowCap(ridge, p, this.globeAt().cx)
+      if (cap) {
+        ctx.globalAlpha = 0.85 * snow
+        ctx.fillStyle = css(p.snowShade)
+        ctx.fill(cap.shade.toPath2D())
+        ctx.fillStyle = css(p.snow)
+        ctx.fill(cap.lit.toPath2D())
+        ctx.globalAlpha = 1
+      }
       if (layer === 1)
         this.forest.forEach((shape, k) => {
           ctx.fillStyle = css(trees.rows[k])
@@ -1453,6 +1469,15 @@ export class Garden {
    * dark ribs. With the sun low behind the range only a rim along the crest is lit.
    */
   private drawSnow(r: Raster, ridge: Float32Array, p: Palette, toward: number) {
+    const cap = this.snowCap(ridge, p, toward)
+    if (!cap) return
+    const meta = (id: number) => ({ id, light: 0.5, back: false })
+    r.fill(cap.shade, p.snowShade, Kind.Land, 1, meta(LandMat.SnowShade))
+    r.fill(cap.lit, p.snow, Kind.Land, 1, meta(LandMat.SnowLit))
+  }
+
+  /** The cap's two flanks as polygons, shared by the cells and the backdrop; null where none lies. */
+  private snowCap(ridge: Float32Array, p: Palette, toward: number) {
     const line = this.snowline
     // Rim light with the sun low behind the range, and how much light there is at all: both ease,
     // so the lit flank narrows to the crest at sunset and fades out before the moon's comes in.
@@ -1526,10 +1551,7 @@ export class Garden {
       for (let q = i; q <= j; q++) top = Math.min(top, ridge[q])
       i = j + 1
     }
-    if (top === this.horizon) return
-    const meta = (id: number) => ({ id, light: 0.5, back: false })
-    r.fill(shade, p.snowShade, Kind.Land, 1, meta(LandMat.SnowShade))
-    r.fill(lit, p.snow, Kind.Land, 1, meta(LandMat.SnowLit))
+    return top === this.horizon ? null : { shade, lit }
   }
 
   private drawLand(r: Raster, p: Palette) {
@@ -1707,11 +1729,11 @@ export class Garden {
   }
 
   /** The glows move with the sun and moon, so the cached backdrop repaints as they do. */
-  backdropKey(p: Palette) {
+  backdropKey(p: Palette, snow = 0) {
     const { sun, moon } = this.lights(p)
-    if (sun + moon <= 0) return ''
+    if (sun + moon <= 0) return `${snow}`
     const { cx, cy } = this.globeAt()
-    return `${Math.round(cx / 4)},${Math.round(cy / 4)},${sun.toFixed(2)},${moon.toFixed(2)},${(this.moonPhase ?? moonPhaseNow()).toFixed(3)}`
+    return `${snow},${Math.round(cx / 4)},${Math.round(cy / 4)},${sun.toFixed(2)},${moon.toFixed(2)},${(this.moonPhase ?? moonPhaseNow()).toFixed(3)}`
   }
 
   /** The moon's lit and dark parts for tonight's phase, with which side is lit and how full it is. */
