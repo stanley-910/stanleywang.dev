@@ -632,7 +632,7 @@ export class Typesetter {
                 tile[i] = 0.25 + 0.35 * Math.min(1, v)
                 ;[cr, cg, cb] = mix([cr, cg, cb], inkAt(x, y).ink, 0.45)
                 alpha = 1
-              } else if (this.lit[i] < 0.25) {
+              } else {
                 // After dark the cells the moon fills take a faint body in its colour, so the disc
                 // stands as a stark mark and shows its colour; seeds and fireflies never fill one.
                 tile[i] =
