@@ -538,7 +538,9 @@ export class Poppy extends Plant {
       owner: this,
       depth: this.z,
     })
-    // Stigma disc and the ring of dark stamens, sorted in among the petals; never under two cells.
+    // The heart, sorted in among the petals: a near-black red ring of stamens flecked with gold
+    // pollen, around the seed pod's small violet-grey crown and its dark rays. Never under two
+    // cells. A flat grey crown with no ring to frame it read as a grey patch, not a centre.
     const centerDepth = axis[2] * H * 0.1
     if (!hidden)
       list.push({
@@ -548,7 +550,7 @@ export class Poppy extends Plant {
             tx,
             ty,
             axis,
-            Math.max(H * 0.27, 1.6 * r.minLine),
+            Math.max(H * 0.3, 1.6 * r.minLine),
             H * 0.06,
           )
           r.fill(
@@ -557,10 +559,35 @@ export class Poppy extends Plant {
             Kind.Disc,
             0.95,
           )
-          const top = disc(tx, ty, axis, H * 0.14, H * 0.16)
-          // The pod's crown, warmed the same way and hazed like the petals, not the leaves.
-          r.fill(top, this.bloomed(mix(p.stem, p.poppyDeep, 0.5), p), Kind.Disc)
           const [u, v] = basis(axis)
+          const pollen = new Shape()
+          const fleck = Math.max(H * 0.035, r.minLine * 0.45)
+          for (let i = 0; i < 12; i++) {
+            const a = (i / 12) * TAU + this.seed
+            const reach = H * (i % 2 ? 0.21 : 0.26)
+            const [x, y] = project(
+              tx,
+              ty,
+              axis,
+              [u, v],
+              Math.cos(a) * reach,
+              Math.sin(a) * reach,
+              H * 0.08,
+            )
+            pollen.moveTo(x + fleck, y)
+            pollen.ellipse(x, y, fleck, fleck, 0, 0, TAU)
+          }
+          r.fill(
+            pollen,
+            this.bloomed(mix(p.dandelion, p.poppy, 0.25), p),
+            Kind.Disc,
+          )
+          const top = disc(tx, ty, axis, H * 0.1, H * 0.16)
+          r.fill(
+            top,
+            this.bloomed(mix(p.cosmosVein, p.poppyDeep, 0.45), p),
+            Kind.Disc,
+          )
           const rays = new Shape()
           for (let i = 0; i < 8; i++) {
             const a = (i / 8) * TAU
@@ -570,8 +597,8 @@ export class Poppy extends Plant {
               ty,
               axis,
               [u, v],
-              Math.cos(a) * H * 0.14,
-              Math.sin(a) * H * 0.14,
+              Math.cos(a) * H * 0.1,
+              Math.sin(a) * H * 0.1,
               H * 0.16,
             )
             rays.moveTo(x0, y0)
@@ -579,7 +606,7 @@ export class Poppy extends Plant {
           }
           r.stroke(
             rays,
-            this.bloomed(p.disc, p),
+            this.bloomed(mix(p.disc, p.poppyDeep, 0.4), p),
             Kind.Disc,
             Math.max(0.5, H * 0.03),
           )
