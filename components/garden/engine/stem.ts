@@ -122,6 +122,19 @@ export class Stem {
     this.layout()
   }
 
+  /**
+   * Pulls each hinge a share `k` of the way to its rest angle and drains as much of its swing.
+   * At 1 the stem is its rest curve exactly: nothing to lag behind or overshoot.
+   */
+  hold(k: number) {
+    const { n, rest, ang, vel } = this
+    for (let i = 0; i < n; i++) {
+      ang[i] += (rest[i] - ang[i]) * k
+      vel[i] *= 1 - k
+    }
+    this.layout()
+  }
+
   tipX() {
     return this.pts[this.n * 2]
   }
