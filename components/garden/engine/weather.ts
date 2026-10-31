@@ -669,9 +669,9 @@ export class Weather {
           if (d.y >= d.land) {
             d.y = d.land
             d.splash = SPLASH_FOR * (1 + d.z)
-            // A drop aimed at a flower head knocks it: a quick dip the eye catches, a third
-            // of a click's for the nearest drops, less for those further back.
-            d.hit = d.hit && n < rainN && v.tap(d.x, d.y, 0.12 + 0.2 * d.z)
+            // A drop aimed at a flower head taps it: a gentle nudge, a few hundredths of a
+            // click's, felt more than seen. (A third of a click's laid the meadow over.)
+            d.hit = d.hit && n < rainN && v.tap(d.x, d.y, 0.012 + 0.02 * d.z)
           }
         }
         if (n >= rainN) continue
