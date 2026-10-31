@@ -14,6 +14,7 @@ import {
 } from '@/lib/circadian'
 import { useUiHidden } from '@/lib/hide-ui'
 import { meadowHere, sendMeadow } from '@/lib/meadow-control'
+import { currentWeather, setWeather } from '@/lib/weather'
 
 import {
   complete,
@@ -87,6 +88,12 @@ const MENUS: [string, Item[]][] = [
       ['Gust', './waves.exe'],
       ['Calm', 'wind 0.05'],
       ['Breezy', 'wind 0.6'],
+      null,
+      ['Rain', 'weather rain'],
+      ['Snow', 'weather snow'],
+      ['Storm', 'weather storm'],
+      ['Eclipse', 'weather eclipse'],
+      ['Clear', 'weather clear'],
       null,
       ['Regrow', 'regrow'],
     ],
@@ -549,6 +556,8 @@ export function Terminal() {
         gust: () => sendMeadow({ kind: 'gust' }),
         waves: () => setWaving(true),
         regrow: (seed) => sendMeadow({ kind: 'regrow', seed }),
+        weather: currentWeather(),
+        setWeather,
         meadowHere,
         open: (url) => window.open(url, '_blank', 'noopener,noreferrer'),
         copy: (s) => void navigator.clipboard?.writeText(s).catch(() => {}),

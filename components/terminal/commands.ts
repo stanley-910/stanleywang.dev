@@ -6,6 +6,7 @@ import {
   WORK_EXPERIENCE,
 } from '@/app/data'
 import { PHOTOS } from '@/app/photos/photos'
+import { isWeather, WEATHERS, type WeatherKind } from '@/lib/weather'
 
 // The terminal's commands (design/circadian-meadow/components/Terminal). Each
 // returns its output as lines of light markup: {g|text} a command, {u|text}
@@ -33,6 +34,8 @@ export type Ctx = {
   /** The old site's wave field, over the screen until a key. */
   waves: () => void
   regrow: (seed: number) => void
+  weather: WeatherKind
+  setWeather: (weather: WeatherKind) => void
   meadowHere: () => boolean
   open: (url: string) => void
   copy: (text: string) => void
@@ -135,6 +138,7 @@ const HELP = [
   '',
   '  {g|time}      Set the hour: time 19:00, or time now',
   '  {g|wind}      Set the breeze: wind 0.6',
+  '  {g|weather}   Change the weather: weather rain',
   '  {g|regrow}    Grow a new meadow',
   '',
   '{y|[tab]} complete  {y|[ctrl+l]} clear  {y|[`]} open or close',
@@ -168,6 +172,7 @@ const NAMES = [
   'time',
   'wind',
   'regrow',
+  'weather',
   ...EXES.map((e) => `./${e}`),
 ]
 
@@ -499,6 +504,18 @@ export function run(input: string, ctx: Ctx): string[] {
         ...(ctx.meadowHere() ? [] : elsewhere),
       ]
     }
+    case 'weather': {
+      const kinds = `{m|${WEATHERS.join(', ')}}`
+      if (!a) return [`weather {y|${ctx.weather}}`, kinds]
+      if (!isWeather(a))
+        return [`weather: {e|${args[1]}} isn't one I know. Try ${kinds}`]
+      const was = ctx.weather
+      ctx.setWeather(a)
+      return [
+        `weather {y|${a}} {m|(was ${was})}`,
+        ...(ctx.meadowHere() ? [] : elsewhere),
+      ]
+    }
     case 'regrow': {
       if (!ctx.meadowHere()) return elsewhere
       const seed = 1e9 + Math.floor(Math.random() * 9e8)
@@ -521,7 +538,9 @@ export function complete(s: string, path: string) {
           ? here
           : parts[0] === 'work'
             ? WORK.map((w) => w.key)
-            : []
+            : parts[0] === 'weather'
+              ? [...WEATHERS]
+              : []
   const last = parts[parts.length - 1]
   const hits = pool.filter((n) => n.startsWith(last))
   if (hits.length !== 1) return s
