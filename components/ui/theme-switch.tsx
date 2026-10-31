@@ -208,6 +208,7 @@ export function ThemeSwitch({ className }: { className?: string }) {
         ref={buttonRef}
         className="time-control-icon"
         type="button"
+        data-avoid
         aria-label="Menu"
         aria-expanded={open}
         title={label(hour)}

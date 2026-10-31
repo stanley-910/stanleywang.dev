@@ -259,6 +259,8 @@
 }
 
 :root[data-ui-hidden] .time-control-icon {
+  /* The meadow stops receding behind the dots while they're gone. */
+  --avoid: none;
   opacity: 0;
   transition:
     color var(--duration-quick) var(--ease-calm),
@@ -277,6 +279,7 @@
 
 :root[data-ui-hidden] .time-control:hover .time-control-icon,
 :root[data-ui-hidden] .time-control:focus-within .time-control-icon {
+  --avoid: auto;
   opacity: 1;
   transition-duration: var(--duration-quick), 200ms;
 }
