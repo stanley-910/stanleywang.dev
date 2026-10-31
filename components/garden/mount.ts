@@ -719,6 +719,12 @@ export function mountGarden({
   /** When the cursor and the hour last came to rest, for quality.ts to ease the plants down from. */
   let stillSince = 0
   const onMove = (e: PointerEvent) => {
+    // A cursor in the terminal (hovering, dragging it, selecting text) neither brushes the plants
+    // nor counts as a touch, so a terminal in use leaves the meadow to ease down to its calm rate.
+    if (e.target instanceof Element && e.target.closest('[data-own-scroll]')) {
+      if (wind.pointer.active) leave()
+      return
+    }
     const origin = canvas.getBoundingClientRect()
     const x = toScene(e.clientX - origin.left)
     const y = toScene(e.clientY - origin.top)
