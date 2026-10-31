@@ -601,7 +601,9 @@ export function mountGarden({
       // it won't give back; a page that scrolls keeps its vertical swipes.
       if (!scrolls && e.cancelable) e.preventDefault()
       if (Math.hypot(dx, dy) < TOUCH_SLOP) return
-      touch.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y'
+      // Only a plainly sideways swipe, within about 27° of flat, is a pan; a
+      // diagonal one still scrubs, or a thumb's natural arc goes dead.
+      touch.axis = Math.abs(dx) > 2 * Math.abs(dy) ? 'x' : 'y'
       if (touch.axis === 'x' || scrolls) {
         touch = null
         return
