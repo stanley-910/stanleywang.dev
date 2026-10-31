@@ -857,7 +857,7 @@ export function Terminal() {
                 </button>
               </span>
               <h2>
-                Stanley {RELEASE}
+                Terminal {RELEASE}
                 {path !== '~' && (
                   <i> — {path[2].toUpperCase() + path.slice(3)}</i>
                 )}
