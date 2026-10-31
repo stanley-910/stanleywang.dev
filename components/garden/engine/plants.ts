@@ -1227,8 +1227,12 @@ export class Lace extends Plant {
     // screen curve away from the sun overhead, those at the back sit in the front ones' shade.
     // One flat cream read as a cut-out, not a head.
     // From the umbellets' own middle, so a head still opening shades across itself too.
+    let midX = 0
     let midY = 0
-    for (const f of florets) midY += f[1] / florets.length
+    for (const f of florets) {
+      midX += f[0] / florets.length
+      midY += f[1] / florets.length
+    }
     const near = florets[florets.length - 1]?.[2] ?? 0
     const far = florets[0]?.[2] ?? 0
     for (const [ex, ey, ez, n] of florets) {
@@ -1263,13 +1267,15 @@ export class Lace extends Plant {
       }
       r.fill(cluster, tone, Kind.Fluff, 1, FLOWER_FLUFF)
     }
+    // The one dark floret some heads carry, deep purple near black (not the poppy's red), at
+    // the umbellets' own middle: placed at an open head's centre, an opening one wore it on
+    // its rim.
     if (this.darkFloret && ph.spread > 0.6 && ph.nest < 0.1) {
-      const [cx, cy] = project(tx, ty, axis, [u, v], 0, 0, H * 0.85)
       r.dot(
-        cx,
-        cy,
+        midX,
+        midY,
         Math.max(0.8, H * 0.06),
-        this.bloomed(p.poppyDeep, p),
+        this.bloomed(shade(mix(p.poppyDeep, p.cosmosVein, 0.4), 0.55), p),
         Kind.Disc,
       )
     }
