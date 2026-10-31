@@ -42,8 +42,41 @@ export const routeFor = (path: string) => ROUTES[path] ?? '/'
 const GITHUB = 'https://github.com/stanley-910'
 const LINKEDIN = 'https://www.linkedin.com/in/notstanleywang/'
 
-// Kept from the old site's docs: the two that were always meant to be found.
+// Kept from the old site's docs, word for word. The poems live only here, not
+// on the writing page.
 const FILES: Record<string, string[]> = {
+  'II-truth.txt': [
+    'II. [tɹuθ] Truth',
+    'that beckons the lungs into disfunction. he tastes a half-breath, ever quick on the draw,',
+    'the swallow stuck in the squeeze of his throat, like',
+    'reluctance falling back in on itself.',
+    '   she laughs in poems,',
+    '     cries in fluttered kisses,',
+    '       dances too.',
+    'no one but them and the night sky could feel his knees bruise and pop',
+    'under the weight of wooden ground she believed existed only to hold him down.',
+    '   like a flame consumed.',
+  ],
+  'rain-steam-and-speed-JMW-Turner.txt': [
+    'softly,',
+    'the breath under your lips begins to feel mine',
+    'your heart,',
+    'defiant,',
+    'tries to break the silence.',
+    'it is fast & barely noticeable,',
+    'yet it is mine still.',
+    '',
+    'Nowhere to go.',
+    '',
+    'hints of red steam towards it',
+    'Forever:',
+  ],
+  'no-hands.txt': [
+    'no hands dirtied,',
+    'slathered with the sounds,',
+    'all to elicit now -',
+    'what felt like you back then',
+  ],
   'real-testimonials.txt': [
     '"Definitely a coder" - some',
     '"Dastardly handsome" - others {m|(mostly my girlfriend)}',

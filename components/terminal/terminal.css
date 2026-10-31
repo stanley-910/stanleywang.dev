@@ -240,8 +240,14 @@ html:has(.garden-home) .terminal-word[aria-pressed='true'] {
   background: var(--k-hi);
 }
 
+/* Empty, as the old close boxes were; held down, it shows the burst they drew. */
 .terminal-root .box:active {
-  background: var(--k-ink);
+  background:
+    linear-gradient(var(--k-ink), var(--k-ink)) center / 1px 100% no-repeat,
+    linear-gradient(var(--k-ink), var(--k-ink)) center / 100% 1px no-repeat,
+    linear-gradient(45deg, transparent calc(50% - 0.5px), var(--k-ink) 0 calc(50% + 0.5px), transparent 0),
+    linear-gradient(-45deg, transparent calc(50% - 0.5px), var(--k-ink) 0 calc(50% + 0.5px), transparent 0),
+    var(--k-chrome);
   box-shadow: inset 1px 1px 0 var(--k-lo);
 }
 

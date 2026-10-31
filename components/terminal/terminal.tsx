@@ -55,6 +55,12 @@ const SHEETS: [string, string][] = [
   ['resume.pdf', 'resume'],
   ['real-testimonials.txt', 'cat real-testimonials.txt'],
   ['enjoy-your-stay.txt', 'cat enjoy-your-stay.txt'],
+  ['II-truth.txt', 'cat II-truth.txt'],
+  [
+    'rain-steam-and-speed-JMW-Turner.txt',
+    'cat rain-steam-and-speed-JMW-Turner.txt',
+  ],
+  ['no-hands.txt', 'cat no-hands.txt'],
   ['waves.exe', './waves.exe'],
   ['fetch', 'fetch'],
 ]
