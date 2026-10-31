@@ -44,6 +44,8 @@ No glyphs on the top edges: the painted silhouettes draw the serration. (Tried `
 
 Glyphs are the tree's colour mixed toward `*-cloud`. A tree wins its cell from the land behind it at any coverage, as plants do. The nearer ridges reset the material under them, so a forest or snow behind never shows through.
 
+**Below it.** The near ridge's treeline meets the valley's far slope, which falls to the meadow's brow; a river comes out of the valley at the trees' foot (Horizon).
+
 **Depth.** After the stippled tree drawing: densest and darkest nearest, sparser and paler farther back. Near stands are solid silhouettes; the middle forest is three tones with sparse marks. The haze pooled at the middle ridge's foot dissolves the forest's lower edge.
 
 **By hour.** Trees are the darkest mark on each ridge at every hour, like `*-disc` in a flower. At sunset and twilight, with the sun behind the range, they go near silhouette. At night they sink almost to the ridge colour.
