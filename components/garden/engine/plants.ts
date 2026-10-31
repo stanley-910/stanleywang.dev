@@ -53,7 +53,7 @@ type Leaf = {
 const HEAD = 1.6
 
 /** Seconds a sown plant takes to reach full flower. */
-export const RUSH = 3
+export const RUSH = 2
 /** Stem damping in the wind (Stem.damping). */
 const SWAY = 0.35
 /**
@@ -610,6 +610,13 @@ export class Poppy extends Plant {
     const cy = ty - Math.cos(tip) * len * 0.45
     const rot = tip
     const fade = 1 - split
+    // A poppy's colour from the first: the bud prints as flower, not as grass strokes in the
+    // stalk's grey, and warms toward the deep red as it swells.
+    const bud = mix(
+      color,
+      this.bloomed(p.poppyDeep, p),
+      lerp(0.4, 0.75, smoothstep(0, this.G + 11, this.age)),
+    )
     for (const sd of [-1, 1]) {
       const path = new Shape()
       const off = sd * split * wid * 1.2
@@ -622,7 +629,7 @@ export class Poppy extends Plant {
         0,
         TAU,
       )
-      r.fill(path, color, Kind.Foliage, Math.max(0.15, fade))
+      r.fill(path, bud, Kind.Petal, Math.max(0.15, fade))
     }
     if (split === 0) {
       // Red showing through the seam just before it opens.
@@ -643,7 +650,7 @@ export class Poppy extends Plant {
         wid * 0.55,
         len * 0.55,
         rot,
-        mix(color, p.fluff, 0.35),
+        mix(bud, p.fluff, 0.35),
         14,
       )
     }
