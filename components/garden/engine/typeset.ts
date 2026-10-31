@@ -753,19 +753,6 @@ export class Typesetter {
                 alpha = 0.6
                 break
               }
-              // The river: a flat tile in the water's own colour, `-` where it's a thread in the
-              // distance, `~` nearer with a few fixed `=` glints. They don't move: the land is still.
-              if (mat === LandMat.Water) {
-                const far = y - horizon < 0.035 * H
-                g = code(far ? '-' : b < 0.1 ? '=' : b < 0.7 ? '~' : ' ')
-                const lc = mix([cr, cg, cb], p.cloud, 0.3)
-                cr = lc[0]
-                cg = lc[1]
-                cb = lc[2]
-                tile[i] = 0.3
-                alpha = far ? 0.55 : 0.7
-                break
-              }
               // A near spruce: line glyphs down its flanks, a sparse `:` inside.
               if (mat === LandMat.Spruce) {
                 const top = this.matAt(c, r - 1) !== LandMat.Spruce

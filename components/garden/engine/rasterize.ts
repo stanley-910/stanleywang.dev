@@ -29,7 +29,6 @@ export const enum LandMat {
   SnowShade = 2,
   Canopy = 3,
   Spruce = 4,
-  Water = 5,
 }
 
 /** Samples per cell along each axis. */
