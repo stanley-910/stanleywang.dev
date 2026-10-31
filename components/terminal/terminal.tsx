@@ -22,6 +22,8 @@ import {
   itemsAt,
   markdownLines,
   POST_SOURCES,
+  RELEASE,
+  VERSION,
   parse,
   pathFor,
   phase,
@@ -149,7 +151,7 @@ function Prompt({ path }: { path: string }) {
  * types itself in Chinese and glitches over into English. Any key skips it.
  */
 const bootLines = (hour: number, wind: number) => [
-  `{m|[ 0.000000]} stanley-wang 26.10 {m|(dev@sim)}`,
+  `{m|[ 0.000000]} stanley-wang ${VERSION} {m|(dev@sim)}`,
   `{m|[ 0.000412]} mounting {h|/dev/sim0}`,
   `{m|[ 0.001187]} clock {y|${hhmm(hour)}} {m|· ${phase(hour)}}`,
   `{m|[ 0.001903]} wind {y|${wind.toFixed(2)}}`,
@@ -803,7 +805,7 @@ export function Terminal() {
                 </button>
               </span>
               <h2>
-                stanley-wang 26.10
+                stanley-wang {RELEASE}
                 {path !== '~' && <i> — {path.slice(2)}</i>}
               </h2>
             </header>

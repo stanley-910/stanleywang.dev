@@ -57,6 +57,12 @@ export const pathFor = (route: string) =>
 export const routeFor = (path: string) => ROUTES[path] ?? '/'
 
 const GITHUB = 'https://github.com/stanley-910'
+
+/** The build this is (next.config.mjs): its month's release and its commit. */
+export const RELEASE = process.env.NEXT_PUBLIC_RELEASE ?? 'dev'
+const COMMIT = process.env.NEXT_PUBLIC_COMMIT ?? ''
+export const VERSION = COMMIT ? `${RELEASE}-${COMMIT.slice(0, 7)}` : RELEASE
+const BUILT = process.env.NEXT_PUBLIC_BUILT
 const LINKEDIN = 'https://www.linkedin.com/in/notstanleywang/'
 
 // Kept from the old site's docs, word for word. The poems live only here, not
@@ -159,6 +165,7 @@ const NAMES = [
   'pwd',
   'echo',
   'whoami',
+  'uname',
   'date',
   'history',
   'clear',
@@ -435,6 +442,17 @@ export function run(input: string, ctx: Ctx): string[] {
       return [args.slice(1).join(' ')]
     case 'whoami':
       return ['dev']
+    case 'uname': {
+      if (a !== '-a') return ['stanley-wang']
+      const when = BUILT
+        ? new Date(BUILT).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+          })
+        : 'now'
+      return [`stanley-wang sim ${VERSION} {m|built ${when}}`]
+    }
     case 'date': {
       const d = new Date()
       return [

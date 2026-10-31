@@ -1,3 +1,5 @@
+import { execSync } from 'node:child_process'
+
 import createMDX from '@next/mdx'
 import remarkToc from 'remark-toc'
 import rehypePrettyCode from 'rehype-pretty-code'
@@ -56,8 +58,24 @@ const securityHeaders = [
 ]
 
 /** @type {import('next').NextConfig} */
+// The terminal's version, stamped at each build: the build's year and month as
+// an Ubuntu-style release (26.10), so it moves once a month at most, and the
+// commit it was built from, which every deploy changes.
+const built = new Date()
+const release = `${String(built.getUTCFullYear()).slice(2)}.${String(built.getUTCMonth() + 1).padStart(2, '0')}`
+let commit = process.env.VERCEL_GIT_COMMIT_SHA ?? ''
+if (!commit)
+  try {
+    commit = execSync('git rev-parse HEAD').toString().trim()
+  } catch {}
+
 const nextConfig = {
   reactStrictMode: true,
+  env: {
+    NEXT_PUBLIC_RELEASE: release,
+    NEXT_PUBLIC_COMMIT: commit,
+    NEXT_PUBLIC_BUILT: built.toISOString(),
+  },
   // No dev badge: it sat on the compiler's phone controls.
   devIndicators: false,
   async headers() {
