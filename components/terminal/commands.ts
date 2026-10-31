@@ -443,7 +443,7 @@ export function run(input: string, ctx: Ctx): string[] {
     case 'echo':
       return [args.slice(1).join(' ')]
     case 'whoami':
-      return ['dev']
+      return ['guest']
     case 'uname': {
       if (a !== '-a') return ['stanley-wang']
       const when = BUILT
