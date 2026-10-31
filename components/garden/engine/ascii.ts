@@ -2,7 +2,7 @@ import { createCompositor, type Compositor } from './gl'
 import { bayer, clamp, fbm2, hash, smoothstep } from './math'
 import { mix, type Palette, type Rgb } from './palette'
 import { CLOUD, code, GLYPHS, MAT, PLANT } from './typeset'
-import { BOLT_COL, FLASH, SHADOW, type Disc, type Weather } from './weather'
+import { FLASH, SHADOW, type Disc, type Weather } from './weather'
 
 import type { Birds } from './birds'
 import type { Meteors } from './meteors'
@@ -363,6 +363,7 @@ export class AsciiRenderer {
     const [glR, glG, glB] = p.grassLight
     const disc = weather?.disc
     const flash = weather ? weather.flash * FLASH : 0
+    const fc = weather?.flashCol ?? [0, 0, 0]
     const storm = weather?.glow
     this.skyEdge = horizon
     for (let r = 0; r < rows; r++) {
@@ -575,25 +576,29 @@ export class AsciiRenderer {
         // Lightning lights the sky's glyphs, and the land's a little.
         if (flash > 0 && g) {
           const kk = flash * (skyRow ? 1 : 0.35)
-          cr += (BOLT_COL[0] - cr) * kk
-          cg += (BOLT_COL[1] - cg) * kk
-          cb += (BOLT_COL[2] - cb) * kk
+          cr += (fc[0] - cr) * kk
+          cg += (fc[1] - cg) * kk
+          cb += (fc[2] - cb) * kk
           a += (1 - a) * kk
         }
-        // Lightning in a cloud lights the sky's glyphs round it, cloud most of all, from within.
+        // Lightning in a cloud lights the cloud from within: its own glyphs only, no tiles (they
+        // fall on the cloud's dither as a checkerboard), through a spread wider than tall as
+        // cloud is, so the light takes the cloud's shape, not a patch's.
         if (stormRow && skyRow && g) {
           const dx = c * cw + cw / 2 - stormRow.x
-          const dy = y - stormRow.y
+          const dy = (y - stormRow.y) * 1.8
           const d2 = (dx * dx + dy * dy) / (stormRow.R * stormRow.R)
           if (d2 < 1) {
-            const kk = stormRow.k * (1 - d2) ** 2
-            cr += (BOLT_COL[0] - cr) * kk
-            cg += (BOLT_COL[1] - cg) * kk
-            cb += (BOLT_COL[2] - cb) * kk
-            a += (1 - a) * 0.8 * kk
-            t = Math.max(t, 0.4 * kk)
-            over = 1
-            overCol = BOLT_COL
+            const cloud = this.cloudShape(c, r)
+            const kk = Math.min(
+              1,
+              1.3 * stormRow.k * (1 - d2) ** 1.5 * (0.15 + 0.85 * cloud),
+            )
+            const sc = stormRow.col
+            cr += (sc[0] - cr) * kk
+            cg += (sc[1] - cg) * kk
+            cb += (sc[2] - cb) * kk
+            a += (1 - a) * kk
           }
         }
         // A bird is a silhouette over anything in its band of sky: open sky, cloud or the sun.
