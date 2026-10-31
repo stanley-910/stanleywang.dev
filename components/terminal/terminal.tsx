@@ -892,6 +892,7 @@ export function Terminal() {
               <span>
                 {view === 'files' ? `${items.length} items` : itemsAt(path)}
               </span>
+              <span className="fill" />
               <span className="clock">
                 {hhmm(hour)}
                 {night ? '  ☾' : '  ☼'}

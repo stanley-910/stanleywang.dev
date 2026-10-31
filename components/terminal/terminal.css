@@ -671,6 +671,15 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
   white-space: nowrap;
 }
 
+/* A patch of dither before the clock, as a player's spare panel was filled. */
+.terminal-status .fill {
+  width: 64px;
+  height: 12px;
+  flex: none;
+  background: repeating-conic-gradient(var(--k-ink) 0 25%, transparent 0 50%) 0 0 / 2px 2px;
+  opacity: 0.35;
+}
+
 .terminal-status .clock {
   color: var(--k-ink);
   white-space: pre;
