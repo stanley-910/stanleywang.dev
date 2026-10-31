@@ -439,6 +439,8 @@ function sampleRow(at: Sampling, r: number) {
     mats.fill(0)
     // Fluff marked as a loose petal (LOOSE_PETAL) carries the back flag.
     let lb = 0
+    // Subsamples of the sun or moon (GLOBE), which stand behind the land.
+    let globe = 0
     for (let sy = 0; sy < SS; sy++) {
       const py = r * SS + sy
       let o = (py * W + c * SS) * 4
@@ -473,12 +475,17 @@ function sampleRow(at: Sampling, r: number) {
                 pn++
               } else if (k === Kind.Land || md[m] === 0) {
                 if (k === Kind.Land) mats[Math.min(7, Math.round(md[m] / 24))]++
+                // The sun and moon carry no light of their own: averaged in, they'd shade a
+                // crest cell by how much disc is behind it, flickering as it moves.
+                else if (md[m + 1] === 0 && md[m + 2] === 0) globe++
                 // Fluff reads only fluff's own marks (id 0): a seed head, firefly or the moon
                 // in front of a petal or leaf would otherwise take its back flag and print as
                 // a loose petal.
-                ll += md[m + 1]
-                lb += md[m + 2]
-                ln++
+                if (k === Kind.Land || md[m + 1] || md[m + 2]) {
+                  ll += md[m + 1]
+                  lb += md[m + 2]
+                  ln++
+                }
               }
             }
           }
@@ -506,6 +513,15 @@ function sampleRow(at: Sampling, r: number) {
         }
       }
     }
+    // The sun and moon are behind the land, but as fluff they'd outvote a ridge in the cells
+    // along its crest; a cell the land covers a quarter of is the land's, or a disc behind a peak
+    // eats the top of its snow. Their light is left out of the cell's colour too.
+    const behind =
+      best === Kind.Fluff &&
+      globe > 0 &&
+      (seen >> Kind.Land) & 1 &&
+      weight[Kind.Land] >= floor
+    if (behind) best = Kind.Land
     kinds[i] = best
     let id = 0
     let votes = 0
@@ -526,20 +542,24 @@ function sampleRow(at: Sampling, r: number) {
       pid[i] = mv
     }
     lit[i] = pn ? li / (pn * 255) : ln ? ll / (ln * 255) : 0.5
+    // A cell of nothing but sun or moon reads 0, so the typesetter knows the disc.
+    if (best === Kind.Fluff && globe > 0 && !ln) lit[i] = 0
     back[i] = pn ? +(bk / pn > 127) : ln ? +(lb / ln > 127) : 0
     const plant = (PLANT_MASK >> best) & 1
-    cov[i] = (plant ? bw0 : a) / (255 * n)
+    const shown = behind ? Math.max(1, a - weight[Kind.Fluff]) : a
+    cov[i] = (plant ? bw0 : shown) / (255 * n)
     let cr = 0
     let cg = 0
     let cb = 0
     for (let k = 0; k < 8; k++) {
       if (!((seen >> k) & 1) || (plant && k !== best)) continue
+      if (behind && k === Kind.Fluff) continue
       cr += kr[k]
       cg += kg[k]
       cb += kb[k]
     }
     // Colour sums are weighted by alpha, so divide by the alpha they were drawn with.
-    const norm = plant ? bw0 : a
+    const norm = plant ? bw0 : shown
     if (norm > 0) {
       rgb[i * 3] = cr / norm
       rgb[i * 3 + 1] = cg / norm
