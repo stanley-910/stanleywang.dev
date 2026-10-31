@@ -340,11 +340,12 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
   z-index: 3;
   display: flex;
   align-items: stretch;
-  height: 22px;
+  height: 23px;
   flex: none;
-  margin: 0 -5px;
+  margin: 0 -5px 3px;
   padding: 0 2px;
   border-top: 1px solid var(--k-line);
+  border-bottom: 1px solid var(--k-line);
   box-shadow: inset 0 1px 0 var(--k-hi);
 }
 
@@ -439,28 +440,6 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
   margin: 4px 0;
   border: 0;
   background: repeating-linear-gradient(90deg, var(--k-hair) 0 1px, transparent 1px 2px);
-}
-
-/* The info strip under the menus, as a Finder window carries one, closed by a single rule. */
-.terminal-info {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  height: 19px;
-  flex: none;
-  margin: 0 -5px 4px;
-  padding: 0 9px;
-  overflow: hidden;
-  font: 400 12px/18px var(--bitmap);
-  color: var(--k-ink);
-  white-space: pre;
-  border-top: 1px solid var(--k-line);
-  border-bottom: 1px solid var(--k-line);
-  box-shadow: inset 0 1px 0 var(--k-hi);
-}
-
-.terminal-info span:last-child {
-  color: var(--k-muted);
 }
 
 .terminal-body {
@@ -690,15 +669,6 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-/* A patch of dither before the grow box, as a player's spare panel was filled. */
-.terminal-status .fill {
-  width: 64px;
-  height: 12px;
-  flex: none;
-  background: repeating-conic-gradient(var(--k-ink) 0 25%, transparent 0 50%) 0 0 / 2px 2px;
-  opacity: 0.35;
 }
 
 .terminal-status .clock {

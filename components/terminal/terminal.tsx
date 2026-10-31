@@ -622,8 +622,6 @@ export function Terminal() {
   }
 
   const night = isNight(hour)
-  // The info strip names home in words; elsewhere it shows the path.
-  const place = path === '~' ? 'home' : path
   const items = [
     ...PLACES.map(([n, p]) => ({ name: n, folder: true, run: cdTo(p), at: p })),
     ...SHEETS.map(([n, c]) => ({ name: n, folder: false, run: c, at: '' })),
@@ -732,15 +730,6 @@ export function Terminal() {
                 </button>
               </span>
             </nav>
-
-            <div className="terminal-info">
-              <span>
-                {view === 'files'
-                  ? `${items.length} items  ·  ${place}`
-                  : place}
-              </span>
-              <span>{`${phase(hour)}  ·  wind ${wind.toFixed(2)}`}</span>
-            </div>
 
             <div className="terminal-body">
               {waving && view === 'shell' && (
@@ -900,8 +889,9 @@ export function Terminal() {
             </div>
 
             <footer className="terminal-status">
-              <span>{itemsAt(path)}</span>
-              <span className="fill" />
+              <span>
+                {view === 'files' ? `${items.length} items` : itemsAt(path)}
+              </span>
               <span className="clock">
                 {hhmm(hour)}
                 {night ? '  ☾' : '  ☼'}
