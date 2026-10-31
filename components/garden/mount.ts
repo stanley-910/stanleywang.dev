@@ -2,6 +2,7 @@
 // ascii-garden prototype (its main.ts, minus the dev control panel).
 
 import { currentHour, HOUR_EVENT, setHour } from '@/lib/circadian'
+import { MEADOW_EVENT, type MeadowCommand } from '@/lib/meadow-control'
 import {
   currentWeather,
   isWeather,
@@ -144,8 +145,9 @@ export function mountGarden({
   let starTimer = 0
   const wind = new Wind()
   wind.strength = windStrength
-  /** The breeze without the weather's gale, which eases in on top of it. */
-  const breeze = windStrength
+  /** The breeze without a gust or the weather's gale, which ease in on top of it. */
+  let breeze = windStrength
+  let gust = 0
   const weather = new Weather()
   weather.set(currentWeather(), true, reduced.matches)
   /** The hour's palette under the weather. */
@@ -511,6 +513,9 @@ export function mountGarden({
   const onWheel = (e: WheelEvent) => {
     // The time slider handles its own scroll.
     if (!scrub || !visible || e.defaultPrevented) return
+    // Nor does the meadow take a scroll over something that scrolls itself (the terminal).
+    if (e.target instanceof Element && e.target.closest('[data-own-scroll]'))
+      return
     // Sideways always scrubs; up and down scrub too while the page has
     // nowhere to scroll, as home's single screen doesn't. Down and right run
     // later, like the slider.
@@ -542,8 +547,12 @@ export function mountGarden({
     holding = false
     if (!visible || e.touches.length !== 1) return
     const t = e.target
-    // The time slider takes its own drags.
-    if (t instanceof Element && t.closest('.time-control-pop, input')) return
+    // The time slider and anything that scrolls itself (the terminal) take their own drags.
+    if (
+      t instanceof Element &&
+      t.closest('.time-control-pop, input, [data-own-scroll]')
+    )
+      return
     const { clientX: x, clientY: y } = e.touches[0]
     if (
       t instanceof Element &&
@@ -659,7 +668,15 @@ export function mountGarden({
     const palette = sceneAt(hour)
     let steps = 0
     while (acc >= STEP && steps < MAX_STEPS) {
-      wind.strength = breeze + weather.gale
+      if (gust > 0) gust = Math.max(0, gust - STEP / 5)
+      const calmWind = breeze + weather.gale
+      wind.strength =
+        gust > 0
+          ? calmWind +
+            1.2 *
+              Math.sin(Math.PI * Math.sqrt(1 - gust)) *
+              Math.max(0, 1 - calmWind)
+          : calmWind
       wind.step(STEP)
       garden.step(STEP, palette)
       acc -= STEP
@@ -735,6 +752,12 @@ export function mountGarden({
   /** When the cursor and the hour last came to rest, for quality.ts to ease the plants down from. */
   let stillSince = 0
   const onMove = (e: PointerEvent) => {
+    // A cursor in the terminal (hovering, dragging it, selecting text) neither brushes the plants
+    // nor counts as a touch, so a terminal in use leaves the meadow to ease down to its calm rate.
+    if (e.target instanceof Element && e.target.closest('[data-own-scroll]')) {
+      if (wind.pointer.active) leave()
+      return
+    }
     const origin = canvas.getBoundingClientRect()
     const x = toScene(e.clientX - origin.left)
     const y = toScene(e.clientY - origin.top)
@@ -858,12 +881,23 @@ export function mountGarden({
 
   const onVisibility = () => (document.hidden ? stop() : start())
 
-  // The terminal's meadow commands, a `meadowcontrol` event on window: the weather here.
+  // The terminal's meadow commands (lib/meadow-control.ts).
   const onControl = (e: Event) => {
-    const command = (e as CustomEvent<{ kind?: string; value?: unknown }>)
-      .detail
-    if (command?.kind === 'weather' && isWeather(command.value))
-      setWeather(command.value)
+    const command = (e as CustomEvent<MeadowCommand>).detail
+    if (command.kind === 'wind') {
+      breeze = command.value
+      if (gust === 0) wind.strength = breeze + weather.gale
+    } else if (command.kind === 'gust') {
+      gust = 1
+    } else if (command.kind === 'regrow') {
+      garden.regrow(command.seed)
+    } else if (command.kind === 'weather') {
+      // Through the visit's weather, so the site menu shows it too; onWeather takes it from there.
+      if (isWeather(command.value)) setWeather(command.value)
+      return
+    }
+    // Held still, the scene only redraws when asked; otherwise the next frame shows it.
+    if (reduced.matches) start()
   }
 
   // The weather set here, from the site menu or the terminal (lib/weather.ts).
@@ -910,7 +944,7 @@ export function mountGarden({
   reduced.addEventListener('change', start)
   document.addEventListener('visibilitychange', onVisibility)
   window.addEventListener(HOUR_EVENT, onHourChange)
-  window.addEventListener('meadowcontrol', onControl)
+  window.addEventListener(MEADOW_EVENT, onControl)
   window.addEventListener(WEATHER_EVENT, onWeather)
 
   showHour()
@@ -964,7 +998,7 @@ export function mountGarden({
     document.removeEventListener('visibilitychange', onVisibility)
     raster.dispose()
     window.removeEventListener(HOUR_EVENT, onHourChange)
-    window.removeEventListener('meadowcontrol', onControl)
+    window.removeEventListener(MEADOW_EVENT, onControl)
     window.removeEventListener(WEATHER_EVENT, onWeather)
     delete html.dataset.sky
     html.style.removeProperty('--garden-ink')

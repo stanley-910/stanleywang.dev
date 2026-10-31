@@ -1,0 +1,739 @@
+/*
+  The terminal (design/circadian-meadow/components/Terminal, desk.html): the
+  Platinum desk as a one-bit machine, raised. Cream paper ruled in warm black
+  ink by day; by night the same sheet with the lights down. What's selected is
+  the two swapped. Tone is a 2px dither, never a gradient; the chrome is set in
+  a bitmap face, the shell in Geist Mono. It follows the page's hour.
+*/
+
+.terminal-root {
+  --k-paper: #f3ecda;
+  --k-chrome: #dcd5c3;
+  --k-hi: #f9f5ea;
+  --k-lo: #a49d8a;
+  --k-ink: #23211d;
+  --k-muted: #67635a;
+  --k-hair: #a49d8a;
+  --k-shadow: #23211d;
+  --k-drop: #0b0d12;
+  --k-plate: #23211d;
+  --k-on-plate: #f3ecda;
+  --k-user: #9a4628;
+  --k-host: #4b4740;
+  --k-ok: #4f6a3a;
+  --k-key: #86651a;
+  --k-err: #9a4628;
+  /* The frame's rules, and the shadow along a sunk well's top and left. By day both are the
+     ink. */
+  --k-line: var(--k-ink);
+  --k-sink: var(--k-ink);
+  --bitmap: var(--font-bitmap), var(--font-sans);
+}
+
+.terminal-root[data-night] {
+  --k-paper: #201f1c;
+  --k-chrome: #2c2a26;
+  --k-hi: #4a463f;
+  --k-lo: #121110;
+  --k-ink: #ece5d2;
+  --k-muted: #a39d8e;
+  --k-hair: #57534b;
+  --k-shadow: #000000;
+  --k-drop: #000000;
+  --k-plate: #ece5d2;
+  --k-on-plate: #201f1c;
+  --k-user: #e2a07e;
+  --k-host: #d2c8ad;
+  --k-ok: #aebf92;
+  --k-key: #dcb75c;
+  --k-err: #e2a07e;
+  /* By night cream rules at full strength flatten the bevels: they go to a soft line, and a
+     sunk well is shadowed in black, not lit in cream. */
+  --k-line: color-mix(in srgb, var(--k-ink) 55%, var(--k-chrome));
+  --k-sink: #000000;
+}
+
+/* ---------- The word in the corner ---------- */
+
+/* A power button in the bottom-right corner, in the site menu's column (time-control.css):
+   the same 16px box 32px from the window's right edge, as far from the bottom as the menu is
+   from the top. Held open, its key drops in, as the menu's dots turn. */
+.terminal-power {
+  position: fixed;
+  right: 32px;
+  bottom: 34px;
+  z-index: 40;
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-muted);
+  border: 0;
+  border-radius: var(--radius-hair);
+  cursor: pointer;
+  transition:
+    color var(--duration-quick) var(--ease-calm),
+    opacity 400ms var(--ease-calm);
+}
+
+.terminal-power svg {
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+/* Off, it's the power symbol: a ring open at the top, the key through the gap. Hovered,
+   the key lifts a touch. Switched on, the ring closes and the key drops to a dot at its
+   centre, the symbol for on, with the spring the menu's dots use. */
+/* The ring's path starts at 12 o'clock, so the gap is the 10 units either side of its start:
+   the dash runs from 10 to 90. Closing, the gap shrinks into the top from both ends. */
+.terminal-power .ring {
+  stroke-dasharray: 80 20;
+  stroke-dashoffset: -10;
+  transition:
+    stroke-dasharray 320ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    stroke-dashoffset 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.terminal-power .key {
+  transition:
+    d 320ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.terminal-power:hover .key {
+  transform: translateY(-0.6px);
+}
+
+.terminal-power[aria-pressed='true'] .ring {
+  stroke-dasharray: 100 0;
+  stroke-dashoffset: 0;
+}
+
+.terminal-power[aria-pressed='true'] .key {
+  d: path('M8 8.45 V8.45');
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .terminal-power .ring,
+  .terminal-power .key {
+    transition: none;
+  }
+}
+
+.terminal-power:hover,
+.terminal-power[aria-pressed='true'] {
+  color: var(--ink);
+}
+
+.terminal-power:focus-visible {
+  outline: 1px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* Off home it floats over the page's content, so it carries a scrap of page under it. */
+.terminal-power {
+  background: var(--page);
+  box-shadow: 0 0 0 4px var(--page);
+}
+
+/* On home it sits on the meadow's dark ground, in the bio's colours. */
+html:has(.garden-home) .terminal-power {
+  color: var(--garden-ink-muted, #9d9b94);
+  background: none;
+  box-shadow: none;
+}
+
+/* Home's opening (garden.css): held back with the bio, and fades up with it. */
+:root[data-intro='wait'] .terminal-power {
+  opacity: 0;
+}
+
+:root[data-intro='play'] .terminal-power {
+  animation: intro-fade 0.7s ease-out 1.1s both;
+}
+
+html:has(.garden-home) .terminal-power:hover,
+html:has(.garden-home) .terminal-power[aria-pressed='true'] {
+  color: var(--garden-ink, #e4e2da);
+}
+
+/* Hidden with the rest of the UI (lib/hide-ui.ts); near its corner it comes back. */
+:root[data-ui-hidden] .terminal-power {
+  --avoid: none;
+  opacity: 0;
+}
+
+:root[data-ui-hidden] .terminal-power:hover,
+:root[data-ui-hidden] .terminal-power:focus-visible {
+  --avoid: auto;
+  opacity: 1;
+}
+
+:root[data-ui-hidden] .terminal-power::before {
+  content: '';
+  position: absolute;
+  inset: -48px -40px -40px -80px;
+}
+
+:root[data-ui-hidden] .terminal-win {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---------- The window ---------- */
+
+.terminal-win {
+  position: fixed;
+  right: 32px;
+  bottom: 62px;
+  z-index: 40;
+  display: flex;
+  width: min(616px, calc(100vw - 2 * var(--gutter)));
+  height: min(368px, calc(100svh - 120px));
+  font: 12px/17px var(--font-shell), var(--font-mono);
+  color: var(--k-ink);
+  border-radius: 5px;
+  box-shadow:
+    0 2px 4px color-mix(in srgb, var(--k-drop) 30%, transparent),
+    0 22px 44px -10px color-mix(in srgb, var(--k-drop) 55%, transparent);
+  transition: opacity 400ms var(--ease-calm);
+  /* It materialises where it stands: up from a little smaller, just past its size, and
+     settles; closing, it shrinks a touch and fades. */
+  animation: terminal-in 260ms cubic-bezier(0.34, 1.5, 0.64, 1) both;
+}
+
+.terminal-win[data-closing] {
+  animation: terminal-out 140ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+/* One spring, so it passes its size by a hair and turns straight back, not resting there. */
+@keyframes terminal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+@keyframes terminal-out {
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+.terminal-pane {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0 5px 4px;
+  background: var(--k-chrome);
+  border: 1px solid var(--k-line);
+  border-radius: 5px;
+  box-shadow:
+    inset 1px 1px 0 var(--k-hi),
+    inset -1px -1px 0 var(--k-lo);
+}
+
+/* The title bar: ruled lines its width, with the box and the title cleared out of them;
+   fainter when the window isn't focused. */
+.terminal-tb {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 23px;
+  flex: none;
+  user-select: none;
+  cursor: grab;
+  touch-action: none;
+}
+
+.terminal-tb:active {
+  cursor: grabbing;
+}
+
+.terminal-tb::before {
+  content: '';
+  position: absolute;
+  inset: 6px 0 auto;
+  height: 11px;
+  background: repeating-linear-gradient(to bottom, var(--k-line) 0 1px, transparent 1px 2px);
+  opacity: 0.6;
+}
+
+.terminal-win:not(.focus) .terminal-tb::before {
+  opacity: 0.4;
+}
+
+.terminal-tb > * {
+  position: relative;
+  background: var(--k-chrome);
+}
+
+.terminal-tb .boxes {
+  display: flex;
+  align-self: stretch;
+  align-items: center;
+  padding: 0 6px 0 4px;
+}
+
+.terminal-tb h2 {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 0 10px;
+  font: 500 13px/23px var(--bitmap);
+  white-space: nowrap;
+}
+
+.terminal-tb h2 i {
+  font-style: normal;
+  color: var(--k-muted);
+}
+
+/* Close is a bare pixel x, drawn on the same grid as the bitmap face, cleared out of the
+   title bar's rules with no box around it. Under the pointer a small plate inverts behind
+   it, the way the menus select. */
+.terminal-root .box {
+  position: relative;
+  display: inline-flex;
+  width: 13px;
+  height: 13px;
+  padding: 0;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  color: var(--k-ink);
+  background: var(--k-chrome);
+  border: 0;
+  cursor: pointer;
+}
+
+.terminal-root .box svg {
+  display: block;
+  fill: currentColor;
+  shape-rendering: crispEdges;
+}
+
+.terminal-root .box:hover,
+.terminal-root .box:focus-visible {
+  background: var(--k-plate);
+  color: var(--k-on-plate);
+  outline: none;
+}
+
+.terminal-win:not(.focus) .box {
+  color: var(--k-hair);
+}
+
+/* The menu strip, with Shell and Files as two keys at its end. */
+.terminal-menu {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: stretch;
+  height: 23px;
+  flex: none;
+  margin: 0 -5px 3px;
+  padding: 0 2px;
+  border-top: 1px solid var(--k-line);
+  border-bottom: 1px solid var(--k-line);
+  box-shadow: inset 0 1px 0 var(--k-hi);
+}
+
+.terminal-menu > div {
+  position: relative;
+}
+
+.terminal-menu > div > button {
+  height: 100%;
+  padding: 0 10px;
+  font: 400 13px/22px var(--bitmap);
+  color: var(--k-ink);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.terminal-menu > div > button[aria-expanded='true'] {
+  background: var(--k-plate);
+  color: var(--k-on-plate);
+}
+
+.terminal-menu .views {
+  display: flex;
+  align-self: center;
+  margin: 0 3px 0 auto;
+  border: 1px solid var(--k-line);
+  box-shadow: 1px 1px 0 var(--k-hi);
+}
+
+.terminal-menu .views button {
+  padding: 0 9px;
+  font: 400 12px/16px var(--bitmap);
+  color: var(--k-ink);
+  background: var(--k-paper);
+  border: 0;
+  cursor: pointer;
+}
+
+.terminal-menu .views button + button {
+  border-left: 1px solid var(--k-line);
+}
+
+.terminal-menu .views button[aria-pressed='true'] {
+  background: var(--k-plate);
+  color: var(--k-on-plate);
+}
+
+.terminal-menu .drop {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 176px;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  background: var(--k-paper);
+  border: 1px solid var(--k-ink);
+  box-shadow: 3px 3px 0 color-mix(in srgb, var(--k-shadow) 35%, transparent);
+}
+
+.terminal-menu .drop button {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  padding: 0 14px;
+  font: 400 13px/20px var(--bitmap);
+  color: var(--k-ink);
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.terminal-menu .drop button span {
+  font: 11px/20px var(--font-mono);
+  color: var(--k-muted);
+}
+
+.terminal-menu .drop button:hover {
+  background: var(--k-plate);
+  color: var(--k-on-plate);
+}
+
+.terminal-menu .drop button:hover span {
+  color: var(--k-on-plate);
+}
+
+.terminal-menu .drop hr {
+  height: 1px;
+  margin: 4px 0;
+  border: 0;
+  background: repeating-linear-gradient(90deg, var(--k-hair) 0 1px, transparent 1px 2px);
+}
+
+.terminal-body {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* The wells sink into the chrome. */
+.terminal-root .well {
+  background: var(--k-paper);
+  border: 1px solid;
+  border-color: var(--k-lo) var(--k-hi) var(--k-hi) var(--k-lo);
+  border-radius: 2px;
+  box-shadow:
+    inset 1px 1px 0 var(--k-sink),
+    inset 3px 3px 0 color-mix(in srgb, var(--k-ink) 7%, transparent);
+}
+
+/* ---------- Shell ---------- */
+
+.terminal-screen {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  padding: 8px 10px 10px;
+  overflow: hidden auto;
+  overscroll-behavior: contain;
+}
+
+.terminal-screen ::selection {
+  background: var(--k-plate);
+  color: var(--k-on-plate);
+}
+
+.terminal-screen::-webkit-scrollbar {
+  width: 14px;
+}
+
+.terminal-screen::-webkit-scrollbar-track {
+  border-left: 1px solid var(--k-line);
+  background: repeating-conic-gradient(var(--k-hair) 0 25%, var(--k-paper) 0 50%) 0 0 / 2px 2px;
+}
+
+.terminal-screen::-webkit-scrollbar-thumb {
+  background: var(--k-chrome);
+  border: 1px solid var(--k-line);
+}
+
+.terminal-root .out {
+  margin: 0;
+  font: inherit;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.terminal-root .g {
+  color: var(--k-ok);
+}
+.terminal-root .u {
+  color: var(--k-user);
+}
+.terminal-root .h {
+  color: var(--k-host);
+}
+.terminal-root .m {
+  color: var(--k-muted);
+}
+.terminal-root .y {
+  color: var(--k-key);
+}
+.terminal-root .e {
+  color: var(--k-err);
+}
+
+.terminal-root .line {
+  position: relative;
+  display: flex;
+  white-space: pre;
+}
+
+.terminal-root .cur {
+  display: inline-block;
+  width: 1ch;
+  height: 1.1em;
+  transform: translateY(0.18em);
+  background: var(--k-ink);
+  animation: terminal-blink 1.06s steps(1) infinite;
+}
+
+.terminal-win:not(.focus) .line .cur {
+  background: none;
+  outline: 1px solid var(--k-muted);
+  outline-offset: -1px;
+  animation: none;
+}
+
+.terminal-root .line.typing .cur {
+  animation: none;
+}
+
+@keyframes terminal-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.terminal-root .line input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  padding: 0;
+  font: inherit;
+  font-size: max(16px, 1em); /* no zoom on focus in iOS Safari */
+  border: 0;
+  opacity: 0;
+  caret-color: transparent;
+}
+
+/* waves.exe, over the screen's well until a key. */
+.terminal-waves {
+  position: absolute;
+  inset: 1px;
+  z-index: 1;
+  /* Sunk like the well it covers. */
+  border-radius: 2px;
+  box-shadow:
+    inset 1px 1px 0 var(--k-sink),
+    inset 3px 3px 0 color-mix(in srgb, var(--k-ink) 7%, transparent);
+  margin: 0;
+  padding: 6px 8px;
+  overflow: hidden;
+  font: inherit;
+  white-space: pre;
+  background: var(--k-paper);
+  cursor: pointer;
+}
+
+/* ---------- Files ---------- */
+
+/* The site's pages as folders and a few sheets, as icons on paper. Click selects,
+   double-click opens. */
+.terminal-files {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  grid-template-columns: repeat(auto-fill, 104px);
+  grid-auto-rows: 80px;
+  align-content: start;
+  gap: 6px 4px;
+  padding: 14px 10px;
+  overflow: auto;
+}
+
+.terminal-files button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  color: var(--k-ink);
+  background: none;
+  border: 0;
+  cursor: default;
+}
+
+.terminal-files svg {
+  width: 40px;
+  height: 34px;
+  overflow: visible;
+}
+
+.terminal-files svg .f {
+  fill: var(--k-paper);
+  stroke: var(--k-ink);
+  stroke-width: 1.25;
+}
+
+.terminal-files svg .l {
+  stroke: var(--k-ink);
+  stroke-width: 1;
+}
+
+/* Selected or open, an icon goes to dither and a selected name inverts. */
+.terminal-files button:is([data-open], [aria-selected='true']) svg .f {
+  fill: url(#terminal-dither);
+}
+
+.terminal-files span {
+  padding: 0 4px;
+  font: 400 12px/15px var(--bitmap);
+}
+
+.terminal-files button[aria-selected='true'] span {
+  background: var(--k-plate);
+  color: var(--k-on-plate);
+}
+
+.terminal-files button:focus-visible {
+  outline: none;
+}
+
+.terminal-files button:focus-visible span {
+  outline: 1px dotted var(--k-ink);
+  outline-offset: 1px;
+}
+
+/* ---------- Status ---------- */
+
+.terminal-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 19px;
+  flex: none;
+  margin-top: 3px;
+  padding: 0 2px;
+  font: 400 12px/1 var(--bitmap);
+  font-variant-numeric: tabular-nums;
+  color: var(--k-muted);
+}
+
+.terminal-status span:first-child {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A patch of dither before the clock, as a player's spare panel was filled. */
+.terminal-status .fill {
+  width: 64px;
+  height: 12px;
+  flex: none;
+  background: repeating-conic-gradient(var(--k-ink) 0 25%, transparent 0 50%) 0 0 / 2px 2px;
+  opacity: 0.35;
+}
+
+.terminal-status .clock {
+  color: var(--k-ink);
+  white-space: pre;
+}
+
+.terminal-status .grow {
+  position: relative;
+  width: 12px;
+  height: 12px;
+  flex: none;
+  background: linear-gradient(
+    135deg,
+    transparent 45%,
+    var(--k-ink) 45% 52%,
+    transparent 52% 64%,
+    var(--k-ink) 64% 71%,
+    transparent 71% 83%,
+    var(--k-ink) 83% 90%,
+    transparent 90%
+  );
+  opacity: 0.6;
+  cursor: nwse-resize;
+  touch-action: none;
+}
+
+/* A bigger grip than the box it draws. */
+.terminal-status .grow::before {
+  content: '';
+  position: absolute;
+  inset: -8px -6px -6px -8px;
+}
+
+/* On a phone it takes the width above the word. */
+@media (max-width: 480px) {
+  /* The menu sits at the end of the links' row here, the gutter in and about 20px down. */
+  .terminal-power {
+    right: var(--gutter);
+    bottom: 20px;
+  }
+  .terminal-win {
+    right: 8px;
+    bottom: 48px;
+    left: 8px;
+    width: auto;
+    height: min(368px, 60svh);
+  }
+  .terminal-menu > div > button {
+    padding: 0 7px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .terminal-root .cur,
+  .terminal-win {
+    animation: none;
+  }
+}
