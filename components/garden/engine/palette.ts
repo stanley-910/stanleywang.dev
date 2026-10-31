@@ -350,7 +350,7 @@ const luma = ([r, g, b]: Rgb) => 0.2126 * r + 0.7152 * g + 0.0722 * b
 /**
  * The palette with the moon in the slider's colour, or as it is for null. It keeps the hour's own
  * brightness for the moon, dimmer toward midnight, and takes over only as the night does, so the
- * disc, its glow, the moonlit slopes and the river's silver all turn with it.
+ * disc, its glow and the moonlit slopes all turn with it.
  */
 export function withMoon(p: Palette, tone: number | null): Palette {
   if (tone === null) return p
