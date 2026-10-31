@@ -2,6 +2,7 @@
 // ascii-garden prototype (its main.ts, minus the dev control panel).
 
 import { currentHour, HOUR_EVENT, setHour } from '@/lib/circadian'
+import { MEADOW_EVENT, type MeadowCommand } from '@/lib/meadow-control'
 
 import { AsciiRenderer, type Rect } from './engine/ascii'
 import { Birds, BY_DAY } from './engine/birds'
@@ -137,6 +138,9 @@ export function mountGarden({
   let starTimer = 0
   const wind = new Wind()
   wind.strength = windStrength
+  /** The breeze without a gust, which the terminal can set; a gust eases back to it. */
+  let breeze = windStrength
+  let gust = 0
   const raster = new Raster()
   const ascii = new AsciiRenderer(canvas, font)
   const meteors = new Meteors()
@@ -635,6 +639,11 @@ export function mountGarden({
     const palette = paletteAt(hour)
     let steps = 0
     while (acc >= STEP && steps < MAX_STEPS) {
+      if (gust > 0) {
+        gust = Math.max(0, gust - STEP / 5)
+        wind.strength =
+          breeze + 1.2 * Math.sin(Math.PI * Math.sqrt(1 - gust)) * (1 - breeze)
+      }
       wind.step(STEP)
       garden.step(STEP, palette)
       acc -= STEP
@@ -826,6 +835,21 @@ export function mountGarden({
 
   const onVisibility = () => (document.hidden ? stop() : start())
 
+  // The terminal's meadow commands (lib/meadow-control.ts).
+  const onControl = (e: Event) => {
+    const command = (e as CustomEvent<MeadowCommand>).detail
+    if (command.kind === 'wind') {
+      breeze = command.value
+      if (gust === 0) wind.strength = breeze
+    } else if (command.kind === 'gust') {
+      gust = 1
+    } else if (command.kind === 'regrow') {
+      garden.regrow(command.seed)
+    }
+    // Held still, the scene only redraws when asked; otherwise the next frame shows it.
+    if (reduced.matches) start()
+  }
+
   // A window on screen but out of use keeps its meadow moving, slowly (quality.ts).
   let unfocused = false
   /** When the window last went out of use. */
@@ -863,6 +887,7 @@ export function mountGarden({
   reduced.addEventListener('change', start)
   document.addEventListener('visibilitychange', onVisibility)
   window.addEventListener(HOUR_EVENT, onHourChange)
+  window.addEventListener(MEADOW_EVENT, onControl)
 
   showHour()
   onFocus()
@@ -915,6 +940,7 @@ export function mountGarden({
     document.removeEventListener('visibilitychange', onVisibility)
     raster.dispose()
     window.removeEventListener(HOUR_EVENT, onHourChange)
+    window.removeEventListener(MEADOW_EVENT, onControl)
     delete html.dataset.sky
     html.style.removeProperty('--garden-ink')
     html.style.removeProperty('--garden-ink-muted')

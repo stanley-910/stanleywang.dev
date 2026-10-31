@@ -8,6 +8,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import { ThemeProvider } from 'next-themes'
 
 import { INTRO_SCRIPT } from '@/components/garden/intro'
+import { Terminal } from '@/components/terminal/terminal'
 import { ProgressBar } from '@/components/ui/progress-bar'
 import { THEME_SCRIPT } from '@/lib/circadian'
 import { WEBSITE_URL } from '@/lib/constants'
@@ -77,6 +78,7 @@ export default function RootLayout({
                 {children}
                 <Analytics />
               </main>
+              <Terminal />
             </div>
           </div>
         </ThemeProvider>
