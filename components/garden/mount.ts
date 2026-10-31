@@ -5,6 +5,7 @@ import { currentHour, HOUR_EVENT, setHour } from '@/lib/circadian'
 import { MEADOW_EVENT, type MeadowCommand } from '@/lib/meadow-control'
 import {
   currentLightningTone,
+  currentMoonTone,
   currentWeather,
   isWeather,
   setWeather,
@@ -16,7 +17,13 @@ import { Birds, BY_DAY } from './engine/birds'
 import { Garden, sunAt } from './engine/garden'
 import { smoothstep } from './engine/math'
 import { Meteors, STILL_FOR } from './engine/meteors'
-import { mix, paletteAt, type Palette, type Rgb } from './engine/palette'
+import {
+  mix,
+  paletteAt,
+  withMoon,
+  type Palette,
+  type Rgb,
+} from './engine/palette'
 import { Raster } from './engine/raster'
 import { Weather } from './engine/weather'
 import { Wind } from './engine/wind'
@@ -152,8 +159,10 @@ export function mountGarden({
   const weather = new Weather()
   weather.set(currentWeather(), true, reduced.matches)
   weather.tone = currentLightningTone()
-  /** The hour's palette under the weather. */
-  const sceneAt = (h: number) => weather.tint(paletteAt(h), sunAt(h))
+  let moonTone = currentMoonTone()
+  /** The hour's palette, with the moon in the menu's colour, under the weather. */
+  const sceneAt = (h: number) =>
+    weather.tint(withMoon(paletteAt(h), moonTone), sunAt(h))
   const raster = new Raster()
   const ascii = new AsciiRenderer(canvas, font)
   const meteors = new Meteors()
@@ -913,6 +922,7 @@ export function mountGarden({
   const onWeather = () => {
     weather.set(currentWeather(), reduced.matches, reduced.matches)
     weather.tone = currentLightningTone()
+    moonTone = currentMoonTone()
     // Held still, it's a still state, drawn once; otherwise it eases in over the next frames.
     if (reduced.matches) start()
   }

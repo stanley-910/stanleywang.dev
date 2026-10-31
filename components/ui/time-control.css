@@ -273,6 +273,12 @@
   margin-top: var(--inset);
 }
 
+/* Under the weather on a meadow: the moon's colour, from its own silver through white to gold and
+   amber, with `auto` to hand it back to the palette. */
+.time-control-moon {
+  margin-top: var(--inset);
+}
+
 /* Hide text (lib/hide-ui.ts): the top bar's links and home's text fade
    away, the garden stops receding behind them (mount.ts skips boxes whose
    --avoid is none), and the menu goes too, coming back while the pointer is

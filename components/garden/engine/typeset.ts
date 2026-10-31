@@ -3,7 +3,7 @@
 // thin things, with an ink, an alpha and a tile under it. Far heads and insects print as fixed
 // motifs. Kept free of the DOM so it runs where the frame was rasterised.
 
-import { bayer, clamp } from './math'
+import { bayer, clamp, smoothstep } from './math'
 import { mix, shade, type Palette, type Rgb } from './palette'
 import { Kind, LandMat, RIVER_SPAN, type Cells } from './rasterize'
 
@@ -624,10 +624,15 @@ export class Typesetter {
               alpha = clamp(v * 2.2, 0.35, 1)
               if (this.lit[i] > 0.75) {
                 // Lace and seed heads get a soft body in their own colour, with the glyphs inked
-                // against it, so a pale head holds against a pale hill. The sun and moon stay bare.
+                // against it, so a pale head holds against a pale hill. The sun stays bare.
                 tile[i] = 0.25 + 0.35 * Math.min(1, v)
                 ;[cr, cg, cb] = mix([cr, cg, cb], inkAt(x, y).ink, 0.45)
                 alpha = 1
+              } else {
+                // After dark the cells the moon fills take a faint body in its colour, so the disc
+                // stands as a stark mark and shows its colour; seeds and fireflies never fill one.
+                tile[i] =
+                  0.2 * smoothstep(0.85, 1, v) * smoothstep(0.5, 0.9, p.night)
               }
               break
             case Kind.Stem:
