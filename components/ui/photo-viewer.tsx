@@ -13,7 +13,7 @@ const SIZES = '(min-width: 900px) calc(100vw - 20rem), 100vw'
 const SWIPE = 60
 
 // One photo at a time, as large as the window allows, with every detail it
-// has beside it (below, on a phone). Left and right buttons, the arrow keys
+// has beside it (below, on a phone). Prev and next buttons, the arrow keys
 // and a sideways swipe step through the photos, wrapping at the ends; Escape,
 // the close button or a press outside the photo closes it.
 export function PhotoViewer({
@@ -41,7 +41,12 @@ export function PhotoViewer({
   useEffect(() => {
     const d = dialog.current
     if (!d) return
-    if (open && !d.open) d.showModal()
+    // The dialog itself takes focus, not its first button, so no ring
+    // shows on a button nobody pressed; the keys still work from it.
+    if (open && !d.open) {
+      d.showModal()
+      d.focus()
+    }
     if (!open && d.open) d.close()
   }, [open])
 
@@ -106,6 +111,7 @@ export function PhotoViewer({
     <dialog
       ref={dialog}
       className="viewer"
+      tabIndex={-1}
       aria-label={photo ? (name ?? photo.alt) : 'Photo'}
       onKeyDown={onKeyDown}
       onCancel={(e) => {
@@ -120,6 +126,9 @@ export function PhotoViewer({
     >
       {photo && (
         <>
+          <button type="button" className="viewer-close" onClick={onClose}>
+            close
+          </button>
           <div
             ref={stage}
             className="viewer-stage"
@@ -169,7 +178,7 @@ export function PhotoViewer({
               aria-label="Previous photo"
               onClick={() => step(-1)}
             >
-              ←
+              prev
             </button>
             <span className="viewer-count" aria-live="polite">
               {(index ?? 0) + 1} / {n}
@@ -179,10 +188,7 @@ export function PhotoViewer({
               aria-label="Next photo"
               onClick={() => step(1)}
             >
-              →
-            </button>
-            <button type="button" className="viewer-close" onClick={onClose}>
-              close
+              next
             </button>
           </div>
         </>

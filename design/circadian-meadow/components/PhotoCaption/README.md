@@ -55,9 +55,9 @@ A caption waits for its photo: the two fade in together over 300ms, so the pill 
 
 ## Viewer
 
-Pressing a photo (anywhere but its pill) opens it in a full-window `<dialog>` on `page` (`components/ui/photo-viewer.tsx`): the photo as large as fits, letterboxed, with its name and every detail it has beside it on a wide screen, below it on a phone, in `meta` mono with labels `ink-muted`. Under them, ← and → in `nav` type, a count (`2 / 4`), and "close" at the end, all `ink-muted` going to `ink` on hover.
+Pressing a photo (anywhere but its pill) opens it in a full-window `<dialog>` on `page` (`components/ui/photo-viewer.tsx`): the photo as large as fits, letterboxed, standing off the page on `shadow-photo` (crisp by day, a soft pool by night), with its name and every detail it has beside it on a wide screen, below it on a phone, in `meta` mono with labels `ink-muted`. Under them, "prev" and "next" in `nav` type around a count (`2 / 4`); "close" sits alone in the top-right corner. All `ink-muted` going to `ink` on hover. The dialog itself takes focus on open, so no button shows a ring nobody pressed.
 
-- ← → buttons, the arrow keys, and a sideways swipe step through the photos, wrapping at the ends. A swipe follows the finger and springs back under 60px.
+- prev and next, the arrow keys, and a sideways swipe step through the photos, wrapping at the ends. A swipe follows the finger and springs back under 60px.
 - Escape, "close", or a press outside the photo closes it. The page behind doesn't scroll while it's open.
 - The photos either side are fetched ahead, so stepping shows them at once; each fades in as it arrives.
 

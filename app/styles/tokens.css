@@ -10,8 +10,7 @@
      app/layout.tsx; these names are what the rest of the site uses. */
   --font-sans: var(--font-geist), system-ui, -apple-system, 'Segoe UI',
     sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, 'SF Mono', Menlo,
-    monospace;
+  --font-mono: var(--font-geist-mono), ui-monospace, 'SF Mono', Menlo, monospace;
 
   --text-body: 15px;
   --leading-body: 1.6;
@@ -32,6 +31,9 @@
   --hairline: #868580;
   --surface: #f3f2ee;
   --shadow-card: 0 1px 2px #25252214, 0 8px 24px #2525221f;
+  /* A photo held up off the page: crisp and cast down by day. */
+  --shadow-photo: drop-shadow(0 2px 2px #2525222e)
+    drop-shadow(0 16px 28px #25252242);
   --focus: var(--ink);
 
   /* Over photos, whatever the theme. */
@@ -73,4 +75,6 @@
   --hairline: #6a6964;
   --surface: #242422;
   --shadow-card: 0 1px 2px #0000004d, 0 10px 28px #00000066;
+  /* By night, only a soft dark pool, no cast. */
+  --shadow-photo: drop-shadow(0 8px 28px #00000073);
 }
