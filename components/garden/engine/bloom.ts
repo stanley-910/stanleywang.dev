@@ -65,6 +65,11 @@ export type PetalSpec = {
    * a hollow deepening to its heart rather than a flat shape. The outer face stays even.
    */
   throat?: number
+  /**
+   * How much darker (0..1) a petal prints where you see its underside, or where it tips down
+   * away from the sky: a white head otherwise reads flat, every flap the same lit cream.
+   */
+  underside?: number
   /** A line traced round each petal, so overlapping petals of one colour stay apart (the rose). */
   edge?: Rgb
   haze: Rgb
@@ -175,8 +180,20 @@ export function drawPetals(
     if (backside) n = [-n[0], -n[1], -n[2]]
     const light = clamp(dot(n, LIGHT), 0, 1)
     const base = backside ? spec.back : spec.front
+    // n faces the viewer here; screen y points down, so n[1] > 0 is a face tipped downward.
+    // A near-white petal lit past 1 clips to white, so turning from the light has to darken
+    // it here too, or every flap prints the same cream. A face-on head is flat, every petal on
+    // one normal, so the petals reaching down the screen, curving away from the sun overhead,
+    // take a share too: the head then shades from top to bottom like a dish.
+    const under = spec.underside
+      ? spec.underside *
+        ((backside ? 0.5 : 0) +
+          0.3 * clamp(n[1], 0, 1) +
+          0.25 * (1 - light) +
+          0.5 * clamp(rd[1], 0, 1))
+      : 0
     const color = mix(
-      shade(base, 0.62 + 0.55 * light),
+      shade(base, (0.62 + 0.55 * light) * (1 - under)),
       spec.haze,
       spec.hazeAmount,
     )

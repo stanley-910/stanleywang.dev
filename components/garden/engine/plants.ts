@@ -529,7 +529,9 @@ export class Poppy extends Plant {
         cup: (u) => lerp(1.42, 0.42, open) + 0.32 * u * open,
         crinkle: lerp(0.55, 0.16, open),
         size: (k) => (k % 2 ? 0.84 : 1),
-        rotation: this.seed,
+        // One petal on the cup's near side, below the heart, so a cup turned toward you holds
+        // its heart in a bowl instead of showing it on a bare lower edge.
+        rotation: this.nearSide(axis) + (hash(this.seed, 13) - 0.5) * 0.4,
         seed: this.seed,
         front: poppy,
         // The outside is a deeper, duller red than the lit inside, so which way a cup faces
@@ -652,6 +654,12 @@ export class Poppy extends Plant {
   }
 
   /** A hairy, hanging, egg-shaped bud; `split` 0..1 parts the two sepals as the petals push out. */
+  /** Angle, in the petals' plane, of the side of the cup nearest the viewer. */
+  private nearSide(axis: Vec3) {
+    const [u, v] = basis(axis)
+    return Math.atan2(v[2], u[2])
+  }
+
   private drawBud(
     r: Raster,
     tx: number,
@@ -1010,6 +1018,7 @@ export class Cosmos extends Plant {
           veins: mix(p.cosmosVein, cosmos, 0.2),
           haze: p.haze,
           hazeAmount: 0,
+          underside: 0.4,
           attached: (k) => k >= h.shed,
         },
         list,
@@ -1214,7 +1223,18 @@ export class Lace extends Plant {
     r.stroke(rays, rayColor, Kind.Stem, Math.max(0.5, H * 0.025), 0.4)
     florets.sort((a, b) => a[2] - b[2])
     const fr = Math.max(0.6, H * 0.045)
-    for (const [ex, ey, , n] of florets) {
+    // Each umbellet shades by where it sits on the dome, as a cosmos does: those down the
+    // screen curve away from the sun overhead, those at the back sit in the front ones' shade.
+    // One flat cream read as a cut-out, not a head.
+    // From the umbellets' own middle, so a head still opening shades across itself too.
+    let midY = 0
+    for (const f of florets) midY += f[1] / florets.length
+    const near = florets[florets.length - 1]?.[2] ?? 0
+    const far = florets[0]?.[2] ?? 0
+    for (const [ex, ey, ez, n] of florets) {
+      const down = clamp((ey - midY) / H, 0, 1)
+      const back = near > far ? (near - ez) / (near - far) : 0
+      const tone = shade(lace, 1 - 0.2 * down - 0.08 * back)
       // A tiny umbellet: a ring of florets around one.
       const cluster = new Shape()
       const rr = H * 0.11
@@ -1223,7 +1243,7 @@ export class Lace extends Plant {
       const dome = new Shape()
       const dr = Math.max(rr * 1.35, r.minLine * 1.2)
       dome.ellipse(ex, ey, dr, dr * 0.8, 0, 0, TAU)
-      r.fill(dome, lace, Kind.Fluff, 0.85, FLOWER_FLUFF)
+      r.fill(dome, tone, Kind.Fluff, 0.85, FLOWER_FLUFF)
       r.touchMeta(ex - dr - rr, ey - dr - rr)
       r.touchMeta(ex + dr + rr, ey + dr + rr)
       cluster.ellipse(ex, ey, fr, fr, 0, 0, TAU)
@@ -1241,7 +1261,7 @@ export class Lace extends Plant {
         cluster.moveTo(x + fr, y)
         cluster.ellipse(x, y, fr, fr, 0, 0, TAU)
       }
-      r.fill(cluster, lace, Kind.Fluff, 1, FLOWER_FLUFF)
+      r.fill(cluster, tone, Kind.Fluff, 1, FLOWER_FLUFF)
     }
     if (this.darkFloret && ph.spread > 0.6 && ph.nest < 0.1) {
       const [cx, cy] = project(tx, ty, axis, [u, v], 0, 0, H * 0.85)
