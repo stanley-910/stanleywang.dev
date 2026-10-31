@@ -269,6 +269,8 @@ export class Garden {
   riverVersion = 0
   /** The course's points filed by the 4px rows their cross-sections cover. */
   private riverBins = new Map<number, number[]>()
+  /** Per 8px of width, the nearest row a plant may root behind the river, -Infinity where none. */
+  private shoreline = new Float32Array(0)
   /** Plants sown by clicking, oldest first. */
   private sown: Plant[] = []
   time = 0
@@ -367,7 +369,7 @@ export class Garden {
       (z) => this.floor(z),
       this.seed * 7 + 3,
       this.keepClearColumn ? null : this.keepClear,
-      (x, y) => this.wet(x, y),
+      (x, y) => this.dry(x, y),
     )
   }
 
@@ -401,7 +403,7 @@ export class Garden {
       (z) => this.floor(z),
       seed * 7 + 3,
       this.keepClearColumn ? null : this.keepClear,
-      (x, y) => this.wet(x, y),
+      (x, y) => this.dry(x, y),
     )
   }
 
@@ -526,6 +528,19 @@ export class Garden {
     return this.acrossAt(x, y) !== null
   }
 
+  /** The nearest row a plant at x may root, below the horizon where the river lies behind. */
+  private shoreAt(x: number) {
+    const s = this.shoreline
+    return s.length
+      ? s[Math.min(s.length - 1, Math.max(0, Math.floor(x / 8)))]
+      : -Infinity
+  }
+
+  /** Whether a plant rooted at (x, y) would stand in, beside or past the river. */
+  private dry(x: number, y: number) {
+    return y < this.shoreAt(x) || this.wet(x, y)
+  }
+
   /** Keeps plants sorted far to near, so nearer ones draw over. */
   private place(plant: Plant) {
     let i = this.plants.length
@@ -608,11 +623,14 @@ export class Garden {
 
   /** Sow where the user clicked, cycling through the species. */
   sow(x: number, y: number) {
-    // A click on the sky sows at the horizon below it.
-    const z =
-      y < this.horizon ? FARTHEST_Z : Math.max(FARTHEST_Z, this.depthAt(y))
+    // A click on the sky sows at the horizon below it, and one beside or past the river at the
+    // nearest row clear of it.
+    const z = Math.max(
+      FARTHEST_Z,
+      this.depthAt(Math.max(y, this.shoreAt(x) + 1)),
+    )
     // Nothing takes root in the river.
-    if (this.wet(x, this.floor(z))) return false
+    if (this.dry(x, this.floor(z))) return false
     const plant = this.add(this.pickSpecies(), x, z)
     plant.hurry()
     // Now and then a sown flower draws a visitor once it opens; a click on a flower always does.
@@ -724,30 +742,30 @@ export class Garden {
    */
   private buildRiver() {
     const H = this.height
-    const W = this.width
     const hz = this.horizon
     const seed = LAND_SEED * 17
     const CH = Math.min(H, 0.62 * this.rangeWidth) * 0.0125
-    const clear = this.keepClearColumn ? null : this.keepClear
+    // Laid out like the range, on its own proportions and never the text's, so every screen and
+    // zoom shows the same river, a phone a crop of it as it is of the hills.
+    const U = Math.min(H, 0.62 * this.rangeWidth)
     // Half its breadth: the far landscape's perspective, not the flowers', which are inches tall
     // and close. In proportion to how far below the horizon it lies, so it opens up as it nears.
     const width = (y: number, breadth: number) =>
-      (2 + 0.24 * (y - hz)) * breadth
+      (0.0015 * U + 0.24 * (y - hz)) * breadth
     // It comes in from off the left edge and crosses in two broad bends into the middle of the
-    // forest: it turns from coming toward us to running across, dips once above the bio, and
-    // slips in under the central trees. Placed by hand: across the screen, and down in px, kept
-    // within the room above the text where it crosses over it.
-    const room = clear ? Math.max(24, clear.top - 0.04 * H - hz) : 0.1 * H
-    const left = clear && clear.left > 0.12 * W ? clear.left : 0.25 * W
-    const pts: [number, number][] = [
-      [0.5 * W, 0],
-      [0.44 * W, 0.3 * room],
-      [0.34 * W, 0.75 * room],
-      [left + 0.04 * W, 0.8 * room],
-      [0.6 * left, room + 0.03 * H],
-      [0.15 * left, room + 0.09 * H],
-      [-0.12 * W, room + 0.17 * H],
-    ]
+    // forest. Placed by hand: shares of the range across, and of U down from the horizon.
+    const pts: [number, number][] = (
+      [
+        [0.52, 0],
+        [0.43, 0.01],
+        [0.35, 0.026],
+        [0.3, 0.052],
+        [0.21, 0.078],
+        [0.1, 0.092],
+        [0, 0.12],
+        [-0.1, 0.17],
+      ] as const
+    ).map(([u, f]) => [this.rangeX(u), f * U])
     const raw: [number, number][] = []
     for (let j = 0; j < pts.length - 1; j++)
       for (let q = 0; q < 40; q++) {
@@ -788,18 +806,7 @@ export class Garden {
         // Its breadth swells and narrows along the way, pools in the bends and runs at the necks.
         line[k][2] = 0.85 + 0.35 * fbm1((k / L) * 6, seed + 3, 2)
     }
-    // Kept clear of the bio, banks and all: over the text it's held up toward the trees.
-    if (clear)
-      for (const q of line) {
-        const w = width(q[1], q[2])
-        if (
-          q[0] + 1.9 * w > clear.left - 0.01 * W &&
-          q[0] - 1.9 * w < clear.right
-        )
-          q[1] = Math.min(q[1], clear.top - 0.025 * H - 0.6 * w)
-        q[1] = Math.max(q[1], hz + 3)
-      }
-    // Smoothed, so the course bends without kinks where it was held.
+    // Smoothed, so the bends run without kinks where the points meet.
     for (let pass = 0; pass < 24; pass++)
       for (let k = 1; k < line.length - 1; k++)
         for (const d of [0, 1])
@@ -904,6 +911,26 @@ export class Garden {
         this.riverBins.set(row, list)
       }
     })
+    // The meadow's flowers are inches tall and close, so one beside the river shrinks it to a
+    // ditch. Within a flower's breadth of the river they stand clearly nearer than its near bank,
+    // and it lies on a plane past them.
+    {
+      const cols = Math.ceil(this.width / 8) + 1
+      const near = new Float32Array(cols).fill(-Infinity)
+      mid.forEach(([x, y], k) => {
+        if (x >= this.width) return
+        const c = Math.max(0, Math.floor(x / 8))
+        near[c] = Math.max(near[c], y + Math.max(wl[k], wr[k]) + sw[k])
+      })
+      const reach = Math.ceil((0.06 * H) / 8)
+      this.shoreline = new Float32Array(cols)
+      for (let c = 0; c < cols; c++) {
+        let m = -Infinity
+        for (let d = -reach; d <= reach; d++)
+          m = Math.max(m, near[Math.min(cols - 1, Math.max(0, c + d))])
+        this.shoreline[c] = m + 0.05 * H
+      }
+    }
     const tx = new Float32Array(n)
     const ty = new Float32Array(n)
     for (let k = 0; k < n; k++) {
@@ -915,9 +942,9 @@ export class Garden {
     }
     this.course = { mid, tx, ty, wl, wr, sw }
     this.riverVersion++
-    // Nothing roots in the water or on its banks.
+    // Nothing roots in the water or on its banks, or beside or past it.
     this.plants = this.plants.filter(
-      (plant) => !this.wet(plant.x, this.floor(plant.z)),
+      (plant) => !this.dry(plant.x, this.floor(plant.z)),
     )
   }
 
@@ -2242,6 +2269,10 @@ export class Garden {
   private drawGlobe(r: Raster, p: Palette) {
     const { cx, cy, R } = this.globeAt()
     const { sun, moon } = this.lights(p)
+    // Their GLOBE mark is read only inside the meta bounds, which otherwise start at the land:
+    // above it the moon would lose its tile, a hard line across the disc.
+    r.touchMeta(cx - R * 1.6, cy - R * 1.6)
+    r.touchMeta(cx + R * 1.6, cy + R * 1.6)
     if (sun > 0) {
       // Solid at the core, thinning to a sparse halo of dots at the edge, like a halftone print.
       const { color, rx, ry } = this.sunLook(p)

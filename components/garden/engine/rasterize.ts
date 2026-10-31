@@ -475,13 +475,17 @@ function sampleRow(at: Sampling, r: number) {
                 pn++
               } else if (k === Kind.Land || md[m] === 0) {
                 if (k === Kind.Land) mats[Math.min(7, Math.round(md[m] / 24))]++
+                // The sun and moon carry no light of their own: averaged in, they'd shade a
+                // crest cell by how much disc is behind it, flickering as it moves.
                 else if (md[m + 1] === 0 && md[m + 2] === 0) globe++
                 // Fluff reads only fluff's own marks (id 0): a seed head, firefly or the moon
                 // in front of a petal or leaf would otherwise take its back flag and print as
                 // a loose petal.
-                ll += md[m + 1]
-                lb += md[m + 2]
-                ln++
+                if (k === Kind.Land || md[m + 1] || md[m + 2]) {
+                  ll += md[m + 1]
+                  lb += md[m + 2]
+                  ln++
+                }
               }
             }
           }
@@ -538,6 +542,8 @@ function sampleRow(at: Sampling, r: number) {
       pid[i] = mv
     }
     lit[i] = pn ? li / (pn * 255) : ln ? ll / (ln * 255) : 0.5
+    // A cell of nothing but sun or moon reads 0, so the typesetter knows the disc.
+    if (best === Kind.Fluff && globe > 0 && !ln) lit[i] = 0
     back[i] = pn ? +(bk / pn > 127) : ln ? +(lb / ln > 127) : 0
     const plant = (PLANT_MASK >> best) & 1
     const shown = behind ? Math.max(1, a - weight[Kind.Fluff]) : a
