@@ -1526,12 +1526,21 @@ export class Garden {
       const { cx, cy, R } = this.globeAt()
       const look = this.sunLook(p)
       const col = sun ? look.color : p.globe
-      const strength = sun ? (0.2 + 0.12 * look.low) * sun : 0.16 * moon
-      const reach = sun ? R * (6 + 4 * look.low) : R * 7
+      const strength = sun ? (0.17 + 0.12 * look.low) * sun : 0.15 * moon
+      // Sized by the screen as well as the disc, so a phone's small moon still lights a wide
+      // patch of sky, and eased out to nothing so no edge shows as it moves. Painted before the
+      // ridges, so it lights only open sky and the range stands in front of it as the moon sets.
+      const span = Math.hypot(this.width, this.height)
+      const reach = sun
+        ? Math.max(R * (8 + 4 * look.low), span * (0.4 + 0.15 * look.low))
+        : Math.max(R * 9, span * 0.4)
       const glow = ctx.createRadialGradient(cx, cy, R, cx, cy, reach)
       const gc = col.map((v) => v | 0).join(',')
-      glow.addColorStop(0, `rgba(${gc},${strength})`)
-      glow.addColorStop(1, `rgba(${gc},0)`)
+      for (let i = 0; i <= 8; i++) {
+        const s = i / 8
+        const fade = (1 - smoothstep(0, 1, s)) ** 2
+        glow.addColorStop(s, `rgba(${gc},${(strength * fade).toFixed(4)})`)
+      }
       ctx.fillStyle = glow
       ctx.fillRect(0, 0, this.width, this.height)
     }
