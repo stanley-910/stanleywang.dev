@@ -431,10 +431,14 @@ export function Poem({ className, preview }: PoemProps) {
     let last = 0
     // A late callback (fonts loading after the reader has left) mustn't set the next page's hour.
     let live = true
+    // Where the page is scrolled to, read as it scrolls. Read in the frame instead, after the
+    // meadow has written the hour's colours, it made the browser restyle the whole page there
+    // and again to paint, every frame of a scroll.
+    let y = window.scrollY
     const frame = (now: number) => {
       const dt = Math.max(0, Math.min(0.1, (now - last) / 1000))
       last = now
-      const target = hourAt(anchors, window.scrollY)
+      const target = hourAt(anchors, y)
       const next = reduced.matches
         ? target
         : shown + (target - shown) * (1 - Math.exp(-EASE * dt))
@@ -445,6 +449,7 @@ export function Poem({ className, preview }: PoemProps) {
       raf = shown === target ? 0 : requestAnimationFrame(frame)
     }
     const stir = () => {
+      y = window.scrollY
       if (raf || !live) return
       last = performance.now()
       raf = requestAnimationFrame(frame)
