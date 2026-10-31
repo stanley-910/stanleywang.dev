@@ -517,7 +517,9 @@ export class Poppy extends Plant {
         seed: this.seed,
         front: poppy,
         back: mix(poppy, this.bloomed(p.poppyDeep, p), 0.55),
-        blotch: hidden ? undefined : shade(p.disc, 0.9),
+        // The dark heart and blotches lean to the deep red, so they print as part of the cup
+        // rather than as grey glyphs over it.
+        blotch: hidden ? undefined : mix(shade(p.disc, 0.9), p.poppyDeep, 0.45),
         haze: p.haze,
         hazeAmount: 0,
         attached: (k) => k >= this.shed,
@@ -549,9 +551,15 @@ export class Poppy extends Plant {
             Math.max(H * 0.27, 1.6 * r.minLine),
             H * 0.06,
           )
-          r.fill(ring, this.bloomed(shade(p.disc, 1.1), p), Kind.Disc, 0.95)
+          r.fill(
+            ring,
+            this.bloomed(mix(shade(p.disc, 1.1), p.poppyDeep, 0.55), p),
+            Kind.Disc,
+            0.95,
+          )
           const top = disc(tx, ty, axis, H * 0.14, H * 0.16)
-          r.fill(top, this.hazed(mix(p.stem, p.haze, 0.3), p), Kind.Disc)
+          // The pod's crown, warmed the same way and hazed like the petals, not the leaves.
+          r.fill(top, this.bloomed(mix(p.stem, p.poppyDeep, 0.5), p), Kind.Disc)
           const [u, v] = basis(axis)
           const rays = new Shape()
           for (let i = 0; i < 8; i++) {
