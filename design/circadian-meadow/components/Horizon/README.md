@@ -32,6 +32,8 @@ The type needs to know where across the river each cell lies, `s`: from -1 to 1 
 
 Nothing roots or grows in the water or on its banks (`wet`): not flowers, not sown flowers, not grass.
 
+Nothing roots beside or past it either (`dry`). The flowers are inches tall and close, so one rooted beside the river shrinks it to a ditch. `shoreline` keeps, per 8px of width, the river's near bank spread 0.06H either side plus 0.05H; nothing roots above that row. A click beside or past the river sows at that row, so the river always lies on a plane beyond the flowers. Their heads can still rise across it, as near flowers would.
+
 ## Type
 
 - **Water:** the current is drawn as line glyphs along the flow, one every four cells across, slanted with it (`- \ | /`, with `~` alternating with `-` where it runs level). Each line is the glyph alone over the water's tile; lit tiles under the lines read as a patchwork at this grid. A thread where the water is too narrow for lines.

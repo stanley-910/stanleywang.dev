@@ -268,6 +268,8 @@ export class Garden {
   riverVersion = 0
   /** The course's points filed by the 4px rows their cross-sections cover. */
   private riverBins = new Map<number, number[]>()
+  /** Per 8px of width, the nearest row a plant may root behind the river, -Infinity where none. */
+  private shoreline = new Float32Array(0)
   /** Plants sown by clicking, oldest first. */
   private sown: Plant[] = []
   time = 0
@@ -366,7 +368,7 @@ export class Garden {
       (z) => this.floor(z),
       this.seed * 7 + 3,
       this.keepClearColumn ? null : this.keepClear,
-      (x, y) => this.wet(x, y),
+      (x, y) => this.dry(x, y),
     )
   }
 
@@ -400,7 +402,7 @@ export class Garden {
       (z) => this.floor(z),
       seed * 7 + 3,
       this.keepClearColumn ? null : this.keepClear,
-      (x, y) => this.wet(x, y),
+      (x, y) => this.dry(x, y),
     )
   }
 
@@ -525,6 +527,19 @@ export class Garden {
     return this.acrossAt(x, y) !== null
   }
 
+  /** The nearest row a plant at x may root, below the horizon where the river lies behind. */
+  private shoreAt(x: number) {
+    const s = this.shoreline
+    return s.length
+      ? s[Math.min(s.length - 1, Math.max(0, Math.floor(x / 8)))]
+      : -Infinity
+  }
+
+  /** Whether a plant rooted at (x, y) would stand in, beside or past the river. */
+  private dry(x: number, y: number) {
+    return y < this.shoreAt(x) || this.wet(x, y)
+  }
+
   /** Keeps plants sorted far to near, so nearer ones draw over. */
   private place(plant: Plant) {
     let i = this.plants.length
@@ -607,11 +622,14 @@ export class Garden {
 
   /** Sow where the user clicked, cycling through the species. */
   sow(x: number, y: number) {
-    // A click on the sky sows at the horizon below it.
-    const z =
-      y < this.horizon ? FARTHEST_Z : Math.max(FARTHEST_Z, this.depthAt(y))
+    // A click on the sky sows at the horizon below it, and one beside or past the river at the
+    // nearest row clear of it.
+    const z = Math.max(
+      FARTHEST_Z,
+      this.depthAt(Math.max(y, this.shoreAt(x) + 1)),
+    )
     // Nothing takes root in the river.
-    if (this.wet(x, this.floor(z))) return false
+    if (this.dry(x, this.floor(z))) return false
     const plant = this.add(this.pickSpecies(), x, z)
     plant.hurry()
     // Now and then a sown flower draws a visitor once it opens; a click on a flower always does.
@@ -892,6 +910,26 @@ export class Garden {
         this.riverBins.set(row, list)
       }
     })
+    // The meadow's flowers are inches tall and close, so one beside the river shrinks it to a
+    // ditch. Within a flower's breadth of the river they stand clearly nearer than its near bank,
+    // and it lies on a plane past them.
+    {
+      const cols = Math.ceil(this.width / 8) + 1
+      const near = new Float32Array(cols).fill(-Infinity)
+      mid.forEach(([x, y], k) => {
+        if (x >= this.width) return
+        const c = Math.max(0, Math.floor(x / 8))
+        near[c] = Math.max(near[c], y + Math.max(wl[k], wr[k]) + sw[k])
+      })
+      const reach = Math.ceil((0.06 * H) / 8)
+      this.shoreline = new Float32Array(cols)
+      for (let c = 0; c < cols; c++) {
+        let m = -Infinity
+        for (let d = -reach; d <= reach; d++)
+          m = Math.max(m, near[Math.min(cols - 1, Math.max(0, c + d))])
+        this.shoreline[c] = m + 0.05 * H
+      }
+    }
     const tx = new Float32Array(n)
     const ty = new Float32Array(n)
     for (let k = 0; k < n; k++) {
@@ -903,9 +941,9 @@ export class Garden {
     }
     this.course = { mid, tx, ty, wl, wr, sw }
     this.riverVersion++
-    // Nothing roots in the water or on its banks.
+    // Nothing roots in the water or on its banks, or beside or past it.
     this.plants = this.plants.filter(
-      (plant) => !this.wet(plant.x, this.floor(plant.z)),
+      (plant) => !this.dry(plant.x, this.floor(plant.z)),
     )
   }
 
