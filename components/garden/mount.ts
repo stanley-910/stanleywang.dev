@@ -304,8 +304,6 @@ export function mountGarden({
   let riverFor = ''
   /** The plant frame the page last drew. */
   let drawn = -1
-  /** The palette of the plant frame on screen, worked out once per frame that comes back. */
-  let shownPalette = { version: -1, palette: sceneAt(hour) }
 
   /**
    * Records the scene and draws the latest rasterised frame. In the loop the
@@ -375,12 +373,9 @@ export function mountGarden({
     // The sky, the glow and the ridges take the hour of the plant frame on screen, which a scrub
     // has moved past since it was recorded, so the sun and the land under it move together.
     const shown = raster.hour
-    if (shownPalette.version !== raster.version)
-      shownPalette = {
-        version: raster.version,
-        palette: Number.isNaN(shown) ? palette : sceneAt(shown),
-      }
-    const scene = shown === hour ? palette : shownPalette.palette
+    // In the palette it was recorded in, not one rebuilt now: a moon tone or a weather step since
+    // would light the glow in one colour beside a disc and land still in the last.
+    const scene = raster.palette ?? palette
     garden.hour = Number.isNaN(shown) ? hour : shown
     try {
       const secs = performance.now() / 1000

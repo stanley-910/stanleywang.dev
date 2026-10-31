@@ -474,14 +474,21 @@ function sampleRow(at: Sampling, r: number) {
                 bk += md[m + 2]
                 pn++
               } else if (k === Kind.Land || md[m] === 0) {
+                // The sun and moon (GLOBE: neutral light, back flag) carry no light of their
+                // own: averaged in, they'd shade a crest cell by how much disc is behind it,
+                // flickering as it moves.
+                const isGlobe =
+                  k !== Kind.Land &&
+                  md[m + 2] > 127 &&
+                  // Wide, as a faint edge pixel's light comes back coarse once un-premultiplied;
+                  // a loose petal's is 0 or 255.
+                  Math.abs(md[m + 1] - 128) <= 64
                 if (k === Kind.Land) mats[Math.min(7, Math.round(md[m] / 24))]++
-                // The sun and moon carry no light of their own: averaged in, they'd shade a
-                // crest cell by how much disc is behind it, flickering as it moves.
-                else if (md[m + 1] === 0 && md[m + 2] === 0) globe++
+                else if (isGlobe) globe++
                 // Fluff reads only fluff's own marks (id 0): a seed head, firefly or the moon
                 // in front of a petal or leaf would otherwise take its back flag and print as
                 // a loose petal.
-                if (k === Kind.Land || md[m + 1] || md[m + 2]) {
+                if (k === Kind.Land || (!isGlobe && (md[m + 1] || md[m + 2]))) {
                   ll += md[m + 1]
                   lb += md[m + 2]
                   ln++

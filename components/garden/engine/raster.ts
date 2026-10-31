@@ -11,7 +11,7 @@ import {
   type RasterResult,
 } from './rasterize'
 
-import type { Rgb } from './palette'
+import type { Palette, Rgb } from './palette'
 import type { Material, Style } from './typeset'
 
 // Defined beside the rasteriser, which the worker loads without this file.
@@ -77,8 +77,16 @@ export type PetalMeta = { id: number; light: number; back: boolean }
 /** Marks flower fluff (lace florets, dandelion seeds) apart from the sun and moon, which share its kind. */
 export const FLOWER_FLUFF: PetalMeta = { id: 0, light: 1, back: false }
 
-/** Marks the sun and moon, so the land in front of them keeps the cells along its crest. */
-export const GLOBE: PetalMeta = { id: 0, light: 0, back: false }
+/**
+ * Marks the sun and moon, so the land in front of them keeps the cells along its crest. Its light
+ * is the land's neutral 0.5: drawn in behind the land, it blends into the crest's antialiased edge,
+ * and a light of 0 there darkened each edge cell by how much disc was behind it, a shade that
+ * swept along the crest as the disc moved. rasterize.ts knows it by that light with the back flag,
+ * a pair no other mark has (a loose petal's light is 0 or 1), so meta-less fluff over the ground's
+ * neutral light isn't taken for it. A land cell's own back flag stays clear: its subsamples are
+ * over half land, so the flag blended in at the edge never averages past the half.
+ */
+export const GLOBE: PetalMeta = { id: 0, light: 0.5, back: true }
 
 /** Marks a loose, falling petal, drawn as fluff, so its inside can print light. */
 export const LOOSE_PETAL: PetalMeta = { id: 0, light: 0, back: true }
@@ -177,7 +185,7 @@ export class Raster {
   /** Frames out at the workers, by sequence number. */
   private inFlight = new Map<
     number,
-    { gen: number; sent: number; hour: number }
+    { gen: number; sent: number; hour: number; palette: Palette }
   >()
   /** When `busy` last looked, so time the page itself stood still isn't counted against a worker. */
   private lastLook = 0
@@ -188,6 +196,11 @@ export class Raster {
   version = 0
   /** The hour the frame on screen was recorded at, so what's painted around it can match. */
   hour = NaN
+  /**
+   * The palette the frame on screen was recorded in, moon tone and weather included, so the sky,
+   * the glow and the ridges painted around it are lit the same as its cells.
+   */
+  palette: Palette | null = null
   /** Frames the workers have sent back. */
   private replies = 0
   /** A worker's time on one frame, in ms, averaged over the last few; 0 until warm. */
@@ -227,7 +240,7 @@ export class Raster {
             e.data.seq > this.shownSeq
           ) {
             this.shownSeq = e.data.seq
-            this.adopt(e.data, job.hour)
+            this.adopt(e.data, job.hour, job.palette)
           }
         }
         w.onerror = (e) =>
@@ -470,7 +483,12 @@ export class Raster {
     const worker = !now && this.ready ? this.idle.pop() : undefined
     if (worker) {
       const seq = ++this.seq
-      this.inFlight.set(seq, { gen: this.gen, sent: performance.now(), hour })
+      this.inFlight.set(seq, {
+        gen: this.gen,
+        sent: performance.now(),
+        hour,
+        palette: look.palette,
+      })
       worker.postMessage({ ...job, seq }, [job.cmds.buffer])
       return
     }
@@ -482,12 +500,13 @@ export class Raster {
       return ctx
     })
     this.shownSeq = ++this.seq
-    this.adopt(this.local.run(job), hour)
+    this.adopt(this.local.run(job), hour, look.palette)
   }
 
-  private adopt(out: RasterResult, hour: number) {
+  private adopt(out: RasterResult, hour: number, palette: Palette) {
     this.version++
     this.hour = hour
+    this.palette = palette
     this.material = out.material
     this.ready = true
   }
