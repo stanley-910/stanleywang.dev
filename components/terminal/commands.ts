@@ -136,7 +136,6 @@ const HELP = [
   '  {g|time}           - Set the hour: time 19:00, or time now',
   '  {g|wind}           - Set the breeze: wind 0.6',
   '  {g|regrow}         - Grow a new meadow',
-  '  {g|fetch}          - The meadow at a glance',
   '',
   '{y|[tab]}: Trigger completion',
   '{y|[ctrl+l]}/{y|clear}: Clear terminal',
@@ -172,7 +171,6 @@ const NAMES = [
   'time',
   'wind',
   'regrow',
-  'fetch',
   ...EXES.map((e) => `./${e}`),
 ]
 
@@ -403,13 +401,6 @@ export function run(input: string, ctx: Ctx): string[] {
       ctx.regrow(seed)
       return [`regrowing  {m|· a new meadow, seed ${seed}}`]
     }
-    case 'fetch':
-    case 'neofetch':
-      return [
-        '{u|dev}{m|@}{h|stanley-wang}',
-        `${hhmm(ctx.hour)} {m|· ${phase(ctx.hour)}}`,
-        `wind {m|·} ${ctx.wind.toFixed(2)}`,
-      ]
   }
   return [`shell: command not found: ${args[0]}. Try 'help' to get started.`]
 }

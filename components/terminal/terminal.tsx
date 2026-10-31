@@ -69,19 +69,10 @@ const SHEETS: [string, string][] = [
   ],
   ['no-hands.txt', 'cat no-hands.txt'],
   ['waves.exe', './waves.exe'],
-  ['fetch', 'fetch'],
 ]
 type Item = [string, string, string?] | null
 const MENUS: [string, Item[]][] = [
-  [
-    'Shell',
-    [
-      ['Clear', 'clear', '⌃L'],
-      ['Fetch', 'fetch'],
-      null,
-      ['Close', 'exit', '`'],
-    ],
-  ],
+  ['Shell', [['Clear', 'clear', '⌃L'], null, ['Close', 'exit', '`']]],
   ['Go', PLACES.map(([n, p]) => [n[0].toUpperCase() + n.slice(1), cdTo(p)])],
   [
     'Meadow',
