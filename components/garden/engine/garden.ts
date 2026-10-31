@@ -287,13 +287,19 @@ export class Garden {
   /** Overrides the moon's phase (0 new, 0.5 full) for testing; null follows the calendar. */
   moonPhase: number | null = null
   private grownFor = 0
-  /** The glow's dithered alpha, cached by its size, and the same tinted, with the tint's colour. */
-  private glow: {
-    key: string
-    mask: HTMLCanvasElement
-    tint: HTMLCanvasElement
-    tinted: string
-  } | null = null
+  /**
+   * The glows' dithered alpha, cached by size, and the same tinted, with the tint's colour: one for
+   * the sun (by its pixel step, 2) and one for the moon (1), so a scrub across dusk re-makes neither.
+   */
+  private glows = new Map<
+    number,
+    {
+      key: string
+      mask: HTMLCanvasElement
+      tint: HTMLCanvasElement
+      tinted: string
+    }
+  >()
   readonly env: Env
 
   constructor(
@@ -1751,26 +1757,25 @@ export class Garden {
       // ridges, so it lights only open sky and the range stands in front of it as the moon sets.
       // The moon's is kept close and faint, so the disc reads as a mark in the sky, not a lamp.
       const span = Math.hypot(this.width, this.height)
-      const reach = sun
-        ? Math.max(R * (10 + 4 * look.low), span * (0.5 + 0.15 * look.low))
-        : Math.max(R * 8, span * 0.35)
+      const reachAt = (low: number) =>
+        sun
+          ? Math.max(R * (10 + 4 * low), span * (0.5 + 0.15 * low))
+          : Math.max(R * 8, span * 0.35)
+      const reach = reachAt(look.low)
       const peak = sun ? SUN_GLOW : MOON_GLOW
       const strength = sun ? (0.13 + 0.09 * look.low) * sun : MOON_GLOW * moon
       // The sun's wide glow lies on a bright sky, so a sprite of half the pixels does.
       const step = sun ? 2 : 1
-      const sprite = this.glowSprite(reach, R, peak, col, step)
-      const n = sprite.width / 2
+      // Made once at the glow's widest and drawn down to its reach, so a sinking sun's swelling
+      // glow never re-makes it mid-scrub (a 3M-pixel loop, 25 ms on an M4). The disc's flat core
+      // shrinks with it, but the core is a few hundredths of the reach: the fade moves by under
+      // one alpha step.
+      const sprite = this.glowSprite(reachAt(1), R, peak, col, step)
       ctx.save()
       ctx.globalAlpha = strength / peak
       // Nearest, so each pixel keeps its dither instead of blurring it back into bands.
       ctx.imageSmoothingEnabled = false
-      ctx.drawImage(
-        sprite,
-        cx - n * step,
-        cy - n * step,
-        2 * n * step,
-        2 * n * step,
-      )
+      ctx.drawImage(sprite, cx - reach, cy - reach, 2 * reach, 2 * reach)
       ctx.restore()
     }
     const colors = this.ridgeColors(p)
@@ -2147,14 +2152,14 @@ export class Garden {
     col: Rgb,
     step: number,
   ) {
-    // Rounded up to 16 px, so a sinking sun's swelling glow is re-made only now and then.
-    const n = Math.ceil(reach / step / 16) * 16
+    const n = Math.ceil(reach / step)
     const r0 = R / step
     const key = `${n},${r0.toFixed(1)},${peak},${step}`
-    if (this.glow?.key !== key) {
+    let glow = this.glows.get(step)
+    if (glow?.key !== key) {
       const size = 2 * n
-      const mask = this.glow?.mask ?? document.createElement('canvas')
-      const tint = this.glow?.tint ?? document.createElement('canvas')
+      const mask = glow?.mask ?? document.createElement('canvas')
+      const tint = glow?.tint ?? document.createElement('canvas')
       mask.width = tint.width = size
       mask.height = tint.height = size
       const mctx = mask.getContext('2d')
@@ -2183,14 +2188,15 @@ export class Garden {
         }
         mctx.putImageData(img, 0, 0)
       }
-      this.glow = { key, mask, tint, tinted: '' }
+      glow = { key, mask, tint, tinted: '' }
+      this.glows.set(step, glow)
     }
-    const { mask, tint } = this.glow
+    const { mask, tint } = glow
     // A repaint that only moves the glow keeps its tint.
     const fill = css(col)
-    const tctx = this.glow.tinted === fill ? null : tint.getContext('2d')
+    const tctx = glow.tinted === fill ? null : tint.getContext('2d')
     if (tctx) {
-      this.glow.tinted = fill
+      glow.tinted = fill
       tctx.globalCompositeOperation = 'copy'
       tctx.fillStyle = fill
       tctx.fillRect(0, 0, tint.width, tint.height)
