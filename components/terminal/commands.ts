@@ -454,7 +454,7 @@ export function run(input: string, ctx: Ctx): string[] {
           })
         : 'now'
       return [
-        `stanley-wang sim ${VERSION} {m|built ${when}}`,
+        `stanley-wang adm-3a ${VERSION} {m|built ${when}}`,
         ...(COMMIT ? [`{l|${SOURCE}/commit/${COMMIT.slice(0, 7)}}`] : []),
       ]
     }

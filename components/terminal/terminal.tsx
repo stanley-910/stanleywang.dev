@@ -184,13 +184,14 @@ function Line({ text }: { text: string }) {
   )
 }
 
-/** The visitor's prompt: a guest logged in to the sim, since the title bar already says whose it is. */
+/** The visitor's prompt: a guest at an ADM-3A, the terminal vi was written on, since the
+ * title bar already says whose machine it is. */
 function Prompt({ path }: { path: string }) {
   return (
     <span className="ps1">
       <span className="u">guest</span>
       <span className="m">@</span>
-      <span className="h">sim</span>
+      <span className="h">adm-3a</span>
       <span className="m"> {path} $ </span>
     </span>
   )
@@ -202,8 +203,8 @@ function Prompt({ path }: { path: string }) {
  * types itself in Chinese and glitches over into English. Any key skips it.
  */
 const bootLines = (hour: number, wind: number) => [
-  `{m|[ 0.000000]} stanley-wang ${VERSION} {m|(dev@sim)}`,
-  `{m|[ 0.000412]} mounting {h|/dev/sim0}`,
+  `{m|[ 0.000000]} stanley-wang ${VERSION} {m|(dev@adm-3a)}`,
+  `{m|[ 0.000412]} mounting {h|/dev/sda1}`,
   `{m|[ 0.001187]} clock {y|${hhmm(hour)}} {m|· ${phase(hour)}}`,
   `{m|[ 0.001903]} wind {y|${wind.toFixed(2)}}`,
   `{m|[ 0.002260]} starting interface {g|[ OK ]}`,
@@ -856,8 +857,10 @@ export function Terminal() {
                 </button>
               </span>
               <h2>
-                stanley-wang {RELEASE}
-                {path !== '~' && <i> — {path.slice(2)}</i>}
+                Stanley {RELEASE}
+                {path !== '~' && (
+                  <i> — {path[2].toUpperCase() + path.slice(3)}</i>
+                )}
               </h2>
             </header>
 
