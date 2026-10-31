@@ -192,7 +192,8 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
   position: fixed;
   right: 32px;
   bottom: 62px;
-  z-index: 40;
+  /* Above the power button: moved over it, it covers it, and its own close box shuts it. */
+  z-index: 41;
   display: flex;
   width: min(616px, calc(100vw - 2 * var(--gutter)));
   height: min(368px, calc(100svh - 120px));
