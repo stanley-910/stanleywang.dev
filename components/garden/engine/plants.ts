@@ -516,10 +516,17 @@ export class Poppy extends Plant {
         rotation: this.seed,
         seed: this.seed,
         front: poppy,
-        back: mix(poppy, this.bloomed(p.poppyDeep, p), 0.55),
+        // The outside is a deeper, duller red than the lit inside, so which way a cup faces
+        // reads at a glance: bright red with a dark heart is looking in.
+        back: mix(
+          mix(poppy, this.bloomed(p.poppyDeep, p), 0.62),
+          this.bloomed(p.stem, p),
+          0.12,
+        ),
         // The dark heart and blotches lean to the deep red, so they print as part of the cup
         // rather than as grey glyphs over it.
         blotch: hidden ? undefined : mix(shade(p.disc, 0.9), p.poppyDeep, 0.45),
+        throat: hidden ? 0 : 0.28,
         haze: p.haze,
         hazeAmount: 0,
         attached: (k) => k >= this.shed,
