@@ -495,11 +495,15 @@ export function Terminal() {
 
   const path = pathFor(pathname)
 
-  // The hour, as the rest of the site has it.
+  // The hour, as the rest of the site has it. Shut, only its night or day shows (the power
+  // button's colours), so it takes a new hour only across that line: the poem's scroll and the
+  // meadow's scrub move the hour every frame, and each would re-render all of this for nothing.
   useEffect(() => {
     const read = () => {
       const { hour, set } = currentHour()
-      setHourState(hour)
+      setHourState((was) =>
+        open || isNight(was) !== isNight(hour) ? hour : was,
+      )
       setFollow(!set)
     }
     read()
@@ -509,7 +513,7 @@ export function Terminal() {
       clearInterval(tick)
       window.removeEventListener(HOUR_EVENT, read)
     }
-  }, [])
+  }, [open])
 
   const focusInput = useCallback(
     () => input.current?.focus({ preventScroll: true }),
@@ -522,6 +526,8 @@ export function Terminal() {
     if (open) return focusInput()
     setOpen(true)
     setFocused(true)
+    // Opening with the hour as it is now, for the boot's clock line.
+    setHourState(currentHour().hour)
     // The boot plays the first time it opens in a visit; after that, just the hint.
     let booted = false
     try {
