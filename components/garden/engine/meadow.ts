@@ -39,6 +39,7 @@ export class Meadow {
     floor: (z: number) => number,
     seed: number,
     clear: Rect | null,
+    wet: (x: number, y: number) => boolean = () => false,
   ) {
     // Blades keep their sway across a resize: same strip and index, same blade.
     const prev = new Map<number, [number, number]>()
@@ -67,6 +68,8 @@ export class Meadow {
         const z = rng() ** 1.1
         const x = (s + rng()) * STRIP - 40
         const keep = rng()
+        // No grass in the river or on its banks.
+        if (wet(x, floor(z))) continue
         if (clear) {
           const y = floor(z)
           const d = Math.hypot(
