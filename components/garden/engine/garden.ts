@@ -23,7 +23,7 @@ import {
   type Plant,
   type Species,
 } from './plants'
-import { type Head, Kind, LandMat, type Raster, Shape } from './raster'
+import { GLOBE, type Head, Kind, LandMat, type Raster, Shape } from './raster'
 
 import type { Rect } from './ascii'
 import type { Visitors } from './visitors'
@@ -245,11 +245,12 @@ export class Garden {
   /** Overrides the moon's phase (0 new, 0.5 full) for testing; null follows the calendar. */
   moonPhase: number | null = null
   private grownFor = 0
-  /** The glow's dithered alpha, cached by its size, and the same tinted for this frame. */
+  /** The glow's dithered alpha, cached by its size, and the same tinted, with the tint's colour. */
   private glow: {
     key: string
     mask: HTMLCanvasElement
     tint: HTMLCanvasElement
+    tinted: string
   } | null = null
   readonly env: Env
 
@@ -1542,13 +1543,14 @@ export class Garden {
     const trees = this.forestColors(p, colors)
     const rock = { id: LandMat.Rock, light: 0.5, back: false }
     this.ridges.forEach((ridge, layer) => {
-      // The nearer ridges reset the material under them, so snow or forest behind doesn't show through.
+      // Each ridge resets the material under it, so snow or forest behind, or the sun and moon's
+      // mark (GLOBE), doesn't show through.
       r.fill(
         this.ridgePath(ridge, this.height + 10),
         colors[layer],
         Kind.Land,
         1,
-        layer ? rock : undefined,
+        rock,
       )
       // Four strips, each shallower and stronger, so the glyphs thicken toward the crest.
       const q = clamp(light / 0.45, 0, 1)
@@ -1735,13 +1737,16 @@ export class Garden {
         }
         mctx.putImageData(img, 0, 0)
       }
-      this.glow = { key, mask, tint }
+      this.glow = { key, mask, tint, tinted: '' }
     }
     const { mask, tint } = this.glow
-    const tctx = tint.getContext('2d')
+    // A repaint that only moves the glow keeps its tint.
+    const fill = css(col)
+    const tctx = this.glow.tinted === fill ? null : tint.getContext('2d')
     if (tctx) {
+      this.glow.tinted = fill
       tctx.globalCompositeOperation = 'copy'
-      tctx.fillStyle = css(col)
+      tctx.fillStyle = fill
       tctx.fillRect(0, 0, tint.width, tint.height)
       tctx.globalCompositeOperation = 'destination-in'
       tctx.drawImage(mask, 0, 0)
@@ -1784,8 +1789,9 @@ export class Garden {
     const { sun, moon } = this.lights(p)
     if (sun + moon <= 0) return ''
     const { cx, cy } = this.globeAt()
+    // In steps of 8, so the moon's colour drifting with the clock doesn't repaint it every tick.
     const col = (sun ? this.sunLook(p) : this.moonLook(p)).color.map(
-      (v) => v | 0,
+      (v) => (v | 0) >> 3,
     )
     return `${Math.round(cx / 4)},${Math.round(cy / 4)},${sun.toFixed(2)},${moon.toFixed(2)},${(this.moonPhase ?? moonPhaseNow()).toFixed(3)},${col}`
   }
@@ -1822,22 +1828,22 @@ export class Garden {
       const { color, rx, ry } = this.sunLook(p)
       const halo = new Shape()
       halo.ellipse(cx, cy, rx * 1.45, ry * 1.45, 0, 0, TAU)
-      r.fill(halo, color, Kind.Fluff, 0.14 * sun)
+      r.fill(halo, color, Kind.Fluff, 0.14 * sun, GLOBE)
       const rim = new Shape()
       rim.ellipse(cx, cy, rx * 1.15, ry * 1.15, 0, 0, TAU)
-      r.fill(rim, color, Kind.Fluff, 0.35 * sun)
+      r.fill(rim, color, Kind.Fluff, 0.35 * sun, GLOBE)
       const disc = new Shape()
       disc.ellipse(cx, cy, rx, ry, 0, 0, TAU)
-      r.fill(disc, mix(color, [255, 250, 235], 0.25), Kind.Fluff, sun)
+      r.fill(disc, mix(color, [255, 250, 235], 0.25), Kind.Fluff, sun, GLOBE)
     }
     if (moon > 0) {
       // Lit by the phase: the bright limb on the right while waxing, on the left while waning,
       // and the terminator an ellipse that bows toward the light in a crescent, away in a gibbous.
       const { lit, dark, side, k } = this.moonShape()
       const { color, disc } = this.moonLook(p)
-      r.fill(lit, disc, Kind.Fluff, moon)
+      r.fill(lit, disc, Kind.Fluff, moon, GLOBE)
       // Earthshine on the dark side.
-      r.fill(dark, mix(color, p.skyTop, 0.85), Kind.Fluff, 0.22 * moon)
+      r.fill(dark, mix(color, p.skyTop, 0.85), Kind.Fluff, 0.22 * moon, GLOBE)
       // The seas, as darker patches wherever they fall on the lit face.
       const seas = new Shape()
       for (const [sx, sy, rx, ry] of SEAS) {
@@ -1847,7 +1853,7 @@ export class Garden {
         seas.moveTo(cx + (sx + rx) * R, cy + sy * R)
         seas.ellipse(cx + sx * R, cy + sy * R, rx * R, ry * R, 0, 0, TAU)
       }
-      r.fill(seas, mix(disc, p.skyTop, 0.6), Kind.Fluff, moon)
+      r.fill(seas, mix(disc, p.skyTop, 0.6), Kind.Fluff, moon, GLOBE)
     }
   }
 }
