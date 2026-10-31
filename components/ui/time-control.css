@@ -20,6 +20,8 @@
 }
 
 .time-control-icon {
+  /* Above the hidden UI's corner zone (::before below), which would take its clicks. */
+  position: relative;
   display: inline-flex;
   width: 16px;
   height: 16px;
@@ -91,8 +93,11 @@
   top: calc(100% + var(--space-2));
   right: calc(-1 * var(--space-2));
   z-index: 20;
+  /* One inset all round; the item rows sit half of it in from the edges, so
+     their text lines up with the readout's. */
+  --inset: 12px;
   width: 16rem;
-  padding: var(--space-2);
+  padding: var(--inset);
   /* Glass: a thin tint of the colour opposite the ink, blurred, so what's
      under it shows through muddled and the text still reads. */
   background: color-mix(in srgb, var(--glass, var(--page)) 28%, transparent);
@@ -115,7 +120,7 @@
 .time-control-range {
   display: block;
   width: 100%;
-  height: 20px;
+  height: 12px;
   margin: 0;
   background: transparent;
   cursor: pointer;
@@ -177,7 +182,7 @@
 @media (pointer: coarse) {
   .time-control-range {
     height: 44px;
-    margin-block: -12px;
+    margin-block: -16px;
   }
 }
 
@@ -185,7 +190,7 @@
   display: flex;
   align-items: baseline;
   gap: var(--space-1);
-  margin: var(--space-1) 0 0;
+  margin: 10px 0 0;
   font-size: var(--text-meta);
   line-height: var(--leading-meta);
 }
@@ -208,16 +213,16 @@
    hairline in the popover's own border, lit on hover like a selection. */
 .time-control-rule {
   height: 0;
-  margin: var(--space-1) calc(-1 * var(--space-2));
+  margin: var(--inset) calc(-1 * var(--inset)) calc(var(--inset) / 2);
   border: 0;
   border-top: 1px solid color-mix(in srgb, var(--ink) 14%, transparent);
 }
 
 .time-control-item {
   display: flex;
-  width: calc(100% + 12px);
-  margin: -4px -6px;
-  padding: 4px 6px;
+  width: calc(100% + var(--inset));
+  margin: 0 calc(var(--inset) / -2) calc(var(--inset) / -2);
+  padding: calc(var(--inset) / 2);
   border-radius: var(--radius-hair);
   color: var(--ink-muted);
   font-size: var(--text-meta);
