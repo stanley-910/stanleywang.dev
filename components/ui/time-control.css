@@ -1,9 +1,22 @@
-/* The time slider under the top bar's sun/moon:
+/* The site menu in the top bar's corner, and the time slider in it:
    design/circadian-meadow/components/ReadingTime. */
 
 .time-control {
   position: relative;
   display: inline-flex;
+}
+
+/* From tablet up it leaves the links' row for the window's top-right corner,
+   level with them. */
+@media (min-width: 481px) {
+  .site-header {
+    position: relative;
+  }
+  .time-control {
+    position: absolute;
+    top: calc(var(--space-4) + 2px);
+    right: calc(var(--space-4) - var(--gutter));
+  }
 }
 
 .time-control-icon {
@@ -20,6 +33,57 @@
 .time-control-icon:hover,
 .time-control-icon[aria-expanded='true'] {
   color: var(--ink);
+}
+
+.time-control-icon:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: 3px;
+}
+
+/* The four dots: they draw in a touch on hover, and opening turns the square
+   a quarter round into a diamond as they spread, with a little overshoot. */
+.time-control-dots {
+  fill: currentColor;
+  transform-origin: 8px 8px;
+  transition: transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.time-control-dots circle {
+  --out: 0px;
+  transform: translate(
+    calc(var(--x) * var(--out)),
+    calc(var(--y) * var(--out))
+  );
+  transition: transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.time-control-dots circle:nth-child(1) {
+  --x: -1;
+  --y: -1;
+}
+.time-control-dots circle:nth-child(2) {
+  --x: 1;
+  --y: -1;
+}
+.time-control-dots circle:nth-child(3) {
+  --x: -1;
+  --y: 1;
+}
+.time-control-dots circle:nth-child(4) {
+  --x: 1;
+  --y: 1;
+}
+
+.time-control-icon:hover .time-control-dots circle {
+  --out: -0.6px;
+}
+
+.time-control-icon[aria-expanded='true'] .time-control-dots {
+  transform: rotate(45deg);
+}
+
+.time-control-icon[aria-expanded='true'] .time-control-dots circle {
+  --out: 0.9px;
 }
 
 .time-control-pop {
@@ -140,6 +204,78 @@
   cursor: pointer;
 }
 
+/* Below the slider, the menu's items: rows in the readout's type, on a
+   hairline in the popover's own border, lit on hover like a selection. */
+.time-control-rule {
+  height: 0;
+  margin: var(--space-1) calc(-1 * var(--space-2));
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--ink) 14%, transparent);
+}
+
+.time-control-item {
+  display: flex;
+  width: calc(100% + 12px);
+  margin: -4px -6px;
+  padding: 4px 6px;
+  border-radius: var(--radius-hair);
+  color: var(--ink-muted);
+  font-size: var(--text-meta);
+  line-height: var(--leading-meta);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    color var(--duration-quick) var(--ease-calm),
+    background-color var(--duration-quick) var(--ease-calm);
+}
+
+.time-control-item:hover,
+.time-control-item:focus-visible {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 9%, transparent);
+}
+
+.time-control-item:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: 0;
+}
+
+/* Hide text (lib/hide-ui.ts): the top bar's links and home's text fade
+   away, the garden stops receding behind them (mount.ts skips boxes whose
+   --avoid is none), and the menu goes too, coming back while the pointer is
+   near the corner, or for the keyboard. */
+:root[data-ui-hidden] .site-header nav {
+  --avoid: none;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 400ms var(--ease-calm),
+    visibility 0s linear 400ms;
+}
+
+:root[data-ui-hidden] .time-control-icon {
+  opacity: 0;
+  transition:
+    color var(--duration-quick) var(--ease-calm),
+    opacity 400ms var(--ease-calm);
+}
+
+/* The corner the pointer finds it in, out to the window's top and right. */
+:root[data-ui-hidden] .time-control::before {
+  content: '';
+  position: absolute;
+  top: -48px;
+  right: -40px;
+  bottom: -40px;
+  left: -80px;
+}
+
+:root[data-ui-hidden] .time-control:hover .time-control-icon,
+:root[data-ui-hidden] .time-control:focus-within .time-control-icon {
+  opacity: 1;
+  transition-duration: var(--duration-quick), 200ms;
+}
+
 @media (max-width: 480px) {
   .time-control-pop {
     position: fixed;
@@ -168,6 +304,11 @@
 @media (prefers-reduced-motion: reduce) {
   .time-control-pop {
     animation: none;
+  }
+
+  .time-control-dots,
+  .time-control-dots circle {
+    transition: none;
   }
 
   /* Separate rules: a browser drops a whole list holding another's pseudo-element. */

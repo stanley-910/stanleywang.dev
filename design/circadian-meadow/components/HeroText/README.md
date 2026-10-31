@@ -8,7 +8,7 @@ Placement follows the koi pond page. On the live site the left gutter is 20vw fr
 
 Readability comes from the ground, not a box. The text sits on the scene's dark ground at every hour, so it is always `scene-ink`, even when the page theme is light. Grass near it thins to 38% within 11 cells. Flowers are never planted where their heads would land on the text; their stalks may pass behind it. Never add a panel or scrim.
 
-A "hide text" toggle sits alone in the hero's bottom right corner, `meta` mono in `ink-muted`, 32px off the foot (10px on phones and short screens, under the links). It fades the bio and links out over 400ms so the visitor can play in the meadow alone, and lifts the grass fade behind them. Then it reads "show text", quieter still, and brings them back. It lasts only for the visit. The flowers still keep clear of where the text was; the layout isn't rebuilt.
+"Hide text" lives in the site menu (SiteHeader), on home only. It fades all the UI out over 400ms, the bio, links and the bar's words, so the visitor can play in the meadow alone, and lifts the grass fade behind them. The menu's dots go too and come back while the pointer is near the top-right corner; the menu then offers "show text". Escape or a reload also brings everything back, and leaving home resets it. The flowers still keep clear of where the text was; the layout isn't rebuilt.
 
 Leaving home, fade the bio out in 0.2s, then let the veil close (`veil-duration`). Coming back, lift the veil and bring the bio back 0.6s later.
 

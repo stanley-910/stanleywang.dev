@@ -1,5 +1,5 @@
 'use client'
-import { MoonIcon, SunIcon } from 'lucide-react'
+import { usePathname } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { useEffect, useRef, useState } from 'react'
 
@@ -12,12 +12,14 @@ import {
   setHour,
   type PageTheme,
 } from '@/lib/circadian'
+import { setUiHidden, useUiHidden } from '@/lib/hide-ui'
 
 import './time-control.css'
 
-// The sun/moon opens the time slider (design/circadian-meadow/components/
-// ReadingTime). The page's colours follow the hour shown here, the clock's or
-// one set by hand for this visit, and home's meadow follows the same hour.
+// The site menu in the top bar's corner: four dots that open the time slider
+// (design/circadian-meadow/components/ReadingTime) and, on home, hide text.
+// The page's colours follow the hour shown here, the clock's or one set by
+// hand for this visit, and home's meadow follows the same hour.
 
 const PHASES: [number, string][] = [
   [0, 'night'],
@@ -72,6 +74,8 @@ export function ThemeSwitch({ className }: { className?: string }) {
   const [set, setSet] = useState(false)
   const [open, setOpen] = useState(false)
   const { setTheme } = useTheme()
+  const pathname = usePathname()
+  const hidden = useUiHidden()
   const buttonRef = useRef<HTMLButtonElement>(null)
   const popRef = useRef<HTMLDivElement>(null)
   const family = useRef<PageTheme | null>(null)
@@ -119,6 +123,19 @@ export function ThemeSwitch({ className }: { className?: string }) {
       if (dip.current) clearTimeout(dip.current)
     }
   }, [setTheme])
+
+  // Hidden text only lasts while home is shown.
+  useEffect(() => setUiHidden(false), [pathname])
+
+  // Escape brings hidden text back.
+  useEffect(() => {
+    if (!hidden) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setUiHidden(false)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [hidden])
 
   // Close on a click outside or Escape.
   useEffect(() => {
@@ -178,7 +195,6 @@ export function ThemeSwitch({ className }: { className?: string }) {
     return <span className={`inline-block h-4 w-4 ${className ?? ''}`} />
   }
 
-  const isDark = readingColours(hour).theme === 'dark'
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const step = { PageUp: 1, PageDown: -1 }[e.key]
     if (step === undefined) return
@@ -192,16 +208,19 @@ export function ThemeSwitch({ className }: { className?: string }) {
         ref={buttonRef}
         className="time-control-icon"
         type="button"
-        aria-label="Time of day"
+        aria-label="Menu"
         aria-expanded={open}
         title={label(hour)}
         onClick={() => setOpen((o) => !o)}
       >
-        {isDark ? (
-          <MoonIcon className="h-4 w-4" strokeWidth={1.5} />
-        ) : (
-          <SunIcon className="h-4 w-4" strokeWidth={1.5} />
-        )}
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+          <g className="time-control-dots">
+            <circle cx="5" cy="5" r="1.6" />
+            <circle cx="11" cy="5" r="1.6" />
+            <circle cx="5" cy="11" r="1.6" />
+            <circle cx="11" cy="11" r="1.6" />
+          </g>
+        </svg>
       </button>
       {open && (
         <div ref={popRef} className="time-control-pop">
@@ -236,6 +255,22 @@ export function ThemeSwitch({ className }: { className?: string }) {
               </button>
             )}
           </p>
+          {pathname === '/' && (
+            <>
+              <hr className="time-control-rule" />
+              <button
+                type="button"
+                className="time-control-item"
+                aria-pressed={hidden}
+                onClick={() => {
+                  setUiHidden(!hidden)
+                  setOpen(false)
+                }}
+              >
+                {hidden ? 'show text' : 'hide text'}
+              </button>
+            </>
+          )}
         </div>
       )}
     </span>

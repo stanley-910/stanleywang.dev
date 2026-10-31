@@ -4,9 +4,9 @@
 
 Off home, the page takes its colours from the hour, live or set by the visitor, and a visitor can slide the time on any page. Leaving home is near-instant. Three parts: the slider, the hour→colour mapping, and the timing.
 
-## 1. The slider: under the sun/moon
+## 1. The slider: in the site menu
 
-The SiteHeader's sun/moon icon becomes the time control. It's the one place the bar already talks about time, so nothing new appears in the bar.
+The slider is the first thing in the SiteHeader's menu (four dots in the top-right corner); the menu's items follow it below a hairline. The diagram below predates that and shows the old sun/moon.
 
 ```
 stanley  projects  film  writing  music  ☾            ← click / Enter / Space
@@ -21,7 +21,7 @@ stanley  projects  film  writing  music  ☾            ← click / Enter / Spac
 - **The track** is TimeDial's: the day's horizon from night through dawn, day, golden hour, sunset and twilight, 00:00 to 24:00. The thumb is `radius-hair`.
 - **Readout:** `HH:MM` in `meta` mono, tabular figures, `ink`; the phase name beside it in `meta` `ink-muted` (no italic). `now` is a `link-quiet` word that returns to the visitor's clock; it shows only while the hour is set by hand.
 - **Keyboard:** the slider is a native range input. Arrows move 15 minutes, Page Up/Down an hour, Home/End midnight. Escape closes and returns focus to the icon. The icon gets `aria-expanded`.
-- **The icon** shows a sun or moon for the family the hour falls in (light 05:30–18:30).
+- **Scroll:** while it's open, a scroll or sideways swipe inside the popover moves the hour, 20px per quarter hour; outside it the page scrolls as usual.
 - **One click toggle is gone.** Today's click-to-flip (until the next switch) becomes "open the slider". A quick flip is a drag to the other half of the day.
 - **State:** a set hour lives in `sessionStorage` (`hour-override`) and doesn't advance: a visitor at "21:40" stays at night while reading. A new visit follows the clock again. Home reads the same key, so coming home shows the scene at that hour; the garden's own scroll-to-scrub writes it too.
 
@@ -29,14 +29,14 @@ stanley  projects  film  writing  music  ☾            ← click / Enter / Spac
 
 Two families, each drifting through the day in OKLab. The page never blends between the families: a light page stays light until the switch, so ink never meets a page of its own lightness.
 
-| Keyframe | Hour | `page` | `ink` | `ink-muted` | `hairline` (3:1) | ink | muted |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| dawn | 06:30 | `#e7e5e3` | `#26262a` | `#615f63` | `#838184` | 12.0:1 | 5.0:1 |
-| day | 09:00–16:00 | `#ebeae6` | `#252522` | `#63625e` | `#868580` | 12.8:1 | 5.1:1 |
-| golden | 17:45 | `#ece5da` | `#2a251f` | `#665e55` | `#888077` | 12.1:1 | 5.1:1 |
-| sunset | 19:00 | `#1c1619` | `#ebe1da` | `#a1958f` | `#6d6361` | 13.9:1 | 6.1:1 |
-| twilight | 20:09 | `#15131c` | `#e5e0ea` | `#9a94a3` | `#66616e` | 14.2:1 | 6.3:1 |
-| night | 21:24–04:30 | `#10151d` | `#dde2ea` | `#8f97a3` | `#5d646f` | 14.1:1 | 6.2:1 |
+| Keyframe | Hour        | `page`    | `ink`     | `ink-muted` | `hairline` (3:1) | ink    | muted |
+| -------- | ----------- | --------- | --------- | ----------- | ---------------- | ------ | ----- |
+| dawn     | 06:30       | `#e7e5e3` | `#26262a` | `#615f63`   | `#838184`        | 12.0:1 | 5.0:1 |
+| day      | 09:00–16:00 | `#ebeae6` | `#252522` | `#63625e`   | `#868580`        | 12.8:1 | 5.1:1 |
+| golden   | 17:45       | `#ece5da` | `#2a251f` | `#665e55`   | `#888077`        | 12.1:1 | 5.1:1 |
+| sunset   | 19:00       | `#1c1619` | `#ebe1da` | `#a1958f`   | `#6d6361`        | 13.9:1 | 6.1:1 |
+| twilight | 20:09       | `#15131c` | `#e5e0ea` | `#9a94a3`   | `#66616e`        | 14.2:1 | 6.3:1 |
+| night    | 21:24–04:30 | `#10151d` | `#dde2ea` | `#8f97a3`   | `#5d646f`        | 14.1:1 | 6.2:1 |
 
 - **Light family** (05:30–18:30): dawn → day → golden. Before 06:30 it holds dawn; after 17:45 it holds golden.
 - **Dark family** (18:30–05:30): sunset → twilight → night. Before 19:00 it holds sunset; from 04:30 it holds night.
@@ -61,12 +61,12 @@ No frame shows text below the family's own contrast. The page background itself 
 
 **Leaving home** replaces the veil's 0.9s edges-first close and 0.6s content delay:
 
-| Step | Time |
-| --- | --- |
-| Click on a nav word | 0 |
-| The bio and bar's home styling fade, and a `page`-coloured layer fades in over the scene | 0–150ms (`duration-leave`), `ease-calm` |
-| The new route renders under the layer; its content is visible at once (no fade-in, no stagger) | as soon as it's ready |
-| The garden's animation loop stops while it's hidden | at 150ms |
+| Step                                                                                           | Time                                    |
+| ---------------------------------------------------------------------------------------------- | --------------------------------------- |
+| Click on a nav word                                                                            | 0                                       |
+| The bio and bar's home styling fade, and a `page`-coloured layer fades in over the scene       | 0–150ms (`duration-leave`), `ease-calm` |
+| The new route renders under the layer; its content is visible at once (no fade-in, no stagger) | as soon as it's ready                   |
+| The garden's animation loop stops while it's hidden                                            | at 150ms                                |
 
 If the new route is ready before 150ms, the layer cuts short. The route-change progress bar goes; at this speed it only flickers.
 

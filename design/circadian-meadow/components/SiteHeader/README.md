@@ -1,6 +1,6 @@
 # SiteHeader
 
-The top bar on every page: one row of lowercase mono words on the page colour, and the sun/moon at the end. No bar, border, background, logo or hamburger.
+The top bar on every page: one row of lowercase mono words on the page colour, and the site menu's four dots in the top-right corner. No bar, border, background or logo.
 
 Built: `app/header.tsx`, `app/styles/shell.css` (`.site-header`).
 
@@ -15,28 +15,28 @@ Built: `app/header.tsx`, `app/styles/shell.css` (`.site-header`).
 
 ## Layout
 
-| | Desktop | Under 480px |
-| --- | --- | --- |
-| Type | `nav`: `--font-mono` 14px / 20px | 13px |
-| Between words | `space-4` (32px) | 12px |
-| Words to icon | `space-4` | pushed to the right edge |
-| Padding | `space-4` top, `space-5` below | `space-3` top, `space-4` below |
-| Left edge | `gutter` (20vw from 1024px, else 24px) | `gutter` |
+|               | Desktop                                                      | Under 480px                           |
+| ------------- | ------------------------------------------------------------ | ------------------------------------- |
+| Type          | `nav`: `--font-mono` 14px / 20px                             | 13px                                  |
+| Between words | `space-4` (32px)                                             | 12px                                  |
+| Menu          | `space-4` from the window's right edge, level with the words | at the row's end, at the right gutter |
+| Padding       | `space-4` top, `space-5` below                               | `space-3` top, `space-4` below        |
+| Left edge     | `gutter` (20vw from 1024px, else 24px)                       | `gutter`                              |
 
 The row sits in the page flow at the top; it doesn't stick or hide on scroll. At 375px the five words and the icon fit one row with 13px type and 12px gaps, at about 300px of the 327px between gutters.
 
 ## States
 
-| Item | Rest | Hover | Current page |
-| --- | --- | --- | --- |
-| Word | `ink-muted` | `ink` | `ink`, `aria-current="page"` |
-| Sun/moon | `ink-muted`, 16px, stroke 1.5 | `ink` | — |
+| Item      | Rest                                      | Hover                         | Current page                                         |
+| --------- | ----------------------------------------- | ----------------------------- | ---------------------------------------------------- |
+| Word      | `ink-muted`                               | `ink`                         | `ink`, `aria-current="page"`                         |
+| Menu dots | `ink-muted`, 16px, four 1.6px-radius dots | `ink`, the dots draw in 0.6px | open: `ink`, turned 45° into a diamond, spread 0.9px |
 
 Colour changes take `duration-quick` with `ease-calm`, and none with reduced motion. Weight never changes in the bar. A section matches its subpages: `/writing/…` keeps `writing` current.
 
-## Sun/moon
+## Menu
 
-The page theme follows the hour (`lib/circadian.ts`): light from 05:30, dark from 18:30. The icon shows the theme on screen; a click picks the other one until the hour's next switch, then the hour takes over again. An open tab switches at 05:30 and 18:30 without a reload. Ticket 2's ReadingTime turns this icon into the entry point for the time slider.
+Four dots in a square (`components/ui/theme-switch.tsx`). A click opens the glass popover under them: ReadingTime's slider and readout, then on home a hairline and the "hide text" item. Items are rows in the readout's `meta` mono, `ink-muted`, lit to `ink` on a 9% `ink` wash on hover. Opening turns the dots a quarter round into a diamond as they spread, on a slight overshoot (320ms); none with reduced motion. The page theme still follows the hour (`lib/circadian.ts`), and the menu keeps painting it while closed.
 
 ## On home
 
@@ -44,7 +44,7 @@ When the garden is ported, the bar sits over the scene in `scene-ink` / `scene-i
 
 ## Accessibility
 
-`<header>` holds a `<nav aria-label="Site">` with a list. Focus ring: `focus`, 1px, offset 3px. The icon button names the theme it switches to ("Switch to dark theme").
+`<header>` holds a `<nav aria-label="Site">` with a list. Focus ring: `focus`, 1px, offset 3px. The menu button is named "Menu", with `aria-expanded`; "hide text" is a toggle with `aria-pressed`.
 
 ## Verify
 
