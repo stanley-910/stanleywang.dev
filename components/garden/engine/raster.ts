@@ -421,13 +421,7 @@ export class Raster {
     now: boolean,
     look: Pick<
       Style,
-      | 'palette'
-      | 'horizon'
-      | 'hill'
-      | 'relief'
-      | 'reliefLight'
-      | 'reliefLit'
-      | 'river'
+      'palette' | 'horizon' | 'hill' | 'relief' | 'reliefLight' | 'reliefLit'
     >,
     hour: number,
   ) {

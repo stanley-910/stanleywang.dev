@@ -299,9 +299,6 @@ export function mountGarden({
   let peak = Infinity
   // The far range's faces per cell, for the rock's tiles.
   let relief = new Float32Array(0)
-  /** Where across the river each cell lies, and the grid and river it was worked out for. */
-  let river = new Int8Array(0)
-  let riverFor = ''
   /** The plant frame the page last drew. */
   let drawn = -1
   /** The palette of the plant frame on screen, worked out once per frame that comes back. */
@@ -335,12 +332,6 @@ export function mountGarden({
       }
       if (relief.length !== ascii.cols * ascii.rows)
         relief = new Float32Array(ascii.cols * ascii.rows)
-      const riverKey = `${ascii.cols}/${ascii.rows}/${garden.riverVersion}`
-      if (riverKey !== riverFor) {
-        riverFor = riverKey
-        river = new Int8Array(ascii.cols * ascii.rows)
-        garden.riverField(river, ascii.cols, ascii.rows, ascii.cw, ascii.ch)
-      }
       const face = garden.relief(
         relief,
         ascii.cols,
@@ -358,7 +349,6 @@ export function mountGarden({
           relief,
           reliefLight: face.color,
           reliefLit: face.lit,
-          river,
         },
         hour,
       )

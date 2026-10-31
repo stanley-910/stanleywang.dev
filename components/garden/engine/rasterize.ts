@@ -35,8 +35,8 @@ export const enum LandMat {
 }
 
 /**
- * How far across the river a cell lies, for the type (Garden.riverField): -1..1 bank to bank, on
- * out to ±RIVER_SPAN at the banks' outer edge.
+ * How far across the river a water or bank cell lies rides in its meta light: -1..1 bank to bank,
+ * on out to ±RIVER_SPAN at the banks' outer edge, stored as 0.5 + s / (2 × RIVER_SPAN).
  */
 export const RIVER_SPAN = 1.7
 

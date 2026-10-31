@@ -180,6 +180,30 @@ const SPRUCE_STANDS = [
   [0.9, 5],
 ]
 const FOREST_STEP = 2
+/**
+ * The river's course, placed by hand: shares of the screen width, and of its height below the
+ * horizon. It slips out from the trees' foot right of centre and meanders toward us, its bends
+ * flattened by distance and opening up as they near, then sweeps down past the bio's left side
+ * and out at the left edge.
+ */
+const RIVER: [number, number][] = [
+  [0.72, 0],
+  [0.76, 0.007],
+  [0.68, 0.016],
+  [0.55, 0.022],
+  [0.5, 0.032],
+  [0.58, 0.044],
+  [0.53, 0.054],
+  [0.41, 0.058],
+  [0.33, 0.064],
+  [0.37, 0.073],
+  [0.28, 0.08],
+  [0.17, 0.083],
+  [0.09, 0.096],
+  [0.035, 0.125],
+  [-0.03, 0.17],
+  [-0.15, 0.22],
+]
 /** Stones in the water, placed by hand: how far along the course, and where across it (-1..1). */
 const RIVER_STONES: [number, number, number][] = [
   [0.6, -0.75, 0.7],
@@ -254,28 +278,18 @@ export class Garden {
    */
   private skyline = new Float32Array(0)
   /**
-   * The river that comes out of the trees toward us: its water and its banks, the stones and islet
-   * in it, the spruce on its banks, and how far down the screen it reaches.
+   * The river that comes out of the trees toward us: its water and banks in strips across the
+   * flow, each carrying where across it lies, the stones and islet in it, the spruce on its banks,
+   * and how far down the screen it reaches.
    */
+  private water: [Shape, number][] = []
+  private shore: [Shape, number][] = []
   private riverShape = new Shape()
   private shoreShape = new Shape()
   private stones: Shape[] = []
   private islet = new Shape()
   private bankTrees: Shape[] = []
-  /** A dark rim round each, so they stand off the meadow behind them. */
-  private bankRims: Shape[] = []
   private riverEnd = 0
-  /** The course's middle points and breadths, which riverField reads. */
-  private course: {
-    mid: number[][]
-    wl: number[]
-    wr: number[]
-    sw: number[]
-  } | null = null
-  /** Counts each rebuild of the river, so a field worked out for the last one can be kept. */
-  riverVersion = 0
-  /** Per 1.5px down from 3px under the horizon: the course's middle and its reach to the banks' edge. */
-  private riverLine: (readonly [number, number])[] = []
   /** Plants sown by clicking, oldest first. */
   private sown: Plant[] = []
   time = 0
@@ -365,16 +379,14 @@ export class Garden {
     // strips fill whatever opened up on the right.
     for (const plant of this.plants) plant.reanchor(this.env)
     this.extend()
-    // The river first, so the grass knows where not to grow.
-    this.buildRidges()
     this.meadow.build(
       this.width,
       this.height,
       (z) => this.floor(z),
       this.seed * 7 + 3,
       this.keepClearColumn ? null : this.keepClear,
-      (x, y) => this.wet(x, y),
     )
+    this.buildRidges()
   }
 
   regrow(seed: number) {
@@ -399,16 +411,14 @@ export class Garden {
       )
       this.targetAge.set(plant, plant.bloomAge())
     }
-    // The river first, so the grass knows where not to grow.
-    this.buildRidges()
     this.meadow.build(
       this.width,
       this.height,
       (z) => this.floor(z),
       seed * 7 + 3,
       this.keepClearColumn ? null : this.keepClear,
-      (x, y) => this.wet(x, y),
     )
+    this.buildRidges()
   }
 
   /** Plants the strips the window now reaches into, each from its own seed. */
@@ -527,13 +537,6 @@ export class Garden {
     return this.place(createPlant(species, x, z, seed, this.env))
   }
 
-  /** Whether (x, y) is in the river or on its banks, where nothing grows. */
-  wet(x: number, y: number) {
-    const k = Math.round((y - this.horizon - 3) / 1.5)
-    const q = this.riverLine[k]
-    return !!q && Math.abs(x - q[0]) < q[1]
-  }
-
   /** Keeps plants sorted far to near, so nearer ones draw over. */
   private place(plant: Plant) {
     let i = this.plants.length
@@ -619,8 +622,6 @@ export class Garden {
     // A click on the sky sows at the horizon below it.
     const z =
       y < this.horizon ? FARTHEST_Z : Math.max(FARTHEST_Z, this.depthAt(y))
-    // Nothing takes root in the river.
-    if (this.wet(x, this.floor(z))) return false
     const plant = this.add(this.pickSpecies(), x, z)
     plant.hurry()
     // Now and then a sown flower draws a visitor once it opens; a click on a flower always does.
@@ -737,44 +738,61 @@ export class Garden {
     const seed = LAND_SEED * 17
     const CH = Math.min(H, 0.62 * this.rangeWidth) * 0.0125
     const clear = this.keepClearColumn ? null : this.keepClear
-    // Half its breadth across the screen, in proportion to how far below the horizon it lies, as
-    // anything of one size on flat ground is: a thread at the trees, a broad run at our feet.
+    // Half its breadth across the screen; flat water seen from here shows half that downward.
+    // Narrow in the distance, opening up fast as it nears.
     const width = (y: number, breadth: number) =>
-      (1.5 + 0.13 * (y - hz)) * breadth
-    // Its lane: the open meadow left of the bio, from the trees down past the bottom edge. Where
-    // the text spans the screen (a phone) it stays above the text and leaves by the left edge.
-    const above = !!clear && clear.left < 0.14 * W
-    const lane = !clear ? 0.42 * W : above ? 0.8 * W : clear.left - 0.03 * W
-    const yEnd = clear && above ? clear.top - 0.03 * H : H * 1.04
-    const dEnd = Math.max(8, yEnd - hz)
-    const xEnd = above ? -1.6 * width(yEnd, 1) : 0.2 * lane
-    const xStart = above ? 0.62 * W : 0.7 * lane
-    // It comes toward us down the lane, swinging side to side. Laid out on the ground and seen in
-    // perspective: a straight run converges on a point at the trees, and its bends, alike on the
-    // ground, close up into small kinks far off and open into broad sweeps near.
-    const swing = (0.38 * lane) / dEnd
-    const line: [number, number, number][] = []
-    for (let d = 3; d <= dEnd; d += 1.5) {
-      const t = (d / dEnd) ** 0.6
-      const x =
-        xStart +
-        ((xEnd - xStart) * d) / dEnd +
-        d * swing * Math.sin(TAU * 1.5 * t + 0.3)
-      // Its breadth swells and narrows along the way, pools in the bends and runs at the necks.
-      line.push([x, hz + d, 0.85 + 0.35 * fbm1(t * 6, seed + 3, 2)])
+      (2 + 0.25 * (y - hz) + 0.0018 * (y - hz) ** 2) * breadth
+    // Over the bio the course is pressed up toward the horizon, bends and all, so it winds above
+    // the text rather than running flat along a ceiling; past the bio's left side it falls freely.
+    let press = (_u: number) => 1
+    if (clear) {
+      const room = clear.top - 0.025 * H - hz
+      const deep = 0.075 * H
+      const f = clamp((room - 0.6 * width(hz + room, 1.25)) / deep, 0.15, 1)
+      const edge = clear.left / W
+      press = (u) => lerp(1, f, smoothstep(edge - 0.1, edge, u))
     }
-    // Kept clear of the bio, banks and all, and in sight at the left edge until it leaves.
-    if (clear && !above)
-      for (const q of line) {
-        const w = width(q[1], q[2])
-        if (q[1] + 0.6 * w > clear.top - 0.025 * H)
-          q[0] = Math.min(q[0], clear.left - 0.01 * W - 1.9 * w - 0.5 * CH)
-        q[0] = Math.max(q[0], 0.3 * w)
+    const pts = RIVER.map(([u, v]) => [u * W, hz + 0.5 + v * press(u) * H])
+    const line: [number, number, number][] = []
+    const N = 32
+    for (let j = 0; j < pts.length - 1; j++)
+      for (let s = 0; s < N; s++) {
+        const t = s / N
+        const [p0, p1, p2, p3] = [j - 1, j, j + 1, j + 2].map(
+          (q) => pts[clamp(q, 0, pts.length - 1)],
+        )
+        const at = (a: number, b: number, c: number, d: number) =>
+          0.5 *
+          (2 * b +
+            (c - a) * t +
+            (2 * a - 5 * b + 4 * c - d) * t * t +
+            (3 * b - a - 3 * c + d) * t * t * t)
+        // Its breadth swells and narrows along the way, pools in the bends and runs at the necks.
+        const breadth = 0.8 + 0.45 * fbm1((j + t) * 1.3, seed + 3, 2)
+        line.push([
+          at(p0[0], p1[0], p2[0], p3[0]),
+          at(p0[1], p1[1], p2[1], p3[1]),
+          breadth,
+        ])
       }
-    // Smoothed, so the course bends without kinks where it was held.
-    for (let pass = 0; pass < 24; pass++)
+    line.push([...pts[pts.length - 1], 1] as [number, number, number])
+    if (clear) {
+      const top = clear.top - 0.025 * H
+      for (const q of line)
+        for (let pass = 0; pass < 3; pass++) {
+          const w = width(q[1], q[2])
+          if (
+            clear.left < 0.1 * W ||
+            (q[0] + 1.25 * w > clear.left - 0.02 * W && q[0] - w < clear.right)
+          )
+            q[1] = Math.max(hz + 0.5, Math.min(q[1], top - 0.6 * w))
+        }
+    }
+    // Smoothed, so the course bends without kinks where it was held or where the points crowd.
+    for (let pass = 0; pass < 6; pass++)
       for (let k = 1; k < line.length - 1; k++)
-        line[k][0] = (line[k - 1][0] + 2 * line[k][0] + line[k + 1][0]) / 4
+        for (const d of [0, 1])
+          line[k][d] = (line[k - 1][d] + 2 * line[k][d] + line[k + 1][d]) / 4
     const n = line.length
     const mid = line.map(([x, y, b]) => [x, y, width(y, b)])
     // Each bank its own ragged edge, as rock and gravel make it, broad wobbles and small bites.
@@ -819,6 +837,21 @@ export class Garden {
       shape.closePath()
       return shape
     }
+    // Fine enough that where across the flow a cell lies reads as smooth, not in steps.
+    const WATER = 48
+    this.water = Array.from({ length: WATER }, (_, j) => {
+      const s0 = -1 + (2 * j) / WATER
+      const s1 = s0 + 2 / WATER
+      return [strip(s0, s1), (s0 + s1) / 2]
+    })
+    const SHORE = 12
+    this.shore = []
+    for (const sign of [-1, 1])
+      for (let j = 0; j < SHORE; j++) {
+        const s0 = 1 + ((RIVER_SPAN - 1) * j) / SHORE
+        const s1 = s0 + (RIVER_SPAN - 1) / SHORE
+        this.shore.push([strip(sign * s0, sign * s1), (sign * (s0 + s1)) / 2])
+      }
     this.riverShape = strip(-1, 1)
     this.shoreShape = strip(-RIVER_SPAN, RIVER_SPAN)
     // A few stones, and a gravel islet where the last bend runs widest.
@@ -840,7 +873,6 @@ export class Garden {
     }
     // Small spruce in stands along the banks, smaller the farther off, out past the bank's bands.
     this.bankTrees = []
-    this.bankRims = []
     for (const [j, [t, sign, count]] of BANK_STANDS.entries()) {
       const k0 = at(t)
       for (let q = 0; q < count; q++) {
@@ -850,125 +882,29 @@ export class Garden {
           sign * (RIVER_SPAN + 0.15 + 0.3 * hash(q, j, seed)),
         )
         const d = y - hz
-        const tall = (1.2 + 0.016 * d) * CH * (0.7 + 0.5 * hash(q, j + 9, seed))
+        const tall = (1.4 + 0.05 * d) * CH * (0.7 + 0.5 * hash(q, j + 9, seed))
         if (clear && x > clear.left - 20 && x < clear.right && y > clear.top)
           continue
         this.bankTrees.push(this.spruceShape(x, y, tall, CH))
-        this.bankRims.push(
-          this.spruceShape(x, y + 0.15 * CH, tall, CH, 0.3 * CH),
-        )
       }
     }
     this.riverEnd = end
-    this.riverLine = mid.map(([x, , w], k) => [x, w + sw[k]] as const)
-    this.course = { mid, wl, wr, sw }
-    this.riverVersion++
-    // Nothing roots in the water or on its banks.
-    this.plants = this.plants.filter(
-      (plant) => !this.wet(plant.x, this.floor(plant.z)),
-    )
   }
 
-  /**
-   * Where across the river each cell's middle lies, for the type to draw the current's lines along
-   * the flow and the banks' bands beside it: -1..1 bank to bank, out to ±RIVER_SPAN at the banks'
-   * outer edge, stored as ±127 at ±RIVER_SPAN, and -128 off the river. It changes only when the
-   * river is rebuilt (riverVersion).
-   */
-  riverField(
-    out: Int8Array,
-    cols: number,
-    rows: number,
-    cw: number,
-    ch: number,
-  ) {
-    out.fill(-128)
-    const C = this.course
-    if (!C) return
-    const { mid, wl, wr, sw } = C
-    const n = mid.length
-    const hz = this.horizon
-    // The flow's direction at each point, as side() takes it.
-    const tx = new Float32Array(n)
-    const ty = new Float32Array(n)
-    for (let k = 0; k < n; k++) {
-      const a = mid[Math.max(0, k - 1)]
-      const b = mid[Math.min(n - 1, k + 1)]
-      const l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1
-      tx[k] = (b[0] - a[0]) / l
-      ty[k] = (b[1] - a[1]) / l
-    }
-    const reach = (k: number) => Math.max(wl[k], wr[k]) + sw[k]
-    for (let r = 0; r < rows; r++) {
-      const py = (r + 0.5) * ch
-      if (py < hz) continue
-      const k0 = Math.round((py - hz - 3) / 1.5)
-      // A cross-section reaches at most half its breadth up or down the screen.
-      const span = Math.ceil((0.5 * reach(clamp(k0, 0, n - 1))) / 1.5) + 2
-      const from = Math.max(0, k0 - span)
-      const to = Math.min(n - 1, k0 + span)
-      if (from > to) continue
-      let lo = Infinity
-      let hi = -Infinity
-      for (let k = from; k <= to; k++) {
-        lo = Math.min(lo, mid[k][0] - reach(k))
-        hi = Math.max(hi, mid[k][0] + reach(k))
-      }
-      const c0 = Math.max(0, Math.floor(lo / cw))
-      const c1 = Math.min(cols - 1, Math.ceil(hi / cw))
-      for (let c = c0; c <= c1; c++) {
-        const px = (c + 0.5) * cw
-        // The point on the course whose cross-section passes nearest: side() puts the offset
-        // `off` at (x - ty·off, y + tx·off/2), so solve for it and take the closest fit.
-        let best = Infinity
-        let bestOff = 0
-        let bestK = -1
-        for (let k = from; k <= to; k++) {
-          const dx = px - mid[k][0]
-          const dy = py - mid[k][1]
-          const a = -ty[k]
-          const b = 0.5 * tx[k]
-          const off = (a * dx + b * dy) / (a * a + b * b)
-          const e = (dx - a * off) ** 2 + (dy - b * off) ** 2
-          if (e < best) {
-            best = e
-            bestOff = off
-            bestK = k
-          }
-        }
-        if (bestK < 0 || best > 4) continue
-        const half = bestOff < 0 ? wl[bestK] : wr[bestK]
-        const m = Math.abs(bestOff)
-        const sv =
-          m <= half ? m / half : 1 + ((m - half) / sw[bestK]) * (RIVER_SPAN - 1)
-        if (sv > RIVER_SPAN) continue
-        out[r * cols + c] = Math.round(
-          (Math.sign(bestOff) * sv * 127) / RIVER_SPAN,
-        )
-      }
-    }
-  }
-
-  /** A tiered spruce, `tall` px from its tip to its base at (x, base), `pad` px fuller all round. */
-  private spruceShape(
-    x: number,
-    base: number,
-    tall: number,
-    CH: number,
-    pad = 0,
-  ) {
+  /** A tiered spruce, `tall` px from its tip to its base at (x, base). */
+  private spruceShape(x: number, base: number, tall: number, CH: number) {
     const hw = tall * 0.26
     const tiers = 3 + Math.floor(tall / CH / 2.2)
     // Tiered: each branch tier flares out, then steps in under the next.
     const half = (y: number) => {
       const t = (y - (base - tall)) / tall
       const q = t * tiers
-      return pad + hw * (0.06 + 0.94 * t) * (0.62 + 0.38 * (q - Math.floor(q)))
+      return hw * (0.06 + 0.94 * t) * (0.62 + 0.38 * (q - Math.floor(q)))
     }
     // Down the left flank from the tip, then back up the right.
     const shape = new Shape()
     const ys: number[] = []
-    for (let y = base - tall - pad; y <= base + 0.01; y += CH / 4)
+    for (let y = base - tall; y <= base + 0.01; y += CH / 4)
       ys.push(Math.min(base - 0.01, y))
     ys.forEach((y, q) =>
       q ? shape.lineTo(x - half(y), y) : shape.moveTo(x, y),
@@ -1783,9 +1719,7 @@ export class Garden {
     ctx.fillStyle = wash(rc.water)
     ctx.fill(this.riverShape.toPath2D())
     ctx.globalAlpha = 1
-    ctx.fillStyle = css(mix(trees.spruce, [0, 0, 0], 0.4))
-    for (const shape of this.bankRims) ctx.fill(shape.toPath2D())
-    ctx.fillStyle = css(mix(trees.spruce, p.haze, 0.12 + 0.3 * p.night))
+    ctx.fillStyle = css(trees.spruce)
     for (const shape of this.bankTrees) ctx.fill(shape.toPath2D())
     // A soft band of mist over the horizon, rising and falling with the same easing.
     const top = this.horizon - H * 0.06
@@ -1974,25 +1908,39 @@ export class Garden {
       [0, mix(p.hillNear, p.grassDark, 0.4), 1],
       [1, p.ground, 1],
     ])
-    // The river: its banks, then its water, then the islet and stones in it and the spruce on its
-    // banks. Where across the flow each cell lies goes to the type apart (riverField), worked out
-    // once: as strips across the flow here it was most of the land's shapes, sent every frame.
+    // The river: its banks, then its water, strip by strip across the flow, each telling the type
+    // where across it lies; the islet and stones in it, and the spruce on its banks. Each goes
+    // down whole first: the strips are often thinner than a raster pixel, and their soft edges
+    // stacked on nothing wore the material's id down until the water read as spruce.
     const rc = this.riverColors(p)
+    const across = (s: number) => 0.5 + s / (2 * RIVER_SPAN)
     r.fill(this.shoreShape, rc.shore[2][1], Kind.Land, 1, {
       id: LandMat.Shore,
-      light: 0.5,
+      light: across(1.35),
       back: false,
     })
+    for (const [shape, s] of this.shore)
+      r.fill(shape, rc.shore[2][1], Kind.Land, 1, {
+        id: LandMat.Shore,
+        light: across(s),
+        back: false,
+      })
     r.gradient(this.shoreShape, this.horizon, this.riverEnd, rc.shore)
     r.fill(this.riverShape, rc.water[2][1], Kind.Land, 1, {
       id: LandMat.Water,
       light: 0.5,
       back: false,
     })
+    for (const [shape, s] of this.water)
+      r.fill(shape, rc.water[2][1], Kind.Land, 1, {
+        id: LandMat.Water,
+        light: across(s),
+        back: false,
+      })
     r.gradient(this.riverShape, this.horizon, this.riverEnd, rc.water)
     r.fill(this.islet, rc.bar, Kind.Land, 1, {
       id: LandMat.Shore,
-      light: 0.5,
+      light: across(1.25),
       back: false,
     })
     for (const shape of this.stones)
@@ -2001,24 +1949,12 @@ export class Garden {
         light: 0.5,
         back: false,
       })
-    for (const shape of this.bankRims)
-      r.fill(shape, mix(trees.spruce, [0, 0, 0], 0.4), Kind.Land, 1, {
+    for (const shape of this.bankTrees)
+      r.fill(shape, trees.spruce, Kind.Land, 1, {
         id: LandMat.Spruce,
         light: 0.5,
         back: false,
       })
-    for (const shape of this.bankTrees)
-      r.fill(
-        shape,
-        mix(trees.spruce, p.haze, 0.12 + 0.3 * p.night),
-        Kind.Land,
-        1,
-        {
-          id: LandMat.Spruce,
-          light: 0.5,
-          back: false,
-        },
-      )
     r.touchMeta(W, this.riverEnd + 4)
     // Low mist on the horizon, colour only, so the land underneath keeps its kind. It thins
     // against a low sun so the backlit ridges keep their shadow.
