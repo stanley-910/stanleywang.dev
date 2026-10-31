@@ -49,9 +49,9 @@ const bitmap = Pixelify_Sans({
 })
 
 // The shell's own face, so what you type reads apart from the site's Geist; it carries
-// the IPA and Greek the poems use.
+// the IPA and Greek the poems use, and the Cyrillic the boot turns over through.
 const shellFont = JetBrains_Mono({
-  subsets: ['latin', 'latin-ext', 'greek'],
+  subsets: ['latin', 'latin-ext', 'greek', 'cyrillic'],
   variable: '--font-shell',
 })
 
@@ -106,14 +106,12 @@ const MENUS: [string, Item[]][] = [
 ]
 
 const BOOT_KEY = 'terminal-booted'
-const LOADING = 'Loading portfolio...'
-// The loading line passes through these on its way to the English.
-const LOADING_ON = ['正在載入作品集', 'Завантаження портфоліо...']
 const GLITCH = '!@#$%^&*()_+-=[]{}|;:,.<>?~©λ'
 const VISITED_KEY = 'terminal-visited'
 let returning: boolean | undefined
 /** Stranger on the first visit this browser has made, as far as it can tell; friend after.
- * Settled once a page load, so a reboot greets the same way. */
+ * Settled once a page load, so a reboot greets the same way. The boot's dial turns it over
+ * from Chinese through Ukrainian to the English. */
 const greeting = () => {
   if (returning === undefined) {
     try {
@@ -123,7 +121,13 @@ const greeting = () => {
       returning = false
     }
   }
-  return returning ? 'Good to see you again, friend!' : 'Welcome, stranger!'
+  return returning
+    ? [
+        '很高興再見到你，朋友！',
+        'Радий знову тебе бачити, друже!',
+        'Good to see you again, friend!',
+      ]
+    : ['歡迎你，陌生人！', 'Ласкаво просимо, незнайомцю!', 'Welcome, stranger!']
 }
 
 const isNight = (h: number) => !(h >= LIGHT_FROM && h < DARK_FROM)
@@ -230,7 +234,7 @@ function Prompt({ path }: { path: string }) {
 
 /**
  * The old site's opening, cut to a couple of seconds and told as a small OS
- * starting its simulation: a few kernel lines with the real hour and wind, then the loading line
+ * starting its simulation: a few kernel lines with the real hour and wind, then the greeting
  * turns over like a dial, Chinese to Ukrainian to English, each pass starting from the left
  * before the last one reaches the end. Any key skips it.
  */
@@ -257,11 +261,10 @@ function Boot({
   onDone: () => void
 }) {
   const [lines] = useState(() => bootLines(hour, wind))
-  const [hello] = useState(greeting)
+  const [passes] = useState(greeting)
   const [shown, setShown] = useState(0)
   const [ok, setOk] = useState(false)
   const [chars, setChars] = useState<string[]>([])
-  const [greeted, setGreeted] = useState(false)
   const done = useRef(onDone)
   done.current = onDone
 
@@ -283,7 +286,6 @@ function Boot({
     // Each pass sweeps left to right, a character at a time, every one
     // flickering for its own while before it lands; the next pass starts
     // LAG behind, so one language is still settling as the next arrives.
-    const passes = [...LOADING_ON, LOADING]
     const width = Math.max(...passes.map((p) => p.length))
     const LAG = 1100
     const put = (i: number, ch: string) =>
@@ -307,8 +309,7 @@ function Boot({
         end = Math.max(end, f)
       }
     })
-    later(end + 450, () => setGreeted(true))
-    later(end + 1300, () => done.current())
+    later(end + 900, () => done.current())
     const skip = (e: KeyboardEvent) => {
       if (e.key === '`') return
       done.current()
@@ -336,13 +337,6 @@ function Boot({
         <>
           {'\n'}
           {chars.join('')}
-          {!greeted && <span className="cur" aria-hidden />}
-          {'\n'}
-        </>
-      )}
-      {greeted && (
-        <>
-          {hello}
           <span className="cur" aria-hidden />
           {'\n'}
         </>
@@ -1088,8 +1082,7 @@ export function Terminal() {
                                       lines: [
                                         ...bootLines(hour, wind),
                                         '',
-                                        LOADING,
-                                        greeting(),
+                                        greeting()[2],
                                         '',
                                         ...HINT,
                                       ],
