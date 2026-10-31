@@ -57,11 +57,10 @@ const HEAD = 1.6
 export const RUSH = 2
 /** Stem damping in the wind (Stem.damping). */
 const SWAY = 0.35
-/**
- * Stem damping while the opening grows a plant in, or a click's flower comes up: its bud
- * straightens without a bounce.
- */
+/** Stem damping while the opening grows a plant in: its bud straightens without a bounce. */
 const SETTLED = 0.9
+/** Stem damping while a click's flower comes up: its head lifts with a little give and sways on. */
+const LIFT = 0.5
 /** Seconds after the opening for the stems to loosen back to SWAY. */
 const LOOSEN = 2
 
@@ -151,26 +150,27 @@ export abstract class Plant {
    * Sown by a click: grow straight to full flower over RUSH seconds instead of half a minute.
    * Its age runs evenly to just open, so the stalk draws up (its growth eases out) and then the
    * bud swells, lifts and opens, each in its own time; run on into the bloom, a poppy's nod
-   * straightened in a blink and the head sprang up and bobbed.
+   * straightened in a blink and the head sprang up and bobbed. The stalk starts already bent
+   * as the bud nods, so it doesn't droop while it rises, and it stays in the wind throughout.
    */
   hurry() {
     this.rush = { from: this.age, to: Math.max(this.age, this.openAge()), t: 0 }
   }
 
   update(dt: number, env: Env) {
-    if (this.rush) {
-      const q = this.rush
+    const q = this.rush
+    const sown = q?.t === 0
+    if (q) {
       q.t = Math.min(1, q.t + dt / RUSH)
       this.age = lerp(q.from, q.to, q.t)
-      // Then it loosens to the wind's sway, as the opening's flowers do.
-      this.calm = 1
-      if (q.t >= 1) this.rush = null
     } else this.age += dt
-    const damping = lerp(SWAY, SETTLED, this.calm)
+    const damping = q ? LIFT : lerp(SWAY, SETTLED, this.calm)
     for (const s of this.stems) s.damping = damping
     this.calm = Math.max(0, this.calm - dt / LOOSEN)
     if (this.leaving) this.fade = Math.max(0, this.fade - dt / 1.5)
     this.live(env, dt)
+    if (sown) for (const s of this.stems) s.ang.set(s.rest)
+    if (q && q.t >= 1) this.rush = null
     const sub = 2
     for (let i = 0; i < sub; i++)
       for (const s of this.stems) s.step(dt / sub, env.wind)
