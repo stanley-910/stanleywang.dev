@@ -345,6 +345,8 @@ export type Style = {
   relief: Float32Array
   reliefLight: Rgb
   reliefLit: number
+  /** Where across the river each cell lies (Garden.riverField): ±127 at ±RIVER_SPAN, -128 off it. */
+  river: Int8Array
   heads: HeadMark[]
   sprites: Sprite[]
 }
@@ -375,6 +377,7 @@ export class Typesetter {
   private kinds = new Uint8Array(0)
   private pid = new Uint8Array(0)
   private lit = new Float32Array(0)
+  private river: Int8Array = new Int8Array(0)
   private back = new Uint8Array(0)
   /** Motif glyphs stamped over far heads and insects this frame: glyph code, ink, tile and its colour. */
   private stamp = new Uint16Array(0)
@@ -414,6 +417,7 @@ export class Typesetter {
     this.pid = cells.pid
     this.lit = cells.lit
     this.back = cells.back
+    this.river = style.river.length === n ? style.river : new Int8Array(0)
     const out: Material = {
       glyph: new Uint16Array(n),
       ink: new Uint8ClampedArray(n * 3),
@@ -774,10 +778,10 @@ export class Typesetter {
                     [255, 255, 255],
                     0.15,
                   )
-                  // A line every couple of cells across, where the stripe count steps between this
-                  // cell and the next one across the flow, so each runs unbroken, one cell wide.
-                  // They drift and braid a little rather than run as rails.
-                  const m = Math.round(2 / grad / 3)
+                  // A line every four cells or so across, where the stripe count steps between
+                  // this cell and the next one across the flow, so each runs unbroken, one cell
+                  // wide. They drift and braid a little rather than run as rails.
+                  const m = Math.round(2 / grad / 4)
                   const stripe = (cc: number, rr: number, ss: number) =>
                     Math.floor(
                       ((ss + 1) / 2) * m +
@@ -808,19 +812,16 @@ export class Typesetter {
                     ;[cr, cg, cb] = mix(base, glint, 0.85)
                     alpha = 0.9
                   } else if (line) {
+                    // The line is the glyph alone, over the same water: lit tiles under it read
+                    // as a patchwork at this grid, not as current.
                     g = code(flow)
                     ;[cr, cg, cb] = mix(base, glint, 0.7 + 0.3 * mid)
-                    alpha = 1
-                    const lit = mix(body, glint, 0.3 + 0.2 * mid)
-                    tileCol[i * 3] = lit[0] * p.ink
-                    tileCol[i * 3 + 1] = lit[1] * p.ink
-                    tileCol[i * 3 + 2] = lit[2] * p.ink
+                    alpha = 0.95
                   } else {
-                    // Open water: its tile alone, but for a rare fleck. The compositor lays a
-                    // tile only under a glyph, so the rest carry one too faint to see.
-                    g = code(b < 0.06 ? '.' : '-')
-                    ;[cr, cg, cb] = mix(base, p.cloud, 0.3)
-                    alpha = b < 0.06 ? 0.6 : 0.01
+                    // Open water: its tile alone. The compositor lays a tile only under a glyph,
+                    // so it carries one too faint to see.
+                    g = code('-')
+                    alpha = 0.01
                   }
                   break
                 }
@@ -836,14 +837,14 @@ export class Typesetter {
                   tileCol[i * 3 + 2] = base[2] * p.ink * k
                 }
                 if (u < Math.min(0.3, 1 / span)) {
-                  g = code(b < 0.4 ? ',' : '.')
+                  g = code(',')
                   ;[cr, cg, cb] = mix(base, p.cloud, 0.1)
                   tile[i] = 0.6
                   dark(0.7)
-                  alpha = b < 0.4 ? 0.5 : 0.01
+                  alpha = 0.4
                   break
                 }
-                const n = clamp(Math.floor(span / 2), 1, 3)
+                const n = clamp(Math.floor(span / 3), 1, 2)
                 const q = u * (n + 0.5)
                 const on =
                   Math.round(q) >= 1 &&
@@ -855,9 +856,8 @@ export class Typesetter {
                   ;[cr, cg, cb] = mix(base, mix(p.haze, p.cloud, 0.5), 0.4)
                   alpha = 0.35 + 0.4 * fade
                 } else {
-                  g = code(b < 0.2 ? ',' : '.')
-                  ;[cr, cg, cb] = mix(base, p.cloud, 0.1)
-                  alpha = b < 0.2 ? 0.35 * fade : 0.01
+                  g = code('.')
+                  alpha = 0.01
                 }
                 break
               }
@@ -1013,7 +1013,8 @@ export class Typesetter {
   private across(c: number, r: number, or = 0) {
     const m = this.matAt(c, r)
     if (m !== LandMat.Water && m !== LandMat.Shore) return or
-    return (this.lit[r * this.cols + c] - 0.5) * 2 * RIVER_SPAN
+    const q = this.river[r * this.cols + c] ?? -128
+    return q === -128 ? or : (q / 127) * RIVER_SPAN
   }
 
   private snowAt(c: number, r: number) {
