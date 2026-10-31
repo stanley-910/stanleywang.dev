@@ -2242,6 +2242,10 @@ export class Garden {
   private drawGlobe(r: Raster, p: Palette) {
     const { cx, cy, R } = this.globeAt()
     const { sun, moon } = this.lights(p)
+    // Their GLOBE mark is read only inside the meta bounds, which otherwise start at the land:
+    // above it the moon would lose its tile, a hard line across the disc.
+    r.touchMeta(cx - R * 1.6, cy - R * 1.6)
+    r.touchMeta(cx + R * 1.6, cy + R * 1.6)
     if (sun > 0) {
       // Solid at the core, thinning to a sparse halo of dots at the edge, like a halftone print.
       const { color, rx, ry } = this.sunLook(p)
