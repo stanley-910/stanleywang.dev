@@ -47,75 +47,128 @@
 
 /* ---------- The word in the corner ---------- */
 
-/* Just the word, quiet, like the bio's links. */
-.terminal-word {
+/* A power button in the bottom-right corner, in the site menu's column (time-control.css):
+   the same 16px box 32px from the window's right edge, as far from the bottom as the menu is
+   from the top. Held open, its key drops in, as the menu's dots turn. */
+.terminal-power {
   position: fixed;
-  right: var(--gutter);
-  bottom: 20px;
+  right: 32px;
+  bottom: 34px;
   z-index: 40;
-  padding: 2px 4px;
-  margin: 0 -4px;
-  font: 400 13px/20px var(--font-mono);
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  align-items: center;
+  justify-content: center;
   color: var(--ink-muted);
-  background: none;
   border: 0;
+  border-radius: var(--radius-hair);
   cursor: pointer;
   transition:
     color var(--duration-quick) var(--ease-calm),
     opacity 400ms var(--ease-calm);
 }
 
-.terminal-word:hover,
-.terminal-word[aria-pressed='true'] {
+.terminal-power svg {
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+/* Off, it's the power symbol: a ring open at the top, the key through the gap. Hovered,
+   the key lifts a touch. Switched on, the ring closes and the key drops to a dot at its
+   centre, the symbol for on, with the spring the menu's dots use. */
+.terminal-power .ring {
+  stroke-dasharray: 80 20;
+  stroke-dashoffset: 15;
+  transition:
+    stroke-dasharray 320ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    stroke-dashoffset 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.terminal-power .key {
+  transition:
+    d 320ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.terminal-power:hover .key {
+  transform: translateY(-0.6px);
+}
+
+.terminal-power[aria-pressed='true'] .ring {
+  stroke-dasharray: 100 0;
+  stroke-dashoffset: 25;
+}
+
+.terminal-power[aria-pressed='true'] .key {
+  d: path('M8 8.45 V8.45');
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .terminal-power .ring,
+  .terminal-power .key {
+    transition: none;
+  }
+}
+
+.terminal-power:hover,
+.terminal-power[aria-pressed='true'] {
   color: var(--ink);
 }
 
-.terminal-word:focus-visible {
+.terminal-power:focus-visible {
   outline: 1px solid var(--ink);
   outline-offset: 2px;
 }
 
 /* Off home it floats over the page's content, so it carries a scrap of page under it. */
-.terminal-word {
+.terminal-power {
   background: var(--page);
+  box-shadow: 0 0 0 4px var(--page);
 }
 
 /* On home it sits on the meadow's dark ground, in the bio's colours. */
-html:has(.garden-home) .terminal-word {
+html:has(.garden-home) .terminal-power {
   color: var(--garden-ink-muted, #9d9b94);
   background: none;
+  box-shadow: none;
 }
 
 /* Home's opening (garden.css): held back with the bio, and fades up with it. */
-:root[data-intro='wait'] .terminal-word {
+:root[data-intro='wait'] .terminal-power {
   opacity: 0;
 }
 
-:root[data-intro='play'] .terminal-word {
+:root[data-intro='play'] .terminal-power {
   animation: intro-fade 0.7s ease-out 1.1s both;
 }
 
-html:has(.garden-home) .terminal-word:hover,
-html:has(.garden-home) .terminal-word[aria-pressed='true'] {
+html:has(.garden-home) .terminal-power:hover,
+html:has(.garden-home) .terminal-power[aria-pressed='true'] {
   color: var(--garden-ink, #e4e2da);
 }
 
 /* Hidden with the rest of the UI (lib/hide-ui.ts); near its corner it comes back. */
-:root[data-ui-hidden] .terminal-word {
+:root[data-ui-hidden] .terminal-power {
   --avoid: none;
   opacity: 0;
 }
 
-:root[data-ui-hidden] .terminal-word:hover,
-:root[data-ui-hidden] .terminal-word:focus-visible {
+:root[data-ui-hidden] .terminal-power:hover,
+:root[data-ui-hidden] .terminal-power:focus-visible {
   --avoid: auto;
   opacity: 1;
 }
 
-:root[data-ui-hidden] .terminal-word::before {
+:root[data-ui-hidden] .terminal-power::before {
   content: '';
   position: absolute;
-  inset: -48px -24px -20px -96px;
+  inset: -48px -40px -40px -80px;
 }
 
 :root[data-ui-hidden] .terminal-win {
@@ -135,8 +188,8 @@ html:has(.garden-home) .terminal-word[aria-pressed='true'] {
 
 .terminal-win {
   position: fixed;
-  right: var(--gutter);
-  bottom: 56px;
+  right: 32px;
+  bottom: 62px;
   z-index: 40;
   display: flex;
   width: min(616px, calc(100vw - 2 * var(--gutter)));
@@ -626,8 +679,14 @@ html:has(.garden-home) .terminal-word[aria-pressed='true'] {
 
 /* On a phone it takes the width above the word. */
 @media (max-width: 480px) {
+  /* The menu sits at the end of the links' row here, the gutter in and about 20px down. */
+  .terminal-power {
+    right: var(--gutter);
+    bottom: 20px;
+  }
   .terminal-win {
     right: 8px;
+    bottom: 48px;
     left: 8px;
     width: auto;
     height: min(368px, 60svh);

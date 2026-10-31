@@ -28,7 +28,7 @@ import {
 
 // The terminal: a small one-bit console window that floats over every page
 // (design/circadian-meadow/components/Terminal, the desk). It opens from the
-// quiet word in the bottom-right corner or the ` key, and stays open as you
+// power button in the bottom-right corner, under the site menu, or the ` key, and stays open as you
 // move between pages, since it lives in the layout.
 
 const bitmap = Pixelify_Sans({
@@ -759,12 +759,16 @@ export function Terminal() {
       )}
       <button
         ref={word}
-        className="terminal-word"
+        className="terminal-power"
         aria-pressed={open}
         onClick={() => (open ? hide() : show())}
+        aria-label="Terminal"
         data-avoid
       >
-        terminal
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden>
+          <circle className="ring" cx="8" cy="8.45" r="5.2" pathLength="100" />
+          <path className="key" d="M8 2.2 V7.6" />
+        </svg>
       </button>
     </div>
   )
