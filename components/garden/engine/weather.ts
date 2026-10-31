@@ -23,8 +23,6 @@ const FLAKES = [code('.'), code('·'), code('*')]
 const SEEDS = [code('~'), code(','), code('.')]
 const BOLT = { left: code('/'), right: code('\\'), down: code('|') }
 const CORONA = [code('·'), code(':')]
-/** Where the last of the sun shows past the moon's edge, the diamond on the ring. */
-const DIAMOND = code('*')
 /** What Earth's shadow prints where the moon has no glyph of its own: a dim dot on a copper tile. */
 export const SHADOW = code('·')
 
@@ -37,14 +35,14 @@ const SPLASH_FOR = 0.12
 
 /** How fast each effect comes in and goes, in its share a second. */
 const RATES = {
-  rain: [1 / 3, 1 / 3],
-  snow: [1 / 4, 1 / 4],
-  storm: [1 / 4, 1 / 4],
-  gale: [1 / 3, 1 / 3],
-  // Snow lies over a minute and melts in twenty seconds.
-  cover: [1 / 60, 1 / 20],
-  // The moon crosses the sun in twelve seconds and leaves in eight.
-  eclipse: [1 / 12, 1 / 8],
+  rain: [1 / 1.5, 1 / 1.5],
+  snow: [1 / 2, 1 / 2],
+  storm: [1 / 2, 1 / 2],
+  gale: [1 / 1.5, 1 / 1.5],
+  // Snow lies over twenty seconds and melts in eight.
+  cover: [1 / 20, 1 / 8],
+  // The moon crosses the sun in five seconds and leaves in four.
+  eclipse: [1 / 5, 1 / 4],
 } as const
 type Effect = keyof typeof RATES
 
@@ -69,14 +67,12 @@ const lateTwilight = (key: keyof Palette) =>
   mix(TWILIGHT[key] as Rgb, NIGHT[key] as Rgb, 0.5)
 
 /**
- * The diamond, the white-hot bead of sun at the moon's edge: the shooting star's head
- * (ShootingStar, `mix(fluff, globe, 0.4)`) at noon, a pearl white.
+ * The globe's colour at totality: the shooting star's head (ShootingStar, `mix(fluff, globe, 0.4)`)
+ * at noon, a pearl white.
  */
 const CORONA_COL = mix(DAY.fluff, DAY.globe, 0.4)
-/** The bright ring hugging the moon's edge, and the light it throws on its tiles: `sunset-globe`. */
+/** The ring on the moon's edge and the glow round it, on their tiles: `sunset-globe`. */
 const RIM_COL = SUNSET.globe
-/** The glow fading out from the ring: `sunset-sky-horizon`, the deepest orange in the sky. */
-const GLOW_COL = SUNSET.skyHorizon
 
 /**
  * The scene at a solar eclipse's totality: the land and upper sky at about 20:45, under a band
@@ -192,7 +188,7 @@ export class Weather {
   /** Per cell, this frame: how strongly the corona or a bolt lights the tile behind its glyph. */
   tile = new Float32Array(0)
   /** The colour those tiles take: the corona's, or a bolt's while one strikes. */
-  tileCol: Rgb = CORONA_COL
+  tileCol: Rgb = RIM_COL
   /** Per cell column, this frame: how much a gust band lights the grass. Empty without a gale. */
   band = new Float32Array(0)
   /** How much a lightning strike lights the sky this frame, 0 to 1. */
@@ -281,9 +277,9 @@ export class Weather {
   tint(p: Palette, sun: number): Palette {
     const a = this.amount
     const grey = steps(Math.max(a.rain, 0.7 * a.snow), 24)
-    const storm = steps(a.storm, 12)
+    const storm = steps(a.storm, 24)
     const cover = this.cover
-    const ecl = steps(a.eclipse, 24)
+    const ecl = steps(a.eclipse, 64)
     if (grey + cover + ecl === 0) return p
     const out = { ...p }
     if (grey > 0) {
@@ -426,48 +422,37 @@ export class Weather {
         skyline: globe.skyline,
         k: 0.96 * smoothstep(0, 0.15, e) * globe.sun,
       }
-      // At totality, a black disc in a ring of light: a solid ring hugging the moon's edge, a
-      // glow fading out from it in streamers, and a diamond where the sun last showed, on the
-      // side the moon came from's opposite.
+      // At totality, a black disc in a ring of light: a ring one cell wide on the moon's edge,
+      // and a glow fading smoothly out from it, a little longer along a few streamers. The glow is
+      // light on tiles, under a glyph of the same colour, so it reads as a haze, not as dots.
       const ring = smoothstep(0.92, 1, e) * globe.sun
       if (ring > 0) {
-        const reach = 1.6 * R
-        const dia = Math.hypot(2.4, 0.7)
-        const diaX = globe.cx - (2.4 / dia) * R
-        const diaY = globe.cy + (0.7 / dia) * R
+        const rim = 1 + Math.max(cw, ch) / R
+        const reach = 1.55 * R
         const c0 = Math.max(0, Math.floor((globe.cx - reach) / cw))
         const c1 = Math.min(this.cols - 1, Math.ceil((globe.cx + reach) / cw))
         const r0 = Math.max(0, Math.floor((globe.cy - reach) / ch))
         const r1 = Math.min(this.rows - 1, Math.ceil((globe.cy + reach) / ch))
         for (let r = r0; r <= r1; r++)
           for (let c = c0; c <= c1; c++) {
-            const x = (c + 0.5) * cw
-            const y = (r + 0.5) * ch
-            const dx = x - globe.cx
-            const dy = y - globe.cy
+            const dx = (c + 0.5) * cw - globe.cx
+            const dy = (r + 0.5) * ch - globe.cy
             const d = Math.hypot(dx, dy) / R
-            if (d < 1 || d > 1.6) continue
+            if (d < 1 || d > 1.55) continue
             const i = r * this.cols + c
-            const bead = 1 - Math.hypot(x - diaX, y - diaY) / (0.34 * R)
             let s: number
             let t: number
-            if (bead > 0) {
+            if (d < rim) {
               s = ring
-              t = ring * Math.min(1, 0.6 + bead)
-              this.plot(c, r, DIAMOND, s, CORONA_COL, 1)
-            } else if (d < 1.1) {
-              s = ring
-              t = 0.85 * ring
+              t = 0.9 * ring
               this.plot(c, r, CORONA[1], s, RIM_COL, 1)
             } else {
-              const fall = 1 - smoothstep(1.1, 1.6, d)
-              // Streamers: longer along a few directions, as a corona's are.
-              const streak =
-                0.55 + 0.45 * Math.cos(4 * Math.atan2(dy, dx) + 0.7)
-              if (hash(c, r, 31) > 0.15 + 0.75 * fall * streak) continue
-              s = ring * (0.3 + 0.5 * fall)
-              t = 0.35 * s * fall
-              this.plot(c, r, CORONA[0], s, GLOW_COL, 1)
+              const fall = (1 - smoothstep(rim, 1.55, d)) ** 2
+              const streak = 0.8 + 0.2 * Math.cos(4 * Math.atan2(dy, dx) + 0.7)
+              t = 0.6 * ring * fall * streak
+              if (t < 0.02) continue
+              s = 0.1
+              this.plot(c, r, CORONA[0], s, RIM_COL, 1)
             }
             if (this.alpha[i] === Math.fround(s)) this.tile[i] = t
           }

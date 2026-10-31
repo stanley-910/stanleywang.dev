@@ -542,7 +542,8 @@ export class AsciiRenderer {
           )
         ) {
           const wa = fall.alpha[i] * dim[i]
-          if (wa >= 0.06 && (!g || wa > a * 0.6)) {
+          // A lit cell (the corona's, a bolt's) takes its cell outright: its light is the tile.
+          if (wa >= 0.06 && (!g || wa > a * 0.6 || fall.tile[i] > 0)) {
             g = fall.glyph[i]
             cr = fall.rgb[i * 3]
             cg = fall.rgb[i * 3 + 1]
