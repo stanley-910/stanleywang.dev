@@ -1347,21 +1347,15 @@ export class Garden {
   }
 
   /**
-   * Strips under a ridge's crest, one per run of slope that faces the light at (`toward`, `above`)
-   * the same way: `w` is 1 for a slope fully lit, -1 fully in shade, and eases between as the light
-   * moves, in sixteenths, so a mountainside turns into shadow over a stretch of the hour rather than
-   * at once. `reach` scales how far down from the crest they run.
+   * How each point of a ridge faces the light at (`toward`, `above`), -1 to 1 in sixteenths: 1 lit,
+   * -1 in shade, 0 flat or in front of the sun or moon (within `clear` of it).
    */
-  private slopes(
+  private facing(
     ridge: Float32Array,
-    layer: number,
     toward: number,
     above: number,
-    reach: number,
     clear: number,
   ) {
-    const runs: { path: Shape; w: number }[] = []
-    const depth = this.height * [0.05, 0.035, 0.02][layer] * reach
     const n = ridge.length
     // Which way each point faces, read over a wide window so a whole mountainside goes one way
     // instead of flickering with every crease: down toward the light faces it.
@@ -1392,7 +1386,27 @@ export class Garden {
       )
       return Math.round(w * open * 16) / 16
     }
-    const fs = Array.from({ length: n }, (_, i) => face(i))
+    const fs = new Float32Array(n)
+    for (let i = 0; i < n; i++) fs[i] = face(i)
+    return fs
+  }
+
+  /**
+   * Strips under a ridge's crest, one per run of slope that faces the light at (`toward`, `above`)
+   * the same way: `w` is 1 for a slope fully lit, -1 fully in shade, and eases between as the light
+   * moves, in sixteenths, so a mountainside turns into shadow over a stretch of the hour rather than
+   * at once. `reach` scales how far down from the crest they run; `fs` is each point's facing,
+   * from `facing`, worked out once for all four reaches.
+   */
+  private slopes(
+    ridge: Float32Array,
+    layer: number,
+    reach: number,
+    fs: Float32Array,
+  ) {
+    const runs: { path: Shape; w: number }[] = []
+    const depth = this.height * [0.05, 0.035, 0.02][layer] * reach
+    const n = ridge.length
     let i = 0
     while (i < n) {
       const f = fs[i]
@@ -1773,7 +1787,7 @@ export class Garden {
     if (sun + moon > 0) {
       const { cx, cy, R } = this.globeAt()
       const look = this.sunLook(p)
-      const col = sun ? look.color : this.moonLook(p).color
+      const col = this.glowColor(p)
       // Sized by the screen as well as the disc, so a phone's small moon still lights a patch of
       // sky. It falls fastest at the disc and ever more gently out to nothing, like light
       // scattered in air: a fade that holds and then drops reads as a soft disc. Painted before the
@@ -1994,20 +2008,16 @@ export class Garden {
       )
       // Four strips, each shallower and stronger, so the glyphs thicken toward the crest.
       const q = clamp(light / 0.45, 0, 1)
+      const fs = light > 0 ? this.facing(ridge, cx, cy, R * 1.5) : null
       for (const [k, reach] of (light > 0
         ? [1, 0.7, 0.45, 0.25]
         : []
       ).entries()) {
         const s = q * (0.35 + 0.65 * (k / 3))
         const sl = s * (1 - rim * (1 - k / 3))
-        for (const { path, w } of this.slopes(
-          ridge,
-          layer,
-          cx,
-          cy,
-          reach,
-          R * 1.5,
-        )) {
+        for (const { path, w } of fs
+          ? this.slopes(ridge, layer, reach, fs)
+          : []) {
           if (w > 0)
             r.fill(
               path,
@@ -2273,15 +2283,23 @@ export class Garden {
     }
   }
 
+  /**
+   * The glow's colour in steps of 4, the same for the backdrop's key and the glow's tint, so the
+   * colour drifting with the clock or a scrub re-tints the glow only when it steps, not on every
+   * repaint something else asks for. A step is under one screen level at the glow's peak alpha.
+   */
+  private glowColor(p: Palette): Rgb {
+    const { sun } = this.lights(p)
+    const col = sun ? this.sunLook(p).color : this.moonLook(p).color
+    return col.map((v) => Math.min(255, (((v | 0) >> 2) << 2) + 2)) as Rgb
+  }
+
   /** The glows move and colour with the sun and moon, so the cached backdrop repaints as they do. */
   backdropKey(p: Palette) {
     const { sun, moon } = this.lights(p)
     if (sun + moon <= 0) return ''
     const { cx, cy } = this.globeAt()
-    // In steps of 8, so the moon's colour drifting with the clock doesn't repaint it every tick.
-    const col = (sun ? this.sunLook(p) : this.moonLook(p)).color.map(
-      (v) => (v | 0) >> 3,
-    )
+    const col = this.glowColor(p)
     return `${Math.round(cx / 4)},${Math.round(cy / 4)},${sun.toFixed(2)},${moon.toFixed(2)},${(this.moonPhase ?? moonPhaseNow()).toFixed(3)},${col}`
   }
 
