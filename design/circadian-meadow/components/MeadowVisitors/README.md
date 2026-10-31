@@ -21,9 +21,13 @@ fly 1     fly 2     perched     fly 1   fly 2   perched
 
 bee big                         bee mid
 fly 1     fly 2     perched     fly 1   fly 2   perched
-   \|/       -=-     .__,        \|/     -=-     .__
- ,%''%/   ,%''%/   ,%''%/      (.%.o   (.%.o   (.%.o
-(.%..%o  (.%..%o  (.%..%o
+  \|/      -=-     .__,         \|/    -=-    .__
+ ,%'%/    ,%'%/    ,%'%/       (%.o   (%.o   (%.o
+(%..%o   (%..%o   (%..%o
+
+The bee is as wide as the ladybug at each size (6 cells big, 4 mid): at 7 it read bigger.
+Cells with no tile of their own (glassy wings, rims, legs) print over the cell's own tile, so a
+figure over a flower never cuts holes in its petals.
 
 heart big   heart mid   heart small
  ,. ,.      ('v')       <3
@@ -55,14 +59,14 @@ Paste into `INSECTS` in place of the stand-ins:
   },
   bee: {
     big: [
-      { rows: ['   \\|/ ', ' ,%\'\'%/', '(.%..%o'], mask: ['   ggg ', ' rwppwb', 'epwppwp'] },
-      { rows: ['   -=- ', ' ,%\'\'%/', '(.%..%o'], mask: ['   ggg ', ' rwppwb', 'epwppwp'] },
-      { rows: [' .__,  ', ' ,%\'\'%/', '(.%..%o'], mask: [' gggg  ', ' rwppwb', 'epwppwp'] },
+      { rows: ['  \\|/ ', ' ,%\'%/', '(%..%o'], mask: ['  ggg ', ' rwpwb', 'ewppwp'] },
+      { rows: ['  -=- ', ' ,%\'%/', '(%..%o'], mask: ['  ggg ', ' rwpwb', 'ewppwp'] },
+      { rows: [' .__, ', ' ,%\'%/', '(%..%o'], mask: [' gggg ', ' rwpwb', 'ewppwp'] },
     ],
     mid: [
-      { rows: [' \\|/ ', '(.%.o'], mask: [' ggg ', 'epwpp'] },
-      { rows: [' -=- ', '(.%.o'], mask: [' ggg ', 'epwpp'] },
-      { rows: [' .__ ', '(.%.o'], mask: [' ggg ', 'epwpp'] },
+      { rows: [' \\|/', '(%.o'], mask: [' ggg', 'ewpp'] },
+      { rows: [' -=-', '(%.o'], mask: [' ggg', 'ewpp'] },
+      { rows: [' .__', '(%.o'], mask: [' ggg', 'ewpp'] },
     ],
     small: [
       { rows: ['='], mask: ['s'] },

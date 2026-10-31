@@ -148,22 +148,22 @@ const INSECTS: Record<SpriteKind, Figures> = {
   bee: {
     big: [
       {
-        rows: ['   \\|/ ', " ,%''%/", '(.%..%o'],
-        mask: ['   ggg ', ' rwppwb', 'epwppwp'],
+        rows: ['  \\|/ ', " ,%'%/", '(%..%o'],
+        mask: ['  ggg ', ' rwpwb', 'ewppwp'],
       },
       {
-        rows: ['   -=- ', " ,%''%/", '(.%..%o'],
-        mask: ['   ggg ', ' rwppwb', 'epwppwp'],
+        rows: ['  -=- ', " ,%'%/", '(%..%o'],
+        mask: ['  ggg ', ' rwpwb', 'ewppwp'],
       },
       {
-        rows: [' .__,  ', " ,%''%/", '(.%..%o'],
-        mask: [' gggg  ', ' rwppwb', 'epwppwp'],
+        rows: [' .__, ', " ,%'%/", '(%..%o'],
+        mask: [' gggg ', ' rwpwb', 'ewppwp'],
       },
     ],
     mid: [
-      { rows: [' \\|/ ', '(.%.o'], mask: [' ggg ', 'epwpp'] },
-      { rows: [' -=- ', '(.%.o'], mask: [' ggg ', 'epwpp'] },
-      { rows: [' .__ ', '(.%.o'], mask: [' ggg ', 'epwpp'] },
+      { rows: [' \\|/', '(%.o'], mask: [' ggg', 'ewpp'] },
+      { rows: [' -=-', '(%.o'], mask: [' ggg', 'ewpp'] },
+      { rows: [' .__', '(%.o'], mask: [' ggg', 'ewpp'] },
     ],
     small: [
       { rows: ['='], mask: ['s'] },
@@ -457,7 +457,9 @@ export class Typesetter {
         let cb = 0
         let alpha = 0
         tile[i] = 0
-        if (stamp[i]) {
+        // A sprite cell with a tile of its own replaces the cell; one without (glassy wings,
+        // rims, legs) is set below over the cell's own tile, so a petal under it stays solid.
+        if (stamp[i] && stampTile[i] >= 0) {
           g = stamp[i]
           cr = stampCol[i * 3]
           cg = stampCol[i * 3 + 1]
@@ -792,6 +794,13 @@ export class Typesetter {
             }
           }
         }
+        if (stamp[i] && stampTile[i] < 0) {
+          g = stamp[i]
+          cr = stampCol[i * 3]
+          cg = stampCol[i * 3 + 1]
+          cb = stampCol[i * 3 + 2]
+          alpha = this.stampAlpha[i]
+        }
         // Flowers and stems fade less than grass near the text, so plants don't lose their stalks.
         const plant =
           k === Kind.Petal ||
@@ -1073,7 +1082,8 @@ export class Typesetter {
             stampTileCol[i * 3 + 1] = Math.min(255, tile[1])
             stampTileCol[i * 3 + 2] = Math.min(255, tile[2])
           }
-          stampTile[i] = tile ? 0.85 : 0
+          // No tile of its own: keep the cell's (-1), or the wing would cut a hole in a petal.
+          stampTile[i] = tile ? 0.85 : -1
         }
       })
     }
