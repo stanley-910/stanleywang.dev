@@ -2199,7 +2199,9 @@ export class Garden {
     col: Rgb,
     step: number,
   ) {
-    const n = Math.ceil(reach / step)
+    // Rounded up to 16 px, so a window being resized re-makes it only now and then; it's drawn
+    // down to the reach it's asked for either way.
+    const n = Math.ceil(reach / step / 16) * 16
     const r0 = R / step
     const key = `${n},${r0.toFixed(1)},${peak},${step}`
     let glow = this.glows.get(step)

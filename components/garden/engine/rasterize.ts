@@ -466,7 +466,9 @@ function sampleRow(at: Sampling, r: number) {
           const px = c * SS + sx
           if (px >= bx0 && px < bx1 && py >= by0 && py < by1) {
             const m = ((py - by0) * bw + (px - bx0)) * 4
-            if (md[m + 3] > 0) {
+            // A faint fringe pixel of a fluff mark comes back too coarse, once un-premultiplied,
+            // to tell the sun from a loose petal by, so it's left to the subsamples around it.
+            if (md[m + 3] > (k === Kind.Fluff ? 63 : 0)) {
               if (k === Kind.Petal) {
                 // Petal identity by vote, since antialiased seams blend two ids; light and facing averaged.
                 if (kal > 200) ids[nIds++] = Math.round(md[m] / 24)
@@ -479,10 +481,10 @@ function sampleRow(at: Sampling, r: number) {
                 // flickering as it moves.
                 const isGlobe =
                   k !== Kind.Land &&
-                  md[m + 2] > 127 &&
-                  // Wide, as a faint edge pixel's light comes back coarse once un-premultiplied;
-                  // a loose petal's is 0 or 255.
-                  Math.abs(md[m + 1] - 128) <= 64
+                  md[m + 2] > 191 &&
+                  // A loose petal's light is 0 or 255; blended half over the land's 128, its
+                  // back flag falls under 192 before its light comes within 40 of the land's.
+                  Math.abs(md[m + 1] - 128) <= 40
                 if (k === Kind.Land) mats[Math.min(7, Math.round(md[m] / 24))]++
                 else if (isGlobe) globe++
                 // Fluff reads only fluff's own marks (id 0): a seed head, firefly or the moon

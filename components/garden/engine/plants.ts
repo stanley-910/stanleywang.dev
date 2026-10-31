@@ -593,8 +593,12 @@ export class Poppy extends Plant {
     // The stamens stand in the bowl: over every petal showing its inner face, under any showing
     // its outside. Sorted by centre depth alone, the near petal's base cut the ring in half.
     let centerDepth = axis[2] * H * 0.1
+    let outside = Infinity
     for (const d of list)
       if (d.back === false) centerDepth = Math.max(centerDepth, d.depth + 1e-3)
+      else if (d.back) outside = Math.min(outside, d.depth)
+    // A head turned away keeps its heart behind its outside, wherever its inner faces lie.
+    if (axis[2] < 0) centerDepth = Math.min(centerDepth, outside - 1e-3)
     if (!hidden)
       list.push({
         depth: centerDepth,

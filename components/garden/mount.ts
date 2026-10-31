@@ -556,16 +556,19 @@ export function mountGarden({
     const unit = e.deltaMode === 1 ? 16 : 1
     wheelX = (rested ? 0 : wheelX * 0.8) + Math.abs(e.deltaX) * unit
     wheelY = (rested ? 0 : wheelY * 0.8) + Math.abs(e.deltaY) * unit
+    const was = wheelAxis
     if (wheelAxis === 'x' && wheelY > 3 * wheelX && wheelY > 24) wheelAxis = 'y'
     else if (wheelAxis === 'y' && wheelX > 3 * wheelY && wheelX > 24)
       wheelAxis = 'x'
+    // The old swipe's speed doesn't carry into the new one, or it would glide on the wrong way.
+    if (was && wheelAxis !== was) scrubVel = 0
     wheelAxis ??= Math.abs(e.deltaX) > Math.abs(e.deltaY) ? 'x' : 'y'
     const sideways = wheelAxis === 'x'
     lastWheel = e.timeStamp
     if (!sideways && pageScrolls()) return
     e.preventDefault()
     const d = sideways ? e.deltaX : e.deltaY
-    scrubBy(e.deltaMode === 1 ? d * 16 : d, e.timeStamp)
+    if (d !== 0) scrubBy(e.deltaMode === 1 ? d * 16 : d, e.timeStamp)
   }
 
   // A finger on a phone scrubs up and down only: a swipe up runs later. A
