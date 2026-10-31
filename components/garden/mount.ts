@@ -389,8 +389,8 @@ export function mountGarden({
         meteors,
         birds,
         weather,
-        backdrop: (ctx) => garden.backdrop(ctx, scene, weather.cover),
-        backdropKey: garden.backdropKey(scene, weather.cover),
+        backdrop: (ctx) => garden.backdrop(ctx, scene),
+        backdropKey: garden.backdropKey(scene),
       })
     } finally {
       garden.hour = hour

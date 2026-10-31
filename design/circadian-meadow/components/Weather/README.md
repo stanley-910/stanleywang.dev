@@ -11,7 +11,7 @@ Built in `components/garden/engine/weather.ts` (colours, glyphs, particles, the 
 | Component | Shared | Different |
 |---|---|---|
 | ShootingStar | overlay glyphs drawn on the main thread over the sky pass; a tile under the brightest glyphs; colours only from palette fields | weather overlays cover the whole scene, not the sky alone |
-| SnowCap | snow's colours (`*-snow`, `*-snow-shade`), its crest colour, lit and shaded; its cap's polygons, painted under the cells while snow lies | snow on the meadow lies on plant tops and the ground |
+| SnowCap | snow's colours (`*-snow`, `*-snow-shade`), its crest colour, lit and shaded | snow on the meadow lies on plant tops and the ground, not on the far range |
 | GlyphRamp, Garden | `*-disc`, the darkest mark in every flower head | the new moon's face is a solid tile of it, with no glyph showing |
 | Bird | a silhouette over the sky | none of the weather is a silhouette |
 
@@ -19,7 +19,6 @@ Built in `components/garden/engine/weather.ts` (colours, glyphs, particles, the 
 
 - **Colour from the palette only.** Every weather colour is a palette field of the hour, or a mix of the keyframes (`paletteAt` at a keyframe's own hour). No hex is picked by eye, and `tokens.json` gains no tokens, as with ShootingStar. When the garden's palette changes, the weather follows.
 - **Cells only.** The sun and moon are glyphs, never a painted disc, and anything laid over them is cells too: glyphs and per-cell tiles, no painted gradients. The new moon's face is the one solid shape, a disc of dark tiles (Stanley's call on 2026-10-31: an eclipse should read as a black disc in a ring of light).
-- **One exception: snow on the far range.** While snow lies, the cached backdrop paints the far range's caps (SnowCap's two flank polygons, `snowCap` in `garden.ts`) in `snow-shade` and `snow`, at 85% of the snow lying (`weather.cover`), so they settle and melt with it. The caps' cells are stepped and part-covered, at 30–35% tiles, so on their own the rock's smooth dark outline showed through them (Stanley, 2026-10-31: "you can still clearly see the outline of the actual mountain behind the white"). Painted, the mountain is white under the cap and the cells add texture over it. Giving the crest row a snow tile instead was tried and reverted: the outline still showed. The paint repaints with the backdrop, on a step of `cover`, never every frame.
 - **Palette changes move in steps** (24 for overcast and the storm's darkening, 60 for snow cover, 64 for the eclipse), small enough that no step reads as a tick and few enough that the cached backdrop repaints a few dozen times over a change, never every frame. Particles are capped and looped over, and move with the plant frames (40 a second, 30 when idle); only a lightning strike draws every display frame, for its second. Don't change step counts, caps or rates for a look; they're tuned for the Terminal spec's Performance budget.
 - Nothing here touches the grid. The workers only see the tinted palette, posted with each frame as always.
 
@@ -68,7 +67,7 @@ Decoration: the canvas stays `aria-hidden`, and the menu's weather items carry t
 ## Verify
 
 - 13:00 and 23:00, 1440px and 375px wide: each weather from the menu, and from `meadowcontrol` (`{ kind: 'weather', value }`).
-- Snow: caps read as snow on poppy and cosmos tops after 20 s, the same white as the far range's crest; melts back in 8 s. On the far range no dark ridge outline shows behind the cap, at 13:00 and 23:00, 1440px and 375px wide. Clear weather's caps are unchanged.
+- Snow: caps read as snow on poppy and cosmos tops after 20 s, the same white as the far range's crest; melts back in 8 s.
 - Storm: bolts differ each time, start in cloud away from the sun and moon, far ones stop behind the ridges; the cloud flickers between bolts; the sky settles in under a second; no flash under reduced motion.
 - Rain: drops far off land at the horizon behind the flowers; near drops splash and tip the heads they hit. Snow at 23:00: the near flakes read as clumps, not stars.
 - Eclipse by day: a black disc in a thin gold ring, a smooth glow beyond it, nothing sticking out of the ring; no colour step visible as it comes in; the horizon is copper all round. At 17:30 the disc and ring go behind the ridges and the treeline's pines. By night the whole moon goes copper.
@@ -81,3 +80,4 @@ Decoration: the canvas stays `aria-hidden`, and the menu's weather items carry t
 - A storm doesn't dim the sun's glyphs.
 - `season`.
 - A `preview.html` card.
+- Snow on the far range: the rock's dark outline still shows behind the cap. An open issue, with what was tried, in SnowCap's Open questions.
