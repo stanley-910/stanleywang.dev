@@ -446,6 +446,28 @@ export function Terminal() {
     return () => window.removeEventListener('keydown', onKey)
   }, [open, show, hide])
 
+  // ^L clears while it's open, wherever the key lands: clicking the window's chrome leaves
+  // focus on the page, not in it. A text field elsewhere keeps the key.
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== 'KeyL' || !e.ctrlKey || e.metaKey || e.altKey) return
+      const t = e.target as HTMLElement
+      if (
+        !win.current?.contains(t) &&
+        t.closest('input, textarea, [contenteditable="true"]')
+      )
+        return
+      e.preventDefault()
+      setEntries([])
+      setMenu(null)
+      setView('shell')
+      focusInput()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, focusInput])
+
   // Menus close on any click outside them.
   useEffect(() => {
     if (!menu) return
@@ -548,16 +570,6 @@ export function Terminal() {
     }
   }
 
-  // ^L clears from anywhere in the window, not only the prompt: after a menu or the tabs.
-  const onWinKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key !== 'l' || !e.ctrlKey || e.metaKey || e.altKey) return
-    e.preventDefault()
-    setEntries([])
-    setMenu(null)
-    setView('shell')
-    focusInput()
-  }
-
   // Drag by the title bar, kept on screen and off the power button.
   const onDragStart = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('button') || !win.current) return
@@ -639,7 +651,6 @@ export function Terminal() {
           role="dialog"
           aria-label="Terminal"
           data-own-scroll
-          onKeyDown={onWinKeyDown}
           style={{
             ...(pos && {
               left: pos.x,
