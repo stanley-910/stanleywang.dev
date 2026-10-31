@@ -30,15 +30,7 @@ export const enum LandMat {
   Canopy = 3,
   Spruce = 4,
   Water = 5,
-  Shore = 6,
-  Stone = 7,
 }
-
-/**
- * How far across the river a water or bank cell lies rides in its meta light: -1..1 bank to bank,
- * on out to ±RIVER_SPAN at the banks' outer edge, stored as 0.5 + s / (2 × RIVER_SPAN).
- */
-export const RIVER_SPAN = 1.7
 
 /** Samples per cell along each axis. */
 export const SS = 2
