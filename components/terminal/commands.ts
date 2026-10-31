@@ -43,6 +43,8 @@ export type Ctx = {
   open: (url: string) => void
   copy: (text: string) => void
   clear: () => void
+  /** Clears the screen and plays the boot again. */
+  reboot: () => void
   close: () => void
 }
 
@@ -173,6 +175,7 @@ const NAMES = [
   'date',
   'history',
   'clear',
+  'reboot',
   'exit',
   'sudo',
   'rm',
@@ -503,6 +506,9 @@ export function run(input: string, ctx: Ctx): string[] {
     case 'exit':
       ctx.close()
       return []
+    case 'reboot':
+      ctx.reboot()
+      return []
     case 'sudo':
       return ['hah! nice try']
     case 'rm':
@@ -572,7 +578,7 @@ export function run(input: string, ctx: Ctx): string[] {
       if (!ctx.meadowHere()) return elsewhere
       const seed = 1e9 + Math.floor(Math.random() * 9e8)
       ctx.regrow(seed)
-      return [`regrowing  {m|· a new meadow, seed ${seed}}`]
+      return [`regrowing  {m|seed ${seed}}`]
     }
   }
   return [`shell: command not found: ${args[0]}. Try 'help' to get started.`]
