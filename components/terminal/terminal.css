@@ -23,13 +23,17 @@
   --k-ok: #4f6a3a;
   --k-key: #86651a;
   --k-err: #9a4628;
+  /* The frame's rules, and the shadow along a sunk well's top and left. By day both are the
+     ink. */
+  --k-line: var(--k-ink);
+  --k-sink: var(--k-ink);
   --bitmap: var(--font-bitmap), var(--font-sans);
 }
 
 .terminal-root[data-night] {
   --k-paper: #201f1c;
   --k-chrome: #2c2a26;
-  --k-hi: #3b3934;
+  --k-hi: #4a463f;
   --k-lo: #121110;
   --k-ink: #ece5d2;
   --k-muted: #a39d8e;
@@ -43,6 +47,10 @@
   --k-ok: #aebf92;
   --k-key: #dcb75c;
   --k-err: #e2a07e;
+  /* By night cream rules at full strength flatten the bevels: they go to a soft line, and a
+     sunk well is shadowed in black, not lit in cream. */
+  --k-line: color-mix(in srgb, var(--k-ink) 55%, var(--k-chrome));
+  --k-sink: #000000;
 }
 
 /* ---------- The word in the corner ---------- */
@@ -176,14 +184,6 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
   pointer-events: none;
 }
 
-/* The outlines that step between the word and the window as it opens or closes. */
-.terminal-zoom {
-  position: fixed;
-  z-index: 41;
-  border: 1px dotted var(--ink);
-  pointer-events: none;
-}
-
 /* ---------- The window ---------- */
 
 .terminal-win {
@@ -201,6 +201,35 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
     0 2px 4px color-mix(in srgb, var(--k-drop) 30%, transparent),
     0 22px 44px -10px color-mix(in srgb, var(--k-drop) 55%, transparent);
   transition: opacity 400ms var(--ease-calm);
+  /* It materialises where it stands: up from a little smaller, just past its size, and
+     settles; closing, it shrinks a touch and fades. */
+  animation: terminal-in 300ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.terminal-win[data-closing] {
+  animation: terminal-out 140ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+@keyframes terminal-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(1.012);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes terminal-out {
+  to {
+    opacity: 0;
+    transform: scale(0.96);
+  }
 }
 
 .terminal-pane {
@@ -211,7 +240,7 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
   flex-direction: column;
   padding: 0 5px 4px;
   background: var(--k-chrome);
-  border: 1px solid var(--k-ink);
+  border: 1px solid var(--k-line);
   border-radius: 5px;
   box-shadow:
     inset 1px 1px 0 var(--k-hi),
@@ -240,7 +269,7 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
   position: absolute;
   inset: 6px 0 auto;
   height: 11px;
-  background: repeating-linear-gradient(to bottom, var(--k-ink) 0 1px, transparent 1px 2px);
+  background: repeating-linear-gradient(to bottom, var(--k-line) 0 1px, transparent 1px 2px);
   opacity: 0.6;
 }
 
@@ -282,7 +311,7 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
   padding: 0;
   flex: none;
   background: var(--k-chrome);
-  border: 1px solid var(--k-ink);
+  border: 1px solid var(--k-line);
   box-shadow:
     inset 1px 1px 0 var(--k-hi),
     inset -1px -1px 0 var(--k-lo);
@@ -318,7 +347,7 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
   flex: none;
   margin: 0 -5px;
   padding: 0 2px;
-  border-top: 1px solid var(--k-ink);
+  border-top: 1px solid var(--k-line);
   box-shadow: inset 0 1px 0 var(--k-hi);
 }
 
@@ -345,7 +374,7 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
   display: flex;
   align-self: center;
   margin: 0 3px 0 auto;
-  border: 1px solid var(--k-ink);
+  border: 1px solid var(--k-line);
   box-shadow: 1px 1px 0 var(--k-hi);
 }
 
@@ -359,7 +388,7 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
 }
 
 .terminal-menu .views button + button {
-  border-left: 1px solid var(--k-ink);
+  border-left: 1px solid var(--k-line);
 }
 
 .terminal-menu .views button[aria-pressed='true'] {
@@ -428,8 +457,8 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
   font: 400 12px/18px var(--bitmap);
   color: var(--k-ink);
   white-space: pre;
-  border-top: 1px solid var(--k-ink);
-  border-bottom: 3px double var(--k-ink);
+  border-top: 1px solid var(--k-line);
+  border-bottom: 3px double var(--k-line);
   box-shadow: inset 0 1px 0 var(--k-hi);
 }
 
@@ -450,7 +479,7 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
   border-color: var(--k-lo) var(--k-hi) var(--k-hi) var(--k-lo);
   border-radius: 2px;
   box-shadow:
-    inset 1px 1px 0 var(--k-ink),
+    inset 1px 1px 0 var(--k-sink),
     inset 3px 3px 0 color-mix(in srgb, var(--k-ink) 7%, transparent);
 }
 
@@ -476,13 +505,13 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
 }
 
 .terminal-screen::-webkit-scrollbar-track {
-  border-left: 1px solid var(--k-ink);
+  border-left: 1px solid var(--k-line);
   background: repeating-conic-gradient(var(--k-hair) 0 25%, var(--k-paper) 0 50%) 0 0 / 2px 2px;
 }
 
 .terminal-screen::-webkit-scrollbar-thumb {
   background: var(--k-chrome);
-  border: 1px solid var(--k-ink);
+  border: 1px solid var(--k-line);
 }
 
 .terminal-root .out {
@@ -697,7 +726,8 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .terminal-root .cur {
+  .terminal-root .cur,
+  .terminal-win {
     animation: none;
   }
 }

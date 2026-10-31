@@ -241,6 +241,8 @@ export function Terminal() {
   const pathname = usePathname() ?? '/'
   const uiHidden = useUiHidden()
   const [open, setOpen] = useState(false)
+  /** Popping out, before it unmounts. */
+  const [closing, setClosing] = useState(false)
   const [entries, setEntries] = useState<Entry[]>([])
   const [typed, setTyped] = useState('')
   const [view, setView] = useState<'shell' | 'files'>('shell')
@@ -261,7 +263,6 @@ export function Terminal() {
   const hist = useRef({ list: [] as string[], at: 0 })
   const windRef = useRef(0.2)
   const typingTimer = useRef(0)
-  const zoomGen = useRef(0)
 
   const path = pathFor(pathname)
 
@@ -286,38 +287,9 @@ export function Terminal() {
     [],
   )
 
-  /** A few dotted outlines step from one box to the other, as the old desktops opened a window. */
-  const zoom = useCallback((from: Rect, to: Rect, done: () => void) => {
-    const gen = ++zoomGen.current
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches)
-      return done()
-    const n = 5
-    let i = 0
-    const boxes: HTMLDivElement[] = []
-    const step = () => {
-      boxes.splice(0).forEach((b) => b.remove())
-      if (gen !== zoomGen.current) return
-      if (i > n) return done()
-      for (let j = Math.max(0, i - 1); j <= i; j++) {
-        const t = j / n
-        const b = document.createElement('div')
-        b.className = 'terminal-zoom'
-        Object.assign(b.style, {
-          left: `${from.x + (to.x - from.x) * t}px`,
-          top: `${from.y + (to.y - from.y) * t}px`,
-          width: `${from.w + (to.w - from.w) * t}px`,
-          height: `${from.h + (to.h - from.h) * t}px`,
-        })
-        document.body.appendChild(b)
-        boxes.push(b)
-      }
-      i++
-      window.setTimeout(step, 34)
-    }
-    step()
-  }, [])
-
   const show = useCallback(() => {
+    if (open && !closing) return focusInput()
+    setClosing(false)
     if (open) return focusInput()
     setOpen(true)
     setFocused(true)
@@ -333,28 +305,33 @@ export function Terminal() {
     setEntries(
       booted || reduced ? [{ kind: 'out', lines: HINT }] : [{ kind: 'boot' }],
     )
-  }, [open, focusInput])
+  }, [open, closing, focusInput])
 
-  const hide = useCallback(() => {
-    if (!open) return
-    if (win.current && word.current)
-      zoom(rectOf(win.current), rectOf(word.current), () => {})
+  /** Gone: unmounted, its session cleared. */
+  const shut = useCallback(() => {
     setOpen(false)
+    setClosing(false)
     setMenu(null)
     setEntries([])
-  }, [open, zoom])
+  }, [])
 
-  // Opening: the outlines grow from the corner word to where the window will be.
+  // Closing pops it out first (terminal.css), then it goes; held still, it goes at once.
+  const hide = useCallback(() => {
+    if (!open || closing) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) shut()
+    else setClosing(true)
+  }, [open, closing, shut])
+
+  // If the pop-out's end never arrives (a page in the background draws no frames), it still goes.
   useEffect(() => {
-    if (!open || !win.current || !word.current) return
-    const w = win.current
-    w.style.visibility = 'hidden'
-    zoom(rectOf(word.current), rectOf(w), () => {
-      w.style.visibility = ''
-      focusInput()
-    })
-    focusInput()
-  }, [open, zoom, focusInput])
+    if (!closing) return
+    const t = window.setTimeout(shut, 220)
+    return () => clearTimeout(t)
+  }, [closing, shut])
+
+  useEffect(() => {
+    if (open) focusInput()
+  }, [open, focusInput])
 
   // ` opens and closes it, anywhere but in a text field other than its own.
   useEffect(() => {
@@ -527,8 +504,12 @@ export function Terminal() {
               ? { left: pos.x, top: pos.y, right: 'auto', bottom: 'auto' }
               : undefined
           }
+          data-closing={closing ? '' : undefined}
+          onAnimationEnd={(e) => {
+            if (closing && e.target === e.currentTarget) shut()
+          }}
           onPointerDown={() => setFocused(true)}
-          inert={uiHidden}
+          inert={uiHidden || closing}
         >
           <div className="terminal-pane">
             <header className="terminal-tb" onPointerDown={onDragStart}>
@@ -760,7 +741,7 @@ export function Terminal() {
       <button
         ref={word}
         className="terminal-power"
-        aria-pressed={open}
+        aria-pressed={open && !closing}
         onClick={() => (open ? hide() : show())}
         aria-label="Terminal"
         data-avoid
