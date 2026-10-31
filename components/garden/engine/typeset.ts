@@ -5,7 +5,7 @@
 
 import { bayer, clamp } from './math'
 import { mix, shade, type Palette, type Rgb } from './palette'
-import { Kind, LandMat, type Cells } from './rasterize'
+import { Kind, LandMat, RIVER_SPAN, type Cells } from './rasterize'
 
 import type { Head, Sprite, SpriteKind } from './raster'
 
@@ -53,6 +53,8 @@ for (const ramp of [
   '@#Oo+:·`',
   // Rain, snow and blown seed (weather.ts), for the same reason.
   "\\`*·.~,'",
+  // The river's current, banks and stones.
+  '~-=,.o',
 ])
   for (const ch of ramp) code(ch)
 
@@ -747,17 +749,123 @@ export class Typesetter {
                 alpha = 0.6
                 break
               }
-              // The river: a flat tile in the water's own colour, `-` where it's a thread in the
-              // distance, `~` nearer with a few fixed `=` glints. They don't move: the land is still.
-              if (mat === LandMat.Water) {
-                const far = y - horizon < 0.035 * H
-                g = code(far ? '-' : b < 0.1 ? '=' : b < 0.7 ? '~' : ' ')
-                const lc = mix([cr, cg, cb], p.cloud, 0.3)
-                cr = lc[0]
-                cg = lc[1]
-                cb = lc[2]
-                tile[i] = 0.3
-                alpha = far ? 0.55 : 0.7
+              // The river and its banks. Each cell knows where across the flow it lies (s, -1..1
+              // bank to bank, out to ±RIVER_SPAN at the banks' edge), so the current is drawn as
+              // lines along the flow, the way water is drawn in prints, and the banks as bands
+              // beside it, as wet and dry ground follow a shore. Their slant is the flow's,
+              // across the gradient of s; how many fit is how many cells span the water.
+              if (mat === LandMat.Water || mat === LandMat.Shore) {
+                const s = this.across(c, r)
+                const gx =
+                  (this.across(c + 1, r, s) - this.across(c - 1, r, s)) / 2
+                const gy =
+                  (this.across(c, r + 1, s) - this.across(c, r - 1, s)) / 2
+                const grad = Math.hypot(gx, gy) || 1e-3
+                const a = Math.atan2(gx / cw, -gy / ch)
+                const dir = ((Math.round(a / (Math.PI / 4)) % 4) + 4) % 4
+                const flow = dir ? LINES[dir] : b < 0.5 ? '~' : '-'
+                const base: Rgb = [cr, cg, cb]
+                if (mat === LandMat.Water) {
+                  // The reflection the lines carry: the horizon's light on the water by day, the
+                  // sunset's glow at dusk, the moon's silver after dark.
+                  const glint = mix(
+                    mix(p.skyHorizon, p.globe, 0.55 + 0.3 * p.night),
+                    [255, 255, 255],
+                    0.15,
+                  )
+                  // A line every couple of cells across, where the stripe count steps between this
+                  // cell and the next one across the flow, so each runs unbroken, one cell wide.
+                  // They drift and braid a little rather than run as rails.
+                  const m = Math.round(2 / grad / 3)
+                  const stripe = (cc: number, rr: number, ss: number) =>
+                    Math.floor(
+                      ((ss + 1) / 2) * m +
+                        0.25 * Math.sin(cc * 0.11 + rr * 0.6) +
+                        0.15 * Math.sin(cc * 0.27 - rr * 0.9),
+                    )
+                  const sx = Math.abs(gx) > Math.abs(gy)
+                  const nc = sx ? c + Math.sign(gx) : c
+                  const nr = sx ? r : r + Math.sign(gy)
+                  const k = stripe(c, r, s)
+                  const line =
+                    m >= 2 &&
+                    this.matAt(nc, nr) === LandMat.Water &&
+                    k >= 0 &&
+                    k < m - 1 &&
+                    stripe(nc, nr, this.across(nc, nr, s)) !== k
+                  // A glint where the open water's middle catches the light, darker toward the banks.
+                  const mid = 1 - Math.abs(s)
+                  const body = mix(base, glint, 0.08 * mid)
+                  const edgeCell = Math.abs(s) > 0.8 || v < 0.6
+                  tileCol[i * 3] = body[0] * p.ink * (edgeCell ? 0.88 : 1)
+                  tileCol[i * 3 + 1] = body[1] * p.ink * (edgeCell ? 0.88 : 1)
+                  tileCol[i * 3 + 2] = body[2] * p.ink * (edgeCell ? 0.88 : 1)
+                  tile[i] = v < 0.6 ? 0.55 : 0.85
+                  if (m < 2) {
+                    // A thread: too narrow for lines across it, so one run of current along it.
+                    g = code(b < 0.15 ? '=' : flow === '|' ? '-' : flow)
+                    ;[cr, cg, cb] = mix(base, glint, 0.85)
+                    alpha = 0.9
+                  } else if (line) {
+                    g = code(flow)
+                    ;[cr, cg, cb] = mix(base, glint, 0.7 + 0.3 * mid)
+                    alpha = 1
+                    const lit = mix(body, glint, 0.3 + 0.2 * mid)
+                    tileCol[i * 3] = lit[0] * p.ink
+                    tileCol[i * 3 + 1] = lit[1] * p.ink
+                    tileCol[i * 3 + 2] = lit[2] * p.ink
+                  } else {
+                    // Open water: its tile alone, but for a rare fleck. The compositor lays a
+                    // tile only under a glyph, so the rest carry one too faint to see.
+                    g = code(b < 0.06 ? '.' : '-')
+                    ;[cr, cg, cb] = mix(base, p.cloud, 0.3)
+                    alpha = b < 0.06 ? 0.6 : 0.01
+                  }
+                  break
+                }
+                // The banks: a dark wet edge at the water, then lines following the shore, pale
+                // as dry silt, fading out into the meadow, the way a bank is banded where the
+                // water has stood at other heights.
+                const u = clamp((Math.abs(s) - 1) / (RIVER_SPAN - 1), 0, 1)
+                const span = (RIVER_SPAN - 1) / grad
+                const fade = 1 - u
+                const dark = (k: number) => {
+                  tileCol[i * 3] = base[0] * p.ink * k
+                  tileCol[i * 3 + 1] = base[1] * p.ink * k
+                  tileCol[i * 3 + 2] = base[2] * p.ink * k
+                }
+                if (u < Math.min(0.3, 1 / span)) {
+                  g = code(b < 0.4 ? ',' : '.')
+                  ;[cr, cg, cb] = mix(base, p.cloud, 0.1)
+                  tile[i] = 0.6
+                  dark(0.7)
+                  alpha = b < 0.4 ? 0.5 : 0.01
+                  break
+                }
+                const n = clamp(Math.floor(span / 2), 1, 3)
+                const q = u * (n + 0.5)
+                const on =
+                  Math.round(q) >= 1 &&
+                  Math.abs(q - Math.round(q)) < Math.max(0.2, (n * grad) / 2)
+                tile[i] = 0.35 * fade
+                dark(0.85)
+                if (on) {
+                  g = code(flow === '~' ? '-' : flow)
+                  ;[cr, cg, cb] = mix(base, mix(p.haze, p.cloud, 0.5), 0.4)
+                  alpha = 0.35 + 0.4 * fade
+                } else {
+                  g = code(b < 0.2 ? ',' : '.')
+                  ;[cr, cg, cb] = mix(base, p.cloud, 0.1)
+                  alpha = b < 0.2 ? 0.35 * fade : 0.01
+                }
+                break
+              }
+              // A stone in the water: a round glyph, lit a little on top.
+              if (mat === LandMat.Stone) {
+                g = code(this.matAt(c, r - 1) === LandMat.Stone ? '.' : 'o')
+                tile[i] = 0.75
+                ;[cr, cg, cb] = mix([cr, cg, cb], p.cloud, 0.3)
+                alpha = 0.8
                 break
               }
               // A near spruce: line glyphs down its flanks, a sparse `:` inside.
@@ -898,6 +1006,13 @@ export class Typesetter {
     if (c < 0 || r < 0 || c >= this.cols || r >= this.rows) return -1
     const i = r * this.cols + c
     return this.kinds[i] === Kind.Land && this.cov[i] > 0.07 ? this.pid[i] : -1
+  }
+
+  /** Where across the river a water or bank cell lies; `or` where there's none. */
+  private across(c: number, r: number, or = 0) {
+    const m = this.matAt(c, r)
+    if (m !== LandMat.Water && m !== LandMat.Shore) return or
+    return (this.lit[r * this.cols + c] - 0.5) * 2 * RIVER_SPAN
   }
 
   private snowAt(c: number, r: number) {
