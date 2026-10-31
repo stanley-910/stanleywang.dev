@@ -280,7 +280,7 @@ export abstract class Plant {
       const lobe =
         style === 'lobed'
           ? 0.55 + 0.45 * Math.abs(Math.sin(t * 9 + leaf.seed))
-          : 0.5 + 0.5 * (i % 2 ^ 1)
+          : 0.5 + 0.5 * ((i % 2) ^ 1)
       const w = env0 * lobe
       left.push(mid[i * 2] - nx * w, mid[i * 2 + 1] - ny * w)
       right.push(mid[i * 2] + nx * w, mid[i * 2 + 1] + ny * w)
@@ -339,10 +339,12 @@ export class Poppy extends Plant {
   private shed = 0
   private head = 0
   /**
-   * How far the cup turns toward the viewer, in radians: about a third turn away, showing the
-   * deeper red outside with the heart hidden; a quarter stand side-on; the rest look toward you.
-   * When nearly all faced the viewer, nothing showed the outside to tell the inside by. Drawn
-   * from the seed, not the plant's rng, so the meadows picked by hand keep their layout.
+   * How far the cup tips toward the viewer, in radians. Most lean well forward, past the cup's
+   * own flare, so the near petal drops below the heart and you look into the bowl; about one in
+   * seven turns away, showing the deeper red outside, and one in seven stands side-on. Tipped
+   * less than the cup flares, the near petal's outside stood up over the heart, so a head
+   * "toward you" read as one seen side-on. Drawn from the seed, not the plant's rng, so the
+   * meadows picked by hand keep their layout.
    */
   private readonly turn: number
 
@@ -351,11 +353,11 @@ export class Poppy extends Plant {
     const h = hash(seed, 11)
     const t = hash(seed, 12)
     this.turn =
-      h < 0.35
-        ? lerp(-0.65, -0.2, t)
-        : h < 0.6
+      h < 0.14
+        ? lerp(-0.65, -0.25, t)
+        : h < 0.28
           ? lerp(-0.1, 0.15, t)
-          : lerp(0.3, 0.95, t)
+          : lerp(0.8, 1.15, t)
     const r = this.rng
     this.G = lerp(8, 12, r())
     // Blooms hold a good while, so shedding stays occasional across the meadow.
@@ -520,14 +522,15 @@ export class Poppy extends Plant {
       if (ph.shed >= 1) return
     }
 
-    // Poppies fold their petals in at night.
-    const open = ph.open * (1 - 0.8 * p.night)
+    // Poppies fold their petals in at night, from after sunset: folding from the first gold of
+    // evening deepened every cup, so at dusk they all stood side-on with their hearts hidden.
+    const open = ph.open * (1 - 0.8 * smoothstep(0.3, 1, p.night))
     if (ph.open < 0.02) {
       this.drawBud(r, tx, ty, tip, H * ph.bud, stemColor, p, 0)
       return
     }
     const axis = headAxis(tip, this.turn * ph.open)
-    const list: { depth: number; draw: () => void }[] = []
+    const list: { depth: number; draw: () => void; back?: boolean }[] = []
     const poppy = this.bloomed(p.poppy, p)
     // Furling as it closes; once mostly furled, the dark heart and blotches are wrapped inside.
     const furl = smoothstep(0.75, 0.25, open)
@@ -545,7 +548,8 @@ export class Poppy extends Plant {
           H *
           0.66 *
           (0.22 + 0.78 * Math.sin(Math.min(1, u * 1.08) * Math.PI * 0.5)),
-        cup: (u) => lerp(1.42, 0.42, open) + 0.32 * u * open,
+        // Open, a shallow bowl, so a head tipped toward you shows its whole inside.
+        cup: (u) => lerp(1.42, 0.3, open) + 0.3 * u * open,
         crinkle: lerp(0.55, 0.16, open),
         size: (k) => (k % 2 ? 0.84 : 1),
         // One petal on the cup's near side, below the heart, so a cup turned toward you holds
@@ -586,7 +590,11 @@ export class Poppy extends Plant {
     // The heart, sorted in among the petals: a near-black red ring of stamens flecked with gold
     // pollen, around the seed pod's small violet-grey crown and its dark rays. Never under two
     // cells. A flat grey crown with no ring to frame it read as a grey patch, not a centre.
-    const centerDepth = axis[2] * H * 0.1
+    // The stamens stand in the bowl: over every petal showing its inner face, under any showing
+    // its outside. Sorted by centre depth alone, the near petal's base cut the ring in half.
+    let centerDepth = axis[2] * H * 0.1
+    for (const d of list)
+      if (d.back === false) centerDepth = Math.max(centerDepth, d.depth + 1e-3)
     if (!hidden)
       list.push({
         depth: centerDepth,

@@ -85,7 +85,8 @@ export type PetalSpec = {
   kind?: Kind
 }
 
-type PetalDraw = { depth: number; draw: () => void }
+/** `back`: the petal shows its outer face, so a flower can sort its heart between the two. */
+type PetalDraw = { depth: number; draw: () => void; back?: boolean }
 
 /**
  * Petals built in 3D around the head axis and projected flat, back to front, so a poppy reads
@@ -206,6 +207,7 @@ export function drawPetals(
     }
     out.push({
       depth,
+      back: backside,
       draw: () => {
         const p = new Shape()
         p.moveTo(left[0], left[1])
