@@ -109,8 +109,8 @@ const MENUS: [string, Item[]][] = [
 ]
 
 const BOOT_KEY = 'terminal-booted'
-const LOADING = "Loading Stanley's Portfolio..."
-const LOADING_ZH = '正在加載黃士樺的作品集'
+const LOADING = 'Entering the simulation...'
+const LOADING_ZH = '正在進入模擬'
 const GLITCH = '!@#$%^&*()_+-=[]{}|;:,.<>?~©λ'
 
 const isNight = (h: number) => !(h >= LIGHT_FROM && h < DARK_FROM)
@@ -144,16 +144,16 @@ function Prompt({ path }: { path: string }) {
 }
 
 /**
- * The old site's opening, cut to a couple of seconds and told in the meadow's
- * terms: a few kernel lines with the real hour and wind, then the loading line
+ * The old site's opening, cut to a couple of seconds and told as a small OS
+ * starting its simulation: a few kernel lines with the real hour and wind, then the loading line
  * types itself in Chinese and glitches over into English. Any key skips it.
  */
 const bootLines = (hour: number, wind: number) => [
-  `{m|[ 0.000000]} stanley-wang 26.10 {m|(dev@meadow)}`,
-  `{m|[ 0.000412]} mounting {h|/dev/meadow}`,
-  `{m|[ 0.001187]} sun at {y|${hhmm(hour)}} {m|· ${phase(hour)}}`,
+  `{m|[ 0.000000]} stanley-wang 26.10 {m|(dev@sim)}`,
+  `{m|[ 0.000412]} mounting {h|/dev/sim0}`,
+  `{m|[ 0.001187]} clock {y|${hhmm(hour)}} {m|· ${phase(hour)}}`,
   `{m|[ 0.001903]} wind {y|${wind.toFixed(2)}}`,
-  `{m|[ 0.002260]} seeding the field {g|[ OK ]}`,
+  `{m|[ 0.002260]} starting interface {g|[ OK ]}`,
 ]
 const HINT = ['{m|type} {g|help} {m|for commands}', '']
 
@@ -802,7 +802,10 @@ export function Terminal() {
                   </svg>
                 </button>
               </span>
-              <h2>Terminal{path !== '~' && <i> — {path.slice(2)}</i>}</h2>
+              <h2>
+                stanley-wang 26.10
+                {path !== '~' && <i> — {path.slice(2)}</i>}
+              </h2>
             </header>
 
             <nav className="terminal-menu" aria-label="Terminal menu">

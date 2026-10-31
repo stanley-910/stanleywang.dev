@@ -243,8 +243,7 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
     inset -1px -1px 0 var(--k-lo);
 }
 
-/* The title bar: ruled lines its width, with the box and the title cleared out of them;
-   fainter when the window isn't focused. */
+/* The title bar: plain chrome, the close box at the left and the title centred. */
 .terminal-tb {
   position: relative;
   display: flex;
@@ -258,19 +257,6 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
 
 .terminal-tb:active {
   cursor: grabbing;
-}
-
-.terminal-tb::before {
-  content: '';
-  position: absolute;
-  inset: 6px 0 auto;
-  height: 11px;
-  background: repeating-linear-gradient(to bottom, var(--k-line) 0 1px, transparent 1px 2px);
-  opacity: 0.6;
-}
-
-.terminal-win:not(.focus) .terminal-tb::before {
-  opacity: 0.4;
 }
 
 .terminal-tb > * {
