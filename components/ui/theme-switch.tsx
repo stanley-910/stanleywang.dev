@@ -13,7 +13,13 @@ import {
   type PageTheme,
 } from '@/lib/circadian'
 import { setUiHidden, useUiHidden } from '@/lib/hide-ui'
-import { setWeather, useWeather, WEATHERS } from '@/lib/weather'
+import {
+  setWarmLightning,
+  setWeather,
+  useWarmLightning,
+  useWeather,
+  WEATHERS,
+} from '@/lib/weather'
 
 import './time-control.css'
 
@@ -84,6 +90,7 @@ export function ThemeSwitch({ className }: { className?: string }) {
   const pathname = usePathname()
   const hidden = useUiHidden()
   const weather = useWeather()
+  const warm = useWarmLightning()
   const buttonRef = useRef<HTMLButtonElement>(null)
   const popRef = useRef<HTMLDivElement>(null)
   const family = useRef<PageTheme | null>(null)
@@ -284,6 +291,16 @@ export function ThemeSwitch({ className }: { className?: string }) {
                   </button>
                 ))}
               </div>
+              {weather === 'storm' && (
+                <button
+                  type="button"
+                  className="time-control-item"
+                  aria-pressed={warm}
+                  onClick={() => setWarmLightning(!warm)}
+                >
+                  {warm ? 'cool lightning' : 'warm lightning'}
+                </button>
+              )}
             </>
           )}
           {pathname === '/' && (
