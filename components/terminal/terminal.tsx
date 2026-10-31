@@ -138,14 +138,15 @@ function Pixels({ rows }: { rows: string[] }) {
   )
 }
 
+// The shell is a little window with a prompt in it, the same size as the folder.
 const PROMPT_ICON = [
-  '#........',
-  '.#.......',
-  '..#......',
-  '...#.....',
-  '..#......',
-  '.#.......',
-  '#...#####',
+  '#########',
+  '#.......#',
+  '#.#.....#',
+  '#..#....#',
+  '#.#.###.#',
+  '#.......#',
+  '#########',
 ]
 const FOLDER_ICON = [
   '###......',
