@@ -53,13 +53,14 @@ type Leaf = {
 const HEAD = 1.6
 
 /** Seconds a sown plant takes to reach full flower. */
-export const RUSH = 2.5
+export const RUSH = 3
 /** Stem damping in the wind (Stem.damping). */
 const SWAY = 0.35
-/** Stem damping while the opening grows a plant in: its bud straightens without a bounce. */
+/**
+ * Stem damping while the opening grows a plant in, or a click's flower comes up: its bud
+ * straightens without a bounce.
+ */
 const SETTLED = 0.9
-/** Stem damping while a sown flower rushes up, so it springs into place. */
-const LIVELY = 0.2
 /** Seconds after the opening for the stems to loosen back to SWAY. */
 const LOOSEN = 2
 
@@ -113,6 +114,9 @@ export abstract class Plant {
   /** Age at which the plant is in full flower, to start the garden mostly blooming. */
   abstract bloomAge(): number
 
+  /** Age by which the stalk has grown and the head lifted and opened. */
+  abstract openAge(): number
+
   /**
    * A stem's length held under the ceiling. Short stems keep theirs; past 60% of the room they
    * ease toward it, so tall flowers still differ in height instead of lining up like a hedge.
@@ -142,19 +146,26 @@ export abstract class Plant {
     for (const s of this.stems) if (!s.parent) s.baseY = env.floor(this.z)
   }
 
-  /** Sown by a click: grow straight to full flower over RUSH seconds instead of half a minute. */
+  /**
+   * Sown by a click: grow straight to full flower over RUSH seconds instead of half a minute.
+   * Its age runs evenly to just open, so the stalk draws up (its growth eases out) and then the
+   * bud swells, lifts and opens, each in its own time; run on into the bloom, a poppy's nod
+   * straightened in a blink and the head sprang up and bobbed.
+   */
   hurry() {
-    this.rush = { from: this.age, to: this.bloomAge(), t: 0 }
+    this.rush = { from: this.age, to: Math.max(this.age, this.openAge()), t: 0 }
   }
 
   update(dt: number, env: Env) {
     if (this.rush) {
       const q = this.rush
       q.t = Math.min(1, q.t + dt / RUSH)
-      this.age = lerp(q.from, q.to, easeOut(q.t))
+      this.age = lerp(q.from, q.to, q.t)
+      // Then it loosens to the wind's sway, as the opening's flowers do.
+      this.calm = 1
       if (q.t >= 1) this.rush = null
     } else this.age += dt
-    const damping = this.rush ? LIVELY : lerp(SWAY, SETTLED, this.calm)
+    const damping = lerp(SWAY, SETTLED, this.calm)
     for (const s of this.stems) s.damping = damping
     this.calm = Math.max(0, this.calm - dt / LOOSEN)
     if (this.leaving) this.fade = Math.max(0, this.fade - dt / 1.5)
@@ -360,6 +371,10 @@ export class Poppy extends Plant {
 
   bloomAge() {
     return this.G + 20 + this.rng() * this.B * 0.8
+  }
+
+  openAge() {
+    return this.G + 20
   }
 
   private phase() {
@@ -757,6 +772,11 @@ export class Cosmos extends Plant {
     return this.G + 24 + this.rng() * this.B * 0.8
   }
 
+  /** Its branches' heads open after the first. */
+  openAge() {
+    return this.G + 24 + Math.max(...this.heads.map((h) => h.offset))
+  }
+
   private phase(offset: number) {
     const t = this.age - offset
     const G = this.G
@@ -1013,6 +1033,10 @@ export class Lace extends Plant {
     return this.G + 30 + this.rng() * this.B * 0.8
   }
 
+  openAge() {
+    return this.G + 30
+  }
+
   private phase() {
     const t = this.age
     const G = this.G
@@ -1227,6 +1251,10 @@ export class Dandelion extends Plant {
     return this.rng() < 0.55
       ? this.G + 14 + this.rng() * this.B * 0.8
       : this.clockStart + 6 + this.rng() * 30
+  }
+
+  openAge() {
+    return this.G + 14
   }
 
   /** Whether a click at x, y lands on the head: the flower, or the seed clock. */
@@ -1533,6 +1561,10 @@ export class Rose extends Plant {
   }
 
   bloomAge() {
+    return ROSE.full
+  }
+
+  openAge() {
     return ROSE.full
   }
 
