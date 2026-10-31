@@ -827,19 +827,17 @@ export class Weather {
         }
         const near = (f.z - 0.8) / 0.2
         // Snow and the corona or a bolt never share a frame for long; snow takes the tiles.
-        // A near flake is a round clump on lit tiles, two cells across, and the nearest two
-        // rows deep, with a faint trail above where it fell: a star is a point and never moves.
+        // A near flake is a small clump: a lit core with a faint `·` beside it, and on the
+        // nearest a fainter cell below, with a faint trail above where it fell: a star is a point
+        // and never moves. (Two cells by two read too thick; Stanley, 2026-10-31.)
         this.tileCol = snowLit
         const side = f.phase < Math.PI ? 1 : -1
         this.plot(c, r, BLOB[1], 1, snowLit, k)
-        this.lightTile(c, r, 0.5 + 0.3 * near)
-        this.plot(c + side, r, BLOB[0], 0.8, snowLit, k)
-        this.lightTile(c + side, r, 0.3 + 0.3 * near)
+        this.lightTile(c, r, 0.4 + 0.25 * near)
+        this.plot(c + side, r, FLAKES[1], 0.6, snowLit, k)
         if (near > 0.5) {
-          this.plot(c, r + 1, BLOB[0], 0.75, snowLit, k)
-          this.lightTile(c, r + 1, 0.25 + 0.3 * near)
-          this.plot(c + side, r + 1, FLAKES[1], 0.6, snowLit, k)
-          this.lightTile(c + side, r + 1, 0.15 + 0.2 * near)
+          this.plot(c, r + 1, BLOB[0], 0.6, snowLit, k)
+          this.lightTile(c, r + 1, 0.1 + 0.15 * near)
         }
         this.plot(c, r - 1, FLAKES[0], 0.3 + 0.2 * near, snowLit, k)
       }
