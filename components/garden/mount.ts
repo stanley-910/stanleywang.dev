@@ -677,13 +677,11 @@ export function mountGarden({
     // Between plant frames only the cursor's light and a shooting star move, so a new hour alone
     // (the poem's scroll) draws the page only when a plant frame comes back. A shooting star needs
     // every display frame, but doesn't move the plants.
-    // Rain, snow and blown seed likewise.
-    quality.calm =
-      touched > LIVELY_FOR &&
-      scrubVel === 0 &&
-      !meteors.alive &&
-      !weather.moving
-    quality.idle = quality.calm && still > IDLE_AFTER
+    // Rain, snow and blown seed likewise, but they last the visit, so they don't keep the meadow
+    // from going idle or away: there they're throttled with everything else.
+    const resting = touched > LIVELY_FOR && scrubVel === 0 && !meteors.alive
+    quality.calm = resting && !weather.moving
+    quality.idle = resting && still > IDLE_AFTER
     quality.frameMs = raster.frameMs
     // A window out of use but under the cursor or the wheel isn't away.
     const away = unfocused && quality.idle && now - blurredAt > IDLE_AFTER
@@ -822,7 +820,7 @@ export function mountGarden({
       if (reduced.matches) draw(true)
       return
     }
-    const night = paletteAt(hour).night
+    const night = sceneAt(hour).night
     const openSky = y < garden.hillTop(x) - 7
     // By day the open sky above the ridges sends a bird instead of a flower; reduced motion sows.
     if (night < BY_DAY && openSky && !reduced.matches) {

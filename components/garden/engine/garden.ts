@@ -210,6 +210,11 @@ export class Garden {
   private scrubTop = 0
   private spruce: Shape[] = []
   private treeTop = 0
+  /**
+   * The top of the land, ridges and trees, every FOREST_STEP px from -FOREST_STEP: the painted
+   * backdrop has no cells to say where it stands, so what covers the globe asks this instead.
+   */
+  private skyline = new Float32Array(0)
   /** Plants sown by clicking, oldest first. */
   private sown: Plant[] = []
   time = 0
@@ -819,6 +824,14 @@ export class Garden {
       return (hMin + hVar * hash(i, salt * 11 + 7, seed)) * CH * (1 - off / hw)
     }
     let treeTop = hz
+    const sky = new Float32Array(Math.ceil(W / FOREST_STEP) + 3).fill(hz)
+    const lower = (x: number, y: number) => {
+      const i = Math.round(x / FOREST_STEP) + 1
+      if (i >= 0 && i < sky.length && y < sky[i]) sky[i] = y
+    }
+    for (let i = 0; i < sky.length; i++)
+      for (const ridge of this.ridges)
+        lower((i - 1) * FOREST_STEP, this.ridgeAt(ridge, (i - 1) * FOREST_STEP))
     this.forest = FOREST_ROWS.map((R, k) => {
       const shape = new Shape()
       let last = -1
@@ -854,6 +867,7 @@ export class Garden {
         if (last < 0) shape.moveTo(x, hz + 2)
         shape.lineTo(x, y)
         treeTop = Math.min(treeTop, y)
+        lower(x, y)
         last = x
       }
       if (last >= 0) {
@@ -877,6 +891,7 @@ export class Garden {
       const y = Math.min(hz - 1, nearAt(x) - 0.25 * CH - grove - rise)
       scrub.lineTo(x, y)
       scrubTop = Math.min(scrubTop, y)
+      lower(x, y)
     }
     scrub.lineTo(W + FOREST_STEP, hz + 2)
     scrub.closePath()
@@ -932,9 +947,12 @@ export class Garden {
         shape.closePath()
         this.spruce.push(shape)
         treeTop = Math.min(treeTop, base - H)
+        for (let dx = -hw; dx <= hw; dx += FOREST_STEP)
+          lower(x + dx, base - H + (Math.abs(dx) / hw) * H)
       }
     }
     this.treeTop = treeTop
+    this.skyline = sky
   }
 
   /** A ridge's outline as a path, closed down to `base`. */
@@ -1608,7 +1626,16 @@ export class Garden {
 
   /** Where the sun or moon is and how much of each shows, for the weather's eclipse. */
   globe(p: Palette) {
-    return { ...this.globeAt(), ...this.lights(p) }
+    return { ...this.globeAt(), ...this.lights(p), skyline: this.skylineAt }
+  }
+
+  /** The top of the land at x, ridges and trees: what stands in front of the sun and moon. */
+  skylineAt = (x: number) => {
+    const sky = this.skyline
+    const i = Math.round(x / FOREST_STEP) + 1
+    return sky.length
+      ? sky[Math.min(sky.length - 1, Math.max(0, i))]
+      : this.horizon
   }
 
   /** How strongly the ridge crest catches the light: under the moon, or as the sun sets behind it. */

@@ -39,9 +39,11 @@ const MEADOWS = ['/', '/writing/poem']
 const phaseAt = (h: number) =>
   PHASES.reduce((name, [from, n]) => (h >= from ? n : name), 'night')
 
+/** The hour on a 12-hour clock, lowercase like the rest of the bar: `9:24 pm`. */
 const label = (h: number) => {
   const m = Math.round(h * 60) % (24 * 60)
-  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
+  const h24 = Math.floor(m / 60)
+  return `${h24 % 12 || 12}:${String(m % 60).padStart(2, '0')} ${h24 < 12 ? 'am' : 'pm'}`
 }
 
 // The track: the horizon's colour through the day, sampled every hour, run

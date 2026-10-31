@@ -7,7 +7,7 @@
 // frame. Nothing here touches the grid.
 
 import { clamp, hash, smoothstep } from './math'
-import { mix, type Palette, type Rgb } from './palette'
+import { mix, paletteAt, type Palette, type Rgb } from './palette'
 import { code } from './typeset'
 
 import type { Wind } from './wind'
@@ -23,8 +23,10 @@ const FLAKES = [code('.'), code('·'), code('*')]
 const SEEDS = [code('~'), code(','), code('.')]
 const BOLT = { left: code('/'), right: code('\\'), down: code('|') }
 const CORONA = [code('·'), code(':')]
-/** What the moon's disc prints over the sun: a dim dot on a solid dark tile. */
-export const DISC = code('·')
+/** Where the last of the sun shows past the moon's edge, the diamond on the ring. */
+const DIAMOND = code('*')
+/** What Earth's shadow prints where the moon has no glyph of its own: a dim dot on a copper tile. */
+export const SHADOW = code('·')
 
 /** Most drops, flakes and seeds in the air at once. */
 const DROPS = 560
@@ -53,36 +55,64 @@ const STRIKE_GAP = [4, 11]
 /** How bright a strike lights the sky's glyphs at its peak; kept soft, never a white-out. */
 export const FLASH = 0.45
 
+// Every weather colour is taken from the palette's keyframes (palette.ts, the `*-` scene tokens),
+// never picked by eye, so it follows the garden when the garden's colours change. paletteAt at a
+// keyframe's own hour returns that keyframe unmixed.
+const DAY = paletteAt(12)
+const GOLDEN = paletteAt(17.75)
+const SUNSET = paletteAt(19)
+const TWILIGHT = paletteAt(20.15)
+const NIGHT = paletteAt(22)
+
+/** The light of totality: halfway from twilight to night, the scene at about 20:45. */
+const lateTwilight = (key: keyof Palette) =>
+  mix(TWILIGHT[key] as Rgb, NIGHT[key] as Rgb, 0.5)
+
 /**
- * The scene at a solar eclipse's totality: a deep indigo sky over a copper band all round the
- * horizon (the sunset an eclipse throws on every side), the land gone to dusk, the corona pale.
+ * The diamond, the white-hot bead of sun at the moon's edge: the shooting star's head
+ * (ShootingStar, `mix(fluff, globe, 0.4)`) at noon, a pearl white.
  */
-const hex = (h: string): Rgb => [
-  parseInt(h.slice(1, 3), 16),
-  parseInt(h.slice(3, 5), 16),
-  parseInt(h.slice(5, 7), 16),
-]
+const CORONA_COL = mix(DAY.fluff, DAY.globe, 0.4)
+/** The bright ring hugging the moon's edge, and the light it throws on its tiles: `sunset-globe`. */
+const RIM_COL = SUNSET.globe
+/** The glow fading out from the ring: `sunset-sky-horizon`, the deepest orange in the sky. */
+const GLOW_COL = SUNSET.skyHorizon
+
+/**
+ * The scene at a solar eclipse's totality: the land and upper sky at about 20:45, under a band
+ * all round the horizon halfway between golden hour's and sunset's (the sunset an eclipse throws
+ * on every side), a fifth sunk into that sky. Flowers go a share of the way to its ground.
+ */
 const TOTALITY: Partial<Record<keyof Palette, Rgb>> = {
-  skyTop: hex('#151a33'),
-  skyHorizon: hex('#b8683e'),
-  haze: hex('#5b4a63'),
-  cloud: hex('#6c6386'),
-  hillFar: hex('#33324a'),
-  hillNear: hex('#22222b'),
-  ground: hex('#141416'),
-  pine: hex('#17181e'),
-  grassDark: hex('#25261f'),
-  grassLight: hex('#625d72'),
-  stem: hex('#4f5263'),
-  snow: hex('#a3a6c8'),
-  snowShade: hex('#4b4f70'),
-  globe: hex('#f4ead2'),
-  panelBg: hex('#141416'),
+  skyTop: lateTwilight('skyTop'),
+  skyHorizon: mix(
+    mix(GOLDEN.skyHorizon, SUNSET.skyHorizon, 0.5),
+    lateTwilight('skyTop'),
+    0.2,
+  ),
+  haze: lateTwilight('haze'),
+  cloud: lateTwilight('cloud'),
+  hillFar: lateTwilight('hillFar'),
+  hillNear: lateTwilight('hillNear'),
+  ground: lateTwilight('ground'),
+  pine: lateTwilight('pine'),
+  grassDark: lateTwilight('grassDark'),
+  grassLight: lateTwilight('grassLight'),
+  stem: lateTwilight('stem'),
+  snow: lateTwilight('snow'),
+  snowShade: lateTwilight('snowShade'),
+  globe: CORONA_COL,
+  panelBg: lateTwilight('panelBg'),
 }
-/** The moon's disc against the corona, and the copper of the moon in Earth's shadow. */
-const MOON_DARK = hex('#0c0d16')
-const BOLT_COL: Rgb = [238, 236, 255]
-const BLOOD = hex('#9a3f24')
+/** The moon's face against the sun: `night-disc`, the darkest mark in the scene. */
+const MOON_DARK = NIGHT.disc
+/** A lightning bolt and its flash: `night-fluff`, the coldest white in the palette. */
+export const BOLT_COL = NIGHT.fluff
+/**
+ * The moon in Earth's shadow, lit only by the sunsets round the Earth's rim: `sunset-sky-horizon`
+ * a third of the way into `night-sky-top`.
+ */
+const BLOOD = mix(SUNSET.skyHorizon, NIGHT.skyTop, 0.35)
 
 /** The palette moves in steps of this share, so the backdrop repaints only on a step. */
 const steps = (v: number, n: number) => Math.round(v * n) / n
@@ -120,11 +150,29 @@ export type WeatherView = {
   ch: number
   horizon: number
   /** Where the sun or moon is, and how much of each shows (garden.ts). */
-  globe: { cx: number; cy: number; R: number; sun: number; moon: number }
+  globe: {
+    cx: number
+    cy: number
+    R: number
+    sun: number
+    moon: number
+    /** The top of the land at x, ridges and trees. */
+    skyline: (x: number) => number
+  }
 }
 
 /** A disc laid over the sun or moon this frame: the moon's, or Earth's shadow on the moon. */
-export type Disc = { x: number; y: number; R: number; col: Rgb; k: number }
+export type Disc = {
+  x: number
+  y: number
+  R: number
+  col: Rgb
+  k: number
+  /** The moon's body in front of the sun; otherwise Earth's shadow on the moon. */
+  body: boolean
+  /** The top of the land at x: the disc and corona set behind it. */
+  skyline: (x: number) => number
+}
 
 export class Weather {
   kind: WeatherKind = 'clear'
@@ -143,8 +191,8 @@ export class Weather {
   rgb = new Float32Array(0)
   /** Per cell, this frame: how strongly the corona or a bolt lights the tile behind its glyph. */
   tile = new Float32Array(0)
-  /** The colour those tiles take: the corona's, near enough a bolt's. */
-  readonly tileCol = TOTALITY.globe as Rgb
+  /** The colour those tiles take: the corona's, or a bolt's while one strikes. */
+  tileCol: Rgb = CORONA_COL
   /** Per cell column, this frame: how much a gust band lights the grass. Empty without a gale. */
   band = new Float32Array(0)
   /** How much a lightning strike lights the sky this frame, 0 to 1. */
@@ -362,6 +410,7 @@ export class Weather {
     // The eclipse: by day the moon's disc crosses the sun and a corona holds round it at
     // totality; by night Earth's shadow reddens the moon. A still state under reduced motion.
     this.disc = null
+    this.tileCol = RIM_COL
     const e = a.eclipse
     const globe = v.globe
     if (e > 0 && W > 0 && globe.sun > 0) {
@@ -374,29 +423,54 @@ export class Weather {
         y: globe.cy - off * 0.7 * R,
         R,
         col: MOON_DARK,
+        body: true,
+        skyline: globe.skyline,
         k: 0.96 * smoothstep(0, 0.15, e) * globe.sun,
       }
+      // At totality, a black disc in a ring of light: a solid ring hugging the moon's edge, a
+      // glow fading out from it in streamers, and a diamond where the sun last showed, on the
+      // side the moon came from's opposite.
       const ring = smoothstep(0.92, 1, e) * globe.sun
       if (ring > 0) {
-        const reach = 1.75 * R
+        const reach = 1.6 * R
+        const dia = Math.hypot(2.4, 0.7)
+        const diaX = globe.cx - (2.4 / dia) * R
+        const diaY = globe.cy + (0.7 / dia) * R
         const c0 = Math.max(0, Math.floor((globe.cx - reach) / cw))
         const c1 = Math.min(this.cols - 1, Math.ceil((globe.cx + reach) / cw))
         const r0 = Math.max(0, Math.floor((globe.cy - reach) / ch))
         const r1 = Math.min(this.rows - 1, Math.ceil((globe.cy + reach) / ch))
         for (let r = r0; r <= r1; r++)
           for (let c = c0; c <= c1; c++) {
-            const dx = (c + 0.5) * cw - globe.cx
-            const dy = (r + 0.5) * ch - globe.cy
+            const x = (c + 0.5) * cw
+            const y = (r + 0.5) * ch
+            const dx = x - globe.cx
+            const dy = y - globe.cy
             const d = Math.hypot(dx, dy) / R
-            if (d < 1.02 || d > 1.75) continue
-            const fall = 1 - smoothstep(1.02, 1.75, d)
-            // Streamers: longer along a few directions, as a corona's are.
-            const streak = 0.55 + 0.45 * Math.cos(4 * Math.atan2(dy, dx) + 0.7)
-            if (hash(c, r, 31) > 0.2 + 0.7 * fall * streak) continue
-            const s = ring * (0.45 + 0.55 * fall)
-            this.plot(c, r, CORONA[d < 1.25 ? 1 : 0], s, this.tileCol, 1)
+            if (d < 1 || d > 1.6) continue
             const i = r * this.cols + c
-            if (this.alpha[i] === Math.fround(s)) this.tile[i] = 0.5 * s * fall
+            const bead = 1 - Math.hypot(x - diaX, y - diaY) / (0.34 * R)
+            let s: number
+            let t: number
+            if (bead > 0) {
+              s = ring
+              t = ring * Math.min(1, 0.6 + bead)
+              this.plot(c, r, DIAMOND, s, CORONA_COL, 1)
+            } else if (d < 1.1) {
+              s = ring
+              t = 0.85 * ring
+              this.plot(c, r, CORONA[1], s, RIM_COL, 1)
+            } else {
+              const fall = 1 - smoothstep(1.1, 1.6, d)
+              // Streamers: longer along a few directions, as a corona's are.
+              const streak =
+                0.55 + 0.45 * Math.cos(4 * Math.atan2(dy, dx) + 0.7)
+              if (hash(c, r, 31) > 0.15 + 0.75 * fall * streak) continue
+              s = ring * (0.3 + 0.5 * fall)
+              t = 0.35 * s * fall
+              this.plot(c, r, CORONA[0], s, GLOW_COL, 1)
+            }
+            if (this.alpha[i] === Math.fround(s)) this.tile[i] = t
           }
       }
     } else if (e > 0 && W > 0 && globe.moon > 0) {
@@ -405,6 +479,8 @@ export class Weather {
         y: globe.cy,
         R: globe.R,
         col: BLOOD,
+        body: false,
+        skyline: globe.skyline,
         k: 0.7 * e * globe.moon,
       }
     }
@@ -432,6 +508,7 @@ export class Weather {
       if (since < 0.3) {
         const fade = since < 0.22 ? 1 : 1 - (since - 0.22) / 0.08
         const b = this.bolt
+        this.tileCol = BOLT_COL
         // Three cells wide, its core lighting its tiles, so it reads on the fine grid.
         for (let j = 0; j < b.length; j += 3) {
           const [c, r, g] = [b[j], b[j + 1], b[j + 2]]

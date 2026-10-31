@@ -2,7 +2,7 @@ import { createCompositor, type Compositor } from './gl'
 import { bayer, clamp, fbm2, hash, smoothstep } from './math'
 import { mix, type Palette, type Rgb } from './palette'
 import { CLOUD, code, GLYPHS, MAT, PLANT } from './typeset'
-import { DISC, FLASH, type Weather } from './weather'
+import { BOLT_COL, FLASH, SHADOW, type Disc, type Weather } from './weather'
 
 import type { Birds } from './birds'
 import type { Meteors } from './meteors'
@@ -16,6 +16,17 @@ const PERIOD = code('.')
 const PLUS = code('+')
 /** How strongly a shooting star lights the tile behind its glyph. */
 const GLOW = 0.3
+
+/**
+ * Whether the eclipse shows at a cell: above the land and trees, which the backdrop paints with
+ * no cells of their own, and on no cell of land. (The sun's own cells are `Fluff`, flagged as plant.)
+ */
+const showsEclipse = (f: number, x: number, y: number, d: Disc) =>
+  y < d.skyline(x) && (f & (MAT | PLANT)) !== MAT
+
+/** Whether a point is within the eclipse corona's reach. */
+const nearDisc = (x: number, y: number, d: Disc) =>
+  (x - d.x) ** 2 + (y - d.y) ** 2 < (1.8 * d.R) ** 2
 
 export type FrameInput = {
   raster: Raster
@@ -335,7 +346,8 @@ export class AsciiRenderer {
     const fall = weather?.painted ? weather : null
     const cover = weather?.cover ?? 0
     const band = weather && weather.gale > 0 ? weather.band : null
-    const [snR, snG, snB] = p.snow
+    // A cap on a head is the top of its snow, so it takes SnowCap's crest colour: `*-snow` lightened 15%.
+    const [snR, snG, snB] = mix(p.snow, [255, 255, 255], 0.15)
     const [glR, glG, glB] = p.grassLight
     const disc = weather?.disc
     const flash = weather ? weather.flash * FLASH : 0
@@ -480,30 +492,55 @@ export class AsciiRenderer {
             a += (1 - a) * 0.4 * band[c]
           }
         }
-        // The moon over the sun, or Earth's shadow on the moon: a solid disc of its colour.
-        if (discRow) {
+        // The moon over the sun, or Earth's shadow on the moon. The new moon's face is a solid
+        // `night-disc` tile over the sun's glyphs. The shadow fills
+        // the whole moon in copper, as an eclipse only comes at full moon: the moon's own glyphs
+        // tinted, and `·` on a copper tile where it has none. It sets behind the ridges and pines
+        // like the sun (showsEclipse).
+        if (discRow && showsEclipse(f, c * cw + cw / 2, y, discRow)) {
           const dx = c * cw + cw / 2 - discRow.x
           const dy = y - discRow.y
           if (dx * dx + dy * dy < discRow.R * discRow.R) {
             const [dr, dg, db] = discRow.col
             const kk = discRow.k
-            if (!g) {
-              g = DISC
+            if (discRow.body) {
+              // A cell's tile is only drawn under a glyph, so the face prints `·` in its own
+              // colour: lost on the tile, the sun's glyph gone under it.
+              g = DOT
               cr = dr
               cg = dg
               cb = db
-              a = 0.3
+              a = kk
+              t = Math.max(t, kk)
+              over = 1
+              overCol = discRow.col
             } else {
-              cr += (dr - cr) * kk
-              cg += (dg - cg) * kk
-              cb += (db - cb) * kk
+              if (!g) {
+                g = SHADOW
+                cr = dr
+                cg = dg
+                cb = db
+                a = 0.3
+              } else {
+                cr += (dr - cr) * kk
+                cg += (dg - cg) * kk
+                cb += (db - cb) * kk
+              }
+              t = Math.max(t, kk)
+              over = kk
+              overCol = discRow.col
             }
-            t = Math.max(t, kk)
-            over = kk
-            overCol = discRow.col
           }
         }
-        if (fall && fall.alpha[i] > 0) {
+        if (
+          fall &&
+          fall.alpha[i] > 0 &&
+          !(
+            disc &&
+            nearDisc(c * cw + cw / 2, y, disc) &&
+            !showsEclipse(f, c * cw + cw / 2, y, disc)
+          )
+        ) {
           const wa = fall.alpha[i] * dim[i]
           if (wa >= 0.06 && (!g || wa > a * 0.6)) {
             g = fall.glyph[i]
@@ -522,9 +559,9 @@ export class AsciiRenderer {
         // Lightning lights the sky's glyphs, and the land's a little.
         if (flash > 0 && g) {
           const kk = flash * (skyRow ? 1 : 0.35)
-          cr += (240 - cr) * kk
-          cg += (238 - cg) * kk
-          cb += (255 - cb) * kk
+          cr += (BOLT_COL[0] - cr) * kk
+          cg += (BOLT_COL[1] - cg) * kk
+          cb += (BOLT_COL[2] - cb) * kk
           a += (1 - a) * kk
         }
         // A bird is a silhouette over anything in its band of sky: open sky, cloud or the sun.

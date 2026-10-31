@@ -82,6 +82,10 @@ By day the far range's rock is a step darker than before (about `#72818b`, was `
 - README, The garden's glyphs, hills: the far range's faces are a faint tile per cell, light or shadow, as well as glyph density.
 - README, Colour: the land stays neutral stone, except snow at sunset, which takes alpenglow.
 
+## Snow on the meadow
+
+The snow weather (Weather) lays snow on the meadow in the same colours: a cap on the top cell of each head and stem in this spec's crest colour (`*-snow` lightened 15%), its tile turned toward `*-snow`, and a cover on the ground and near ridge mixed toward `*-snow-shade`, with the grass's light toward `*-snow`. The far range's caps don't change.
+
 ## Accessibility
 
 Decorative, like the rest of the scene. No text sits over the range, so contrast doesn't apply. With reduced motion nothing changes; snow doesn't move.
