@@ -39,8 +39,8 @@ const STRENGTH = 1
  * How strongly the body and the wings shade their tiles, so the bird keeps its weight at the
  * scene's small cells instead of thinning to a stroke.
  */
-const TILE = 0.35
-const WING_TILE = 0.15
+const TILE = 0.45
+const WING_TILE = 0.22
 
 /** Where birds may fly this frame, in scene px: the scene's size, its cells and the height band. */
 export type Sky = {
@@ -70,7 +70,7 @@ type Bird = {
 }
 
 const between = ([lo, hi]: number[]) => lo + (hi - lo) * Math.random()
-const spanFor = (sky: Sky) => clamp(0.012 * sky.W, 16, 28)
+const spanFor = (sky: Sky) => clamp(0.009 * sky.W, 12, 20)
 
 /** Wing angle above horizontal, in radians: a few beats, then a glide with the wings held in a shallow v. */
 const wingAt = (b: Bird, t: number) => {
@@ -207,7 +207,7 @@ export class Birds {
     for (const i of this.touched) this.alpha[i] = 0
     this.touched = []
     if (!this.list.length) return
-    this.col = mix(p.pine, [0, 0, 0], 0.2)
+    this.col = mix(p.pine, [0, 0, 0], 0.4)
     const { cw, ch } = this
     let a = STRENGTH
     const put = (c: number, r: number, g: number, tile: number) => {
