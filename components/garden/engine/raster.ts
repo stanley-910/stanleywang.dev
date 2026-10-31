@@ -5,6 +5,7 @@ import {
   Op,
   PathOp,
   Rasterizer,
+  RIVER_SPAN,
   SS,
   type RasterJob,
   type RasterResult,
@@ -14,7 +15,7 @@ import type { Rgb } from './palette'
 import type { Material, Style } from './typeset'
 
 // Defined beside the rasteriser, which the worker loads without this file.
-export { Kind, LandMat, SS }
+export { Kind, LandMat, RIVER_SPAN, SS }
 /** How long a worker may hold a frame before the raster gives up on workers. */
 const WORKER_TIMEOUT = 1000
 /** A gap between frames this long means the page stood still, not the worker. */
@@ -423,7 +424,13 @@ export class Raster {
     now: boolean,
     look: Pick<
       Style,
-      'palette' | 'horizon' | 'hill' | 'relief' | 'reliefLight' | 'reliefLit'
+      | 'palette'
+      | 'horizon'
+      | 'hill'
+      | 'relief'
+      | 'reliefLight'
+      | 'reliefLit'
+      | 'river'
     >,
     hour: number,
   ) {
