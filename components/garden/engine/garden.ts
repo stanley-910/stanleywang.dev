@@ -45,6 +45,16 @@ const ROSE_Z = 0.72
 
 /** Seconds the opening time-lapse takes to grow the garden in. */
 const INTRO = 4.5
+/** Share of a plant's grow-in spent drawing its stalk up. */
+const RISE = 0.45
+/**
+ * Share spent by the time its head has lifted and opened, as the stalk finishes. The rest
+ * carries it on, mostly unseen, to the age it shows in bloom.
+ */
+const UNFURL = 0.85
+
+/** One plant's part in the opening: when it starts, how long it takes, and the ages it passes. */
+type Sprout = { age: number; stages: number[]; delay: number; length: number }
 /** Spacing of the ridge outline's points. */
 const RIDGE_STEP = 6
 /** Peaks lower than this, as a share of the screen height above the horizon, carry no snow. */
@@ -184,7 +194,7 @@ export class Garden {
   useSeed(seed: number) {
     this.seed = seed
   }
-  private targetAge = new Map<Plant, number>()
+  private targetAge = new Map<Plant, Sprout>()
   private intro = 0
   private ridges: Float32Array[] = []
   /** Where snow starts on the far range at each ridge point, as a screen y; NaN where there's none. */
@@ -328,7 +338,7 @@ export class Garden {
         lerp(b.right, this.width, 0.5),
         0.97,
       )
-      this.targetAge.set(plant, plant.bloomAge())
+      this.targetAge.set(plant, this.sprout(plant))
     }
     this.meadow.build(
       this.width,
@@ -382,7 +392,7 @@ export class Garden {
           }
           this.place(plant)
           // During the opening they grow in with the rest; later strips arrive grown.
-          if (this.intro < INTRO) this.targetAge.set(plant, plant.bloomAge())
+          if (this.intro < INTRO) this.targetAge.set(plant, this.sprout(plant))
           else plant.age = plant.bloomAge()
         }
       }
@@ -429,10 +439,43 @@ export class Garden {
     return this.intro < INTRO
   }
 
+  /**
+   * A plant's grow-in, timed a little apart from its neighbours' so the meadow doesn't come up
+   * in step: it starts up to 0.7s in and takes 3 to 3.7s. Drawn from its own seed, so the
+   * meadow's layout rolls stay as they were.
+   */
+  private sprout(plant: Plant): Sprout {
+    const age = plant.bloomAge()
+    return {
+      age,
+      stages: plant.stages(age).map((a) => Math.min(a, age)),
+      delay: 0.7 * hash(plant.seed, 1),
+      length: lerp(3, 3.7, hash(plant.seed, 2)),
+    }
+  }
+
+  /**
+   * A sprout's age `u` (0 to 1) of the way through its grow-in. The stalk draws up, slowing as
+   * it nears its height, then the head lifts and opens; no step of a whole life passes in a
+   * blink, so nothing snaps into place.
+   */
+  private sproutAge(s: Sprout, u: number) {
+    const { stages } = s
+    // A stalk's growth eases out over its rise as 1 - (1 - age)³; this age makes it 1 - (1 - u)².
+    if (u < RISE) return stages[0] * (1 - (1 - u / RISE) ** (2 / 3))
+    const open = stages[stages.length - 1]
+    if (u >= UNFURL)
+      return lerp(open, s.age, easeInOut((u - UNFURL) / (1 - UNFURL)))
+    // Each stage of the head gets an even share; its own smoothsteps ease it in and out.
+    const at = ((u - RISE) / (UNFURL - RISE)) * (stages.length - 1)
+    const i = Math.min(Math.floor(at), stages.length - 2)
+    return i < 0 ? open : lerp(stages[i], stages[i + 1], at - i)
+  }
+
   /** Jump straight to the grown garden, for reduced motion. */
   skipIntro() {
     this.intro = INTRO
-    for (const [plant, age] of this.targetAge) plant.age = age
+    for (const [plant, s] of this.targetAge) plant.age = s.age
     this.targetAge.clear()
     this.meadow.grow = 1
     this.env.quiet = false
@@ -1093,9 +1136,9 @@ export class Garden {
     this.env.palette = palette
     if (this.intro < INTRO) {
       this.intro += dt
-      const k = easeInOut(Math.min(1, this.intro / INTRO))
-      for (const [plant, age] of this.targetAge) {
-        plant.age = age * k - dt
+      for (const [plant, s] of this.targetAge) {
+        const u = clamp((this.intro - s.delay) / s.length, 0, 1)
+        plant.age = this.sproutAge(s, u) - dt
         plant.calm = 1
       }
       this.meadow.grow = Math.min(1, this.intro / (INTRO * 0.7))

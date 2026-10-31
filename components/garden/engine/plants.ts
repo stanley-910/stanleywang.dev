@@ -56,7 +56,7 @@ const HEAD = 1.6
 export const RUSH = 2.5
 /** Stem damping in the wind (Stem.damping). */
 const SWAY = 0.35
-/** Stem damping while the opening grows a plant in: its bud straightens without a bounce. */
+/** Stem damping as a grown-in plant loosens: near critical, so the wind finds it without a bounce. */
 const SETTLED = 0.9
 /** Stem damping while a sown flower rushes up, so it springs into place. */
 const LIVELY = 0.2
@@ -88,8 +88,9 @@ export abstract class Plant {
   fade = 1
   leaving = false
   /**
-   * 1 while the opening grows this plant in, falling to 0 over LOOSEN seconds after: the stems
-   * damp toward SETTLED, since a whole life passes in seconds and the buds straighten fast.
+   * 1 while the opening grows this plant in, falling to 0 over LOOSEN seconds after. At 1 the
+   * stems hold their rest curve, so a stalk draws up and a bud lifts without lagging behind or
+   * swinging past; as it falls they hand over to the springs, damped toward SETTLED.
    */
   calm = 0
   private rush: { from: number; to: number; t: number } | null = null
@@ -112,6 +113,14 @@ export abstract class Plant {
 
   /** Age at which the plant is in full flower, to start the garden mostly blooming. */
   abstract bloomAge(): number
+
+  /**
+   * The ages its grow-in passes on the way to `age`, for the opening to give each a fair share
+   * of its time: first the stalk at its height, then each change to the head (a bud swelling, a
+   * nod lifting, petals opening), the last one open. A stage of six seconds and one of twenty
+   * then take as long, so no head opens in a blink.
+   */
+  abstract stages(age: number): number[]
 
   /**
    * A stem's length held under the ceiling. Short stems keep theirs; past 60% of the room they
@@ -161,7 +170,10 @@ export abstract class Plant {
     this.live(env, dt)
     const sub = 2
     for (let i = 0; i < sub; i++)
-      for (const s of this.stems) s.step(dt / sub, env.wind)
+      for (const s of this.stems) {
+        s.step(dt / sub, env.wind)
+        if (this.calm > 0) s.hold(this.calm)
+      }
   }
 
   protected abstract live(env: Env, dt: number): void
@@ -360,6 +372,12 @@ export class Poppy extends Plant {
 
   bloomAge() {
     return this.G + 20 + this.rng() * this.B * 0.8
+  }
+
+  /** Up, the bud swelling as it nods, the nod lifting, the cup opening. */
+  stages() {
+    const G = this.G
+    return [G, G + 8, G + 14, G + 20]
   }
 
   private phase() {
@@ -757,6 +775,13 @@ export class Cosmos extends Plant {
     return this.G + 24 + this.rng() * this.B * 0.8
   }
 
+  /** Up, the bud swelling, the first head opening, then the branches' heads after it. */
+  stages() {
+    const G = this.G
+    const last = Math.max(...this.heads.map((h) => h.offset))
+    return [G, G + 18, G + 24, G + 24 + last]
+  }
+
   private phase(offset: number) {
     const t = this.age - offset
     const G = this.G
@@ -1013,6 +1038,12 @@ export class Lace extends Plant {
     return this.G + 30 + this.rng() * this.B * 0.8
   }
 
+  /** Up, the umbel gathering, then lifting as it spreads open. */
+  stages() {
+    const G = this.G
+    return [G, G + 18, G + 30]
+  }
+
   private phase() {
     const t = this.age
     const G = this.G
@@ -1227,6 +1258,14 @@ export class Dandelion extends Plant {
     return this.rng() < 0.55
       ? this.G + 14 + this.rng() * this.B * 0.8
       : this.clockStart + 6 + this.rng() * 30
+  }
+
+  /** Up, the bud, the flower; one shown as a seed clock closes, lengthens and opens as one. */
+  stages(age: number) {
+    const G = this.G
+    const open = [G, G + 10, G + 14]
+    const closeAt = G + 14 + this.B
+    return age > closeAt ? [...open, closeAt + 4, this.clockStart + 4] : open
   }
 
   /** Whether a click at x, y lands on the head: the flower, or the seed clock. */
@@ -1534,6 +1573,10 @@ export class Rose extends Plant {
 
   bloomAge() {
     return ROSE.full
+  }
+
+  stages() {
+    return [ROSE.stem, ROSE.full]
   }
 
   update(dt: number, env: Env) {
