@@ -261,7 +261,6 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
 
 .terminal-tb > * {
   position: relative;
-  background: var(--k-chrome);
 }
 
 .terminal-tb .boxes {
@@ -286,9 +285,8 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
   color: var(--k-muted);
 }
 
-/* Close is a bare pixel x, drawn on the same grid as the bitmap face, cleared out of the
-   title bar's rules with no box around it. Under the pointer a small plate inverts behind
-   it, the way the menus select. */
+/* Close is a bare pixel x, drawn on the same grid as the bitmap face, with no box
+   around it. Under the pointer a small plate inverts behind it, the way the menus select. */
 .terminal-root .box {
   position: relative;
   display: inline-flex;
@@ -299,7 +297,7 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
   align-items: center;
   justify-content: center;
   color: var(--k-ink);
-  background: var(--k-chrome);
+  background: none;
   border: 0;
   cursor: pointer;
 }
