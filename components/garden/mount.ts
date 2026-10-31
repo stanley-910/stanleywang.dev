@@ -554,13 +554,12 @@ export function mountGarden({
   let touch: { x: number; y: number; axis: 'x' | 'y' | null } | null = null
   /** The finger's recent heights and times, to read its speed when it lifts. */
   let trail: { y: number; t: number }[] = []
-  // A finger that lands on a flower is holding it, to push it about: it
-  // neither scrubs nor scrolls the page (whose scroll sets the poem's hour).
-  let holding = false
+  // A finger that lands on a flower pushes it about as it moves, but still
+  // scrubs or scrolls like a finger anywhere else: a meadow full of flowers
+  // left few places a swipe would take. A swipe can knock a flower in passing.
 
   const onTouchStart = (e: TouchEvent) => {
     touch = null
-    holding = false
     if (!visible || e.touches.length !== 1) return
     const t = e.target
     // The time slider and anything that scrolls itself (the terminal) take their own drags.
@@ -570,19 +569,6 @@ export function mountGarden({
     )
       return
     const { clientX: x, clientY: y } = e.touches[0]
-    if (
-      t instanceof Element &&
-      root.contains(t) &&
-      // The poem's text doesn't sow, but a flower under it can still be held.
-      !t.closest('a, button, label, form')
-    ) {
-      const origin = canvas.getBoundingClientRect()
-      if (garden.headAt(toScene(x - origin.left), toScene(y - origin.top))) {
-        holding = true
-        scrubVel = 0
-        return
-      }
-    }
     if (!scrub) return
     touch = { x, y, axis: null }
     trail = [{ y, t: e.timeStamp }]
@@ -591,11 +577,6 @@ export function mountGarden({
   }
 
   const onTouchMove = (e: TouchEvent) => {
-    if (holding) {
-      if (e.touches.length !== 1) holding = false
-      else if (e.cancelable) e.preventDefault()
-      return
-    }
     if (!touch) return
     if (e.touches.length !== 1) {
       touch = null
@@ -645,7 +626,6 @@ export function mountGarden({
     }
     touch = null
     trail = []
-    holding = false
   }
 
   /** After the wheel goes quiet or the finger lifts, the scrub keeps a little speed and eases to a stop. */
