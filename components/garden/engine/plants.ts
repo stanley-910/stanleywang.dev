@@ -1056,7 +1056,14 @@ export class Lace extends Plant {
   private G: number
   private B: number
   private stem: Stem
-  private rays: { a: number; tilt: number; len: number; florets: number }[] = []
+  private rays: {
+    a: number
+    tilt: number
+    len: number
+    florets: number
+    /** How far out its umbellet sits, as a share of the head's radius. */
+    reach: number
+  }[] = []
   private head: number
   private darkFloret: boolean
 
@@ -1082,6 +1089,10 @@ export class Lace extends Plant {
         tilt: lerp(0.55, 1, r()),
         len: lerp(0.75, 1, r()),
         florets: 5 + Math.floor(r() * 4),
+        // Spread evenly over the disc, inner rays shorter, so the umbellets fill the head as a
+        // real one's do; all at one reach left a hollow ring of clusters floating round the
+        // stalk. From the seed, not the rng, so the meadows picked by hand keep their layout.
+        reach: 0.22 + 0.78 * Math.sqrt(hash(seed, 100 + i)),
       })
     }
     this.darkFloret = r() < 0.6
@@ -1174,13 +1185,16 @@ export class Lace extends Plant {
       let cy: number
       if (ph.spread >= 0) {
         const phi = ph.spread * 1.25 * ray.tilt
+        // The reach pulls an umbellet in across the disc while its height holds, so the head
+        // keeps the flat top of a real umbel.
+        const out = Math.sin(phi) * len * ray.reach
         ;[ex, ey, ez] = project(
           tx,
           ty,
           axis,
           [u, v],
-          ca * Math.sin(phi) * len,
-          sa * Math.sin(phi) * len,
+          ca * out,
+          sa * out,
           Math.cos(phi) * len,
         )
         ;[cx, cy] = project(
@@ -1188,8 +1202,8 @@ export class Lace extends Plant {
           ty,
           axis,
           [u, v],
-          ca * Math.sin(phi) * len * 0.5,
-          sa * Math.sin(phi) * len * 0.5,
+          ca * out * 0.5,
+          sa * out * 0.5,
           Math.cos(phi) * len * 0.55,
         )
       } else {
@@ -1220,7 +1234,8 @@ export class Lace extends Plant {
       florets.push([ex, ey, ez, ray.florets])
     }
     // Faint: the rays only print where they bunch near the stalk, not as a fan of lines.
-    r.stroke(rays, rayColor, Kind.Stem, Math.max(0.5, H * 0.025), 0.4)
+    // Firm enough to tie the umbellets to the stalk, so the head doesn't float.
+    r.stroke(rays, rayColor, Kind.Stem, Math.max(0.5, H * 0.025), 0.65)
     florets.sort((a, b) => a[2] - b[2])
     const fr = Math.max(0.6, H * 0.045)
     // Each umbellet shades by where it sits on the dome, as a cosmos does: those down the
@@ -1241,7 +1256,8 @@ export class Lace extends Plant {
       const tone = shade(lace, 1 - 0.2 * down - 0.08 * back)
       // A tiny umbellet: a ring of florets around one.
       const cluster = new Shape()
-      const rr = H * 0.11
+      // Large enough that neighbours touch, as a real head's packed umbellets do.
+      const rr = H * 0.14
       // The umbellet as a whole: a dome of florets too fine to print one by one, so the head
       // reads as a lace of small clusters rather than loose specks.
       const dome = new Shape()
