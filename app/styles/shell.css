@@ -143,30 +143,58 @@
 }
 
 .film-grid {
-  /* Rows of at most three, so the page stays a scroll rather than a wall.
-     Photos share their row by shape (photos/gallery.tsx sets --shape), so a
-     landscape and a portrait cover about the same area and their bottoms
-     end unevenly. The grid breaks out of the gutter to the window's width,
-     centred under the top bar. */
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
+  /* A masonry wall (photos/gallery.tsx): equal columns, each photo the
+     column's full width at its own shape, stacked with the same gap as the
+     columns, so the bottoms stagger. Three across on a desktop, two on a
+     tablet, one on a phone. The grid breaks out of the gutter to the
+     window's width, centred under the top bar. */
+  --film-gap: var(--space-2);
   width: min(80rem, 100vw - 48px);
   margin-left: 50%;
   transform: translateX(-50%);
 }
 
-.film-row {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+.film-cols {
+  display: none;
   align-items: flex-start;
-  gap: var(--space-3);
+  gap: var(--film-gap);
 }
 
-.film-item {
-  flex: var(--shape) 1 calc(var(--shape) * 12rem);
-  min-width: 0;
-  /* A photo alone on a row doesn't fill it. */
-  max-width: calc(var(--shape) * 28rem);
+.film-cols[data-cols='1'] {
+  display: flex;
 }
+
+.film-col {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: var(--film-gap);
+  min-width: 0;
+}
+
+/* Tiles sit on the page like prints on a wall: barely rounded. */
+.film-col .photo {
+  border-radius: var(--radius-hair);
+}
+
+@media (min-width: 640px) {
+  .film-grid {
+    --film-gap: var(--space-3);
+  }
+  .film-cols[data-cols='1'] {
+    display: none;
+  }
+  .film-cols[data-cols='2'] {
+    display: flex;
+  }
+}
+
+@media (min-width: 1024px) {
+  .film-cols[data-cols='2'] {
+    display: none;
+  }
+  .film-cols[data-cols='3'] {
+    display: flex;
+  }
+}
+

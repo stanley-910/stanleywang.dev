@@ -45,11 +45,11 @@ The caption colours are fixed in every theme: the pill sits on the photo, not th
 
 ## Photo
 
-Full width of its column, no radius, no shadow, the photo's own aspect ratio reserved before it loads (`width` and `height` in the data), via `next/image`. Until a photo's file is approved and exported, the frame shows `surface` with faint `hairline` hatching at the right shape.
+Full width of its column, no shadow (`radius-hair` on the /photos wall), the photo's own aspect ratio reserved before it loads (`width` and `height` in the data), via `next/image`. Until a photo's file is approved and exported, the frame shows `surface` with faint `hairline` hatching at the right shape.
 
 ## /photos
 
-Rows of at most three photos (`app/photos/gallery.tsx`), so the page stays a scroll rather than a wall, at up to 80rem wide, broken out of the gutter. In a row each photo's width grows with the square root of its shape, so a landscape and a portrait cover about the same area and their bottoms end unevenly: an asymmetric grid. A row wraps on a narrow screen, one photo across on a phone. A photo alone on its row doesn't fill it. The page has no visible heading; the top bar names it.
+A masonry wall (`app/photos/gallery.tsx`): equal columns, three on a desktop (1024px up), two on a tablet (640px up), one on a phone, at up to 80rem wide, broken out of the gutter. Each photo fills its column's width at its own shape, and each goes to the shortest column so far, in order, so the bottoms stagger and the first photos sit along the top. Gaps between columns and between stacked photos are the same: `space-3` (18px), `space-2` (14px) on a phone, kept tight so the photos read as one wall. Tiles take `radius-hair`. Each column count is dealt on the server and the stylesheet shows the one that fits, so nothing moves on load; the hidden copies' images are lazy and never load. The page has no visible heading; the top bar names it.
 
 A caption waits for its photo: the two fade in together over 300ms, so the pill never shows over an empty frame.
 

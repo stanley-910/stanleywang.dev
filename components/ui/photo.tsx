@@ -73,7 +73,7 @@ export function Photo({
           alt={photo.alt}
           width={photo.width}
           height={photo.height}
-          sizes="(min-width: 640px) 32rem, 100vw"
+          sizes="(min-width: 1024px) 27rem, (min-width: 640px) 50vw, 100vw"
           onLoad={() => setLoaded(true)}
           onError={() => setLoaded(true)}
         />
