@@ -585,7 +585,9 @@ export class AsciiRenderer {
             if (fall.tile[i] > 0) {
               t = Math.max(t, fall.tile[i] * dim[i])
               over = 1
-              overCol = fall.tileCol
+              overCol = fall.bowBand[i]
+                ? fall.bowCols[fall.bowBand[i] - 1]
+                : fall.tileCol
             }
           }
         }
