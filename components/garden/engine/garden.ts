@@ -517,6 +517,29 @@ export class Garden {
     return rose
   }
 
+  /**
+   * A raindrop landing on a flower head: the head's stem takes a small knock, away from where
+   * the drop struck. Whether there was a head there.
+   */
+  tap = (x: number, y: number, k: number) => {
+    // The nearest in front first, as they're drawn back to front.
+    for (let j = this.plants.length - 1; j >= 0; j--) {
+      const p = this.plants[j]
+      if (p.leaving || p.crown <= 0) continue
+      const r = Math.max(6, p.crown)
+      for (const s of p.stems) {
+        const tx = s.pts[s.n * 2]
+        const ty = s.pts[s.n * 2 + 1]
+        if ((x - tx) ** 2 + (y - ty) ** 2 > r * r) continue
+        const side = x < tx ? 1 : -1
+        for (let i = s.n >> 1; i < s.n; i++)
+          s.vel[i] += side * k * ((i + 1) / s.n)
+        return true
+      }
+    }
+    return false
+  }
+
   /** Calls a visitor to the flower under the click. */
   /** A click on a dandelion shakes it, and puffs a seed clock out. Whether one was there. */
   poke(x: number, y: number) {

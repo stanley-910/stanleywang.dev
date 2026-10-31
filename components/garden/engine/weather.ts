@@ -19,9 +19,18 @@ const RAIN_TAIL = code("'")
 const SLANT_HEAD = code('\\')
 const SLANT_TAIL = code('`')
 const SPLASH = code('.')
+/** The droplets a near drop throws up as it lands. */
+const SPRAY = code("'")
 const FLAKES = [code('.'), code('·'), code('*')]
+/** A near flake's clump: its rim and its middle. */
+const BLOB = [code('o'), code('@')]
 const SEEDS = [code('~'), code(','), code('.')]
-const BOLT = { left: code('/'), right: code('\\'), down: code('|') }
+const BOLT = {
+  left: code('/'),
+  right: code('\\'),
+  down: code('|'),
+  across: code('-'),
+}
 const CORONA = [code('·'), code(':')]
 /** What Earth's shadow prints where the moon has no glyph of its own: a dim dot on a copper tile. */
 export const SHADOW = code('·')
@@ -50,6 +59,8 @@ type Effect = keyof typeof RATES
 const GALE = 0.9
 /** Seconds between lightning strikes in a storm, at least and at most. */
 const STRIKE_GAP = [4, 11]
+/** Seconds between flickers inside the cloud in a storm, at least and at most. */
+const BREW_GAP = [1.5, 4.5]
 /** How bright a strike lights the sky's glyphs at its peak; kept soft, never a white-out. */
 export const FLASH = 0.45
 
@@ -117,9 +128,12 @@ type Drop = {
   x: number
   y: number
   v: number
+  /** Depth: 0 far, at the meadow's back edge, to 1 near, falling past the bottom of the screen. */
   z: number
   land: number
   splash: number
+  /** Whether it landed on a flower head. */
+  hit: boolean
 }
 type Flake = {
   x: number
@@ -145,6 +159,10 @@ export type WeatherView = {
   cw: number
   ch: number
   horizon: number
+  /** A drop landing at a point knocks the flower head there, by `k`; whether there was one. */
+  tap: (x: number, y: number, k: number) => boolean
+  /** How much cloud is at a cell, 0 to 1, as the sky last drew it (ascii.ts). */
+  cloud: (c: number, r: number) => number
   /** Where the sun or moon is, and how much of each shows (garden.ts). */
   globe: {
     cx: number
@@ -155,6 +173,40 @@ export type WeatherView = {
     /** The top of the land at x, ridges and trees. */
     skyline: (x: number) => number
   }
+}
+
+/** Lightning's light in the cloud this frame: lighting the sky's glyphs round a point. */
+export type Glow = { x: number; y: number; R: number; k: number }
+
+/** A lightning event: its channels and the return strokes that light them. */
+type Flash = {
+  /** Its channels' cells, as column, row, glyph and strength in turn. */
+  path: number[]
+  /** Return strokes, as seconds after it starts and peak brightness in turn. */
+  strokes: number[]
+  /** When it started. */
+  at: number
+  /** Where its light sits in the cloud, and how far it reaches, in scene px. */
+  x: number
+  y: number
+  R: number
+  /** Near (1) or far (0): how wide and bright the channel prints, and how far its flash reaches. */
+  near: number
+}
+
+/**
+ * How bright a lightning event is `t` seconds in, 0 to 1: each return stroke at its peak for a
+ * frame or two, then dying away fast.
+ */
+function strokeAt(strokes: number[], t: number) {
+  let b = 0
+  for (let j = 0; j < strokes.length; j += 2) {
+    const since = t - strokes[j]
+    if (since < 0) continue
+    const k = since < 0.06 ? 1 : Math.exp(-(since - 0.06) * 9)
+    b = Math.max(b, strokes[j + 1] * k)
+  }
+  return b < 0.01 ? 0 : b
 }
 
 /** A disc laid over the sun or moon this frame: the moon's, or Earth's shadow on the moon. */
@@ -191,8 +243,10 @@ export class Weather {
   tileCol: Rgb = RIM_COL
   /** Per cell column, this frame: how much a gust band lights the grass. Empty without a gale. */
   band = new Float32Array(0)
-  /** How much a lightning strike lights the sky this frame, 0 to 1. */
+  /** How much a lightning strike lights the whole sky this frame, 0 to 1. */
   flash = 0
+  /** Lightning's light in the cloud this frame, a strike's or a flicker's. */
+  glow: Glow | null = null
   disc: Disc | null = null
   private touched: number[] = []
   private cols = 0
@@ -200,10 +254,11 @@ export class Weather {
   private drops: Drop[] = []
   private flakes: Flake[] = []
   private seeds: Seed[] = []
-  /** The last strike's path, as cell column, row and glyph in turn, and when it struck. */
-  private bolt: number[] = []
-  private struck = -Infinity
+  /** The last strike to the ground (or into the air), and the last flicker inside the cloud. */
+  private bolt: Flash | null = null
+  private brew: Flash | null = null
   private nextStrike = 0
+  private nextBrew = 0
   private lastPaint = -1
   /** Under reduced motion the weather is a still state: nothing falls or blows. */
   private still = false
@@ -355,6 +410,13 @@ export class Weather {
     this.seeds = []
   }
 
+  /** Lights a cell's tile, if this frame's overlay holds the cell. */
+  private lightTile(c: number, r: number, t: number) {
+    if (c < 0 || r < 0 || c >= this.cols || r >= this.rows) return
+    const i = r * this.cols + c
+    if (this.alpha[i] > 0) this.tile[i] = Math.max(this.tile[i], t)
+  }
+
   private plot(
     c: number,
     r: number,
@@ -375,9 +437,16 @@ export class Weather {
   }
 
   /** Where a drop or flake comes down: mostly on the meadow, some on the near ridges. */
-  private landing(v: WeatherView) {
-    const top = 0.9 * v.horizon
-    return top + (v.H - top) * Math.sqrt(Math.random())
+  /**
+   * Where something falling at depth `z` comes down: the far ones at the meadow's back edge, on
+   * the treeline, the nearer ones lower, as the ground comes toward us; the nearest past the
+   * bottom of the screen.
+   */
+  private landing(v: WeatherView, z: number) {
+    const top = v.horizon - 0.03 * v.H
+    return (
+      top + (1.08 * v.H - top) * z ** 1.3 + (Math.random() - 0.5) * 0.04 * v.H
+    )
   }
 
   /** Moves everything in the air to `now` (s) and lays it into the cells. */
@@ -470,38 +539,51 @@ export class Weather {
     }
 
     this.flash = 0
+    this.glow = null
     if (this.still || W === 0) return
 
-    // A storm's lightning: now and then a jagged bolt from the cloud down to the ridges, and the
-    // sky's glyphs flashing with it, twice and fading.
+    // A storm's lightning: now and then a branching bolt out of a cloud, near and bright or far
+    // and thin, down to the land or into the air, with the sky flashing as it strikes; and, more
+    // often, flickers inside the clouds, lighting them from within.
     if (a.storm > 0.8 && now >= this.nextStrike) {
-      this.strike(v, now)
+      this.bolt = this.strike(v, now)
       this.nextStrike =
         now + STRIKE_GAP[0] + Math.random() * (STRIKE_GAP[1] - STRIKE_GAP[0])
+      // A flicker doesn't land on top of a strike.
+      this.nextBrew = Math.max(this.nextBrew, now + 1)
     }
-    const since = now - this.struck
-    if (since >= 0 && since < 1) {
-      this.flash =
-        since < 0.07
-          ? 1
-          : since < 0.14
-            ? 0.25
-            : since < 0.22
-              ? 0.8
-              : 0.8 * Math.exp(-(since - 0.22) * 7)
-      if (since < 0.3) {
-        const fade = since < 0.22 ? 1 : 1 - (since - 0.22) / 0.08
-        const b = this.bolt
-        this.tileCol = BOLT_COL
-        // Three cells wide, its core lighting its tiles, so it reads on the fine grid.
-        for (let j = 0; j < b.length; j += 3) {
-          const [c, r, g] = [b[j], b[j + 1], b[j + 2]]
-          this.plot(c - 1, r, g, 0.55 * fade, BOLT_COL, 1)
-          this.plot(c + 1, r, g, 0.55 * fade, BOLT_COL, 1)
-          this.plot(c, r, g, fade, BOLT_COL, 1)
-          if (c >= 0 && c < this.cols && r >= 0 && r < this.rows)
-            this.tile[r * this.cols + c] = 0.7 * fade
-        }
+    if (a.storm > 0.5 && now >= this.nextBrew) {
+      this.brew = this.flicker(v, now)
+      this.nextBrew =
+        now + BREW_GAP[0] + Math.random() * (BREW_GAP[1] - BREW_GAP[0])
+    }
+    for (const f of [this.brew, this.bolt]) {
+      if (!f) continue
+      const b = strokeAt(f.strokes, now - f.at)
+      if (b <= 0) continue
+      if (f === this.bolt) this.flash = b * (0.35 + 0.65 * f.near)
+      const k = b * (f === this.bolt ? 0.9 : 1)
+      if (!this.glow || k > this.glow.k)
+        this.glow = { x: f.x, y: f.y, R: f.R, k }
+      // The channel shows while its stroke is bright, a little brighter than the stroke itself.
+      const seen = Math.min(1, 1.4 * b)
+      if (seen < 0.08) continue
+      this.tileCol = BOLT_COL
+      const wide = f === this.bolt ? f.near : 0
+      const p = f.path
+      for (let j = 0; j < p.length; j += 4) {
+        const [c, r, g] = [p[j], p[j + 1], p[j + 2]]
+        const s = p[j + 3] * seen
+        // Near, three cells wide; middling, two; far, a single thin line. The core lights its
+        // tile, so it reads on the fine grid.
+        if (wide > 0.35) this.plot(c + 1, r, g, 0.5 * s, BOLT_COL, 1)
+        if (wide > 0.7) this.plot(c - 1, r, g, 0.5 * s, BOLT_COL, 1)
+        this.plot(c, r, g, s, BOLT_COL, 1)
+        if (c >= 0 && c < this.cols && r >= 0 && r < this.rows)
+          this.tile[r * this.cols + c] = Math.max(
+            this.tile[r * this.cols + c],
+            (0.3 + 0.4 * wide) * s,
+          )
       }
     }
 
@@ -511,12 +593,22 @@ export class Weather {
     if (rainN > 0 || this.drops.length) {
       const slant = clamp(0.1 + 0.3 * breeze, 0.08, 0.8)
       while (this.drops.length < DROPS) {
-        const d: Drop = { x: 0, y: 0, v: 0, z: 0, land: 0, splash: 0 }
+        const d: Drop = {
+          x: 0,
+          y: 0,
+          v: 0,
+          z: 0,
+          land: 0,
+          splash: 0,
+          hit: false,
+        }
         this.dropFrom(d, v, slant)
         d.y = Math.random() * d.land
         this.drops.push(d)
       }
       const col = mix(p.fluff, p.snow, 0.5)
+      // Far drops sink into the sky's haze.
+      const farCol = mix(col, p.haze, 0.55)
       const [head, body, tail] =
         slant < 0.3
           ? [RAIN_HEAD, RAIN, RAIN_TAIL]
@@ -531,19 +623,31 @@ export class Weather {
           d.x += d.v * slant * dt
           if (d.y >= d.land) {
             d.y = d.land
-            d.splash = SPLASH_FOR
+            d.splash = SPLASH_FOR * (1 + d.z)
+            // A drop in the meadow may land on a flower, and knock it a little.
+            d.hit = d.z > 0.3 && n < rainN && v.tap(d.x, d.y, 0.05 + 0.1 * d.z)
           }
         }
         if (n >= rainN) continue
         const c = Math.floor(d.x / cw)
         const r = Math.floor(d.y / ch)
-        const s = 0.7 + 0.3 * d.z
+        // Depth: far drops are dim, short, slow and hazed; near ones bright and long.
+        const s = 0.22 + 0.68 * d.z
+        const dc = d.z < 0.4 ? farCol : col
         if (d.splash > 0) {
-          this.plot(c, r, SPLASH, s * 0.8, col, k)
+          // A dot where it lands; a nearer drop throws two droplets up and out, which fall back.
+          // On a flower, the droplets sit on the petals.
+          const t = 1 - d.splash / (SPLASH_FOR * (1 + d.z))
+          this.plot(c, r, SPLASH, s * 0.8 * (1 - t), dc, k)
+          if (d.z > 0.55 || d.hit) {
+            const up = t < 0.5 ? 1 : 0
+            this.plot(c - 1, r - up, SPRAY, s * 0.55 * (1 - t), dc, k)
+            this.plot(c + 1, r - up, SPRAY, s * 0.55 * (1 - t), dc, k)
+          }
           continue
         }
         // Nearer drops fall longer streaks; the tail fades back up the path.
-        const len = 4 + Math.round(4 * d.z)
+        const len = 2 + Math.round(7 * d.z)
         for (let j = 0; j < len; j++) {
           const g = j === 0 ? head : j === len - 1 ? tail : body
           this.plot(
@@ -551,7 +655,7 @@ export class Weather {
             r - j,
             g,
             s * (1 - (0.5 * j) / len),
-            col,
+            dc,
             k,
           )
         }
@@ -562,6 +666,9 @@ export class Weather {
     // Snow: flakes drift down and sway, the nearer ones bigger and quicker.
     const snowN = Math.round(FLAKE_COUNT * a.snow)
     if (snowN > 0 || this.flakes.length) {
+      const snowFar = mix(p.snow, p.haze, 0.45)
+      // A near flake's crest: `snow` lightened 15%, as SnowCap's is.
+      const snowLit = mix(p.snow, [255, 255, 255], 0.15)
       while (this.flakes.length < FLAKE_COUNT) {
         const f: Flake = { x: 0, y: 0, v: 0, z: 0, land: 0, phase: 0 }
         this.flakeFrom(f, v)
@@ -572,22 +679,51 @@ export class Weather {
         const f = this.flakes[n]
         f.y += f.v * dt
         f.x +=
-          (30 * breeze + 14 * Math.cos(now * 0.9 + f.phase)) * (0.5 + f.z) * dt
+          (30 * breeze + 14 * Math.cos(now * 0.9 + f.phase)) *
+          (0.3 + 1.4 * f.z * f.z) *
+          dt
         if (f.y >= f.land) this.flakeFrom(f, v)
         if (n >= snowN) continue
         const c = Math.floor((((f.x % W) + W) % W) / cw)
         const r = Math.floor(f.y / ch)
-        const fa = 0.6 + 0.4 * f.z
-        this.plot(c, r, FLAKES[f.z > 0.5 ? 2 : 1], fa, p.snow, k)
-        // The nearest flakes are bigger: a dot on each side.
-        if (f.z > 0.7)
-          for (const [dc, dr] of [
-            [-1, 0],
-            [1, 0],
-            [0, -1],
-            [0, 1],
-          ])
-            this.plot(c + dc, r + dr, FLAKES[1], fa * 0.6, p.snow, k)
+        // Far flakes are faint dots in the haze, slow and small; near ones are soft clumps, lit
+        // on their tiles so they read as solid and close, not as points of light like the stars.
+        if (f.z < 0.45) {
+          this.plot(c, r, FLAKES[0], 0.25 + 0.5 * f.z, snowFar, k)
+          continue
+        }
+        if (f.z < 0.8) {
+          this.plot(
+            c,
+            r,
+            f.z > 0.65 ? BLOB[0] : FLAKES[1],
+            0.5 + 0.4 * f.z,
+            p.snow,
+            k,
+          )
+          if (f.z > 0.65) {
+            this.tileCol = snowLit
+            this.lightTile(c, r, 0.2)
+          }
+          continue
+        }
+        const near = (f.z - 0.8) / 0.2
+        // Snow and the corona or a bolt never share a frame for long; snow takes the tiles.
+        // A near flake is a round clump on lit tiles, two cells across, and the nearest two
+        // rows deep, with a faint trail above where it fell: a star is a point and never moves.
+        this.tileCol = snowLit
+        const side = f.phase < Math.PI ? 1 : -1
+        this.plot(c, r, BLOB[1], 1, snowLit, k)
+        this.lightTile(c, r, 0.5 + 0.3 * near)
+        this.plot(c + side, r, BLOB[0], 0.8, snowLit, k)
+        this.lightTile(c + side, r, 0.3 + 0.3 * near)
+        if (near > 0.5) {
+          this.plot(c, r + 1, BLOB[0], 0.75, snowLit, k)
+          this.lightTile(c, r + 1, 0.25 + 0.3 * near)
+          this.plot(c + side, r + 1, FLAKES[1], 0.6, snowLit, k)
+          this.lightTile(c + side, r + 1, 0.15 + 0.2 * near)
+        }
+        this.plot(c, r - 1, FLAKES[0], 0.3 + 0.2 * near, snowLit, k)
       }
       if (snowN === 0) this.flakes = []
     }
@@ -621,29 +757,187 @@ export class Weather {
     }
   }
 
-  /** A bolt from under the cloud to the ridges, one cell down a row, wandering as it goes. */
-  private strike(v: WeatherView, now: number) {
-    this.struck = now
-    let c = Math.floor(((0.15 + 0.7 * Math.random()) * v.W) / v.cw)
-    let r = Math.floor((0.12 * v.H) / v.ch)
-    const end = Math.floor((v.horizon - 0.05 * v.H * Math.random()) / v.ch)
+  /**
+   * A strike: a channel out of the base of a cloud, wandering down a row at a time with
+   * branches forking off it, near or far. A near one comes down in front of the ridges to the
+   * meadow's edge; a far one goes behind them; one in five never reaches the ground.
+   */
+  private strike(v: WeatherView, now: number): Flash {
+    const near = Math.random()
+    const { c, r } = this.cloudSpot(v)
+    const ground = Math.random() < 0.8
+    const bottom = Math.floor(v.horizon / v.ch) - 1
+    const rows = ground
+      ? bottom - r
+      : Math.round((0.3 + 0.4 * Math.random()) * (bottom - r))
     const path: number[] = []
-    let lean = Math.random() < 0.5 ? -1 : 1
-    while (r < end) {
+    this.channel(
+      path,
+      v,
+      c,
+      r,
+      Math.random() < 0.5 ? -1 : 1,
+      rows,
+      1,
+      0,
+      near < 0.7,
+    )
+    // One stroke, then up to two more down the same channel, at least a tenth of a second apart,
+    // so it never flashes more than three times a second.
+    const strokes = [0, 1]
+    let t = 0
+    for (let n = Math.floor(Math.random() * 3); n > 0; n--) {
+      t += 0.1 + 0.15 * Math.random()
+      strokes.push(t, 0.5 + 0.4 * Math.random())
+    }
+    return {
+      path,
+      strokes,
+      at: now,
+      x: (c + 0.5) * v.cw,
+      y: (r + 0.5) * v.ch,
+      R: (0.08 + 0.1 * near) * v.W,
+      near,
+    }
+  }
+
+  /**
+   * A flicker inside a cloud: its light swells in the cloud a few times, and now and then a short
+   * channel shows faintly through it, crawling sideways as cloud-to-cloud lightning does.
+   */
+  private flicker(v: WeatherView, now: number): Flash {
+    const { c, r } = this.cloudSpot(v)
+    const path: number[] = []
+    if (Math.random() < 0.75)
+      for (let arm = 2 + Math.floor(Math.random() * 3); arm > 0; arm--)
+        this.crawl(path, v, c, r, 4 + Math.floor(Math.random() * 10))
+    const strokes: number[] = []
+    let t = 0
+    for (let n = 1 + Math.floor(Math.random() * 3); n > 0; n--) {
+      strokes.push(t, 0.4 + 0.6 * Math.random())
+      t += 0.12 + 0.25 * Math.random()
+    }
+    return {
+      path,
+      strokes,
+      at: now,
+      x: (c + 0.5) * v.cw,
+      y: (r + 0.5) * v.ch,
+      R: (0.07 + 0.08 * Math.random()) * v.W,
+      near: 0,
+    }
+  }
+
+  /**
+   * The cloudiest of a few dozen sky cells, away from the sun and moon, where lightning starts;
+   * with no cloud about, a cell on the top edge, so it comes from above the frame.
+   */
+  private cloudSpot(v: WeatherView) {
+    const { cx, cy, R } = v.globe
+    const shown = v.globe.sun + v.globe.moon > 0
+    let best = { c: 0, r: 0, k: -1 }
+    for (let n = 0; n < 48; n++) {
+      const x = (0.06 + 0.88 * Math.random()) * v.W
+      const y = (0.04 + 0.5 * Math.random()) * v.horizon
+      if (shown && Math.hypot(x - cx, (y - cy) * 0.8) < 2 * R) continue
+      const c = Math.floor(x / v.cw)
+      const r = Math.floor(y / v.ch)
+      const k = v.cloud(c, r)
+      if (k > best.k) best = { c, r, k }
+    }
+    if (best.k < 0.15) {
+      let x = (0.1 + 0.8 * Math.random()) * v.W
+      if (shown && Math.abs(x - cx) < 2 * R)
+        x = cx + Math.sign(x - cx || 1) * 2 * R
+      best = { c: Math.floor(x / v.cw), r: 0, k: 0 }
+    }
+    return best
+  }
+
+  /**
+   * One channel, a row at a time: leaning one way, now and then the other, now and then jogging
+   * along a row; with branches forking off that wander further sideways and fade. Inside a cloud
+   * it shows dimly through it; a far one goes behind the land.
+   */
+  private channel(
+    path: number[],
+    v: WeatherView,
+    c: number,
+    r: number,
+    lean: number,
+    rows: number,
+    s: number,
+    depth: number,
+    behind: boolean,
+  ) {
+    for (let k = 0; k < rows; k++) {
+      const x = (c + 0.5) * v.cw
+      const y = (r + 0.5) * v.ch
+      if (behind && y > v.globe.skyline(x)) return
       const roll = Math.random()
-      if (roll < 0.08) lean = -lean
-      const dc = roll < 0.45 ? lean : roll < 0.6 ? -lean : 0
-      path.push(c, r, dc < 0 ? BOLT.left : dc > 0 ? BOLT.right : BOLT.down)
+      if (roll < 0.1) lean = -lean
+      const through = s * (1 - 0.6 * v.cloud(c, r))
+      if (roll > 0.96 && depth === 0) {
+        for (let n = 1 + Math.floor(Math.random() * 3); n > 0; n--) {
+          path.push(c, r, BOLT.across, through)
+          c += lean
+        }
+        continue
+      }
+      // A branch leans harder, so it spreads away from the channel it left.
+      const side = depth ? 0.6 : 0.45
+      const dc = roll < side ? lean : roll < side + 0.15 ? -lean : 0
+      path.push(
+        c,
+        r,
+        dc < 0 ? BOLT.left : dc > 0 ? BOLT.right : BOLT.down,
+        through,
+      )
       c += dc
       r++
+      if (depth < 2 && Math.random() < (depth ? 0.04 : 0.08) * (1 - k / rows))
+        this.channel(
+          path,
+          v,
+          c,
+          r,
+          Math.random() < 0.5 ? -1 : 1,
+          Math.round((4 + Math.random() * 0.5 * (rows - k)) / (depth + 1)),
+          s * 0.6,
+          depth + 1,
+          behind,
+        )
     }
-    this.bolt = path
+  }
+
+  /** One arm of a flicker: crawling through the cloud, mostly sideways, shown only within it. */
+  private crawl(
+    path: number[],
+    v: WeatherView,
+    c: number,
+    r: number,
+    n: number,
+  ) {
+    let dc = Math.random() < 0.5 ? -1 : 1
+    for (; n > 0; n--) {
+      const roll = Math.random()
+      if (roll < 0.12) dc = -dc
+      const dr = roll < 0.3 ? 1 : roll < 0.45 ? -1 : 0
+      const glyph =
+        dr === 0 ? BOLT.across : dc * dr > 0 ? BOLT.right : BOLT.left
+      const k = v.cloud(c, r)
+      if (k > 0.1) path.push(c, r, glyph, 0.5 + 0.4 * k)
+      c += dc
+      r = Math.max(0, r + dr)
+    }
   }
 
   private dropFrom(d: Drop, v: WeatherView, slant: number) {
-    d.z = Math.random()
-    d.v = (0.7 + 0.5 * d.z) * v.H * 1.1
-    d.land = this.landing(v)
+    // Most rain is far off; a few drops pass close.
+    d.z = Math.random() ** 1.4
+    d.v = (0.45 + 0.85 * d.z) * v.H * 1.1
+    d.land = this.landing(v, d.z)
+    d.hit = false
     d.y = -Math.random() * 0.25 * v.H
     // Leaning drops start further left, so they cover the left edge too.
     d.x = Math.random() * (v.W + slant * v.H) - slant * v.H
@@ -651,9 +945,9 @@ export class Weather {
   }
 
   private flakeFrom(f: Flake, v: WeatherView) {
-    f.z = Math.random()
-    f.v = (0.04 + 0.05 * f.z) * v.H
-    f.land = this.landing(v)
+    f.z = Math.random() ** 1.6
+    f.v = (0.03 + 0.1 * f.z * f.z) * v.H
+    f.land = this.landing(v, f.z)
     f.y = -Math.random() * 0.1 * v.H
     f.x = Math.random() * v.W
     f.phase = hash(f.x, f.z) * 6.28
@@ -672,5 +966,6 @@ export class Weather {
     for (const i of this.touched) this.alpha[i] = this.tile[i] = 0
     this.touched = []
     this.lastPaint = -1
+    this.glow = null
   }
 }
