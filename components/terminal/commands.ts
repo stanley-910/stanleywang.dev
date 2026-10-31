@@ -24,8 +24,9 @@ export type Ctx = {
   go: (path: string) => void
   /** A page on the site, by its URL. */
   visit: (url: string) => void
-  /** Prints a text file from the site once it arrives. */
-  cat: (url: string) => void
+  /** A text file from the site: its lines if it's here already, or none now
+   * and printed once it arrives. */
+  cat: (url: string) => string[]
   setHour: (hour: number | null) => void
   setWind: (wind: number) => void
   gust: () => void
@@ -185,6 +186,9 @@ const POSTS = [...BLOG_POSTS, ...EXPERIENCE_POSTS].sort((a, b) =>
   b.date.localeCompare(a.date),
 )
 const tail = (url: string) => url.split('/').pop() ?? url
+/** Where each post's markdown is served, for cat (app/api/md). */
+const source = (link: string) => `/api/md${link}`
+export const POST_SOURCES = POSTS.map((p) => source(p.link))
 
 /** What's in a folder, from the site's own lists: the writing page's posts,
  * the photos page's prints, the projects page's cards. */
@@ -229,7 +233,7 @@ function folder(path: string): Item[] {
           name,
           shown: name,
           open: (ctx: Ctx) => (ctx.visit(p.link), [`Opening ${p.title}...`]),
-          cat: (ctx: Ctx) => (ctx.cat(`/api/md${p.link}`), []),
+          cat: (ctx: Ctx) => ctx.cat(source(p.link)),
         }
       })
     case '~/photos':

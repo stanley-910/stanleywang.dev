@@ -20,6 +20,7 @@ import {
   hhmm,
   itemsAt,
   markdownLines,
+  POST_SOURCES,
   parse,
   pathFor,
   phase,
@@ -317,17 +318,21 @@ const rectOf = (el: Element): Rect => {
   return { x: r.left, y: r.top, w: r.width, h: r.height }
 }
 
-/** Where a window at x, y of size w×h may sit without covering the power button: it stops
- * above the button's corner, or, too tall for that, beside it. */
-const clearOfPower = (x: number, y: number, w: number, h: number) => {
-  const btn = document.querySelector('.terminal-power')
-  if (!btn) return { x, y }
-  const b = btn.getBoundingClientRect()
-  const gap = 12
-  if (x + w <= b.left - gap || y + h <= b.top - gap) return { x, y }
-  const above = b.top - gap - h
-  if (above >= 0) return { x, y: above }
-  return { x: Math.max(0, b.left - gap - w), y }
+// Text files from the site, fetched once a visit: a post's markdown is asked for as
+// soon as the shell is in writing, so cat prints it with the command.
+const texts = new Map<string, Promise<string>>()
+const arrived = new Map<string, string>()
+const fetchText = (url: string) => {
+  let text = texts.get(url)
+  if (!text) {
+    text = fetch(url).then((r) => (r.ok ? r.text() : Promise.reject()))
+    text.then(
+      (t) => arrived.set(url, t),
+      () => texts.delete(url),
+    )
+    texts.set(url, text)
+  }
+  return text
 }
 
 export function Terminal() {
@@ -338,6 +343,8 @@ export function Terminal() {
   /** Popping out, before it unmounts. */
   const [closing, setClosing] = useState(false)
   const [waving, setWaving] = useState(false)
+  /** Waiting on a file for cat; the prompt stays away till it prints. */
+  const [busy, setBusy] = useState(false)
   const [entries, setEntries] = useState<Entry[]>([])
   const [typed, setTyped] = useState('')
   const [view, setView] = useState<'shell' | 'files'>('shell')
@@ -477,6 +484,10 @@ export function Terminal() {
     return () => document.removeEventListener('click', close)
   }, [menu])
 
+  useEffect(() => {
+    if (open && path === '~/writing') POST_SOURCES.forEach(fetchText)
+  }, [open, path])
+
   // Once the boot is done, the prompt takes the keys.
   const booting = entries.some((e) => e.kind === 'boot')
   useEffect(() => {
@@ -512,11 +523,16 @@ export function Terminal() {
         history: history.current,
         go: (p) => router.push(routeFor(p)),
         visit: (url) => router.push(url),
+        // The prompt waits for a file that's still on its way, as a shell does.
         cat: (url) => {
-          fetch(url)
-            .then((r) => (r.ok ? r.text() : Promise.reject()))
+          const here = arrived.get(url)
+          if (here !== undefined) return markdownLines(here)
+          setBusy(true)
+          fetchText(url)
             .then((text) => print(markdownLines(text)))
             .catch(() => print([`{e|cat: couldn't read ${url}}`]))
+            .finally(() => setBusy(false))
+          return []
         },
         setHour: (h) => {
           setHour(h)
@@ -563,6 +579,7 @@ export function Terminal() {
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const h = hist.current
     if (e.key === 'Enter') {
+      if (busy) return
       const v = typed
       setTyped('')
       execute(v)
@@ -580,9 +597,8 @@ export function Terminal() {
     }
   }
 
-  // Let go mid-swing and it's tossed: it glides on with the pointer's last speed, slows
-  // as if on felt, bounces softly off the screen's edges and the power button, and leans
-  // into the throw while it flies.
+  // Let go while it's moving and it slides on a little with the pointer's last speed,
+  // easing to a stop, and settles against the screen's edge if it reaches one.
   const flight = useRef(0)
   const toss = (
     x: number,
@@ -604,28 +620,22 @@ export function Terminal() {
     const step = (now: number) => {
       const dt = Math.min(32, now - t)
       t = now
-      const k = Math.exp(-dt / 190)
+      const k = Math.exp(-dt / 120)
       vx *= k
       vy *= k
       x += vx * dt
       y += vy * dt
       if (x < 0 || x > maxX) {
         x = x < 0 ? 0 : maxX
-        vx *= -0.45
+        vx = 0
       }
       if (y < 0 || y > maxY) {
         y = y < 0 ? 0 : maxY
-        vy *= -0.45
+        vy = 0
       }
-      const c = clearOfPower(x, y, w, h)
-      if (c.y !== y) vy = -Math.abs(vy) * 0.45
-      if (c.x !== x) vx = -Math.abs(vx) * 0.45
-      x = c.x
-      y = c.y
-      const done = Math.hypot(vx, vy) < 0.02
+      const done = Math.hypot(vx, vy) < 0.01
       el.style.left = `${x}px`
       el.style.top = `${y}px`
-      el.style.rotate = done ? '' : `${Math.max(-3, Math.min(3, vx * 1.6))}deg`
       if (done) {
         flight.current = 0
         setPos({ x, y })
@@ -638,13 +648,12 @@ export function Terminal() {
     flight.current = 0
     const el = win.current
     if (!el) return
-    el.style.rotate = ''
     if (el.style.left)
       setPos({ x: parseFloat(el.style.left), y: parseFloat(el.style.top) })
   }
   useEffect(() => () => cancelAnimationFrame(flight.current), [])
 
-  // Drag by the title bar, kept on screen and off the power button.
+  // Drag by the title bar, kept on screen.
   const onDragStart = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('button') || !win.current) return
     if (flight.current) land()
@@ -665,12 +674,10 @@ export function Terminal() {
       moved = true
       trail.push({ t: ev.timeStamp, x: ev.clientX, y: ev.clientY })
       while (trail.length > 2 && ev.timeStamp - trail[0].t > 80) trail.shift()
-      at = clearOfPower(
-        Math.max(0, Math.min(window.innerWidth - r.w, r.x + dx)),
-        Math.max(0, Math.min(window.innerHeight - 30, r.y + dy)),
-        r.w,
-        r.h,
-      )
+      at = {
+        x: Math.max(0, Math.min(window.innerWidth - r.w, r.x + dx)),
+        y: Math.max(0, Math.min(window.innerHeight - 30, r.y + dy)),
+      }
       setPos(at)
     }
     const up = (ev: PointerEvent) => {
@@ -689,8 +696,8 @@ export function Terminal() {
       let vx = (ev.clientX - first.x) / span
       let vy = (ev.clientY - first.y) / span
       const speed = Math.hypot(vx, vy)
-      if (speed < 0.35) return
-      const cap = Math.min(1, 4 / speed)
+      if (speed < 0.2) return
+      const cap = Math.min(1, 2 / speed)
       vx *= cap
       vy *= cap
       toss(at.x, at.y, vx, vy, r.w, r.h)
@@ -700,8 +707,7 @@ export function Terminal() {
   }
 
   // Resize from the grow box in the status bar's corner: the window pins its top-left where
-  // it is and the corner follows the pointer, no smaller than it opens, kept on screen and
-  // clear of the power button below it.
+  // it is and the corner follows the pointer, no smaller than it opens and kept on screen.
   const onGrowStart = (e: React.PointerEvent) => {
     if (!win.current) return
     if (flight.current) land()
@@ -721,7 +727,7 @@ export function Terminal() {
         ),
         h: Math.max(
           min.h,
-          Math.min(window.innerHeight - r.y - 62, r.h + ev.clientY - sy),
+          Math.min(window.innerHeight - r.y - 8, r.h + ev.clientY - sy),
         ),
       })
     const up = () => {
@@ -900,7 +906,10 @@ export function Terminal() {
                     )}
                   </pre>
                   {!entries.some((e) => e.kind === 'boot') && (
-                    <div className={typing ? 'line typing' : 'line'}>
+                    <div
+                      className={typing ? 'line typing' : 'line'}
+                      style={busy ? { opacity: 0 } : undefined}
+                    >
                       <Prompt path={path} />
                       <span className="typed">{typed}</span>
                       <span className="cur" aria-hidden />
