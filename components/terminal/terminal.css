@@ -353,23 +353,21 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
   color: var(--k-on-plate);
 }
 
+/* The view button: one pixel icon for the other view, a folder from the shell and a
+   prompt from the files, drawn like the close x. Pressed, it inverts. */
 .terminal-menu .views {
   display: flex;
   align-self: center;
-  margin: 0 3px 0 auto;
-  border: 1px solid var(--k-line);
-  box-shadow: 1px 1px 0 var(--k-hi);
-}
-
-/* Shell and Files as pixel icons, a prompt and a folder, drawn like the close x. */
-.terminal-menu .views button {
-  display: flex;
   align-items: center;
-  height: 16px;
-  padding: 0 8px;
+  justify-content: center;
+  width: 25px;
+  height: 17px;
+  margin: 0 3px 0 auto;
+  padding: 0;
   color: var(--k-ink);
   background: var(--k-paper);
-  border: 0;
+  border: 1px solid var(--k-line);
+  box-shadow: 1px 1px 0 var(--k-hi);
   cursor: pointer;
 }
 
@@ -379,11 +377,7 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
   shape-rendering: crispEdges;
 }
 
-.terminal-menu .views button + button {
-  border-left: 1px solid var(--k-line);
-}
-
-.terminal-menu .views button[aria-pressed='true'] {
+.terminal-menu .views:active {
   background: var(--k-plate);
   color: var(--k-on-plate);
 }

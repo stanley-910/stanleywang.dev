@@ -896,24 +896,15 @@ export function Terminal() {
                   )}
                 </div>
               ))}
-              <span className="views">
-                <button
-                  aria-pressed={view === 'shell'}
-                  aria-label="Shell"
-                  title="Shell"
-                  onClick={() => setView('shell')}
-                >
-                  <Pixels rows={PROMPT_ICON} />
-                </button>
-                <button
-                  aria-pressed={view === 'files'}
-                  aria-label="Files"
-                  title="Files"
-                  onClick={() => setView('files')}
-                >
-                  <Pixels rows={FOLDER_ICON} />
-                </button>
-              </span>
+              {/* One button to the other view: the folder from the shell, the prompt from the files. */}
+              <button
+                className="views"
+                aria-label={view === 'shell' ? 'Files' : 'Shell'}
+                title={view === 'shell' ? 'Files' : 'Shell'}
+                onClick={() => setView(view === 'shell' ? 'files' : 'shell')}
+              >
+                <Pixels rows={view === 'shell' ? FOLDER_ICON : PROMPT_ICON} />
+              </button>
             </nav>
 
             <div className="terminal-body">
