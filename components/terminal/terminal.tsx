@@ -19,6 +19,7 @@ import {
   complete,
   hhmm,
   itemsAt,
+  markdownLines,
   parse,
   pathFor,
   phase,
@@ -501,6 +502,8 @@ export function Terminal() {
         return
       }
       let cleared = false
+      const print = (lines: string[]) =>
+        setEntries((e) => [...e, { kind: 'out', lines }])
       const ctx: Ctx = {
         path,
         hour,
@@ -508,6 +511,13 @@ export function Terminal() {
         wind: windRef.current,
         history: history.current,
         go: (p) => router.push(routeFor(p)),
+        visit: (url) => router.push(url),
+        cat: (url) => {
+          fetch(url)
+            .then((r) => (r.ok ? r.text() : Promise.reject()))
+            .then((text) => print(markdownLines(text)))
+            .catch(() => print([`{e|cat: couldn't read ${url}}`]))
+        },
         setHour: (h) => {
           setHour(h)
           if (h === null) {
@@ -558,7 +568,7 @@ export function Terminal() {
       execute(v)
     } else if (e.key === 'Tab') {
       e.preventDefault()
-      setTyped(complete(typed))
+      setTyped(complete(typed, path))
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
       if (h.at > 0) setTyped(h.list[--h.at])
@@ -570,13 +580,82 @@ export function Terminal() {
     }
   }
 
+  // Let go mid-swing and it's tossed: it glides on with the pointer's last speed, slows
+  // as if on felt, bounces softly off the screen's edges and the power button, and leans
+  // into the throw while it flies.
+  const flight = useRef(0)
+  const toss = (
+    x: number,
+    y: number,
+    vx: number,
+    vy: number,
+    w: number,
+    h: number,
+  ) => {
+    const el = win.current
+    if (!el) return
+    const maxX = Math.max(0, window.innerWidth - w)
+    const maxY = Math.max(
+      0,
+      window.innerHeight - h,
+      Math.min(y, window.innerHeight - 30),
+    )
+    let t = performance.now()
+    const step = (now: number) => {
+      const dt = Math.min(32, now - t)
+      t = now
+      const k = Math.exp(-dt / 190)
+      vx *= k
+      vy *= k
+      x += vx * dt
+      y += vy * dt
+      if (x < 0 || x > maxX) {
+        x = x < 0 ? 0 : maxX
+        vx *= -0.45
+      }
+      if (y < 0 || y > maxY) {
+        y = y < 0 ? 0 : maxY
+        vy *= -0.45
+      }
+      const c = clearOfPower(x, y, w, h)
+      if (c.y !== y) vy = -Math.abs(vy) * 0.45
+      if (c.x !== x) vx = -Math.abs(vx) * 0.45
+      x = c.x
+      y = c.y
+      const done = Math.hypot(vx, vy) < 0.02
+      el.style.left = `${x}px`
+      el.style.top = `${y}px`
+      el.style.rotate = done ? '' : `${Math.max(-3, Math.min(3, vx * 1.6))}deg`
+      if (done) {
+        flight.current = 0
+        setPos({ x, y })
+      } else flight.current = requestAnimationFrame(step)
+    }
+    flight.current = requestAnimationFrame(step)
+  }
+  const land = () => {
+    cancelAnimationFrame(flight.current)
+    flight.current = 0
+    const el = win.current
+    if (!el) return
+    el.style.rotate = ''
+    if (el.style.left)
+      setPos({ x: parseFloat(el.style.left), y: parseFloat(el.style.top) })
+  }
+  useEffect(() => () => cancelAnimationFrame(flight.current), [])
+
   // Drag by the title bar, kept on screen and off the power button.
   const onDragStart = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('button') || !win.current) return
-    const r = rectOf(win.current)
+    if (flight.current) land()
+    const el = win.current
+    const r = rectOf(el)
     const sx = e.clientX
     const sy = e.clientY
     let moved = false
+    let at = { x: r.x, y: r.y }
+    // The last few pointer samples, for the speed it's let go at.
+    const trail: { t: number; x: number; y: number }[] = []
     const bar = e.currentTarget as HTMLElement
     bar.setPointerCapture(e.pointerId)
     const move = (ev: PointerEvent) => {
@@ -584,18 +663,37 @@ export function Terminal() {
       const dy = ev.clientY - sy
       if (!moved && Math.abs(dx) + Math.abs(dy) < 4) return
       moved = true
-      setPos(
-        clearOfPower(
-          Math.max(0, Math.min(window.innerWidth - r.w, r.x + dx)),
-          Math.max(0, Math.min(window.innerHeight - 30, r.y + dy)),
-          r.w,
-          r.h,
-        ),
+      trail.push({ t: ev.timeStamp, x: ev.clientX, y: ev.clientY })
+      while (trail.length > 2 && ev.timeStamp - trail[0].t > 80) trail.shift()
+      at = clearOfPower(
+        Math.max(0, Math.min(window.innerWidth - r.w, r.x + dx)),
+        Math.max(0, Math.min(window.innerHeight - 30, r.y + dy)),
+        r.w,
+        r.h,
       )
+      setPos(at)
     }
-    const up = () => {
+    const up = (ev: PointerEvent) => {
       bar.removeEventListener('pointermove', move)
       bar.removeEventListener('pointerup', up)
+      const first = trail[0]
+      const span = first && ev.timeStamp - first.t
+      if (
+        !moved ||
+        !first ||
+        span < 8 ||
+        ev.timeStamp - trail[trail.length - 1].t > 60
+      )
+        return
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+      let vx = (ev.clientX - first.x) / span
+      let vy = (ev.clientY - first.y) / span
+      const speed = Math.hypot(vx, vy)
+      if (speed < 0.35) return
+      const cap = Math.min(1, 4 / speed)
+      vx *= cap
+      vy *= cap
+      toss(at.x, at.y, vx, vy, r.w, r.h)
     }
     bar.addEventListener('pointermove', move)
     bar.addEventListener('pointerup', up)
@@ -606,6 +704,7 @@ export function Terminal() {
   // clear of the power button below it.
   const onGrowStart = (e: React.PointerEvent) => {
     if (!win.current) return
+    if (flight.current) land()
     e.preventDefault()
     const r = rectOf(win.current)
     const min = { w: Math.min(r.w, 520), h: Math.min(r.h, 300) }

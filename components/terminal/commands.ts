@@ -1,4 +1,11 @@
-import { EMAIL, PROJECTS, WORK_EXPERIENCE } from '@/app/data'
+import {
+  BLOG_POSTS,
+  EMAIL,
+  EXPERIENCE_POSTS,
+  PROJECTS,
+  WORK_EXPERIENCE,
+} from '@/app/data'
+import { PHOTOS } from '@/app/photos/photos'
 
 // The terminal's commands (design/circadian-meadow/components/Terminal). Each
 // returns its output as lines of light markup: {g|text} a command, {u|text}
@@ -15,6 +22,10 @@ export type Ctx = {
   wind: number
   history: string[]
   go: (path: string) => void
+  /** A page on the site, by its URL. */
+  visit: (url: string) => void
+  /** Prints a text file from the site once it arrives. */
+  cat: (url: string) => void
   setHour: (hour: number | null) => void
   setWind: (wind: number) => void
   gust: () => void
@@ -119,7 +130,7 @@ const HELP = [
   '  {g|projects}  List my most recent projects',
   '  {g|work}      List a timeline of my work experience',
   '  {g|github}  {g|linkedin}  {g|resume}  {g|email}',
-  '  {g|cd}  {g|ls}  {g|cat}  {g|tree}',
+  '  {g|cd}  {g|ls}  {g|cat}  {g|open}  {g|tree}',
   '',
   '  {g|time}      Set the hour: time 19:00, or time now',
   '  {g|wind}      Set the breeze: wind 0.6',
@@ -152,6 +163,7 @@ const NAMES = [
   'mkdir',
   'touch',
   'vim',
+  'open',
   'time',
   'wind',
   'regrow',
@@ -161,23 +173,124 @@ const NAMES = [
 /** Off home, the meadow commands say where the meadow is. */
 const elsewhere = ["{m|The meadow's at home. 'cd ~' to see it.}"]
 
-/** What ls shows at a path, marked up. */
-function listing(path: string) {
-  if (path === '~')
-    return [
-      ...PAGES.slice(1).map((p) => `{h|${p}/}`),
-      ...Object.keys(FILES),
-      ...EXES.map((e) => `{g|${e}}`),
-      'resume.pdf',
-    ]
-  if (path === '~/projects') return PROJECTS.map((p) => `{h|${p.slug}/}`)
+/** Something in a folder: how ls shows it, what open does, and what cat prints. */
+type Item = {
+  name: string
+  shown: string
+  open: (ctx: Ctx) => string[]
+  cat?: (ctx: Ctx) => string[]
+}
+
+const POSTS = [...BLOG_POSTS, ...EXPERIENCE_POSTS].sort((a, b) =>
+  b.date.localeCompare(a.date),
+)
+const tail = (url: string) => url.split('/').pop() ?? url
+
+/** What's in a folder, from the site's own lists: the writing page's posts,
+ * the photos page's prints, the projects page's cards. */
+function folder(path: string): Item[] {
+  switch (path) {
+    case '~':
+      return [
+        ...PAGES.slice(1).map((p) => ({
+          name: `${p}/`,
+          shown: `{h|${p}/}`,
+          open: (ctx: Ctx) => (ctx.go(`~/${p}`), []),
+        })),
+        ...Object.keys(FILES).map((f) => ({
+          name: f,
+          shown: f,
+          open: () => [...FILES[f]],
+          cat: () => [...FILES[f]],
+        })),
+        ...EXES.map((e) => ({
+          name: e,
+          shown: `{g|${e}}`,
+          open: (ctx: Ctx) => runExe(e, ctx),
+        })),
+        {
+          name: 'resume.pdf',
+          shown: 'resume.pdf',
+          open: (ctx: Ctx) => (ctx.open('/resume'), ['Opening resume...']),
+        },
+      ]
+    case '~/projects':
+      return PROJECTS.map((p) => ({
+        name: `${p.slug}/`,
+        shown: `{h|${p.slug}/}`,
+        open: (ctx: Ctx) => (
+          ctx.visit(`/projects#${p.slug}`), [`Opening ${p.name}...`]
+        ),
+      }))
+    case '~/writing':
+      return POSTS.map((p) => {
+        const name = `${tail(p.link)}.md`
+        return {
+          name,
+          shown: name,
+          open: (ctx: Ctx) => (ctx.visit(p.link), [`Opening ${p.title}...`]),
+          cat: (ctx: Ctx) => (ctx.cat(`/api/md${p.link}`), []),
+        }
+      })
+    case '~/photos':
+      return PHOTOS.flatMap((p) => (p.src ? [p.src] : [])).map((src) => {
+        const name = tail(src)
+        return {
+          name,
+          shown: name,
+          open: (ctx: Ctx) => (ctx.go('~/photos'), [`Opening ${name}...`]),
+          cat: () => [`cat: ${name}: a photo, not text. Try 'open ${name}'`],
+        }
+      })
+  }
   return []
+}
+
+/** A folder named from where the shell is: `writing`, `..`, `~/photos`. */
+function dirOf(arg: string, path: string): string | null {
+  const d = arg
+    .replace(/\/+$/, '')
+    .replace(/^~\/?/, '')
+    .replace(/^\.\/?/, '')
+  if (!d || d === '..' || d === 'meadow')
+    return d || arg.startsWith('~') ? '~' : path
+  if (PAGES.includes(d)) return `~/${d}`
+  return null
+}
+
+/** An item named from where the shell is: `no-hands.txt`, `writing/dijkstras-algorithm.md`. */
+function itemOf(arg: string, path: string): Item | undefined {
+  const a = arg.replace(/^\.\//, '')
+  const at = a.lastIndexOf('/', a.length - 2)
+  const dir = at < 0 ? path : dirOf(a.slice(0, at), path)
+  if (!dir) return
+  const name = a.slice(at + 1).toLowerCase()
+  return folder(dir).find(
+    (it) =>
+      it.name.toLowerCase() === name || it.name.toLowerCase() === `${name}/`,
+  )
 }
 
 /** The status bar's count, as a Finder window's reads. */
 export function itemsAt(path: string) {
-  const n = listing(path).length
+  const n = folder(path).length
   return n === 1 ? '1 item' : `${n} items`
+}
+
+function runExe(exe: string, ctx: Ctx): string[] {
+  if (exe === 'waves.exe') {
+    ctx.waves()
+    if (ctx.meadowHere()) ctx.gust()
+    return ['Running waves.exe...', '{m|press any key to stop}']
+  }
+  if (exe === 'datamines.exe') {
+    ctx.go('~/projects')
+    return [
+      'Running datamines.exe...',
+      '{e|datamines.exe: needs a Windows build.} {m|Opening the project instead.}',
+    ]
+  }
+  return [`./${exe}: Permission denied or not an executable`]
 }
 
 export function run(input: string, ctx: Ctx): string[] {
@@ -188,22 +301,7 @@ export function run(input: string, ctx: Ctx): string[] {
   const a = (args[1] ?? '').toLowerCase()
   ctx.history.push(raw)
 
-  if (cmd.startsWith('./')) {
-    const exe = cmd.slice(2)
-    if (exe === 'waves.exe') {
-      ctx.waves()
-      if (ctx.meadowHere()) ctx.gust()
-      return ['Running waves.exe...', '{m|press any key to stop}']
-    }
-    if (exe === 'datamines.exe') {
-      ctx.go('~/projects')
-      return [
-        'Running datamines.exe...',
-        '{e|datamines.exe: needs a Windows build.} {m|Opening the project instead.}',
-      ]
-    }
-    return [`${cmd}: Permission denied or not an executable`]
-  }
+  if (cmd.startsWith('./')) return runExe(cmd.slice(2), ctx)
 
   switch (cmd) {
     case 'help':
@@ -243,15 +341,30 @@ export function run(input: string, ctx: Ctx): string[] {
       )
       return out
     }
-    case 'ls':
-      return [listing(ctx.path).join('  ')]
+    case 'ls': {
+      const dir = args[1] ? dirOf(args[1], ctx.path) : ctx.path
+      if (!dir) return [`ls: ${args[1]}: No such file or directory`]
+      const items = folder(dir)
+      return items.length ? [items.map((it) => it.shown).join('  ')] : []
+    }
     case 'cat': {
       if (!args[1]) return ['Usage: cat <file>']
-      const name = args[1].replace(/^\.\//, '')
-      if (ctx.path === '~' && FILES[name]) return [...FILES[name]]
-      if (PAGES.includes(name.replace(/\/$/, '')))
-        return [`cat: ${args[1]}: Is a directory`]
-      return [`cat: ${args[1]}: No such file or directory`]
+      const it = itemOf(args[1], ctx.path)
+      if (!it) return [`cat: ${args[1]}: No such file or directory`]
+      if (it.name.endsWith('/')) return [`cat: ${args[1]}: Is a directory`]
+      return it.cat
+        ? it.cat(ctx)
+        : [`cat: ${args[1]}: not a text file. Try 'open ${args[1]}'`]
+    }
+    case 'open': {
+      if (!args[1]) return ['Usage: open <file>']
+      const it = itemOf(args[1], ctx.path)
+      if (!it) {
+        const dir = dirOf(args[1], ctx.path)
+        if (dir) return ctx.go(dir), []
+        return [`open: ${args[1]}: No such file or directory`]
+      }
+      return it.open(ctx)
     }
     case 'cd': {
       const to = a.replace(/\/$/, '').replace(/^~\//, '')
@@ -275,14 +388,27 @@ export function run(input: string, ctx: Ctx): string[] {
           (p, i) =>
             `│   ${i === PROJECTS.length - 1 ? '└' : '├'}── {h|${p.slug}}`,
         ),
-        '├── {h|photos}',
-        '├── {h|writing}',
-        '├── {h|music}',
+        ...['photos', 'writing', 'music'].flatMap((d) => {
+          const items = folder(`~/${d}`)
+          return [
+            `├── {h|${d}}`,
+            ...items.map(
+              (it, i) =>
+                `│   ${i === items.length - 1 ? '└' : '├'}── ${it.shown}`,
+            ),
+          ]
+        }),
         ...Object.keys(FILES).map((f) => `├── ${f}`),
         ...EXES.map((e) => `├── {g|${e}}`),
         '└── resume.pdf',
         '',
-        `4 directories, ${Object.keys(FILES).length + EXES.length + 1} files`,
+        `${4 + PROJECTS.length} directories, ${
+          Object.keys(FILES).length +
+          EXES.length +
+          1 +
+          folder('~/photos').length +
+          folder('~/writing').length
+        } files`,
       ]
     case 'github':
       ctx.open(GITHUB)
@@ -379,15 +505,16 @@ export function run(input: string, ctx: Ctx): string[] {
   return [`shell: command not found: ${args[0]}. Try 'help' to get started.`]
 }
 
-export function complete(s: string) {
+export function complete(s: string, path: string) {
   const parts = s.split(' ')
+  const here = folder(path).map((it) => it.name)
   const pool =
     parts.length === 1
       ? NAMES
       : parts[0] === 'cd'
         ? PAGES
-        : parts[0] === 'cat'
-          ? Object.keys(FILES)
+        : ['cat', 'open', 'ls'].includes(parts[0])
+          ? here
           : parts[0] === 'work'
             ? WORK.map((w) => w.key)
             : []
@@ -396,6 +523,17 @@ export function complete(s: string) {
   if (hits.length !== 1) return s
   parts[parts.length - 1] = hits[0]
   return parts.join(' ') + (parts.length === 1 ? ' ' : '')
+}
+
+/** A post's markdown as output lines: headings stand out, fences and the
+ * front matter's rules go quiet. Lines with braces stay plain. */
+export function markdownLines(md: string) {
+  return md.split('\n').map((line) => {
+    if (/[{}]/.test(line) || !line) return line
+    if (/^#{1,6} /.test(line)) return `{u|${line}}`
+    if (/^(```|---$)/.test(line)) return `{m|${line}}`
+    return line
+  })
 }
 
 /** One output line's markup as [text, class] runs. */
