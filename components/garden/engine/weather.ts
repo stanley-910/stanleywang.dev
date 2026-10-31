@@ -36,7 +36,7 @@ const CORONA = [code('·'), code(':')]
 export const SHADOW = code('·')
 
 /** Most drops, flakes and seeds in the air at once. */
-const DROPS = 560
+const DROPS = 960
 const FLAKE_COUNT = 520
 const SEED_COUNT = 70
 /** How long a drop's splash shows, in s. */
@@ -643,9 +643,17 @@ export class Weather {
         0.62,
         (0.2126 * hr + 0.7152 * hg + 0.0722 * hb) / 255,
       )
-      const col = mix(mix(p.fluff, p.snow, 0.5), p.ground, 0.65 * pale)
+      const light = mix(p.fluff, p.snow, 0.5)
+      const col = mix(light, p.ground, 0.65 * pale)
       // Far drops sink into the sky's haze, less by day so the curtain still reads.
       const farCol = mix(col, p.haze, 0.55 - 0.25 * pale)
+      // Over the land, dark at any hour, drops and their splashes stay pale.
+      const landFar = mix(light, p.haze, 0.45)
+      const landRow = Math.floor(v.horizon / ch)
+      // A splash lights its cell for a moment, so it reads in the grass's own glyphs; unless
+      // lightning holds the tiles' colour this frame.
+      const splashTile = this.flash === 0 && !this.glow
+      if (splashTile) this.tileCol = light
       const [head, body, tail] =
         slant < 0.3
           ? [RAIN_HEAD, RAIN, RAIN_TAIL]
@@ -670,17 +678,23 @@ export class Weather {
         const c = Math.floor(d.x / cw)
         const r = Math.floor(d.y / ch)
         // Depth: far drops are dim, short, slow and hazed; near ones bright and long.
-        const s = Math.min(1, (0.22 + 0.68 * d.z) * (1 + 0.7 * pale))
+        const base = 0.22 + 0.68 * d.z
+        const s = Math.min(1, base * (1 + 0.7 * pale))
         const dc = d.z < 0.4 ? farCol : col
+        const lc = d.z < 0.4 ? landFar : light
         if (d.splash > 0) {
-          // A dot where it lands; a nearer drop throws two droplets up and out, which fall back.
+          // A dot where it lands; most drops throw two droplets up and out, which fall back.
           // On a flower, the droplets sit on the petals.
           const t = 1 - d.splash / (SPLASH_FOR * (1 + d.z))
-          this.plot(c, r, SPLASH, s * 0.8 * (1 - t), dc, k)
-          if (d.z > 0.55 || d.hit) {
+          const sc = r >= landRow ? lc : dc
+          const ss = r >= landRow ? Math.min(1, base * 1.3) : s
+          this.plot(c, r, SPLASH, ss * (1 - 0.6 * t), sc, k)
+          if (splashTile && d.z > 0.3)
+            this.lightTile(c, r, (0.1 + 0.2 * d.z) * (1 - t))
+          if (d.z > 0.4 || d.hit) {
             const up = t < 0.5 ? 1 : 0
-            this.plot(c - 1, r - up, SPRAY, s * 0.55 * (1 - t), dc, k)
-            this.plot(c + 1, r - up, SPRAY, s * 0.55 * (1 - t), dc, k)
+            this.plot(c - 1, r - up, SPRAY, ss * 0.7 * (1 - t), sc, k)
+            this.plot(c + 1, r - up, SPRAY, ss * 0.7 * (1 - t), sc, k)
           }
           continue
         }
@@ -689,12 +703,13 @@ export class Weather {
         const len = 2 + Math.round((7 + 3 * pale) * d.z)
         for (let j = 0; j < len; j++) {
           const g = j === 0 ? head : j === len - 1 ? tail : body
+          const land = r - j >= landRow
           this.plot(
             Math.floor((d.x - slant * ch * j) / cw),
             r - j,
             g,
-            s * (1 - (0.5 * j) / len),
-            dc,
+            (land ? Math.min(1, base * 1.3) : s) * (1 - (0.5 * j) / len),
+            land ? lc : dc,
             k,
           )
         }
