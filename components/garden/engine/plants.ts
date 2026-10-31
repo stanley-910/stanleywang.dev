@@ -54,7 +54,7 @@ type Leaf = {
 const HEAD = 1.6
 
 /** Seconds a sown plant takes to reach full flower. */
-export const RUSH = 2
+export const RUSH = 1.2
 /** Stem damping in the wind (Stem.damping). */
 const SWAY = 0.35
 /** Stem damping while the opening grows a plant in: its bud straightens without a bounce. */
