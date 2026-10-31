@@ -486,8 +486,12 @@ export function mountGarden({
   let lastWheel = 0
   /** When the wheel or a finger last moved the hour, on the event clock. */
   let lastScrub = 0
-  // The axis a scroll gesture started on, kept until the wheel rests.
+  // The axis a scroll gesture started on, kept until the wheel rests or a swipe the other way
+  // plainly takes over.
   let wheelAxis: 'x' | 'y' | null = null
+  /** Each axis's recent travel, in px, fading by a fifth an event: which way the hand moves now. */
+  let wheelX = 0
+  let wheelY = 0
   // The hour scrubbed here but not yet handed to the rest of the page.
   let unsent = false
 
@@ -548,12 +552,23 @@ export function mountGarden({
     // A slow sideways swipe drifts up and down too, sometimes more than it
     // moves sideways; read per event, that drift would push the hour the
     // wrong way. So a gesture keeps the axis it started on.
-    if (e.timeStamp - lastWheel > WHEEL_REST) wheelAxis = null
+    // A trackpad's momentum keeps the events coming for a second or more after the fingers lift,
+    // so a swipe the other way often lands before the wheel rests. When the other axis's recent
+    // travel is three times this one's, the hand has turned: the gesture takes the new axis rather
+    // than reading the new swipe as drift (which broke one direction until a pause).
+    const rested = e.timeStamp - lastWheel > WHEEL_REST
+    if (rested) wheelAxis = null
+    const unit = e.deltaMode === 1 ? 16 : 1
+    wheelX = (rested ? 0 : wheelX * 0.8) + Math.abs(e.deltaX) * unit
+    wheelY = (rested ? 0 : wheelY * 0.8) + Math.abs(e.deltaY) * unit
+    if (wheelAxis === 'x' && wheelY > 3 * wheelX && wheelY > 24) wheelAxis = 'y'
+    else if (wheelAxis === 'y' && wheelX > 3 * wheelY && wheelX > 24)
+      wheelAxis = 'x'
     wheelAxis ??= Math.abs(e.deltaX) > Math.abs(e.deltaY) ? 'x' : 'y'
     const sideways = wheelAxis === 'x'
+    lastWheel = e.timeStamp
     if (!sideways && pageScrolls()) return
     e.preventDefault()
-    lastWheel = e.timeStamp
     const d = sideways ? e.deltaX : e.deltaY
     scrubBy(e.deltaMode === 1 ? d * 16 : d, e.timeStamp)
   }
