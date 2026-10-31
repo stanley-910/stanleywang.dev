@@ -36,7 +36,7 @@ const CORONA = [code('·'), code(':')]
 export const SHADOW = code('·')
 
 /** Most drops, flakes and seeds in the air at once. */
-const DROPS = 560
+const DROPS = 960
 const FLAKE_COUNT = 520
 const SEED_COUNT = 70
 /** How long a drop's splash shows, in s. */
