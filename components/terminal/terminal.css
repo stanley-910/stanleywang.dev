@@ -89,9 +89,11 @@
 /* Off, it's the power symbol: a ring open at the top, the key through the gap. Hovered,
    the key lifts a touch. Switched on, the ring closes and the key drops to a dot at its
    centre, the symbol for on, with the spring the menu's dots use. */
+/* The ring's path starts at 12 o'clock, so the gap is the 10 units either side of its start:
+   the dash runs from 10 to 90. Closing, the gap shrinks into the top from both ends. */
 .terminal-power .ring {
   stroke-dasharray: 80 20;
-  stroke-dashoffset: 15;
+  stroke-dashoffset: -10;
   transition:
     stroke-dasharray 320ms cubic-bezier(0.34, 1.56, 0.64, 1),
     stroke-dashoffset 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -109,7 +111,7 @@
 
 .terminal-power[aria-pressed='true'] .ring {
   stroke-dasharray: 100 0;
-  stroke-dashoffset: 25;
+  stroke-dashoffset: 0;
 }
 
 .terminal-power[aria-pressed='true'] .key {
@@ -439,7 +441,7 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
   background: repeating-linear-gradient(90deg, var(--k-hair) 0 1px, transparent 1px 2px);
 }
 
-/* The info strip under the menus, as a Finder window carries one, closed by a double rule. */
+/* The info strip under the menus, as a Finder window carries one, closed by a single rule. */
 .terminal-info {
   display: flex;
   justify-content: space-between;
@@ -453,7 +455,7 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
   color: var(--k-ink);
   white-space: pre;
   border-top: 1px solid var(--k-line);
-  border-bottom: 3px double var(--k-line);
+  border-bottom: 1px solid var(--k-line);
   box-shadow: inset 0 1px 0 var(--k-hi);
 }
 

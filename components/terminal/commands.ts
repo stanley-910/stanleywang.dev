@@ -161,6 +161,25 @@ const NAMES = [
 /** Off home, the meadow commands say where the meadow is. */
 const elsewhere = ["{m|The meadow's at home. 'cd ~' to see it.}"]
 
+/** What ls shows at a path, marked up. */
+function listing(path: string) {
+  if (path === '~')
+    return [
+      ...PAGES.slice(1).map((p) => `{h|${p}/}`),
+      ...Object.keys(FILES),
+      ...EXES.map((e) => `{g|${e}}`),
+      'resume.pdf',
+    ]
+  if (path === '~/projects') return PROJECTS.map((p) => `{h|${p.slug}/}`)
+  return []
+}
+
+/** The status bar's count, as a Finder window's reads. */
+export function itemsAt(path: string) {
+  const n = listing(path).length
+  return n === 1 ? '1 item' : `${n} items`
+}
+
 export function run(input: string, ctx: Ctx): string[] {
   const raw = input.trim()
   if (!raw) return []
@@ -173,14 +192,8 @@ export function run(input: string, ctx: Ctx): string[] {
     const exe = cmd.slice(2)
     if (exe === 'waves.exe') {
       ctx.waves()
-      if (!ctx.meadowHere())
-        return ['Running waves.exe...', '{m|press any key to stop}']
-      ctx.gust()
-      return [
-        'Running waves.exe...',
-        '  {m|a gust rolls across the grass}',
-        '{m|press any key to stop}',
-      ]
+      if (ctx.meadowHere()) ctx.gust()
+      return ['Running waves.exe...', '{m|press any key to stop}']
     }
     if (exe === 'datamines.exe') {
       ctx.go('~/projects')
@@ -230,20 +243,8 @@ export function run(input: string, ctx: Ctx): string[] {
       )
       return out
     }
-    case 'ls': {
-      if (ctx.path === '~')
-        return [
-          [
-            ...PAGES.slice(1).map((p) => `{h|${p}/}`),
-            ...Object.keys(FILES),
-            ...EXES.map((e) => `{g|${e}}`),
-            'resume.pdf',
-          ].join('  '),
-        ]
-      if (ctx.path === '~/projects')
-        return [PROJECTS.map((p) => `{h|${p.slug}/}`).join('  ')]
-      return ['']
-    }
+    case 'ls':
+      return [listing(ctx.path).join('  ')]
     case 'cat': {
       if (!args[1]) return ['Usage: cat <file>']
       const name = args[1].replace(/^\.\//, '')

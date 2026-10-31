@@ -18,6 +18,7 @@ import { meadowHere, sendMeadow } from '@/lib/meadow-control'
 import {
   complete,
   hhmm,
+  itemsAt,
   parse,
   pathFor,
   phase,
@@ -315,6 +316,19 @@ const rectOf = (el: Element): Rect => {
   return { x: r.left, y: r.top, w: r.width, h: r.height }
 }
 
+/** Where a window at x, y of size w×h may sit without covering the power button: it stops
+ * above the button's corner, or, too tall for that, beside it. */
+const clearOfPower = (x: number, y: number, w: number, h: number) => {
+  const btn = document.querySelector('.terminal-power')
+  if (!btn) return { x, y }
+  const b = btn.getBoundingClientRect()
+  const gap = 12
+  if (x + w <= b.left - gap || y + h <= b.top - gap) return { x, y }
+  const above = b.top - gap - h
+  if (above >= 0) return { x, y: above }
+  return { x: Math.max(0, b.left - gap - w), y }
+}
+
 export function Terminal() {
   const router = useRouter()
   const pathname = usePathname() ?? '/'
@@ -529,15 +543,22 @@ export function Terminal() {
     } else if (e.key === 'ArrowDown') {
       e.preventDefault()
       if (h.at < h.list.length) setTyped(h.list[++h.at] ?? '')
-    } else if (e.key === 'l' && e.ctrlKey) {
-      e.preventDefault()
-      setEntries([])
     } else if (e.key === 'Escape') {
       input.current?.blur()
     }
   }
 
-  // Drag by the title bar, kept on screen.
+  // ^L clears from anywhere in the window, not only the prompt: after a menu or the tabs.
+  const onWinKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== 'l' || !e.ctrlKey || e.metaKey || e.altKey) return
+    e.preventDefault()
+    setEntries([])
+    setMenu(null)
+    setView('shell')
+    focusInput()
+  }
+
+  // Drag by the title bar, kept on screen and off the power button.
   const onDragStart = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('button') || !win.current) return
     const r = rectOf(win.current)
@@ -551,10 +572,14 @@ export function Terminal() {
       const dy = ev.clientY - sy
       if (!moved && Math.abs(dx) + Math.abs(dy) < 4) return
       moved = true
-      setPos({
-        x: Math.max(0, Math.min(window.innerWidth - r.w, r.x + dx)),
-        y: Math.max(0, Math.min(window.innerHeight - 30, r.y + dy)),
-      })
+      setPos(
+        clearOfPower(
+          Math.max(0, Math.min(window.innerWidth - r.w, r.x + dx)),
+          Math.max(0, Math.min(window.innerHeight - 30, r.y + dy)),
+          r.w,
+          r.h,
+        ),
+      )
     }
     const up = () => {
       bar.removeEventListener('pointermove', move)
@@ -616,6 +641,7 @@ export function Terminal() {
           role="dialog"
           aria-label="Terminal"
           data-own-scroll
+          onKeyDown={onWinKeyDown}
           style={{
             ...(pos && {
               left: pos.x,
@@ -874,7 +900,7 @@ export function Terminal() {
             </div>
 
             <footer className="terminal-status">
-              <span>dev@stanley-wang</span>
+              <span>{itemsAt(path)}</span>
               <span className="fill" />
               <span className="clock">
                 {hhmm(hour)}
@@ -894,7 +920,13 @@ export function Terminal() {
         data-avoid
       >
         <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden>
-          <circle className="ring" cx="8" cy="8.45" r="5.2" pathLength="100" />
+          {/* The ring is a path, not a <circle>: it starts at 12 o'clock and its two halves
+              mirror each other, so the dash gap lands centred on the axis at every pixel ratio. */}
+          <path
+            className="ring"
+            d="M8 3.25 C10.872 3.25 13.2 5.578 13.2 8.45 C13.2 11.322 10.872 13.65 8 13.65 C5.128 13.65 2.8 11.322 2.8 8.45 C2.8 5.578 5.128 3.25 8 3.25"
+            pathLength="100"
+          />
           <path className="key" d="M8 2.2 V7.6" />
         </svg>
       </button>
