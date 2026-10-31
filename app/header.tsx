@@ -26,8 +26,9 @@ export function Header() {
 
   return (
     <header className="site-header">
-      {/* The garden fades behind the links only, not the bar's full width (garden/mount.ts). */}
-      <nav aria-label="Site" data-avoid inert={hidden}>
+      {/* No dim box here: a halo round each word holds the ink (garden.css), since a box over the
+          row cut a dark rectangle out of the eclipse's glow. */}
+      <nav aria-label="Site" inert={hidden}>
         <ul>
           {NAV.map(({ href, label }) => (
             <li key={href}>

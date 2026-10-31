@@ -38,6 +38,9 @@ export const SHADOW = code('·')
 /** Most drops, flakes and seeds in the air at once. */
 const DROPS = 960
 const FLAKE_COUNT = 520
+/** How long a flake lies where it landed, before it's gone (s), and the last part it melts over. */
+const REST_FOR = [0.8, 1.6]
+const MELT_FOR = 0.5
 const SEED_COUNT = 70
 /** How long a drop's splash shows, in s. */
 const SPLASH_FOR = 0.12
@@ -155,6 +158,8 @@ type Flake = {
   z: number
   land: number
   phase: number
+  /** Seconds left lying where it landed, before it melts; 0 while it falls. */
+  rest: number
 }
 type Seed = {
   x: number
@@ -740,22 +745,65 @@ export class Weather {
       // A near flake's crest: `snow` lightened 15%, as SnowCap's is.
       const snowLit = mix(p.snow, [255, 255, 255], 0.15)
       while (this.flakes.length < FLAKE_COUNT) {
-        const f: Flake = { x: 0, y: 0, v: 0, z: 0, land: 0, phase: 0 }
+        const f: Flake = {
+          x: 0,
+          y: 0,
+          v: 0,
+          z: 0,
+          land: 0,
+          phase: 0,
+          rest: 0,
+        }
         this.flakeFrom(f, v)
         f.y = Math.random() * f.land
         this.flakes.push(f)
       }
       for (let n = 0; n < this.flakes.length; n++) {
         const f = this.flakes[n]
-        f.y += f.v * dt
-        f.x +=
-          (30 * breeze + 14 * Math.cos(now * 0.9 + f.phase)) *
-          (0.3 + 1.4 * f.z * f.z) *
-          dt
-        if (f.y >= f.land) this.flakeFrom(f, v)
+        // A flake lies where it lands for a second, then melts away and falls again from the top.
+        if (f.rest > 0) {
+          f.rest -= dt
+          if (f.rest <= 0) this.flakeFrom(f, v)
+        } else {
+          f.y += f.v * dt
+          f.x +=
+            (30 * breeze + 14 * Math.cos(now * 0.9 + f.phase)) *
+            (0.3 + 1.4 * f.z * f.z) *
+            dt
+          if (f.y >= f.land) {
+            f.y = f.land
+            f.rest =
+              f.land < v.H
+                ? REST_FOR[0] + (REST_FOR[1] - REST_FOR[0]) * Math.random()
+                : 0.01
+          }
+        }
         if (n >= snowN) continue
         const c = Math.floor((((f.x % W) + W) % W) / cw)
         const r = Math.floor(f.y / ch)
+        if (f.rest > 0) {
+          // Lying: still, no trail, flattened to one row, fading as it melts.
+          const m = Math.min(1, f.rest / MELT_FOR)
+          if (f.z < 0.45) {
+            this.plot(c, r, FLAKES[0], (0.25 + 0.5 * f.z) * m, snowFar, k)
+            continue
+          }
+          this.tileCol = snowLit
+          this.plot(
+            c,
+            r,
+            f.z < 0.65 ? FLAKES[1] : BLOB[0],
+            (0.5 + 0.4 * f.z) * m,
+            p.snow,
+            k,
+          )
+          if (f.z >= 0.8) {
+            const side = f.phase < Math.PI ? 1 : -1
+            this.lightTile(c, r, 0.35 * m)
+            this.plot(c + side, r, FLAKES[1], 0.6 * m, snowLit, k)
+          }
+          continue
+        }
         // Far flakes are faint dots in the haze, slow and small; near ones are soft clumps, lit
         // on their tiles so they read as solid and close, not as points of light like the stars.
         if (f.z < 0.45) {
@@ -1052,6 +1100,7 @@ export class Weather {
     f.y = -Math.random() * 0.1 * v.H
     f.x = Math.random() * v.W
     f.phase = hash(f.x, f.z) * 6.28
+    f.rest = 0
   }
 
   private seedFrom(s: Seed, v: WeatherView) {
