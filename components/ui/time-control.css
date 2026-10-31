@@ -267,6 +267,12 @@
   color: var(--ink);
 }
 
+/* In a storm, under the weather: lightning's colour, a slider like the hour's, from the coolest
+   blue to the warmest gold, with `auto` to hand it back to the hour. */
+.time-control-lightning {
+  margin-top: var(--inset);
+}
+
 /* Hide text (lib/hide-ui.ts): the top bar's links and home's text fade
    away, the garden stops receding behind them (mount.ts skips boxes whose
    --avoid is none), and the menu goes too, coming back while the pointer is

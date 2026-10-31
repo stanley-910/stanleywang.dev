@@ -3,7 +3,9 @@ import { usePathname } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { useEffect, useRef, useState } from 'react'
 
+import { smoothstep } from '@/components/garden/engine/math'
 import { paletteAt } from '@/components/garden/engine/palette'
+import { AUTO_TOP, lightningAt } from '@/components/garden/engine/weather'
 import {
   applyColours,
   currentHour,
@@ -14,9 +16,9 @@ import {
 } from '@/lib/circadian'
 import { setUiHidden, useUiHidden } from '@/lib/hide-ui'
 import {
-  setWarmLightning,
+  setLightningTone,
   setWeather,
-  useWarmLightning,
+  useLightningTone,
   useWeather,
   WEATHERS,
 } from '@/lib/weather'
@@ -73,6 +75,22 @@ const trackAt = (h: number) => {
   return `rgb(${r | 0} ${g | 0} ${b | 0})`
 }
 
+// The lightning slider's track: lightning's colours from the coolest blue to the warmest gold.
+const rgb = ([r, g, b]: number[]) => `rgb(${r | 0} ${g | 0} ${b | 0})`
+const BOLT_TRACK = `linear-gradient(to right, ${Array.from(
+  { length: 9 },
+  (_, i) => `${rgb(lightningAt(i / 8))} ${(i / 8) * 100}%`,
+).join(', ')})`
+
+/** Where the hour alone puts lightning on the slider: bluer by night, yellower by day. */
+const autoTone = (h: number) => {
+  const sun = smoothstep(5, 7, h) * (1 - smoothstep(18.5, 20, h))
+  return AUTO_TOP * Math.min(1, 0.275 + 0.5 * sun)
+}
+
+const toneName = (t: number) =>
+  t < 0.3 ? 'blue' : t < 0.6 ? 'white' : t < 0.85 ? 'yellow' : 'gold'
+
 /** Text fades out for this long before a family switch (time-control.css fades it back). */
 const DIP_OUT = 90
 
@@ -90,7 +108,7 @@ export function ThemeSwitch({ className }: { className?: string }) {
   const pathname = usePathname()
   const hidden = useUiHidden()
   const weather = useWeather()
-  const warm = useWarmLightning()
+  const tone = useLightningTone()
   const buttonRef = useRef<HTMLButtonElement>(null)
   const popRef = useRef<HTMLDivElement>(null)
   const family = useRef<PageTheme | null>(null)
@@ -292,14 +310,40 @@ export function ThemeSwitch({ className }: { className?: string }) {
                 ))}
               </div>
               {weather === 'storm' && (
-                <button
-                  type="button"
-                  className="time-control-item"
-                  aria-pressed={warm}
-                  onClick={() => setWarmLightning(!warm)}
-                >
-                  {warm ? 'cool lightning' : 'warm lightning'}
-                </button>
+                <div className="time-control-lightning">
+                  <input
+                    className="time-control-range"
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={tone ?? autoTone(hour)}
+                    aria-label="Lightning colour"
+                    aria-valuetext={toneName(tone ?? autoTone(hour))}
+                    style={
+                      {
+                        '--track': BOLT_TRACK,
+                        '--bead': rgb(lightningAt(tone ?? autoTone(hour))),
+                      } as React.CSSProperties
+                    }
+                    onChange={(e) => setLightningTone(Number(e.target.value))}
+                  />
+                  <p className="time-control-readout">
+                    <span className="time-control-hour">
+                      {toneName(tone ?? autoTone(hour))}
+                    </span>
+                    <span className="time-control-phase">lightning</span>
+                    {tone !== null && (
+                      <button
+                        type="button"
+                        className="link-quiet time-control-now"
+                        onClick={() => setLightningTone(null)}
+                      >
+                        auto
+                      </button>
+                    )}
+                  </p>
+                </div>
               )}
             </>
           )}

@@ -540,6 +540,25 @@ export class Garden {
     return false
   }
 
+  /**
+   * Where a raindrop falling from (x, y), drifting `slant` across per px down, first meets a
+   * flower head before it reaches `end`: that head's height, or -1 if it misses them all.
+   */
+  headOn = (x: number, y: number, slant: number, end: number) => {
+    let best = -1
+    for (const p of this.plants) {
+      if (p.leaving || p.crown <= 0) continue
+      const r = Math.max(6, p.crown)
+      for (const s of p.stems) {
+        const tx = s.pts[s.n * 2]
+        const ty = s.pts[s.n * 2 + 1]
+        if (ty < y || ty > end || (best >= 0 && ty > best)) continue
+        if (Math.abs(x + slant * (ty - y) - tx) < r) best = ty
+      }
+    }
+    return best
+  }
+
   /** Calls a visitor to the flower under the click. */
   /** A click on a dandelion shakes it, and puffs a seed clock out. Whether one was there. */
   poke(x: number, y: number) {
