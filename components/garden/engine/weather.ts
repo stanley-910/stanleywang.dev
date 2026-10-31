@@ -119,6 +119,17 @@ export const BOLT_COL = NIGHT.fluff
 const BOLT_BLUE = mix(NIGHT.fluff, NIGHT.cosmosVein, 0.3)
 /** A bolt at its yellowest, far off through the rain by day: `night-fluff` 75% toward `golden-globe`. */
 const BOLT_WARM = mix(NIGHT.fluff, GOLDEN.globe, 0.75)
+/** How far along `lightningAt` the hour alone takes lightning: up to that yellow white. */
+export const AUTO_TOP = 0.75
+/**
+ * Lightning's colours in a line, 0 to 1, as the site menu's slider shows them: the violet blue,
+ * up to the yellow white at `AUTO_TOP`, then on to `golden-globe` itself, the warmest gold.
+ */
+export function lightningAt(t: number): Rgb {
+  return t < AUTO_TOP
+    ? mix(BOLT_BLUE, BOLT_WARM, t / AUTO_TOP)
+    : mix(BOLT_WARM, GOLDEN.globe, (t - AUTO_TOP) / (1 - AUTO_TOP))
+}
 /**
  * The moon in Earth's shadow, lit only by the sunsets round the Earth's rim: `sunset-sky-horizon`
  * a third of the way into `night-sky-top`.
@@ -165,6 +176,8 @@ export type WeatherView = {
   horizon: number
   /** A drop landing at a point knocks the flower head there, by `k`; whether there was one. */
   tap: (x: number, y: number, k: number) => boolean
+  /** Where a drop's path first meets a flower head, or -1 (garden.headOn). */
+  headOn: (x: number, y: number, slant: number, end: number) => number
   /** How much cloud is at a cell, 0 to 1, as the sky last drew it (ascii.ts). */
   cloud: (c: number, r: number) => number
   /** Where the sun or moon is, and how much of each shows (garden.ts). */
@@ -251,8 +264,8 @@ export class Weather {
   band = new Float32Array(0)
   /** How much a lightning strike lights the whole sky this frame, 0 to 1. */
   flash = 0
-  /** Lightning goes yellow-white at every hour (the site menu's warm lightning). */
-  warm = false
+  /** Lightning's colour set from the site menu, 0 to 1 along `lightningAt`; null follows the hour. */
+  tone: number | null = null
   /** The strike's colour, for its flash. */
   flashCol: Rgb = BOLT_COL
   /** Lightning's light in the cloud this frame, a strike's or a flicker's. */
@@ -621,9 +634,18 @@ export class Weather {
         d.y = Math.random() * d.land
         this.drops.push(d)
       }
-      const col = mix(p.fluff, p.snow, 0.5)
-      // Far drops sink into the sky's haze.
-      const farCol = mix(col, p.haze, 0.55)
+      // Rain shows by its contrast with the sky behind it: pale streaks on a dark sky, and on a
+      // pale overcast, by day, dark ones toward `ground`. (Not `hill-near`: the overcast is
+      // mixed from it, so drops in it vanished.)
+      const [hr, hg, hb] = p.haze
+      const pale = smoothstep(
+        0.42,
+        0.62,
+        (0.2126 * hr + 0.7152 * hg + 0.0722 * hb) / 255,
+      )
+      const col = mix(mix(p.fluff, p.snow, 0.5), p.ground, 0.65 * pale)
+      // Far drops sink into the sky's haze, less by day so the curtain still reads.
+      const farCol = mix(col, p.haze, 0.55 - 0.25 * pale)
       const [head, body, tail] =
         slant < 0.3
           ? [RAIN_HEAD, RAIN, RAIN_TAIL]
@@ -639,15 +661,16 @@ export class Weather {
           if (d.y >= d.land) {
             d.y = d.land
             d.splash = SPLASH_FOR * (1 + d.z)
-            // A drop in the meadow may land on a flower, and knock it a little.
-            d.hit = d.z > 0.3 && n < rainN && v.tap(d.x, d.y, 0.05 + 0.1 * d.z)
+            // A drop aimed at a flower head knocks it: a quick dip the eye catches, a third
+            // of a click's for the nearest drops, less for those further back.
+            d.hit = d.hit && n < rainN && v.tap(d.x, d.y, 0.12 + 0.2 * d.z)
           }
         }
         if (n >= rainN) continue
         const c = Math.floor(d.x / cw)
         const r = Math.floor(d.y / ch)
         // Depth: far drops are dim, short, slow and hazed; near ones bright and long.
-        const s = 0.22 + 0.68 * d.z
+        const s = Math.min(1, (0.22 + 0.68 * d.z) * (1 + 0.7 * pale))
         const dc = d.z < 0.4 ? farCol : col
         if (d.splash > 0) {
           // A dot where it lands; a nearer drop throws two droplets up and out, which fall back.
@@ -662,7 +685,8 @@ export class Weather {
           continue
         }
         // Nearer drops fall longer streaks; the tail fades back up the path.
-        const len = 2 + Math.round(7 * d.z)
+        // By day a little longer too, so a streak reads against the pale sky as a line.
+        const len = 2 + Math.round((7 + 3 * pale) * d.z)
         for (let j = 0; j < len; j++) {
           const g = j === 0 ? head : j === len - 1 ? tail : body
           this.plot(
@@ -851,18 +875,23 @@ export class Weather {
 
   /**
    * A strike's colour: bluer near and by night, yellower far off, through more rain, and by day,
-   * with a little chance either way. With warm lightning on, yellow at any hour.
+   * with a little chance either way. Set from the menu's slider, it stays near that colour.
    */
   private boltCol(v: WeatherView, near: number): Rgb {
-    // Warm lightning goes past the warm end to `golden-globe` itself, so it reads yellow at night.
-    if (this.warm)
-      return mix(BOLT_WARM, GOLDEN.globe, 0.5 + 0.5 * Math.random())
+    if (this.tone !== null)
+      return lightningAt(
+        clamp(
+          this.tone + 0.08 * (1 - near) + 0.1 * (Math.random() - 0.5),
+          0,
+          1,
+        ),
+      )
     const warm = clamp(
       0.1 + 0.5 * v.globe.sun + 0.35 * (1 - near) + 0.3 * (Math.random() - 0.5),
       0,
       1,
     )
-    return mix(BOLT_BLUE, BOLT_WARM, warm)
+    return lightningAt(AUTO_TOP * warm)
   }
 
   /**
@@ -975,15 +1004,18 @@ export class Weather {
   }
 
   private dropFrom(d: Drop, v: WeatherView, slant: number) {
-    // Most rain is far off; a few drops pass close.
-    d.z = Math.random() ** 1.4
+    // Most rain is in the middle distance, a curtain over the meadow; fewer far off or close.
+    d.z = Math.random() ** 1.1
     d.v = (0.45 + 0.85 * d.z) * v.H * 1.1
     d.land = this.landing(v, d.z)
-    d.hit = false
     d.y = -Math.random() * 0.25 * v.H
     // Leaning drops start further left, so they cover the left edge too.
     d.x = Math.random() * (v.W + slant * v.H) - slant * v.H
     d.splash = 0
+    // A drop in the meadow whose path crosses a flower head lands on it instead of the ground.
+    const head = d.z > 0.3 ? v.headOn(d.x, d.y, slant, d.land) : -1
+    d.hit = head >= 0
+    if (d.hit) d.land = head
   }
 
   private flakeFrom(f: Flake, v: WeatherView) {

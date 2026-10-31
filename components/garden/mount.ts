@@ -4,7 +4,7 @@
 import { currentHour, HOUR_EVENT, setHour } from '@/lib/circadian'
 import { MEADOW_EVENT, type MeadowCommand } from '@/lib/meadow-control'
 import {
-  currentWarmLightning,
+  currentLightningTone,
   currentWeather,
   isWeather,
   setWeather,
@@ -151,7 +151,7 @@ export function mountGarden({
   let gust = 0
   const weather = new Weather()
   weather.set(currentWeather(), true, reduced.matches)
-  weather.warm = currentWarmLightning()
+  weather.tone = currentLightningTone()
   /** The hour's palette under the weather. */
   const sceneAt = (h: number) => weather.tint(paletteAt(h), sunAt(h))
   const raster = new Raster()
@@ -375,6 +375,7 @@ export function mountGarden({
         horizon: garden.horizon,
         cloud: ascii.cloudShape,
         tap: garden.tap,
+        headOn: garden.headOn,
         globe: garden.globe(scene),
       })
       ascii.render({
@@ -906,7 +907,7 @@ export function mountGarden({
   // The weather set here, from the site menu or the terminal (lib/weather.ts).
   const onWeather = () => {
     weather.set(currentWeather(), reduced.matches, reduced.matches)
-    weather.warm = currentWarmLightning()
+    weather.tone = currentLightningTone()
     // Held still, it's a still state, drawn once; otherwise it eases in over the next frames.
     if (reduced.matches) start()
   }

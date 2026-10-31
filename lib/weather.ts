@@ -20,8 +20,11 @@ export type WeatherKind = (typeof WEATHERS)[number]
 export const WEATHER_EVENT = 'weatherchange'
 
 let weather: WeatherKind = 'clear'
-/** A storm's lightning goes yellow-white at any hour, not only by day and far off. */
-let warmLightning = false
+/**
+ * Lightning's colour from the site menu's slider, 0 the coolest blue to 1 the warmest gold; null
+ * leaves it to the hour and each bolt's distance.
+ */
+let lightningTone: number | null = null
 
 export const isWeather = (v: unknown): v is WeatherKind =>
   WEATHERS.includes(v as WeatherKind)
@@ -36,13 +39,13 @@ export function setWeather(next: WeatherKind) {
   window.dispatchEvent(new Event(WEATHER_EVENT))
 }
 
-export function currentWarmLightning() {
-  return warmLightning
+export function currentLightningTone() {
+  return lightningTone
 }
 
-export function setWarmLightning(next: boolean) {
-  if (next === warmLightning) return
-  warmLightning = next
+export function setLightningTone(next: number | null) {
+  if (next === lightningTone) return
+  lightningTone = next
   window.dispatchEvent(new Event(WEATHER_EVENT))
 }
 
@@ -56,7 +59,7 @@ export function useWeather() {
   return useSyncExternalStore(subscribe, currentWeather, () => 'clear' as const)
 }
 
-/** Whether lightning is warm at every hour, kept current. */
-export function useWarmLightning() {
-  return useSyncExternalStore(subscribe, currentWarmLightning, () => false)
+/** The lightning slider's setting, kept current. */
+export function useLightningTone() {
+  return useSyncExternalStore(subscribe, currentLightningTone, () => null)
 }
