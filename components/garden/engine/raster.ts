@@ -5,6 +5,7 @@ import {
   Op,
   PathOp,
   Rasterizer,
+  RIVER_SPAN,
   SS,
   type RasterJob,
   type RasterResult,
@@ -14,7 +15,7 @@ import type { Rgb } from './palette'
 import type { Material, Style } from './typeset'
 
 // Defined beside the rasteriser, which the worker loads without this file.
-export { Kind, LandMat, SS }
+export { Kind, LandMat, RIVER_SPAN, SS }
 /** How long a worker may hold a frame before the raster gives up on workers. */
 const WORKER_TIMEOUT = 1000
 /** A gap between frames this long means the page stood still, not the worker. */
@@ -75,6 +76,9 @@ export type PetalMeta = { id: number; light: number; back: boolean }
 
 /** Marks flower fluff (lace florets, dandelion seeds) apart from the sun and moon, which share its kind. */
 export const FLOWER_FLUFF: PetalMeta = { id: 0, light: 1, back: false }
+
+/** Marks the sun and moon, so the land in front of them keeps the cells along its crest. */
+export const GLOBE: PetalMeta = { id: 0, light: 0, back: false }
 
 /** Marks a loose, falling petal, drawn as fluff, so its inside can print light. */
 export const LOOSE_PETAL: PetalMeta = { id: 0, light: 0, back: true }
@@ -420,7 +424,13 @@ export class Raster {
     now: boolean,
     look: Pick<
       Style,
-      'palette' | 'horizon' | 'hill' | 'relief' | 'reliefLight' | 'reliefLit'
+      | 'palette'
+      | 'horizon'
+      | 'hill'
+      | 'relief'
+      | 'reliefLight'
+      | 'reliefLit'
+      | 'river'
     >,
     hour: number,
   ) {

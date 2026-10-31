@@ -36,7 +36,7 @@ Colour changes take `duration-quick` with `ease-calm`, and none with reduced mot
 
 ## Menu
 
-Four dots in a square (`components/ui/theme-switch.tsx`). A click opens the glass popover under them: ReadingTime's slider and readout; where there's a meadow (home, the poem), a hairline and the weather as two rows of items, `clear rain snow` / `storm eclipse`, the one set in `ink` (`lib/weather.ts`; what each does is in Weather); then on home a hairline and the "hide text" item. Items are rows in the readout's `meta` mono, `ink-muted`, lit to `ink` on a 9% `ink` wash on hover. Opening turns the dots a quarter round into a diamond as they spread, on a slight overshoot (320ms); none with reduced motion. The page theme still follows the hour (`lib/circadian.ts`), and the menu keeps painting it while closed.
+Four dots in a square (`components/ui/theme-switch.tsx`). A click opens the glass popover under them: ReadingTime's slider and readout; where there's a meadow (home, the poem), a hairline and the weather as two rows of items, `clear rain snow` / `storm eclipse`, the one set in `ink` (`lib/weather.ts`; what each does is in Weather), and under them the moon slider, built like the hour's: its track runs the moon's own `night-globe` silver, through a white (`night-globe` 60% toward white), to `golden-globe` and `dusk-globe`, an amber (`moonAt`), read out as `silver`, `white`, `gold` or `amber` beside `moon`, with `auto` to hand the moon back to the palette. Like the weather, it lasts for the visit; then on home a hairline and the "hide text" item. Items are rows in the readout's `meta` mono, `ink-muted`, lit to `ink` on a 9% `ink` wash on hover. Opening turns the dots a quarter round into a diamond as they spread, on a slight overshoot (320ms); none with reduced motion. The page theme still follows the hour (`lib/circadian.ts`), and the menu keeps painting it while closed.
 
 ## On home
 
@@ -44,7 +44,7 @@ When the garden is ported, the bar sits over the scene in `scene-ink` / `scene-i
 
 ## Accessibility
 
-`<header>` holds a `<nav aria-label="Site">` with a list. Focus ring: `focus`, 1px, offset 3px. The menu button is named "Menu", with `aria-expanded`; the weather is a group named "Weather" whose six items are toggles with `aria-pressed`, the one set pressed; "hide text" is a toggle with `aria-pressed`.
+`<header>` holds a `<nav aria-label="Site">` with a list. Focus ring: `focus`, 1px, offset 3px. The menu button is named "Menu", with `aria-expanded`; the weather is a group named "Weather" whose six items are toggles with `aria-pressed`, the one set pressed; the moon slider is a range named "Moon colour", its value text the colour's name; "hide text" is a toggle with `aria-pressed`.
 
 ## Verify
 

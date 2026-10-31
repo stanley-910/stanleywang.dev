@@ -10,6 +10,7 @@ import {
 import {
   clamp,
   easeOut,
+  hash,
   lerp,
   mulberry32,
   noise1,
@@ -53,14 +54,13 @@ type Leaf = {
 const HEAD = 1.6
 
 /** Seconds a sown plant takes to reach full flower. */
-export const RUSH = 2
+export const RUSH = 1.2
 /** Stem damping in the wind (Stem.damping). */
 const SWAY = 0.35
-/**
- * Stem damping while the opening grows a plant in, or a click's flower comes up: its bud
- * straightens without a bounce.
- */
+/** Stem damping while the opening grows a plant in: its bud straightens without a bounce. */
 const SETTLED = 0.9
+/** Stem damping while a click's flower comes up: its head lifts with a little give and sways on. */
+const LIFT = 0.5
 /** Seconds after the opening for the stems to loosen back to SWAY. */
 const LOOSEN = 2
 
@@ -150,26 +150,32 @@ export abstract class Plant {
    * Sown by a click: grow straight to full flower over RUSH seconds instead of half a minute.
    * Its age runs evenly to just open, so the stalk draws up (its growth eases out) and then the
    * bud swells, lifts and opens, each in its own time; run on into the bloom, a poppy's nod
-   * straightened in a blink and the head sprang up and bobbed.
+   * straightened in a blink and the head sprang up and bobbed. The stalk starts already bent
+   * as the bud nods, so it doesn't droop while it rises, and it stays in the wind throughout.
    */
   hurry() {
     this.rush = { from: this.age, to: Math.max(this.age, this.openAge()), t: 0 }
   }
 
+  /** How far a click's flower has come up, 0..1, or null when it isn't coming up. */
+  protected get sowing() {
+    return this.rush?.t ?? null
+  }
+
   update(dt: number, env: Env) {
-    if (this.rush) {
-      const q = this.rush
+    const q = this.rush
+    const sown = q?.t === 0
+    if (q) {
       q.t = Math.min(1, q.t + dt / RUSH)
       this.age = lerp(q.from, q.to, q.t)
-      // Then it loosens to the wind's sway, as the opening's flowers do.
-      this.calm = 1
-      if (q.t >= 1) this.rush = null
     } else this.age += dt
-    const damping = lerp(SWAY, SETTLED, this.calm)
+    const damping = q ? LIFT : lerp(SWAY, SETTLED, this.calm)
     for (const s of this.stems) s.damping = damping
     this.calm = Math.max(0, this.calm - dt / LOOSEN)
     if (this.leaving) this.fade = Math.max(0, this.fade - dt / 1.5)
     this.live(env, dt)
+    if (sown) for (const s of this.stems) s.ang.set(s.rest)
+    if (q && q.t >= 1) this.rush = null
     const sub = 2
     for (let i = 0; i < sub; i++)
       for (const s of this.stems) s.step(dt / sub, env.wind)
@@ -332,9 +338,24 @@ export class Poppy extends Plant {
   private stem: Stem
   private shed = 0
   private head = 0
+  /**
+   * How far the cup turns toward the viewer, in radians: about a third turn away, showing the
+   * deeper red outside with the heart hidden; a quarter stand side-on; the rest look toward you.
+   * When nearly all faced the viewer, nothing showed the outside to tell the inside by. Drawn
+   * from the seed, not the plant's rng, so the meadows picked by hand keep their layout.
+   */
+  private readonly turn: number
 
   constructor(x: number, z: number, seed: number, env: Env) {
     super(x, z, seed)
+    const h = hash(seed, 11)
+    const t = hash(seed, 12)
+    this.turn =
+      h < 0.35
+        ? lerp(-0.65, -0.2, t)
+        : h < 0.6
+          ? lerp(-0.1, 0.15, t)
+          : lerp(0.3, 0.95, t)
     const r = this.rng
     this.G = lerp(8, 12, r())
     // Blooms hold a good while, so shedding stays occasional across the meadow.
@@ -381,6 +402,20 @@ export class Poppy extends Plant {
     const t = this.age
     const G = this.G
     const bloomEnd = G + 20 + this.B
+    // Sown by a click, the stalk rises evenly and the hooked bud starts lifting before it's
+    // done, swelling all the while, then opens as it comes upright: on its own clock the
+    // stalk shot up, stopped, and hung hooked before the head flicked up.
+    const u = this.sowing
+    if (u !== null)
+      return {
+        growth: 0.12 + 0.88 * smoothstep(0, 0.6, u),
+        nod: 1 - smoothstep(0.35, 0.8, u),
+        bud: lerp(0.35, 1, smoothstep(0, 0.55, u)),
+        open: smoothstep(0.55, 1, u),
+        shed: 0,
+        pod: 0,
+        wither: 0,
+      }
     return {
       growth: 0.12 + 0.88 * easeOut(t / G),
       nod: 1 - smoothstep(G + 8, G + 14, t),
@@ -491,7 +526,7 @@ export class Poppy extends Plant {
       this.drawBud(r, tx, ty, tip, H * ph.bud, stemColor, p, 0)
       return
     }
-    const axis = headAxis(tip, this.facing * ph.open)
+    const axis = headAxis(tip, this.turn * ph.open)
     const list: { depth: number; draw: () => void }[] = []
     const poppy = this.bloomed(p.poppy, p)
     // Furling as it closes; once mostly furled, the dark heart and blotches are wrapped inside.
@@ -513,13 +548,23 @@ export class Poppy extends Plant {
         cup: (u) => lerp(1.42, 0.42, open) + 0.32 * u * open,
         crinkle: lerp(0.55, 0.16, open),
         size: (k) => (k % 2 ? 0.84 : 1),
-        rotation: this.seed,
+        // One petal on the cup's near side, below the heart, so a cup turned toward you holds
+        // its heart in a bowl instead of showing it on a bare lower edge.
+        rotation: this.nearSide(axis) + (hash(this.seed, 13) - 0.5) * 0.4,
         seed: this.seed,
         front: poppy,
-        back: mix(poppy, this.bloomed(p.poppyDeep, p), 0.55),
+        // The outside is a deeper, duller red than the lit inside, so which way a cup faces
+        // reads at a glance: bright red with a dark heart is looking in.
+        back: mix(
+          mix(poppy, this.bloomed(p.poppyDeep, p), 0.5),
+          this.bloomed(p.stem, p),
+          0.1,
+        ),
         // The dark heart and blotches lean to the deep red, so they print as part of the cup
         // rather than as grey glyphs over it.
         blotch: hidden ? undefined : mix(shade(p.disc, 0.9), p.poppyDeep, 0.45),
+        // Under a few cells across, the throat is too small to tell from the petal: left out.
+        throat: hidden || H < 3 * r.minLine ? 0 : 0.28,
         haze: p.haze,
         hazeAmount: 0,
         attached: (k) => k >= this.shed,
@@ -538,7 +583,9 @@ export class Poppy extends Plant {
       owner: this,
       depth: this.z,
     })
-    // Stigma disc and the ring of dark stamens, sorted in among the petals; never under two cells.
+    // The heart, sorted in among the petals: a near-black red ring of stamens flecked with gold
+    // pollen, around the seed pod's small violet-grey crown and its dark rays. Never under two
+    // cells. A flat grey crown with no ring to frame it read as a grey patch, not a centre.
     const centerDepth = axis[2] * H * 0.1
     if (!hidden)
       list.push({
@@ -548,7 +595,7 @@ export class Poppy extends Plant {
             tx,
             ty,
             axis,
-            Math.max(H * 0.27, 1.6 * r.minLine),
+            Math.max(H * 0.3, 1.6 * r.minLine),
             H * 0.06,
           )
           r.fill(
@@ -557,10 +604,38 @@ export class Poppy extends Plant {
             Kind.Disc,
             0.95,
           )
-          const top = disc(tx, ty, axis, H * 0.14, H * 0.16)
-          // The pod's crown, warmed the same way and hazed like the petals, not the leaves.
-          r.fill(top, this.bloomed(mix(p.stem, p.poppyDeep, 0.5), p), Kind.Disc)
           const [u, v] = basis(axis)
+          // On a far head the flecks are under a cell and print as nothing: left out.
+          const fleck = H * 0.035
+          if (fleck >= r.minLine * 0.45) {
+            const pollen = new Shape()
+            for (let i = 0; i < 12; i++) {
+              const a = (i / 12) * TAU + this.seed
+              const reach = H * (i % 2 ? 0.21 : 0.26)
+              const [x, y] = project(
+                tx,
+                ty,
+                axis,
+                [u, v],
+                Math.cos(a) * reach,
+                Math.sin(a) * reach,
+                H * 0.08,
+              )
+              pollen.moveTo(x + fleck, y)
+              pollen.ellipse(x, y, fleck, fleck, 0, 0, TAU)
+            }
+            r.fill(
+              pollen,
+              this.bloomed(mix(p.dandelion, p.poppy, 0.25), p),
+              Kind.Disc,
+            )
+          }
+          const top = disc(tx, ty, axis, H * 0.1, H * 0.16)
+          r.fill(
+            top,
+            this.bloomed(mix(p.cosmosVein, p.poppyDeep, 0.45), p),
+            Kind.Disc,
+          )
           const rays = new Shape()
           for (let i = 0; i < 8; i++) {
             const a = (i / 8) * TAU
@@ -570,8 +645,8 @@ export class Poppy extends Plant {
               ty,
               axis,
               [u, v],
-              Math.cos(a) * H * 0.14,
-              Math.sin(a) * H * 0.14,
+              Math.cos(a) * H * 0.1,
+              Math.sin(a) * H * 0.1,
               H * 0.16,
             )
             rays.moveTo(x0, y0)
@@ -579,7 +654,7 @@ export class Poppy extends Plant {
           }
           r.stroke(
             rays,
-            this.bloomed(p.disc, p),
+            this.bloomed(mix(p.disc, p.poppyDeep, 0.4), p),
             Kind.Disc,
             Math.max(0.5, H * 0.03),
           )
@@ -602,6 +677,12 @@ export class Poppy extends Plant {
   }
 
   /** A hairy, hanging, egg-shaped bud; `split` 0..1 parts the two sepals as the petals push out. */
+  /** Angle, in the petals' plane, of the side of the cup nearest the viewer. */
+  private nearSide(axis: Vec3) {
+    const [u, v] = basis(axis)
+    return Math.atan2(v[2], u[2])
+  }
+
   private drawBud(
     r: Raster,
     tx: number,
@@ -960,6 +1041,7 @@ export class Cosmos extends Plant {
           veins: mix(p.cosmosVein, cosmos, 0.2),
           haze: p.haze,
           hazeAmount: 0,
+          underside: 0.4,
           attached: (k) => k >= h.shed,
         },
         list,
@@ -997,7 +1079,14 @@ export class Lace extends Plant {
   private G: number
   private B: number
   private stem: Stem
-  private rays: { a: number; tilt: number; len: number; florets: number }[] = []
+  private rays: {
+    a: number
+    tilt: number
+    len: number
+    florets: number
+    /** How far out its umbellet sits, as a share of the head's radius. */
+    reach: number
+  }[] = []
   private head: number
   private darkFloret: boolean
 
@@ -1023,6 +1112,10 @@ export class Lace extends Plant {
         tilt: lerp(0.55, 1, r()),
         len: lerp(0.75, 1, r()),
         florets: 5 + Math.floor(r() * 4),
+        // Spread evenly over the disc, inner rays shorter, so the umbellets fill the head as a
+        // real one's do; all at one reach left a hollow ring of clusters floating round the
+        // stalk. From the seed, not the rng, so the meadows picked by hand keep their layout.
+        reach: 0.25 + 0.85 * Math.sqrt(hash(seed, 100 + i)),
       })
     }
     this.darkFloret = r() < 0.6
@@ -1115,13 +1208,16 @@ export class Lace extends Plant {
       let cy: number
       if (ph.spread >= 0) {
         const phi = ph.spread * 1.25 * ray.tilt
+        // The reach pulls an umbellet in across the disc while its height holds, so the head
+        // keeps the flat top of a real umbel.
+        const out = Math.sin(phi) * len * ray.reach
         ;[ex, ey, ez] = project(
           tx,
           ty,
           axis,
           [u, v],
-          ca * Math.sin(phi) * len,
-          sa * Math.sin(phi) * len,
+          ca * out,
+          sa * out,
           Math.cos(phi) * len,
         )
         ;[cx, cy] = project(
@@ -1129,8 +1225,8 @@ export class Lace extends Plant {
           ty,
           axis,
           [u, v],
-          ca * Math.sin(phi) * len * 0.5,
-          sa * Math.sin(phi) * len * 0.5,
+          ca * out * 0.5,
+          sa * out * 0.5,
           Math.cos(phi) * len * 0.55,
         )
       } else {
@@ -1161,19 +1257,37 @@ export class Lace extends Plant {
       florets.push([ex, ey, ez, ray.florets])
     }
     // Faint: the rays only print where they bunch near the stalk, not as a fan of lines.
-    r.stroke(rays, rayColor, Kind.Stem, Math.max(0.5, H * 0.025), 0.4)
+    // Firm enough to tie the umbellets to the stalk, so the head doesn't float.
+    r.stroke(rays, rayColor, Kind.Stem, Math.max(0.5, H * 0.025), 0.65)
     florets.sort((a, b) => a[2] - b[2])
     const fr = Math.max(0.6, H * 0.045)
-    for (const [ex, ey, , n] of florets) {
+    // Each umbellet shades by where it sits on the dome, as a cosmos does: those down the
+    // screen curve away from the sun overhead, those at the back sit in the front ones' shade.
+    // One flat cream read as a cut-out, not a head.
+    // From the umbellets' own middle, so a head still opening shades across itself too.
+    let midX = 0
+    let midY = 0
+    for (const f of florets) {
+      midX += f[0] / florets.length
+      midY += f[1] / florets.length
+    }
+    const near = florets[florets.length - 1]?.[2] ?? 0
+    const far = florets[0]?.[2] ?? 0
+    for (const [ex, ey, ez, n] of florets) {
+      const down = clamp((ey - midY) / H, 0, 1)
+      const back = near > far ? (near - ez) / (near - far) : 0
+      const tone = shade(lace, 1 - 0.2 * down - 0.08 * back)
       // A tiny umbellet: a ring of florets around one.
       const cluster = new Shape()
-      const rr = H * 0.11
+      const rr = H * 0.13
       // The umbellet as a whole: a dome of florets too fine to print one by one, so the head
-      // reads as a lace of small clusters rather than loose specks.
+      // reads as a lace of small clusters rather than loose specks. A little smaller than its
+      // ring of florets, so each umbellet is its own round tuft with florets standing out of
+      // it and a gap to the next, as in a real head; wider, they ran together into one mat.
       const dome = new Shape()
-      const dr = Math.max(rr * 1.35, r.minLine * 1.2)
+      const dr = Math.max(rr * 0.95, r.minLine * 1.1)
       dome.ellipse(ex, ey, dr, dr * 0.8, 0, 0, TAU)
-      r.fill(dome, lace, Kind.Fluff, 0.85, FLOWER_FLUFF)
+      r.fill(dome, tone, Kind.Fluff, 0.85, FLOWER_FLUFF)
       r.touchMeta(ex - dr - rr, ey - dr - rr)
       r.touchMeta(ex + dr + rr, ey + dr + rr)
       cluster.ellipse(ex, ey, fr, fr, 0, 0, TAU)
@@ -1184,22 +1298,24 @@ export class Lace extends Plant {
           ey,
           axis,
           [u, v],
-          Math.cos(a) * rr,
-          Math.sin(a) * rr,
+          Math.cos(a) * rr * 1.15,
+          Math.sin(a) * rr * 1.15,
           0,
         )
         cluster.moveTo(x + fr, y)
         cluster.ellipse(x, y, fr, fr, 0, 0, TAU)
       }
-      r.fill(cluster, lace, Kind.Fluff, 1, FLOWER_FLUFF)
+      r.fill(cluster, tone, Kind.Fluff, 1, FLOWER_FLUFF)
     }
+    // The one dark floret some heads carry, deep purple near black (not the poppy's red), at
+    // the umbellets' own middle: placed at an open head's centre, an opening one wore it on
+    // its rim.
     if (this.darkFloret && ph.spread > 0.6 && ph.nest < 0.1) {
-      const [cx, cy] = project(tx, ty, axis, [u, v], 0, 0, H * 0.85)
       r.dot(
-        cx,
-        cy,
+        midX,
+        midY,
         Math.max(0.8, H * 0.06),
-        this.bloomed(p.poppyDeep, p),
+        this.bloomed(shade(mix(p.poppyDeep, p.cosmosVein, 0.4), 0.55), p),
         Kind.Disc,
       )
     }

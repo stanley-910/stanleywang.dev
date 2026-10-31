@@ -23,7 +23,15 @@ import {
   type Plant,
   type Species,
 } from './plants'
-import { type Head, Kind, LandMat, type Raster, Shape } from './raster'
+import {
+  GLOBE,
+  type Head,
+  Kind,
+  LandMat,
+  type Raster,
+  RIVER_SPAN,
+  Shape,
+} from './raster'
 
 import type { Rect } from './ascii'
 import type { Visitors } from './visitors'
@@ -95,6 +103,20 @@ const FAR_RANGE: [number, number][] = [
 ]
 /** The massifs that carry snow, by share of the range's width. */
 const SNOW_PEAKS = [0.31, 0.85]
+/** The sun's and moon's glows at their strongest, as alpha over the sky. */
+const SUN_GLOW = 0.22
+const MOON_GLOW = 0.1
+/**
+ * A tile of noise, 0 to 1, that scatters each pixel of a glow a couple of alpha steps up or down.
+ * One step isn't enough: on a dark sky two neighbouring alphas often land on the same 8-bit colour,
+ * which holds flat for a stretch and shows as a ring.
+ */
+const DITHER = 64
+const dither = (() => {
+  const rng = mulberry32(7)
+  return Float32Array.from({ length: DITHER * DITHER }, () => rng())
+})()
+
 /** The low saddle between them, where the sun and moon go down. */
 const SADDLE = 0.58
 /** The notch left of the main massif, where the sun and moon come up on a narrow screen. */
@@ -159,24 +181,14 @@ const SPRUCE_STANDS = [
   [0.9, 5],
 ]
 const FOREST_STEP = 2
-/** How deep the brow's lit strips reach under its crest, as shares of the screen height. */
-const CREST = [0.02, 0.012, 0.006]
-/**
- * The river's course, placed by hand: shares of the screen width, and of its height below the
- * horizon. It rises at the trees' foot and meanders toward us, each bend wider than the last, then
- * runs down past the bio's left side and out at the left edge.
- */
-const RIVER: [number, number][] = [
-  [0.66, 0],
-  [0.6, 0.007],
-  [0.71, 0.018],
-  [0.5, 0.03],
-  [0.38, 0.04],
-  [0.52, 0.056],
-  [0.32, 0.07],
-  [0.12, 0.078],
-  [0.03, 0.1],
-  [-0.1, 0.17],
+/** Stones in the water, placed by hand: how far along the course, and where across it (-1..1). */
+const RIVER_STONES: [number, number, number][] = [
+  [0.6, -0.75, 0.7],
+  [0.7, 0.8, 0.9],
+  [0.79, -0.95, 1.2],
+  [0.84, 0.6, 0.6],
+  [0.9, -0.55, 0.8],
+  [0.95, 0.9, 1.4],
 ]
 /** Depth of the farthest planting: a field away, short of the hills, so nothing roots on them. */
 const FARTHEST_Z = 0.22
@@ -235,18 +247,30 @@ export class Garden {
    */
   private skyline = new Float32Array(0)
   /**
-   * The valley below the horizon: the meadow's brow, every RIDGE_STEP px, with the far slope
-   * between it and the trees, and the river that comes out of the valley toward us, its banks
-   * and how far down the screen it reaches.
+   * The river that comes out of the trees toward us: its water and its banks, the stones and islet
+   * in it, the spruce on its banks, and how far down the screen it reaches.
    */
-  private brow = new Float32Array(0)
-  private slope = new Shape()
-  private river = new Shape()
-  private banks = new Shape()
+  private riverShape = new Shape()
+  private shoreShape = new Shape()
+  private stones: Shape[] = []
+  private islet = new Shape()
+  private bankTrees: Shape[] = []
   private riverEnd = 0
-  /** Strips under the brow's crest, deepest first, and the meadow from the brow down. */
-  private crests: Shape[] = []
-  private underBrow = new Shape()
+  /** The course's middle points and breadths, which riverField reads. */
+  private course: {
+    mid: number[][]
+    tx: Float32Array
+    ty: Float32Array
+    wl: number[]
+    wr: number[]
+    sw: number[]
+  } | null = null
+  /** Counts each rebuild of the river, so a field worked out for the last one can be kept. */
+  riverVersion = 0
+  /** The course's points filed by the 4px rows their cross-sections cover. */
+  private riverBins = new Map<number, number[]>()
+  /** Per 8px of width, the nearest row a plant may root behind the river, -Infinity where none. */
+  private shoreline = new Float32Array(0)
   /** Plants sown by clicking, oldest first. */
   private sown: Plant[] = []
   time = 0
@@ -263,6 +287,13 @@ export class Garden {
   /** Overrides the moon's phase (0 new, 0.5 full) for testing; null follows the calendar. */
   moonPhase: number | null = null
   private grownFor = 0
+  /** The glow's dithered alpha, cached by its size, and the same tinted, with the tint's colour. */
+  private glow: {
+    key: string
+    mask: HTMLCanvasElement
+    tint: HTMLCanvasElement
+    tinted: string
+  } | null = null
   readonly env: Env
 
   constructor(
@@ -330,14 +361,16 @@ export class Garden {
     // strips fill whatever opened up on the right.
     for (const plant of this.plants) plant.reanchor(this.env)
     this.extend()
+    // The river first, so the grass knows where not to grow.
+    this.buildRidges()
     this.meadow.build(
       this.width,
       this.height,
       (z) => this.floor(z),
       this.seed * 7 + 3,
       this.keepClearColumn ? null : this.keepClear,
+      (x, y) => this.dry(x, y),
     )
-    this.buildRidges()
   }
 
   regrow(seed: number) {
@@ -362,14 +395,16 @@ export class Garden {
       )
       this.targetAge.set(plant, plant.bloomAge())
     }
+    // The river first, so the grass knows where not to grow.
+    this.buildRidges()
     this.meadow.build(
       this.width,
       this.height,
       (z) => this.floor(z),
       seed * 7 + 3,
       this.keepClearColumn ? null : this.keepClear,
+      (x, y) => this.dry(x, y),
     )
-    this.buildRidges()
   }
 
   /** Plants the strips the window now reaches into, each from its own seed. */
@@ -488,6 +523,24 @@ export class Garden {
     return this.place(createPlant(species, x, z, seed, this.env))
   }
 
+  /** Whether (x, y) is in the river or on its banks, where nothing grows. */
+  wet(x: number, y: number) {
+    return this.acrossAt(x, y) !== null
+  }
+
+  /** The nearest row a plant at x may root, below the horizon where the river lies behind. */
+  private shoreAt(x: number) {
+    const s = this.shoreline
+    return s.length
+      ? s[Math.min(s.length - 1, Math.max(0, Math.floor(x / 8)))]
+      : -Infinity
+  }
+
+  /** Whether a plant rooted at (x, y) would stand in, beside or past the river. */
+  private dry(x: number, y: number) {
+    return y < this.shoreAt(x) || this.wet(x, y)
+  }
+
   /** Keeps plants sorted far to near, so nearer ones draw over. */
   private place(plant: Plant) {
     let i = this.plants.length
@@ -570,9 +623,14 @@ export class Garden {
 
   /** Sow where the user clicked, cycling through the species. */
   sow(x: number, y: number) {
-    // A click on the sky sows at the horizon below it.
-    const z =
-      y < this.horizon ? FARTHEST_Z : Math.max(FARTHEST_Z, this.depthAt(y))
+    // A click on the sky sows at the horizon below it, and one beside or past the river at the
+    // nearest row clear of it.
+    const z = Math.max(
+      FARTHEST_Z,
+      this.depthAt(Math.max(y, this.shoreAt(x) + 1)),
+    )
+    // Nothing takes root in the river.
+    if (this.dry(x, this.floor(z))) return false
     const plant = this.add(this.pickSpecies(), x, z)
     plant.hurry()
     // Now and then a sown flower draws a visitor once it opens; a click on a flower always does.
@@ -673,37 +731,47 @@ export class Garden {
     this.buildSnowline(SNOW_PEAKS.map((u) => this.rangeX(u)))
     this.buildFaces()
     this.buildForest(midAt, nearAt)
-    this.buildValley()
+    this.buildRiver()
   }
 
   /**
-   * The meadow rises to a low brow, then drops into a valley out of sight; a hazed slope climbs
-   * from it to the trees. A river runs down that slope, out through a dip in the brow, and winds
-   * forward to the left edge, widening as it nears, never behind the bio's text.
+   * The river comes out from the trees' foot and winds toward us to the left edge, widening as it
+   * nears, never behind the bio's text. It's built as strips across the flow, the water's from
+   * bank to bank and the banks' out into the meadow, each carrying where across it lies, so the
+   * type can draw the current's lines along it and the banks' bands beside it.
    */
-  private buildValley() {
+  private buildRiver() {
     const H = this.height
-    const W = this.width
     const hz = this.horizon
     const seed = LAND_SEED * 17
-    const n = Math.ceil(W / RIDGE_STEP) + 2
-    const roll = (x: number) =>
-      hz + H * (0.028 + 0.014 * (fbm1(x / 380, seed + 1, 3) - 0.5))
-    // The river comes out of the valley right of centre, winds toward us over the meadow's back,
-    // and turns down past the bio's left side to leave at the left edge. Drawn through RIVER's
-    // points, it's held above the text wherever it would run behind it, and all of it where the
-    // text leaves no room at its side, as on a phone.
-    const clear = this.keepClearColumn ? null : this.keepClear
+    const CH = Math.min(H, 0.62 * this.rangeWidth) * 0.0125
+    // Laid out like the range, on its own proportions and never the text's, so every screen and
+    // zoom shows the same river, a phone a crop of it as it is of the hills.
+    const U = Math.min(H, 0.62 * this.rangeWidth)
+    // Half its breadth: the far landscape's perspective, not the flowers', which are inches tall
+    // and close. In proportion to how far below the horizon it lies, so it opens up as it nears.
     const width = (y: number, breadth: number) =>
-      (0.6 + 0.22 * (y - hz)) * breadth
-    const pts = RIVER.map(([u, v]) => [u * W, hz + 0.5 + v * H])
-    const line: [number, number, number][] = []
-    const N = 24
+      (0.0015 * U + 0.24 * (y - hz)) * breadth
+    // It comes in from off the left edge and crosses in two broad bends into the middle of the
+    // forest. Placed by hand: shares of the range across, and of U down from the horizon.
+    const pts: [number, number][] = (
+      [
+        [0.52, 0],
+        [0.43, 0.01],
+        [0.35, 0.026],
+        [0.3, 0.052],
+        [0.21, 0.078],
+        [0.1, 0.092],
+        [0, 0.12],
+        [-0.1, 0.17],
+      ] as const
+    ).map(([u, f]) => [this.rangeX(u), f * U])
+    const raw: [number, number][] = []
     for (let j = 0; j < pts.length - 1; j++)
-      for (let s = 0; s < N; s++) {
-        const t = s / N
+      for (let q = 0; q < 40; q++) {
+        const t = q / 40
         const [p0, p1, p2, p3] = [j - 1, j, j + 1, j + 2].map(
-          (q) => pts[clamp(q, 0, pts.length - 1)],
+          (i) => pts[clamp(i, 0, pts.length - 1)],
         )
         const at = (a: number, b: number, c: number, d: number) =>
           0.5 *
@@ -711,108 +779,258 @@ export class Garden {
             (c - a) * t +
             (2 * a - 5 * b + 4 * c - d) * t * t +
             (3 * b - a - 3 * c + d) * t * t * t)
-        // Its width breathes along the way, so it reads as water, not a road.
-        const breadth = 0.75 + 0.5 * fbm1((j + t) * 1.5, seed + 3, 2)
-        line.push([
+        raw.push([
           at(p0[0], p1[0], p2[0], p3[0]),
-          at(p0[1], p1[1], p2[1], p3[1]),
-          breadth,
+          hz + 3 + at(p0[1], p1[1], p2[1], p3[1]),
         ])
       }
-    if (clear) {
-      const top = clear.top - 0.025 * H
-      for (const q of line)
-        for (let pass = 0; pass < 3; pass++) {
-          const w = width(q[1], q[2])
-          if (
-            clear.left < 0.1 * W ||
-            (q[0] + w > clear.left - 0.02 * W && q[0] - w < clear.right)
-          )
-            q[1] = Math.max(hz + 0.5, Math.min(q[1], top - 0.45 * w))
+    raw.push([pts[pts.length - 1][0], hz + 3 + pts[pts.length - 1][1]])
+    // Resampled every 1.5px along its length, so a sideways run is as finely drawn as one
+    // toward us.
+    const line: [number, number, number][] = []
+    {
+      let carry = 0
+      for (let j = 1; j < raw.length; j++) {
+        const [ax, ay] = raw[j - 1]
+        const [bx, by] = raw[j]
+        const l = Math.hypot(bx - ax, by - ay)
+        while (carry <= l) {
+          const f = carry / l
+          line.push([lerp(ax, bx, f), lerp(ay, by, f), 0])
+          carry += 1.5
         }
-      // Ease the held stretch back into the course, so it doesn't kink where it's held.
-      for (let pass = 0; pass < 4; pass++)
-        for (let k = 1; k < line.length - 1; k++)
-          line[k][1] = Math.min(
-            line[k][1],
-            (line[k - 1][1] + line[k][1] + line[k + 1][1]) / 3,
-          )
+        carry -= l
+      }
+      const L = line.length
+      for (let k = 0; k < L; k++)
+        // Its breadth swells and narrows along the way, pools in the bends and runs at the necks.
+        line[k][2] = 0.85 + 0.35 * fbm1((k / L) * 6, seed + 3, 2)
     }
-    const mid = line.map(([x, y, b]): [number, number, number] => [
-      x,
-      y,
-      width(y, b),
-    ])
+    // Smoothed, so the bends run without kinks where the points meet.
+    for (let pass = 0; pass < 24; pass++)
+      for (let k = 1; k < line.length - 1; k++)
+        for (const d of [0, 1])
+          line[k][d] = (line[k - 1][d] + 2 * line[k][d] + line[k + 1][d]) / 4
+    const n = line.length
+    const mid = line.map(([x, y, b]) => [x, y, width(y, b)])
+    // Each bank its own ragged edge, as rock and gravel make it, broad wobbles and small bites.
+    const edge = (k: number, salt: number) =>
+      1 +
+      0.3 * (fbm1(k / 9, seed + salt, 2) - 0.5) +
+      0.16 * (fbm1(k / 2.5, seed + salt + 1, 2) - 0.5)
+    const wl = mid.map((m, k) => m[2] * edge(k, 11))
+    const wr = mid.map((m, k) => m[2] * edge(k, 23))
+    // The banks reach out a little more than half the water's breadth, at least a cell's worth.
+    const sw = mid.map((m) => 0.6 * m[2] + 0.5 * CH)
     let end = hz
     for (const [, y] of mid) end = Math.max(end, y)
-    this.riverEnd = end
-    // Where the river crosses the brow, the brow dips, so the water shows coming through it.
-    let cross = mid[0][0]
-    for (const [x, y] of mid)
-      if (y >= roll(x)) {
-        cross = x
-        break
-      }
-    const brow = new Float32Array(n)
-    for (let i = 0; i < n; i++) {
-      const x = i * RIDGE_STEP
-      brow[i] =
-        roll(x) + 0.012 * H * Math.exp(-(((x - cross) / (0.06 * W)) ** 2))
-    }
-    this.brow = brow
-    const slope = new Shape()
-    slope.moveTo(-10, hz - 1)
-    for (let i = 0; i < n; i++) slope.lineTo(i * RIDGE_STEP, brow[i])
-    slope.lineTo((n - 1) * RIDGE_STEP + 10, hz - 1)
-    slope.closePath()
-    this.slope = slope
-    this.river = this.ribbon(mid, 0)
-    this.banks = this.ribbon(mid, 0.6)
-    this.crests = CREST.map((depth) => this.crest(depth * H))
-    const under = new Shape()
-    under.moveTo(-10, end)
-    for (let i = 0; i < n; i++) under.lineTo(i * RIDGE_STEP, brow[i])
-    under.lineTo((n - 1) * RIDGE_STEP + 10, end)
-    under.closePath()
-    this.underBrow = under
-  }
-
-  /** A strip `depth` px deep under the brow's crest. */
-  private crest(depth: number) {
-    const shape = new Shape()
-    const n = this.brow.length
-    shape.moveTo(0, this.brow[0])
-    for (let i = 1; i < n; i++) shape.lineTo(i * RIDGE_STEP, this.brow[i])
-    for (let i = n - 1; i >= 0; i--)
-      shape.lineTo(i * RIDGE_STEP, this.brow[i] + depth)
-    shape.closePath()
-    return shape
-  }
-
-  /** The river's outline, its half-width widened by `bank` px plus a little with depth. */
-  private ribbon(mid: [number, number, number][], bank: number) {
-    const shape = new Shape()
-    const hz = this.horizon
+    // Across the flow, -1..1 bank to bank, out to ±RIVER_SPAN at the banks' far edge.
     const side = (k: number, s: number) => {
-      const [x, y, w] = mid[k]
+      const [x, y] = mid[k]
       const a = mid[Math.max(0, k - 1)]
-      const b = mid[Math.min(mid.length - 1, k + 1)]
-      // Offset across the flow, squashed vertically the way flat ground is from this high.
+      const b = mid[Math.min(n - 1, k + 1)]
       const dx = b[0] - a[0]
       const dy = b[1] - a[1]
       const l = Math.hypot(dx, dy) || 1
-      const h = w + bank * (1 + 0.03 * (y - hz))
-      return [x - (dy / l) * h * s, y + (dx / l) * h * s * 0.45] as const
+      const half = s < 0 ? wl[k] : wr[k]
+      const m = Math.abs(s)
+      const off =
+        (m <= 1 ? m * half : half + ((m - 1) / (RIVER_SPAN - 1)) * sw[k]) *
+        Math.sign(s)
+      return [x - (dy / l) * off, y + (dx / l) * off * 0.5] as const
     }
-    for (let k = 0; k < mid.length; k++) {
-      const [x, y] = side(k, 1)
-      if (k) shape.lineTo(x, y)
-      else shape.moveTo(x, y)
+    const strip = (s0: number, s1: number, from = 0, to = n - 1) => {
+      const shape = new Shape()
+      for (let k = from; k <= to; k++) {
+        const [x, y] = side(k, s0)
+        if (k > from) shape.lineTo(x, y)
+        else shape.moveTo(x, y)
+        end = Math.max(end, y)
+      }
+      for (let k = to; k >= from; k--) {
+        const [x, y] = side(k, s1)
+        shape.lineTo(x, y)
+        end = Math.max(end, y)
+      }
+      shape.closePath()
+      return shape
     }
-    for (let k = mid.length - 1; k >= 0; k--) {
-      const [x, y] = side(k, -1)
-      shape.lineTo(x, y)
+    this.riverShape = strip(-1, 1)
+    this.shoreShape = strip(-RIVER_SPAN, RIVER_SPAN)
+    // A few stones, and a gravel islet where the last bend runs widest.
+    const at = (t: number) => clamp(Math.round(t * (n - 1)), 0, n - 1)
+    this.stones = RIVER_STONES.map(([t, s, size]) => {
+      const k = at(t)
+      const [x, y] = side(k, s)
+      const r = (0.12 * mid[k][2] + 0.3 * CH) * size
+      const shape = new Shape()
+      shape.ellipse(x, y, r, r * 0.6, 0, 0, TAU)
+      return shape
+    })
+    {
+      const k = at(0.88)
+      const [x, y] = side(k, 0.15)
+      const islet = new Shape()
+      islet.ellipse(x, y, 0.3 * mid[k][2], 0.11 * mid[k][2], -0.5, 0, TAU)
+      this.islet = islet
     }
+    // Where it leaves the woods, a few spruce stand out from the treeline on either side, built
+    // as the forest's own stands are, so it reads as coming from under the trees.
+    this.bankTrees = []
+    {
+      const CW = CH / 1.32
+      const [x0, y0, w0] = mid[0]
+      for (const [j, sign, count] of [
+        [0, -1, 2],
+        [1, 1, 3],
+      ] as const)
+        for (let k = 0; k < count; k++) {
+          const x =
+            x0 +
+            sign *
+              (1.4 * w0 +
+                0.5 * CH +
+                k * 2.9 * CW * (0.75 + 0.5 * hash(k, j + 40, seed)))
+          const tall =
+            (4.5 + 5.5 * hash(k, j + 41, seed)) * CH * (1 - (0.25 * k) / count)
+          this.bankTrees.push(this.spruceShape(x, y0 + CH * 0.8, tall, CH))
+        }
+    }
+    this.riverEnd = end
+    // Each point's reach to the banks' edge, filed by the 4px rows it covers.
+    this.riverBins = new Map()
+    mid.forEach(([, y], k) => {
+      const reach = Math.max(wl[k], wr[k]) + sw[k]
+      for (
+        let row = Math.floor((y - 0.5 * reach) / 4);
+        row <= Math.floor((y + 0.5 * reach) / 4);
+        row++
+      ) {
+        const list = this.riverBins.get(row) ?? []
+        list.push(k)
+        this.riverBins.set(row, list)
+      }
+    })
+    // The meadow's flowers are inches tall and close, so one beside the river shrinks it to a
+    // ditch. Within a flower's breadth of the river they stand clearly nearer than its near bank,
+    // and it lies on a plane past them.
+    {
+      const cols = Math.ceil(this.width / 8) + 1
+      const near = new Float32Array(cols).fill(-Infinity)
+      mid.forEach(([x, y], k) => {
+        if (x >= this.width) return
+        const c = Math.max(0, Math.floor(x / 8))
+        near[c] = Math.max(near[c], y + Math.max(wl[k], wr[k]) + sw[k])
+      })
+      const reach = Math.ceil((0.06 * H) / 8)
+      this.shoreline = new Float32Array(cols)
+      for (let c = 0; c < cols; c++) {
+        let m = -Infinity
+        for (let d = -reach; d <= reach; d++)
+          m = Math.max(m, near[Math.min(cols - 1, Math.max(0, c + d))])
+        this.shoreline[c] = m + 0.05 * H
+      }
+    }
+    const tx = new Float32Array(n)
+    const ty = new Float32Array(n)
+    for (let k = 0; k < n; k++) {
+      const a = mid[Math.max(0, k - 1)]
+      const b = mid[Math.min(n - 1, k + 1)]
+      const l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1
+      tx[k] = (b[0] - a[0]) / l
+      ty[k] = (b[1] - a[1]) / l
+    }
+    this.course = { mid, tx, ty, wl, wr, sw }
+    this.riverVersion++
+    // Nothing roots in the water or on its banks, or beside or past it.
+    this.plants = this.plants.filter(
+      (plant) => !this.dry(plant.x, this.floor(plant.z)),
+    )
+  }
+
+  /**
+   * Where across the river (x, y) lies: -1..1 bank to bank, out to ±RIVER_SPAN at the banks'
+   * outer edge, or null off it.
+   */
+  private acrossAt(x: number, y: number) {
+    const C = this.course
+    const ks = this.riverBins.get(Math.floor(y / 4))
+    if (!C || !ks) return null
+    const { mid, tx, ty, wl, wr, sw } = C
+    // The point on the course whose cross-section passes nearest: side() puts the offset `off`
+    // at (x - ty·off, y + tx·off/2), so solve for it and take the closest fit.
+    let best = Infinity
+    let off = 0
+    let at = -1
+    for (const k of ks) {
+      const dx = x - mid[k][0]
+      const dy = y - mid[k][1]
+      const a = -ty[k]
+      const b = 0.5 * tx[k]
+      const o = (a * dx + b * dy) / (a * a + b * b)
+      const e = (dx - a * o) ** 2 + (dy - b * o) ** 2
+      if (e < best) {
+        best = e
+        off = o
+        at = k
+      }
+    }
+    if (at < 0 || best > 4) return null
+    const half = off < 0 ? wl[at] : wr[at]
+    const m = Math.abs(off)
+    const v =
+      m <= half ? m / half : 1 + ((m - half) / sw[at]) * (RIVER_SPAN - 1)
+    return v > RIVER_SPAN ? null : Math.sign(off) * v
+  }
+
+  /**
+   * Where across the river each cell's middle lies, for the type to draw the current's lines along
+   * the flow and the banks' bands beside it, stored as ±127 at ±RIVER_SPAN, and -128 off the
+   * river. It changes only when the river is rebuilt (riverVersion).
+   */
+  riverField(
+    out: Int8Array,
+    cols: number,
+    rows: number,
+    cw: number,
+    ch: number,
+  ) {
+    out.fill(-128)
+    for (let r = 0; r < rows; r++) {
+      const y = (r + 0.5) * ch
+      if (!this.riverBins.has(Math.floor(y / 4))) continue
+      for (let c = 0; c < cols; c++) {
+        const s = this.acrossAt((c + 0.5) * cw, y)
+        if (s !== null) out[r * cols + c] = Math.round((s * 127) / RIVER_SPAN)
+      }
+    }
+  }
+
+  /** A tiered spruce, `tall` px from its tip to its base at (x, base), `pad` px fuller all round. */
+  private spruceShape(
+    x: number,
+    base: number,
+    tall: number,
+    CH: number,
+    pad = 0,
+  ) {
+    const hw = tall * 0.26
+    const tiers = 3 + Math.floor(tall / CH / 2.2)
+    // Tiered: each branch tier flares out, then steps in under the next.
+    const half = (y: number) => {
+      const t = (y - (base - tall)) / tall
+      const q = t * tiers
+      return pad + hw * (0.06 + 0.94 * t) * (0.62 + 0.38 * (q - Math.floor(q)))
+    }
+    // Down the left flank from the tip, then back up the right.
+    const shape = new Shape()
+    const ys: number[] = []
+    for (let y = base - tall - pad; y <= base + 0.01; y += CH / 4)
+      ys.push(Math.min(base - 0.01, y))
+    ys.forEach((y, q) =>
+      q ? shape.lineTo(x - half(y), y) : shape.moveTo(x, y),
+    )
+    for (let q = ys.length - 1; q > 0; q--) shape.lineTo(x + half(ys[q]), ys[q])
     shape.closePath()
     return shape
   }
@@ -1100,25 +1318,8 @@ export class Garden {
             (0.75 + 0.5 * hash(k, j * 13 + 1, seed))
         const H = (4.5 + 5.5 * hash(k, j * 13 + 2, seed)) * CH * mid
         const hw = H * 0.26
-        const tiers = 3 + Math.floor(H / CH / 2.2)
         const base = nearAt(x) + CH * 0.8
-        // Tiered: each branch tier flares out, then steps in under the next.
-        const half = (y: number) => {
-          const t = (y - (base - H)) / H
-          const q = t * tiers
-          return hw * (0.06 + 0.94 * t) * (0.62 + 0.38 * (q - Math.floor(q)))
-        }
-        // Down the left flank from the tip, then back up the right.
-        const shape = new Shape()
-        const ys: number[] = []
-        for (let y = base - H; y <= base + 0.01; y += CH / 4)
-          ys.push(Math.min(base - 0.01, y))
-        ys.forEach((y, q) =>
-          q ? shape.lineTo(x - half(y), y) : shape.moveTo(x, y),
-        )
-        for (let q = ys.length - 1; q > 0; q--)
-          shape.lineTo(x + half(ys[q]), ys[q])
-        shape.closePath()
+        const shape = this.spruceShape(x, base, H, CH)
         this.spruce.push(shape)
         treeTop = Math.min(treeTop, base - H)
         for (let dx = -hw; dx <= hw; dx += FOREST_STEP)
@@ -1263,25 +1464,43 @@ export class Garden {
   }
 
   /**
-   * The valley's colours: the far slope a step paler than the near ridge, hazed by distance; the
-   * river the sky's colour, higher sky in the nearer water, pulled toward the ground so it stays
-   * darker than the snow at every hour; its banks a dark edge.
+   * The river's colours. Water mirrors the sky: as far below the horizon as it lies, the sky as far
+   * above, so the far reach carries the horizon's glow and the near water the higher sky, a little
+   * of the ground showing through nearer. After dark it takes the moonlit haze, so it stays a pale
+   * thread across the dark meadow. The banks are the meadow a shade toward its dark grass.
    */
-  private valleyColors(p: Palette, near: Rgb) {
-    // After dark the sky it mirrors is near the ground's colour, so the water takes a sheen of
-    // the moonlit haze instead, or the river would vanish.
-    const sheen = mix(p.haze, p.globe, 0.25)
-    const moon = 0.3 * p.night * p.moonlight
+  private riverColors(p: Palette) {
+    const hz = this.horizon
+    const H = this.height
+    const end = Math.max(hz + 1, this.riverEnd)
+    const moon = (0.3 + 0.3 * p.moonlight) * p.night
+    const T = [0, 0.15, 0.35, 0.6, 1]
+    // The body: the higher, deeper sky the water mirrors, with the ground showing through it more
+    // toward us. The type lays the bright reflections over it as the current's lines.
+    const water = T.map((t): [number, Rgb, number] => {
+      const d = t * (end - hz)
+      const sky = mix(
+        p.skyHorizon,
+        p.skyTop,
+        clamp(0.15 + (1.6 * d) / hz, 0, 1),
+      )
+      const body = mix(sky, p.ground, 0.12 + 0.18 * t)
+      return [t, mix(body, mix(p.haze, p.globe, 0.3), moon), 1]
+    })
+    const shore = T.map((t): [number, Rgb, number] => {
+      const y = lerp(hz, end, t)
+      const floor = mix(
+        mix(p.hillNear, p.grassDark, 0.4),
+        p.ground,
+        clamp((y - hz) / (H - hz), 0, 1),
+      )
+      return [t, mix(floor, p.grassDark, 0.3), 1]
+    })
     return {
-      slope: mix(mix(near, p.hillFar, 0.25), p.haze, 0.2),
-      brow: mix(p.hillNear, p.grassDark, 0.4),
-      far: mix(mix(mix(p.skyHorizon, p.haze, 0.3), p.ground, 0.3), sheen, moon),
-      near: mix(
-        mix(mix(p.skyHorizon, p.skyTop, 0.4), p.ground, 0.35),
-        sheen,
-        moon,
-      ),
-      bank: mix(p.ground, p.grassDark, 0.5),
+      water,
+      shore,
+      bar: mix(shore[3][1], p.haze, 0.25),
+      stone: mix(mix(p.hillNear, p.ground, 0.5), p.haze, 0.1),
     }
   }
 
@@ -1525,15 +1744,34 @@ export class Garden {
     if (sun + moon > 0) {
       const { cx, cy, R } = this.globeAt()
       const look = this.sunLook(p)
-      const col = sun ? look.color : p.globe
-      const strength = sun ? (0.2 + 0.12 * look.low) * sun : 0.16 * moon
-      const reach = sun ? R * (6 + 4 * look.low) : R * 7
-      const glow = ctx.createRadialGradient(cx, cy, R, cx, cy, reach)
-      const gc = col.map((v) => v | 0).join(',')
-      glow.addColorStop(0, `rgba(${gc},${strength})`)
-      glow.addColorStop(1, `rgba(${gc},0)`)
-      ctx.fillStyle = glow
-      ctx.fillRect(0, 0, this.width, this.height)
+      const col = sun ? look.color : this.moonLook(p).color
+      // Sized by the screen as well as the disc, so a phone's small moon still lights a patch of
+      // sky. It falls fastest at the disc and ever more gently out to nothing, like light
+      // scattered in air: a fade that holds and then drops reads as a soft disc. Painted before the
+      // ridges, so it lights only open sky and the range stands in front of it as the moon sets.
+      // The moon's is kept close and faint, so the disc reads as a mark in the sky, not a lamp.
+      const span = Math.hypot(this.width, this.height)
+      const reach = sun
+        ? Math.max(R * (10 + 4 * look.low), span * (0.5 + 0.15 * look.low))
+        : Math.max(R * 8, span * 0.35)
+      const peak = sun ? SUN_GLOW : MOON_GLOW
+      const strength = sun ? (0.13 + 0.09 * look.low) * sun : MOON_GLOW * moon
+      // The sun's wide glow lies on a bright sky, so a sprite of half the pixels does.
+      const step = sun ? 2 : 1
+      const sprite = this.glowSprite(reach, R, peak, col, step)
+      const n = sprite.width / 2
+      ctx.save()
+      ctx.globalAlpha = strength / peak
+      // Nearest, so each pixel keeps its dither instead of blurring it back into bands.
+      ctx.imageSmoothingEnabled = false
+      ctx.drawImage(
+        sprite,
+        cx - n * step,
+        cy - n * step,
+        2 * n * step,
+        2 * n * step,
+      )
+      ctx.restore()
     }
     const colors = this.ridgeColors(p)
     const trees = this.forestColors(p, colors)
@@ -1587,22 +1825,23 @@ export class Garden {
     }
     ctx.fillStyle = floor
     ctx.fillRect(0, this.horizon, this.width, H - this.horizon)
-    // The valley: the far slope down to the brow, a shade under the brow's crest, then the river.
-    const vale = this.valleyColors(p, colors[2])
-    ctx.fillStyle = css(vale.slope)
-    ctx.fill(this.slope.toPath2D())
-    const shade = ctx.createLinearGradient(0, this.horizon, 0, this.riverEnd)
-    shade.addColorStop(0, css(vale.brow))
-    shade.addColorStop(1, `rgba(${vale.brow.map((v) => v | 0).join(',')},0)`)
-    ctx.fillStyle = shade
-    ctx.fill(this.underBrow.toPath2D())
-    ctx.fillStyle = css(vale.bank)
-    ctx.fill(this.banks.toPath2D())
-    const water = ctx.createLinearGradient(0, this.horizon, 0, this.riverEnd)
-    water.addColorStop(0, css(vale.far))
-    water.addColorStop(1, css(vale.near))
-    ctx.fillStyle = water
-    ctx.fill(this.river.toPath2D())
+    // The river, soft here, its banks a shade under the meadow and the water the sky it mirrors;
+    // the type draws its edges, current and stones over this.
+    const rc = this.riverColors(p)
+    const wash = (stops: [number, Rgb, number][]) => {
+      const g = ctx.createLinearGradient(0, this.horizon, 0, this.riverEnd)
+      for (const [t, c] of stops) g.addColorStop(t, css(c))
+      return g
+    }
+    ctx.globalAlpha = 0.5
+    ctx.fillStyle = wash(rc.shore)
+    ctx.fill(this.shoreShape.toPath2D())
+    ctx.globalAlpha = 0.65
+    ctx.fillStyle = wash(rc.water)
+    ctx.fill(this.riverShape.toPath2D())
+    ctx.globalAlpha = 1
+    ctx.fillStyle = css(trees.spruce)
+    for (const shape of this.bankTrees) ctx.fill(shape.toPath2D())
     // A soft band of mist over the horizon, rising and falling with the same easing.
     const top = this.horizon - H * 0.06
     const mist = ctx.createLinearGradient(0, top, 0, this.horizon + H * 0.12)
@@ -1716,13 +1955,14 @@ export class Garden {
     const trees = this.forestColors(p, colors)
     const rock = { id: LandMat.Rock, light: 0.5, back: false }
     this.ridges.forEach((ridge, layer) => {
-      // The nearer ridges reset the material under them, so snow or forest behind doesn't show through.
+      // Each ridge resets the material under it, so snow or forest behind, or the sun and moon's
+      // mark (GLOBE), doesn't show through.
       r.fill(
         this.ridgePath(ridge, this.height + 10),
         colors[layer],
         Kind.Land,
         1,
-        layer ? rock : undefined,
+        rock,
       )
       // Four strips, each shallower and stronger, so the glyphs thicken toward the crest.
       const q = clamp(light / 0.45, 0, 1)
@@ -1790,29 +2030,39 @@ export class Garden {
       [0, mix(p.hillNear, p.grassDark, 0.4), 1],
       [1, p.ground, 1],
     ])
-    // The far slope, the brow's lit crest, and the river, its own material.
-    const vale = this.valleyColors(p, colors[2])
-    r.fill(this.slope, vale.slope, Kind.Land, 1, rock)
-    const q = clamp(light / 0.45, 0, 1)
-    if (q > 0)
-      for (const [k, crest] of this.crests.entries()) {
-        const s = q * (0.4 + 0.3 * k)
-        r.fill(crest, mix(vale.brow, lightCol, 0.5 * light * s), Kind.Land, 1, {
-          id: 0,
-          light: 0.5 + 0.5 * s,
-          back: false,
-        })
-      }
-    r.fill(this.banks, vale.bank, Kind.Land, 1, rock)
-    r.fill(this.river, vale.far, Kind.Land, 1, {
+    // The river: its banks, then its water, then the islet and stones in it and the spruce on its
+    // banks. Where across the flow each cell lies goes to the type apart (riverField), worked out
+    // once: as strips across the flow here it was most of the land's shapes, sent every frame.
+    const rc = this.riverColors(p)
+    r.fill(this.shoreShape, rc.shore[2][1], Kind.Land, 1, {
+      id: LandMat.Shore,
+      light: 0.5,
+      back: false,
+    })
+    r.gradient(this.shoreShape, this.horizon, this.riverEnd, rc.shore)
+    r.fill(this.riverShape, rc.water[2][1], Kind.Land, 1, {
       id: LandMat.Water,
       light: 0.5,
       back: false,
     })
-    r.gradient(this.river, this.horizon, this.riverEnd, [
-      [0, vale.far, 1],
-      [1, vale.near, 1],
-    ])
+    r.gradient(this.riverShape, this.horizon, this.riverEnd, rc.water)
+    r.fill(this.islet, rc.bar, Kind.Land, 1, {
+      id: LandMat.Shore,
+      light: 0.5,
+      back: false,
+    })
+    for (const shape of this.stones)
+      r.fill(shape, rc.stone, Kind.Land, 1, {
+        id: LandMat.Stone,
+        light: 0.5,
+        back: false,
+      })
+    for (const shape of this.bankTrees)
+      r.fill(shape, trees.spruce, Kind.Land, 1, {
+        id: LandMat.Spruce,
+        light: 0.5,
+        back: false,
+      })
     r.touchMeta(W, this.riverEnd + 4)
     // Low mist on the horizon, colour only, so the land underneath keeps its kind. It thins
     // against a low sun so the backlit ridges keep their shadow.
@@ -1884,6 +2134,85 @@ export class Garden {
     return { sun: sunAt(h), moon }
   }
 
+  /**
+   * The glow in `col`, `peak` strong at the disc and falling as (1 - s)² out to `reach`, drawn
+   * `step` px to a pixel. Each pixel's alpha is scattered a little at random, so the faint fade
+   * across a dark sky has no steps to read as rings. The alpha is worked out only
+   * when the size changes; the colour is laid on each time.
+   */
+  private glowSprite(
+    reach: number,
+    R: number,
+    peak: number,
+    col: Rgb,
+    step: number,
+  ) {
+    // Rounded up to 16 px, so a sinking sun's swelling glow is re-made only now and then.
+    const n = Math.ceil(reach / step / 16) * 16
+    const r0 = R / step
+    const key = `${n},${r0.toFixed(1)},${peak},${step}`
+    if (this.glow?.key !== key) {
+      const size = 2 * n
+      const mask = this.glow?.mask ?? document.createElement('canvas')
+      const tint = this.glow?.tint ?? document.createElement('canvas')
+      mask.width = tint.width = size
+      mask.height = tint.height = size
+      const mctx = mask.getContext('2d')
+      if (mctx) {
+        const img = mctx.createImageData(size, size)
+        const d = img.data
+        const out = n - r0
+        for (let y = 0; y < size; y++) {
+          const dy = y + 0.5 - n
+          const row = (y % DITHER) * DITHER
+          for (let x = 0; x < size; x++) {
+            const dx = x + 0.5 - n
+            const s = (Math.sqrt(dx * dx + dy * dy) - r0) / out
+            if (s >= 1) continue
+            const v = (s <= 0 ? 1 : (1 - s) * (1 - s)) * peak * 255
+            // Triangular noise, two steps wide, tapering off in the faint tail so the edge isn't lifted.
+            const j = row + (x % DITHER)
+            const tri = dither[j] + dither[(j * 7 + 13) % dither.length] - 1
+            const i = (y * size + x) * 4
+            d[i] = d[i + 1] = d[i + 2] = 255
+            d[i + 3] = Math.max(
+              0,
+              Math.floor(v + 0.5 + 2 * tri * Math.min(1, v / 3)),
+            )
+          }
+        }
+        mctx.putImageData(img, 0, 0)
+      }
+      this.glow = { key, mask, tint, tinted: '' }
+    }
+    const { mask, tint } = this.glow
+    // A repaint that only moves the glow keeps its tint.
+    const fill = css(col)
+    const tctx = this.glow.tinted === fill ? null : tint.getContext('2d')
+    if (tctx) {
+      this.glow.tinted = fill
+      tctx.globalCompositeOperation = 'copy'
+      tctx.fillStyle = fill
+      tctx.fillRect(0, 0, tint.width, tint.height)
+      tctx.globalCompositeOperation = 'destination-in'
+      tctx.drawImage(mask, 0, 0)
+    }
+    return tint
+  }
+
+  /**
+   * The moon's look by height: its own colour high up, a little warmer near the hills as the air
+   * it shines through thickens, as the sun's is; and the disc a touch brighter than its light.
+   */
+  private moonLook(p: Palette) {
+    const { cy } = this.globeAt()
+    const low = 1 - smoothstep(0, this.height * 0.32, this.horizon - cy)
+    const color = mix(p.globe, [255, 196, 120], 0.3 * low * low)
+    // Lifted toward full brightness in its own hue, so a gold moon stays gold.
+    const lift = Math.min(1.15, 255 / Math.max(...color))
+    return { color, disc: color.map((v) => v * lift) as Rgb }
+  }
+
   /** The sun's look by height: pale and round overhead; low, it swells, flattens and reddens. */
   private sunLook(p: Palette) {
     const { cy, R } = this.globeAt()
@@ -1901,12 +2230,16 @@ export class Garden {
     }
   }
 
-  /** The glows move with the sun and moon, so the cached backdrop repaints as they do. */
+  /** The glows move and colour with the sun and moon, so the cached backdrop repaints as they do. */
   backdropKey(p: Palette) {
     const { sun, moon } = this.lights(p)
     if (sun + moon <= 0) return ''
     const { cx, cy } = this.globeAt()
-    return `${Math.round(cx / 4)},${Math.round(cy / 4)},${sun.toFixed(2)},${moon.toFixed(2)},${(this.moonPhase ?? moonPhaseNow()).toFixed(3)}`
+    // In steps of 8, so the moon's colour drifting with the clock doesn't repaint it every tick.
+    const col = (sun ? this.sunLook(p) : this.moonLook(p)).color.map(
+      (v) => (v | 0) >> 3,
+    )
+    return `${Math.round(cx / 4)},${Math.round(cy / 4)},${sun.toFixed(2)},${moon.toFixed(2)},${(this.moonPhase ?? moonPhaseNow()).toFixed(3)},${col}`
   }
 
   /** The moon's lit and dark parts for tonight's phase, with which side is lit and how full it is. */
@@ -1936,26 +2269,31 @@ export class Garden {
   private drawGlobe(r: Raster, p: Palette) {
     const { cx, cy, R } = this.globeAt()
     const { sun, moon } = this.lights(p)
+    // Their GLOBE mark is read only inside the meta bounds, which otherwise start at the land:
+    // above it the moon would lose its tile, a hard line across the disc.
+    r.touchMeta(cx - R * 1.6, cy - R * 1.6)
+    r.touchMeta(cx + R * 1.6, cy + R * 1.6)
     if (sun > 0) {
       // Solid at the core, thinning to a sparse halo of dots at the edge, like a halftone print.
       const { color, rx, ry } = this.sunLook(p)
       const halo = new Shape()
       halo.ellipse(cx, cy, rx * 1.45, ry * 1.45, 0, 0, TAU)
-      r.fill(halo, color, Kind.Fluff, 0.14 * sun)
+      r.fill(halo, color, Kind.Fluff, 0.14 * sun, GLOBE)
       const rim = new Shape()
       rim.ellipse(cx, cy, rx * 1.15, ry * 1.15, 0, 0, TAU)
-      r.fill(rim, color, Kind.Fluff, 0.35 * sun)
+      r.fill(rim, color, Kind.Fluff, 0.35 * sun, GLOBE)
       const disc = new Shape()
       disc.ellipse(cx, cy, rx, ry, 0, 0, TAU)
-      r.fill(disc, mix(color, [255, 250, 235], 0.25), Kind.Fluff, sun)
+      r.fill(disc, mix(color, [255, 250, 235], 0.25), Kind.Fluff, sun, GLOBE)
     }
     if (moon > 0) {
       // Lit by the phase: the bright limb on the right while waxing, on the left while waning,
       // and the terminator an ellipse that bows toward the light in a crescent, away in a gibbous.
       const { lit, dark, side, k } = this.moonShape()
-      r.fill(lit, p.globe, Kind.Fluff, moon)
+      const { color, disc } = this.moonLook(p)
+      r.fill(lit, disc, Kind.Fluff, moon, GLOBE)
       // Earthshine on the dark side.
-      r.fill(dark, mix(p.globe, p.skyTop, 0.85), Kind.Fluff, 0.22 * moon)
+      r.fill(dark, mix(color, p.skyTop, 0.85), Kind.Fluff, 0.22 * moon, GLOBE)
       // The seas, as darker patches wherever they fall on the lit face.
       const seas = new Shape()
       for (const [sx, sy, rx, ry] of SEAS) {
@@ -1965,7 +2303,7 @@ export class Garden {
         seas.moveTo(cx + (sx + rx) * R, cy + sy * R)
         seas.ellipse(cx + sx * R, cy + sy * R, rx * R, ry * R, 0, 0, TAU)
       }
-      r.fill(seas, mix(p.globe, p.skyTop, 0.6), Kind.Fluff, moon)
+      r.fill(seas, mix(disc, p.skyTop, 0.6), Kind.Fluff, moon, GLOBE)
     }
   }
 }

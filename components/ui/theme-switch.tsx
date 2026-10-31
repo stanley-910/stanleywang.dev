@@ -4,7 +4,7 @@ import { useTheme } from 'next-themes'
 import { useEffect, useRef, useState } from 'react'
 
 import { smoothstep } from '@/components/garden/engine/math'
-import { paletteAt } from '@/components/garden/engine/palette'
+import { moonAt, paletteAt } from '@/components/garden/engine/palette'
 import { AUTO_TOP, lightningAt } from '@/components/garden/engine/weather'
 import {
   applyColours,
@@ -17,8 +17,10 @@ import {
 import { setUiHidden, useUiHidden } from '@/lib/hide-ui'
 import {
   setLightningTone,
+  setMoonTone,
   setWeather,
   useLightningTone,
+  useMoonTone,
   useWeather,
   WEATHERS,
 } from '@/lib/weather'
@@ -91,6 +93,15 @@ const autoTone = (h: number) => {
 const toneName = (t: number) =>
   t < 0.3 ? 'blue' : t < 0.6 ? 'white' : t < 0.85 ? 'yellow' : 'gold'
 
+// The moon slider's track: its own silver, through white, to gold and amber.
+const MOON_TRACK = `linear-gradient(to right, ${Array.from(
+  { length: 9 },
+  (_, i) => `${rgb(moonAt(i / 8))} ${(i / 8) * 100}%`,
+).join(', ')})`
+
+const moonName = (t: number) =>
+  ['silver', 'white', 'gold', 'amber'][Math.round(t * 3)]
+
 /** Text fades out for this long before a family switch (time-control.css fades it back). */
 const DIP_OUT = 90
 
@@ -109,6 +120,7 @@ export function ThemeSwitch({ className }: { className?: string }) {
   const hidden = useUiHidden()
   const weather = useWeather()
   const tone = useLightningTone()
+  const moonTone = useMoonTone()
   const buttonRef = useRef<HTMLButtonElement>(null)
   const popRef = useRef<HTMLDivElement>(null)
   const family = useRef<PageTheme | null>(null)
@@ -345,6 +357,40 @@ export function ThemeSwitch({ className }: { className?: string }) {
                   </p>
                 </div>
               )}
+              <div className="time-control-moon">
+                <input
+                  className="time-control-range"
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={moonTone ?? 0}
+                  aria-label="Moon colour"
+                  aria-valuetext={moonName(moonTone ?? 0)}
+                  style={
+                    {
+                      '--track': MOON_TRACK,
+                      '--bead': rgb(moonAt(moonTone ?? 0)),
+                    } as React.CSSProperties
+                  }
+                  onChange={(e) => setMoonTone(Number(e.target.value))}
+                />
+                <p className="time-control-readout">
+                  <span className="time-control-hour">
+                    {moonName(moonTone ?? 0)}
+                  </span>
+                  <span className="time-control-phase">moon</span>
+                  {moonTone !== null && (
+                    <button
+                      type="button"
+                      className="link-quiet time-control-now"
+                      onClick={() => setMoonTone(null)}
+                    >
+                      auto
+                    </button>
+                  )}
+                </p>
+              </div>
             </>
           )}
           {pathname === '/' && (

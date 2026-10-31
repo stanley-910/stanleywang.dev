@@ -18,6 +18,8 @@ let weather: WeatherKind = 'clear'
  * leaves it to the hour and each bolt's distance.
  */
 let lightningTone: number | null = null
+/** The moon's colour from the site menu's slider, 0 its own silver to 1 amber; null keeps its own. */
+let moonTone: number | null = null
 
 export const isWeather = (v: unknown): v is WeatherKind =>
   WEATHERS.includes(v as WeatherKind)
@@ -42,6 +44,16 @@ export function setLightningTone(next: number | null) {
   window.dispatchEvent(new Event(WEATHER_EVENT))
 }
 
+export function currentMoonTone() {
+  return moonTone
+}
+
+export function setMoonTone(next: number | null) {
+  if (next === moonTone) return
+  moonTone = next
+  window.dispatchEvent(new Event(WEATHER_EVENT))
+}
+
 const subscribe = (fire: () => void) => {
   window.addEventListener(WEATHER_EVENT, fire)
   return () => window.removeEventListener(WEATHER_EVENT, fire)
@@ -55,4 +67,9 @@ export function useWeather() {
 /** The lightning slider's setting, kept current. */
 export function useLightningTone() {
   return useSyncExternalStore(subscribe, currentLightningTone, () => null)
+}
+
+/** The moon slider's setting, kept current. */
+export function useMoonTone() {
+  return useSyncExternalStore(subscribe, currentMoonTone, () => null)
 }

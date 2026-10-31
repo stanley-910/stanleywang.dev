@@ -5,6 +5,7 @@ import { currentHour, HOUR_EVENT, setHour } from '@/lib/circadian'
 import { MEADOW_EVENT, type MeadowCommand } from '@/lib/meadow-control'
 import {
   currentLightningTone,
+  currentMoonTone,
   currentWeather,
   isWeather,
   setWeather,
@@ -16,7 +17,13 @@ import { Birds, BY_DAY } from './engine/birds'
 import { Garden, sunAt } from './engine/garden'
 import { smoothstep } from './engine/math'
 import { Meteors, STILL_FOR } from './engine/meteors'
-import { mix, paletteAt, type Palette, type Rgb } from './engine/palette'
+import {
+  mix,
+  paletteAt,
+  withMoon,
+  type Palette,
+  type Rgb,
+} from './engine/palette'
 import { Raster } from './engine/raster'
 import { Weather } from './engine/weather'
 import { Wind } from './engine/wind'
@@ -152,8 +159,10 @@ export function mountGarden({
   const weather = new Weather()
   weather.set(currentWeather(), true, reduced.matches)
   weather.tone = currentLightningTone()
-  /** The hour's palette under the weather. */
-  const sceneAt = (h: number) => weather.tint(paletteAt(h), sunAt(h))
+  let moonTone = currentMoonTone()
+  /** The hour's palette, with the moon in the menu's colour, under the weather. */
+  const sceneAt = (h: number) =>
+    weather.tint(withMoon(paletteAt(h), moonTone), sunAt(h))
   const raster = new Raster()
   const ascii = new AsciiRenderer(canvas, font)
   const meteors = new Meteors()
@@ -290,6 +299,9 @@ export function mountGarden({
   let peak = Infinity
   // The far range's faces per cell, for the rock's tiles.
   let relief = new Float32Array(0)
+  /** Where across the river each cell lies, and the grid and river it was worked out for. */
+  let river = new Int8Array(0)
+  let riverFor = ''
   /** The plant frame the page last drew. */
   let drawn = -1
   /** The palette of the plant frame on screen, worked out once per frame that comes back. */
@@ -323,6 +335,12 @@ export function mountGarden({
       }
       if (relief.length !== ascii.cols * ascii.rows)
         relief = new Float32Array(ascii.cols * ascii.rows)
+      const riverKey = `${ascii.cols}/${ascii.rows}/${garden.riverVersion}`
+      if (riverKey !== riverFor) {
+        riverFor = riverKey
+        river = new Int8Array(ascii.cols * ascii.rows)
+        garden.riverField(river, ascii.cols, ascii.rows, ascii.cw, ascii.ch)
+      }
       const face = garden.relief(
         relief,
         ascii.cols,
@@ -340,6 +358,7 @@ export function mountGarden({
           relief,
           reliefLight: face.color,
           reliefLit: face.lit,
+          river,
         },
         hour,
       )
@@ -545,13 +564,12 @@ export function mountGarden({
   let touch: { x: number; y: number; axis: 'x' | 'y' | null } | null = null
   /** The finger's recent heights and times, to read its speed when it lifts. */
   let trail: { y: number; t: number }[] = []
-  // A finger that lands on a flower is holding it, to push it about: it
-  // neither scrubs nor scrolls the page (whose scroll sets the poem's hour).
-  let holding = false
+  // A finger that lands on a flower pushes it about as it moves, but still
+  // scrubs or scrolls like a finger anywhere else: a meadow full of flowers
+  // left few places a swipe would take. A swipe can knock a flower in passing.
 
   const onTouchStart = (e: TouchEvent) => {
     touch = null
-    holding = false
     if (!visible || e.touches.length !== 1) return
     const t = e.target
     // The time slider and anything that scrolls itself (the terminal) take their own drags.
@@ -561,19 +579,6 @@ export function mountGarden({
     )
       return
     const { clientX: x, clientY: y } = e.touches[0]
-    if (
-      t instanceof Element &&
-      root.contains(t) &&
-      // The poem's text doesn't sow, but a flower under it can still be held.
-      !t.closest('a, button, label, form')
-    ) {
-      const origin = canvas.getBoundingClientRect()
-      if (garden.headAt(toScene(x - origin.left), toScene(y - origin.top))) {
-        holding = true
-        scrubVel = 0
-        return
-      }
-    }
     if (!scrub) return
     touch = { x, y, axis: null }
     trail = [{ y, t: e.timeStamp }]
@@ -582,11 +587,6 @@ export function mountGarden({
   }
 
   const onTouchMove = (e: TouchEvent) => {
-    if (holding) {
-      if (e.touches.length !== 1) holding = false
-      else if (e.cancelable) e.preventDefault()
-      return
-    }
     if (!touch) return
     if (e.touches.length !== 1) {
       touch = null
@@ -601,7 +601,9 @@ export function mountGarden({
       // it won't give back; a page that scrolls keeps its vertical swipes.
       if (!scrolls && e.cancelable) e.preventDefault()
       if (Math.hypot(dx, dy) < TOUCH_SLOP) return
-      touch.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y'
+      // Only a plainly sideways swipe, within about 27° of flat, is a pan; a
+      // diagonal one still scrubs, or a thumb's natural arc goes dead.
+      touch.axis = Math.abs(dx) > 2 * Math.abs(dy) ? 'x' : 'y'
       if (touch.axis === 'x' || scrolls) {
         touch = null
         return
@@ -634,7 +636,6 @@ export function mountGarden({
     }
     touch = null
     trail = []
-    holding = false
   }
 
   /** After the wheel goes quiet or the finger lifts, the scrub keeps a little speed and eases to a stop. */
@@ -911,6 +912,7 @@ export function mountGarden({
   const onWeather = () => {
     weather.set(currentWeather(), reduced.matches, reduced.matches)
     weather.tone = currentLightningTone()
+    moonTone = currentMoonTone()
     // Held still, it's a still state, drawn once; otherwise it eases in over the next frames.
     if (reduced.matches) start()
   }
