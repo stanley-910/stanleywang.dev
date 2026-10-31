@@ -1347,8 +1347,10 @@ export class Garden {
   }
 
   /**
-   * Strips under a ridge's crest, split into slopes that face the light at (`toward`, `above`) and
-   * slopes that face away. `reach` scales how far down from the crest they run.
+   * Strips under a ridge's crest, one per run of slope that faces the light at (`toward`, `above`)
+   * the same way: `w` is 1 for a slope fully lit, -1 fully in shade, and eases between as the light
+   * moves, in sixteenths, so a mountainside turns into shadow over a stretch of the hour rather than
+   * at once. `reach` scales how far down from the crest they run.
    */
   private slopes(
     ridge: Float32Array,
@@ -1358,8 +1360,7 @@ export class Garden {
     reach: number,
     clear: number,
   ) {
-    const lit = new Shape()
-    const shade = new Shape()
+    const runs: { path: Shape; w: number }[] = []
     const depth = this.height * [0.05, 0.035, 0.02][layer] * reach
     const n = ridge.length
     // Which way each point faces, read over a wide window so a whole mountainside goes one way
@@ -1367,38 +1368,60 @@ export class Garden {
     const W = 6
     const face = (i: number) => {
       const x = i * RIDGE_STEP
-      // Where the sun or moon sits behind the ridge, the ridge stands in front of it, its near
-      // face turned away: lit there, the slope would print as the globe showing through the hill.
-      if (Math.abs(x - toward) < clear && above + clear > ridge[i]) return 0
       const dy = ridge[Math.min(n - 1, i + W)] - ridge[Math.max(0, i - W)]
       if (Math.abs(dy) < 2) return 0
-      if (Math.sign(dy) === Math.sign(toward - x)) return 1
       // A slope turned away still catches a light standing well above it, as both flanks of a
-      // peak do under a high moon; only a light lower than about twice its pitch leaves it in shade.
+      // peak do under a high moon; only a light lower than about twice its pitch leaves it in
+      // shade, and it goes over 40px of the light's fall.
       const pitch = Math.abs(dy) / (2 * W * RIDGE_STEP)
-      return ridge[i] - above > 2 * pitch * Math.abs(toward - x) ? 1 : -1
+      const w =
+        Math.sign(dy) === Math.sign(toward - x)
+          ? 1
+          : 2 *
+              smoothstep(
+                -20,
+                20,
+                ridge[i] - above - 2 * pitch * Math.abs(toward - x),
+              ) -
+            1
+      // Where the sun or moon sits behind the ridge, the ridge stands in front of it, its near
+      // face turned away: lit there, the slope would print as the globe showing through the hill.
+      const open = Math.max(
+        smoothstep(clear, clear * 1.4, Math.abs(x - toward)),
+        smoothstep(0, clear * 0.4, ridge[i] - above - clear),
+      )
+      return Math.round(w * open * 16) / 16
     }
+    const fs = Array.from({ length: n }, (_, i) => face(i))
     let i = 0
     while (i < n) {
-      const f = face(i)
+      const f = fs[i]
       let j = i
-      while (j + 1 < n && face(j + 1) === f) j++
-      if (f !== 0 && j > i) {
+      while (j + 1 < n && fs[j + 1] === f) j++
+      // Reaching on to the next run where the slope only steps to the next strength, so a run of
+      // a single point still shows and none leave a gap between them.
+      const on = j < n - 1 && Math.sign(fs[j + 1]) === Math.sign(f)
+      const e = on ? j + 1 : j
+      if (f !== 0 && e > i) {
         // One shape per run: along the crest, then back along a line up to `depth` below it.
-        const path = f > 0 ? lit : shade
+        // Tapered to nothing where the slope turns or ends, so a run doesn't stop at a hard
+        // vertical edge; not where it only steps to the next strength, or it would pinch there.
+        const a = i > 0 && Math.sign(fs[i - 1]) === Math.sign(f) ? -Infinity : i
+        const b = on ? Infinity : j
+        const path = new Shape()
         path.moveTo(i * RIDGE_STEP, ridge[i])
-        for (let k = i + 1; k <= j; k++) path.lineTo(k * RIDGE_STEP, ridge[k])
-        // Tapered to nothing at both ends, so a run doesn't stop at a hard vertical edge.
-        for (let k = j; k >= i; k--)
+        for (let k = i + 1; k <= e; k++) path.lineTo(k * RIDGE_STEP, ridge[k])
+        for (let k = e; k >= i; k--)
           path.lineTo(
             k * RIDGE_STEP,
-            ridge[k] + depth * smoothstep(0, 10, Math.min(k - i, j - k)),
+            ridge[k] + depth * smoothstep(0, 10, Math.min(k - a, b - k)),
           )
         path.closePath()
+        runs.push({ path, w: f })
       }
       i = j + 1
     }
-    return { lit, shade }
+    return runs
   }
 
   /** How strongly slopes are lit and in what colour: most with the sun low, a little under the moon. */
@@ -1977,21 +2000,35 @@ export class Garden {
       ).entries()) {
         const s = q * (0.35 + 0.65 * (k / 3))
         const sl = s * (1 - rim * (1 - k / 3))
-        const { lit, shade } = this.slopes(ridge, layer, cx, cy, reach, R * 1.5)
-        r.fill(
-          lit,
-          mix(colors[layer], lightCol, Math.min(1, 1.6 * light * sl)),
-          Kind.Land,
-          1,
-          { id: 0, light: 0.5 + 0.5 * sl, back: false },
-        )
-        r.fill(
-          shade,
-          mix(colors[layer], p.ground, light * 0.6 * s * (1 + 0.6 * rim)),
-          Kind.Land,
-          1,
-          { id: 0, light: 0.5 - 0.5 * s, back: false },
-        )
+        for (const { path, w } of this.slopes(
+          ridge,
+          layer,
+          cx,
+          cy,
+          reach,
+          R * 1.5,
+        )) {
+          if (w > 0)
+            r.fill(
+              path,
+              mix(colors[layer], lightCol, Math.min(1, 1.6 * light * sl * w)),
+              Kind.Land,
+              1,
+              { id: 0, light: 0.5 + 0.5 * sl * w, back: false },
+            )
+          else
+            r.fill(
+              path,
+              mix(
+                colors[layer],
+                p.ground,
+                light * 0.6 * s * -w * (1 + 0.6 * rim),
+              ),
+              Kind.Land,
+              1,
+              { id: 0, light: 0.5 + 0.5 * s * w, back: false },
+            )
+        }
       }
       if (layer === 0) this.drawSnow(r, ridge, p, cx)
       if (layer === 1)
