@@ -69,10 +69,10 @@ const PLACES: [string, string][] = [
 ]
 const cdTo = (path: string) => (path === '~' ? 'cd ~' : `cd ${path.slice(2)}`)
 type Item = [string, string, string?] | null
-// file holds the preferences, as a File menu would: the hour, the breeze, the weather.
+// File holds the preferences, as a File menu would: the hour, the breeze, the weather.
 const MENUS: [string, Item[]][] = [
   [
-    'file',
+    'File',
     [
       ['follow my clock', 'time now'],
       ['sunrise', 'time 6:30'],
@@ -92,9 +92,9 @@ const MENUS: [string, Item[]][] = [
       ['regrow', 'regrow'],
     ],
   ],
-  ['go', PLACES.map(([n, p]) => [n, cdTo(p)])],
+  ['Go', PLACES.map(([n, p]) => [n, cdTo(p)])],
   [
-    'help',
+    'Help',
     [
       ['commands', 'help'],
       ['work', 'work'],
@@ -111,13 +111,13 @@ const GLITCH = '!@#$%^&*()_+-=[]{}|;:,.<>?~©λ'
 const isNight = (h: number) => !(h >= LIGHT_FROM && h < DARK_FROM)
 
 /** A small icon drawn cell by cell, on the bitmap face's grid like the close x: `#` is ink. */
-function Pixels({ rows }: { rows: string[] }) {
+function Pixels({ rows, scale = 1 }: { rows: string[]; scale?: number }) {
   const w = rows[0].length
   return (
     <svg
       viewBox={`0 0 ${w} ${rows.length}`}
-      width={w}
-      height={rows.length}
+      width={w * scale}
+      height={rows.length * scale}
       aria-hidden
     >
       {rows.flatMap((row, y) =>
@@ -966,7 +966,7 @@ export function Terminal() {
                     aria-pressed={tree}
                     onClick={() => setTree((t) => !t)}
                   >
-                    <Pixels rows={SIDEBAR_ICON} />
+                    <Pixels rows={SIDEBAR_ICON} scale={2} />
                   </button>
                   <button
                     aria-label="Back"
@@ -974,7 +974,7 @@ export function Terminal() {
                     disabled={!shown.back.length}
                     onClick={back}
                   >
-                    <Pixels rows={BACK_ICON} />
+                    <Pixels rows={BACK_ICON} scale={2} />
                   </button>
                   <button
                     aria-label="Forward"
@@ -982,7 +982,7 @@ export function Terminal() {
                     disabled={!shown.fwd.length}
                     onClick={forward}
                   >
-                    <Pixels rows={FORWARD_ICON} />
+                    <Pixels rows={FORWARD_ICON} scale={2} />
                   </button>
                 </span>
               )}
@@ -995,7 +995,10 @@ export function Terminal() {
                   view === 'shell' ? toFiles() : setView('shell')
                 }
               >
-                <Pixels rows={view === 'shell' ? FOLDER_ICON : PROMPT_ICON} />
+                <Pixels
+                  rows={view === 'shell' ? FOLDER_ICON : PROMPT_ICON}
+                  scale={2}
+                />
               </button>
             </nav>
 

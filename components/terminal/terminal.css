@@ -368,9 +368,9 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 13px;
-  height: 13px;
-  padding: 0 3px;
+  min-width: 17px;
+  height: 18px;
+  padding: 0 2px;
   color: var(--k-ink);
   background: none;
   border: 0;
@@ -404,9 +404,9 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
   align-self: center;
   align-items: center;
   justify-content: center;
-  width: 15px;
-  height: 13px;
-  margin: 0 6px 0 auto;
+  width: 22px;
+  height: 18px;
+  margin: 0 4px 0 auto;
   padding: 0;
   color: var(--k-ink);
   background: none;
