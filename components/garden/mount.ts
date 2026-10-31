@@ -694,10 +694,9 @@ export function mountGarden({
     // Between plant frames only the cursor's light and a shooting star move, so a new hour alone
     // (the poem's scroll) draws the page only when a plant frame comes back. A shooting star needs
     // every display frame, but doesn't move the plants.
-    // Rain, snow and blown seed likewise, but they last the visit, so they don't keep the meadow
-    // from going idle or away: there they're throttled with everything else.
+    // A lightning strike likewise. Rain, snow and blown seed move with the plant frames.
     const resting = touched > LIVELY_FOR && scrubVel === 0 && !meteors.alive
-    quality.calm = resting && !weather.moving
+    quality.calm = resting && !weather.striking
     quality.idle = resting && still > IDLE_AFTER
     quality.frameMs = raster.frameMs
     // A window out of use but under the cursor or the wheel isn't away.

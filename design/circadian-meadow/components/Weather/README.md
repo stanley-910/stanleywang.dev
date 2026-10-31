@@ -19,7 +19,7 @@ Built in `components/garden/engine/weather.ts` (colours, glyphs, particles, the 
 
 - **Colour from the palette only.** Every weather colour is a palette field of the hour, or a mix of the keyframes (`paletteAt` at a keyframe's own hour). No hex is picked by eye, and `tokens.json` gains no tokens, as with ShootingStar. When the garden's palette changes, the weather follows.
 - **Cells only.** The sun and moon are glyphs, never a painted disc, and anything laid over them is cells too: glyphs and per-cell tiles, no painted gradients. The new moon's face is the one solid shape, a disc of dark tiles (Stanley's call on 2026-10-31: an eclipse should read as a black disc in a ring of light).
-- **Palette changes move in steps** (12 for overcast and storm, 60 for snow cover, 24 for the eclipse), so the cached backdrop repaints a few dozen times over a change, never every frame. Particles are capped and looped over. Don't change step counts, caps or rates for a look; they're tuned for the Terminal spec's Performance budget.
+- **Palette changes move in steps** (24 for overcast, 12 for the storm's darkening, 60 for snow cover, 24 for the eclipse), so the cached backdrop repaints a few dozen times over a change, never every frame. Particles are capped and looped over, and move with the plant frames (40 a second, 30 when idle); only a lightning strike draws every display frame, for its second. Don't change step counts, caps or rates for a look; they're tuned for the Terminal spec's Performance budget.
 - Nothing here touches the grid. The workers only see the tinted palette, posted with each frame as always.
 
 ## Effects
@@ -72,7 +72,7 @@ Decoration: the canvas stays `aria-hidden`, and the menu's weather items carry t
 - Storm: a bolt reaches the ridges, the sky flashes and settles in under a second; no flash under reduced motion.
 - Eclipse by day: a black disc in a gold ring, the glow and diamond beyond it; the horizon is copper all round. At 17:30 the disc and ring go behind the ridges and the treeline's pines. By night the whole moon goes copper.
 - Change a keyframe in `palette.ts` and the weather's colours follow it.
-- Performance: the Terminal spec's 4× CPU check holds (about 117 fps or better in every weather).
+- Performance: the Terminal spec's 4× CPU check holds in every weather; rain, snow and wind leave the page drawing at the plant rate.
 
 ## Not built
 
