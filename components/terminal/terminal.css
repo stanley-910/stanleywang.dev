@@ -297,31 +297,22 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
   color: var(--k-muted);
 }
 
+/* Close is a bare pixel x, drawn on the same grid as the bitmap face, cleared out of the
+   title bar's rules with no box around it. Under the pointer a small plate inverts behind
+   it, the way the menus select. */
 .terminal-root .box {
   position: relative;
+  display: inline-flex;
   width: 13px;
   height: 13px;
   padding: 0;
   flex: none;
-  background: var(--k-chrome);
-  border: 1px solid var(--k-line);
-  box-shadow:
-    inset 1px 1px 0 var(--k-hi),
-    inset -1px -1px 0 var(--k-lo);
-  cursor: pointer;
-}
-
-.terminal-root .box:hover {
-  background: var(--k-hi);
-}
-
-/* The close box carries a pixel x, drawn on the same grid as the bitmap face; held
-   down, the box inverts. */
-.terminal-root .box {
-  display: inline-flex;
   align-items: center;
   justify-content: center;
   color: var(--k-ink);
+  background: var(--k-chrome);
+  border: 0;
+  cursor: pointer;
 }
 
 .terminal-root .box svg {
@@ -330,15 +321,15 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
   shape-rendering: crispEdges;
 }
 
-.terminal-root .box:active {
+.terminal-root .box:hover,
+.terminal-root .box:focus-visible {
   background: var(--k-plate);
   color: var(--k-on-plate);
-  box-shadow: inset 1px 1px 0 var(--k-lo);
+  outline: none;
 }
 
 .terminal-win:not(.focus) .box {
-  border-color: var(--k-hair);
-  color: var(--k-muted);
+  color: var(--k-hair);
 }
 
 /* The menu strip, with Shell and Files as two keys at its end. */
