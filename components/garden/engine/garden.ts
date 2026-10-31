@@ -159,6 +159,25 @@ const SPRUCE_STANDS = [
   [0.9, 5],
 ]
 const FOREST_STEP = 2
+/** How deep the brow's lit strips reach under its crest, as shares of the screen height. */
+const CREST = [0.02, 0.012, 0.006]
+/**
+ * The river's course, placed by hand: shares of the screen width, and of its height below the
+ * horizon. It rises at the trees' foot and meanders toward us, each bend wider than the last, then
+ * runs down past the bio's left side and out at the left edge.
+ */
+const RIVER: [number, number][] = [
+  [0.66, 0],
+  [0.6, 0.007],
+  [0.71, 0.018],
+  [0.5, 0.03],
+  [0.38, 0.04],
+  [0.52, 0.056],
+  [0.32, 0.07],
+  [0.12, 0.078],
+  [0.03, 0.1],
+  [-0.1, 0.17],
+]
 /** Depth of the farthest planting: a field away, short of the hills, so nothing roots on them. */
 const FARTHEST_Z = 0.22
 
@@ -215,6 +234,19 @@ export class Garden {
    * backdrop has no cells to say where it stands, so what covers the globe asks this instead.
    */
   private skyline = new Float32Array(0)
+  /**
+   * The valley below the horizon: the meadow's brow, every RIDGE_STEP px, with the far slope
+   * between it and the trees, and the river that comes out of the valley toward us, its banks
+   * and how far down the screen it reaches.
+   */
+  private brow = new Float32Array(0)
+  private slope = new Shape()
+  private river = new Shape()
+  private banks = new Shape()
+  private riverEnd = 0
+  /** Strips under the brow's crest, deepest first, and the meadow from the brow down. */
+  private crests: Shape[] = []
+  private underBrow = new Shape()
   /** Plants sown by clicking, oldest first. */
   private sown: Plant[] = []
   time = 0
@@ -641,6 +673,148 @@ export class Garden {
     this.buildSnowline(SNOW_PEAKS.map((u) => this.rangeX(u)))
     this.buildFaces()
     this.buildForest(midAt, nearAt)
+    this.buildValley()
+  }
+
+  /**
+   * The meadow rises to a low brow, then drops into a valley out of sight; a hazed slope climbs
+   * from it to the trees. A river runs down that slope, out through a dip in the brow, and winds
+   * forward to the left edge, widening as it nears, never behind the bio's text.
+   */
+  private buildValley() {
+    const H = this.height
+    const W = this.width
+    const hz = this.horizon
+    const seed = LAND_SEED * 17
+    const n = Math.ceil(W / RIDGE_STEP) + 2
+    const roll = (x: number) =>
+      hz + H * (0.028 + 0.014 * (fbm1(x / 380, seed + 1, 3) - 0.5))
+    // The river comes out of the valley right of centre, winds toward us over the meadow's back,
+    // and turns down past the bio's left side to leave at the left edge. Drawn through RIVER's
+    // points, it's held above the text wherever it would run behind it, and all of it where the
+    // text leaves no room at its side, as on a phone.
+    const clear = this.keepClearColumn ? null : this.keepClear
+    const width = (y: number, breadth: number) =>
+      (0.6 + 0.22 * (y - hz)) * breadth
+    const pts = RIVER.map(([u, v]) => [u * W, hz + 0.5 + v * H])
+    const line: [number, number, number][] = []
+    const N = 24
+    for (let j = 0; j < pts.length - 1; j++)
+      for (let s = 0; s < N; s++) {
+        const t = s / N
+        const [p0, p1, p2, p3] = [j - 1, j, j + 1, j + 2].map(
+          (q) => pts[clamp(q, 0, pts.length - 1)],
+        )
+        const at = (a: number, b: number, c: number, d: number) =>
+          0.5 *
+          (2 * b +
+            (c - a) * t +
+            (2 * a - 5 * b + 4 * c - d) * t * t +
+            (3 * b - a - 3 * c + d) * t * t * t)
+        // Its width breathes along the way, so it reads as water, not a road.
+        const breadth = 0.75 + 0.5 * fbm1((j + t) * 1.5, seed + 3, 2)
+        line.push([
+          at(p0[0], p1[0], p2[0], p3[0]),
+          at(p0[1], p1[1], p2[1], p3[1]),
+          breadth,
+        ])
+      }
+    if (clear) {
+      const top = clear.top - 0.025 * H
+      for (const q of line)
+        for (let pass = 0; pass < 3; pass++) {
+          const w = width(q[1], q[2])
+          if (
+            clear.left < 0.1 * W ||
+            (q[0] + w > clear.left - 0.02 * W && q[0] - w < clear.right)
+          )
+            q[1] = Math.max(hz + 0.5, Math.min(q[1], top - 0.45 * w))
+        }
+      // Ease the held stretch back into the course, so it doesn't kink where it's held.
+      for (let pass = 0; pass < 4; pass++)
+        for (let k = 1; k < line.length - 1; k++)
+          line[k][1] = Math.min(
+            line[k][1],
+            (line[k - 1][1] + line[k][1] + line[k + 1][1]) / 3,
+          )
+    }
+    const mid = line.map(([x, y, b]): [number, number, number] => [
+      x,
+      y,
+      width(y, b),
+    ])
+    let end = hz
+    for (const [, y] of mid) end = Math.max(end, y)
+    this.riverEnd = end
+    // Where the river crosses the brow, the brow dips, so the water shows coming through it.
+    let cross = mid[0][0]
+    for (const [x, y] of mid)
+      if (y >= roll(x)) {
+        cross = x
+        break
+      }
+    const brow = new Float32Array(n)
+    for (let i = 0; i < n; i++) {
+      const x = i * RIDGE_STEP
+      brow[i] =
+        roll(x) + 0.012 * H * Math.exp(-(((x - cross) / (0.06 * W)) ** 2))
+    }
+    this.brow = brow
+    const slope = new Shape()
+    slope.moveTo(-10, hz - 1)
+    for (let i = 0; i < n; i++) slope.lineTo(i * RIDGE_STEP, brow[i])
+    slope.lineTo((n - 1) * RIDGE_STEP + 10, hz - 1)
+    slope.closePath()
+    this.slope = slope
+    this.river = this.ribbon(mid, 0)
+    this.banks = this.ribbon(mid, 0.6)
+    this.crests = CREST.map((depth) => this.crest(depth * H))
+    const under = new Shape()
+    under.moveTo(-10, end)
+    for (let i = 0; i < n; i++) under.lineTo(i * RIDGE_STEP, brow[i])
+    under.lineTo((n - 1) * RIDGE_STEP + 10, end)
+    under.closePath()
+    this.underBrow = under
+  }
+
+  /** A strip `depth` px deep under the brow's crest. */
+  private crest(depth: number) {
+    const shape = new Shape()
+    const n = this.brow.length
+    shape.moveTo(0, this.brow[0])
+    for (let i = 1; i < n; i++) shape.lineTo(i * RIDGE_STEP, this.brow[i])
+    for (let i = n - 1; i >= 0; i--)
+      shape.lineTo(i * RIDGE_STEP, this.brow[i] + depth)
+    shape.closePath()
+    return shape
+  }
+
+  /** The river's outline, its half-width widened by `bank` px plus a little with depth. */
+  private ribbon(mid: [number, number, number][], bank: number) {
+    const shape = new Shape()
+    const hz = this.horizon
+    const side = (k: number, s: number) => {
+      const [x, y, w] = mid[k]
+      const a = mid[Math.max(0, k - 1)]
+      const b = mid[Math.min(mid.length - 1, k + 1)]
+      // Offset across the flow, squashed vertically the way flat ground is from this high.
+      const dx = b[0] - a[0]
+      const dy = b[1] - a[1]
+      const l = Math.hypot(dx, dy) || 1
+      const h = w + bank * (1 + 0.03 * (y - hz))
+      return [x - (dy / l) * h * s, y + (dx / l) * h * s * 0.45] as const
+    }
+    for (let k = 0; k < mid.length; k++) {
+      const [x, y] = side(k, 1)
+      if (k) shape.lineTo(x, y)
+      else shape.moveTo(x, y)
+    }
+    for (let k = mid.length - 1; k >= 0; k--) {
+      const [x, y] = side(k, -1)
+      shape.lineTo(x, y)
+    }
+    shape.closePath()
+    return shape
   }
 
   /** A ridge's height at any x, between its points. */
@@ -1088,6 +1262,29 @@ export class Garden {
     }
   }
 
+  /**
+   * The valley's colours: the far slope a step paler than the near ridge, hazed by distance; the
+   * river the sky's colour, higher sky in the nearer water, pulled toward the ground so it stays
+   * darker than the snow at every hour; its banks a dark edge.
+   */
+  private valleyColors(p: Palette, near: Rgb) {
+    // After dark the sky it mirrors is near the ground's colour, so the water takes a sheen of
+    // the moonlit haze instead, or the river would vanish.
+    const sheen = mix(p.haze, p.globe, 0.25)
+    const moon = 0.3 * p.night * p.moonlight
+    return {
+      slope: mix(mix(near, p.hillFar, 0.25), p.haze, 0.2),
+      brow: mix(p.hillNear, p.grassDark, 0.4),
+      far: mix(mix(mix(p.skyHorizon, p.haze, 0.3), p.ground, 0.3), sheen, moon),
+      near: mix(
+        mix(mix(p.skyHorizon, p.skyTop, 0.4), p.ground, 0.35),
+        sheen,
+        moon,
+      ),
+      bank: mix(p.ground, p.grassDark, 0.5),
+    }
+  }
+
   step(dt: number, palette: Palette) {
     this.time += dt
     this.env.palette = palette
@@ -1390,6 +1587,22 @@ export class Garden {
     }
     ctx.fillStyle = floor
     ctx.fillRect(0, this.horizon, this.width, H - this.horizon)
+    // The valley: the far slope down to the brow, a shade under the brow's crest, then the river.
+    const vale = this.valleyColors(p, colors[2])
+    ctx.fillStyle = css(vale.slope)
+    ctx.fill(this.slope.toPath2D())
+    const shade = ctx.createLinearGradient(0, this.horizon, 0, this.riverEnd)
+    shade.addColorStop(0, css(vale.brow))
+    shade.addColorStop(1, `rgba(${vale.brow.map((v) => v | 0).join(',')},0)`)
+    ctx.fillStyle = shade
+    ctx.fill(this.underBrow.toPath2D())
+    ctx.fillStyle = css(vale.bank)
+    ctx.fill(this.banks.toPath2D())
+    const water = ctx.createLinearGradient(0, this.horizon, 0, this.riverEnd)
+    water.addColorStop(0, css(vale.far))
+    water.addColorStop(1, css(vale.near))
+    ctx.fillStyle = water
+    ctx.fill(this.river.toPath2D())
     // A soft band of mist over the horizon, rising and falling with the same easing.
     const top = this.horizon - H * 0.06
     const mist = ctx.createLinearGradient(0, top, 0, this.horizon + H * 0.12)
@@ -1577,6 +1790,30 @@ export class Garden {
       [0, mix(p.hillNear, p.grassDark, 0.4), 1],
       [1, p.ground, 1],
     ])
+    // The far slope, the brow's lit crest, and the river, its own material.
+    const vale = this.valleyColors(p, colors[2])
+    r.fill(this.slope, vale.slope, Kind.Land, 1, rock)
+    const q = clamp(light / 0.45, 0, 1)
+    if (q > 0)
+      for (const [k, crest] of this.crests.entries()) {
+        const s = q * (0.4 + 0.3 * k)
+        r.fill(crest, mix(vale.brow, lightCol, 0.5 * light * s), Kind.Land, 1, {
+          id: 0,
+          light: 0.5 + 0.5 * s,
+          back: false,
+        })
+      }
+    r.fill(this.banks, vale.bank, Kind.Land, 1, rock)
+    r.fill(this.river, vale.far, Kind.Land, 1, {
+      id: LandMat.Water,
+      light: 0.5,
+      back: false,
+    })
+    r.gradient(this.river, this.horizon, this.riverEnd, [
+      [0, vale.far, 1],
+      [1, vale.near, 1],
+    ])
+    r.touchMeta(W, this.riverEnd + 4)
     // Low mist on the horizon, colour only, so the land underneath keeps its kind. It thins
     // against a low sun so the backlit ridges keep their shadow.
     const veil = 0.55 * (1 - 0.6 * this.backlight(p))
