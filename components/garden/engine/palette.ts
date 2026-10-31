@@ -329,3 +329,39 @@ export const shade = (c: Rgb, k: number): Rgb => [
   Math.min(255, c[1] * k),
   Math.min(255, c[2] * k),
 ]
+
+/** The moon slider's colours: `night-globe`'s silver, a white, then `golden-globe` and `dusk-globe`. */
+const MOON_STOPS: Rgb[] = [
+  NIGHT.globe,
+  mixRgb(NIGHT.globe, [255, 255, 255], 0.6),
+  GOLDEN.globe,
+  DUSK.globe,
+]
+
+/** The moon's colour along the site menu's slider, 0 the palette's own silver to 1 amber. */
+export function moonAt(t: number): Rgb {
+  const x = clamp(t, 0, 1) * (MOON_STOPS.length - 1)
+  const i = Math.min(MOON_STOPS.length - 2, Math.floor(x))
+  return mixRgb(MOON_STOPS[i], MOON_STOPS[i + 1], x - i)
+}
+
+const luma = ([r, g, b]: Rgb) => 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+/**
+ * The palette with the moon in the slider's colour, or as it is for null. It keeps the hour's own
+ * brightness for the moon, dimmer toward midnight, and takes over only as the night does, so the
+ * disc, its glow, the moonlit slopes and the river's silver all turn with it.
+ */
+export function withMoon(p: Palette, tone: number | null): Palette {
+  if (tone === null) return p
+  const w = smoothstep(0.5, 0.9, p.night)
+  if (w <= 0) return p
+  const c = moonAt(tone)
+  const k = luma(p.globe) / luma(NIGHT.globe)
+  const lit: Rgb = [
+    Math.min(255, c[0] * k),
+    Math.min(255, c[1] * k),
+    Math.min(255, c[2] * k),
+  ]
+  return { ...p, globe: mixRgb(p.globe, lit, w) }
+}

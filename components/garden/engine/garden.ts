@@ -102,6 +102,20 @@ const FAR_RANGE: [number, number][] = [
 ]
 /** The massifs that carry snow, by share of the range's width. */
 const SNOW_PEAKS = [0.31, 0.85]
+/** The sun's and moon's glows at their strongest, as alpha over the sky. */
+const SUN_GLOW = 0.22
+const MOON_GLOW = 0.1
+/**
+ * A tile of noise, 0 to 1, that scatters each pixel of a glow a couple of alpha steps up or down.
+ * One step isn't enough: on a dark sky two neighbouring alphas often land on the same 8-bit colour,
+ * which holds flat for a stretch and shows as a ring.
+ */
+const DITHER = 64
+const dither = (() => {
+  const rng = mulberry32(7)
+  return Float32Array.from({ length: DITHER * DITHER }, () => rng())
+})()
+
 /** The low saddle between them, where the sun and moon go down. */
 const SADDLE = 0.58
 /** The notch left of the main massif, where the sun and moon come up on a narrow screen. */
@@ -278,6 +292,12 @@ export class Garden {
   /** Overrides the moon's phase (0 new, 0.5 full) for testing; null follows the calendar. */
   moonPhase: number | null = null
   private grownFor = 0
+  /** The glow's dithered alpha, cached by its size, and the same tinted for this frame. */
+  private glow: {
+    key: string
+    mask: HTMLCanvasElement
+    tint: HTMLCanvasElement
+  } | null = null
   readonly env: Env
 
   constructor(
@@ -1667,24 +1687,34 @@ export class Garden {
     if (sun + moon > 0) {
       const { cx, cy, R } = this.globeAt()
       const look = this.sunLook(p)
-      const col = sun ? look.color : p.globe
-      const strength = sun ? (0.17 + 0.12 * look.low) * sun : 0.15 * moon
-      // Sized by the screen as well as the disc, so a phone's small moon still lights a wide
-      // patch of sky, and eased out to nothing so no edge shows as it moves. Painted before the
+      const col = sun ? look.color : this.moonLook(p).color
+      // Sized by the screen as well as the disc, so a phone's small moon still lights a patch of
+      // sky. It falls fastest at the disc and ever more gently out to nothing, like light
+      // scattered in air: a fade that holds and then drops reads as a soft disc. Painted before the
       // ridges, so it lights only open sky and the range stands in front of it as the moon sets.
+      // The moon's is kept close and faint, so the disc reads as a mark in the sky, not a lamp.
       const span = Math.hypot(this.width, this.height)
       const reach = sun
-        ? Math.max(R * (8 + 4 * look.low), span * (0.4 + 0.15 * look.low))
-        : Math.max(R * 9, span * 0.4)
-      const glow = ctx.createRadialGradient(cx, cy, R, cx, cy, reach)
-      const gc = col.map((v) => v | 0).join(',')
-      for (let i = 0; i <= 8; i++) {
-        const s = i / 8
-        const fade = (1 - smoothstep(0, 1, s)) ** 2
-        glow.addColorStop(s, `rgba(${gc},${(strength * fade).toFixed(4)})`)
-      }
-      ctx.fillStyle = glow
-      ctx.fillRect(0, 0, this.width, this.height)
+        ? Math.max(R * (10 + 4 * look.low), span * (0.5 + 0.15 * look.low))
+        : Math.max(R * 8, span * 0.35)
+      const peak = sun ? SUN_GLOW : MOON_GLOW
+      const strength = sun ? (0.13 + 0.09 * look.low) * sun : MOON_GLOW * moon
+      // The sun's wide glow lies on a bright sky, so a sprite of half the pixels does.
+      const step = sun ? 2 : 1
+      const sprite = this.glowSprite(reach, R, peak, col, step)
+      const n = sprite.width / 2
+      ctx.save()
+      ctx.globalAlpha = strength / peak
+      // Nearest, so each pixel keeps its dither instead of blurring it back into bands.
+      ctx.imageSmoothingEnabled = false
+      ctx.drawImage(
+        sprite,
+        cx - n * step,
+        cy - n * step,
+        2 * n * step,
+        2 * n * step,
+      )
+      ctx.restore()
     }
     const colors = this.ridgeColors(p)
     const trees = this.forestColors(p, colors)
@@ -2060,6 +2090,82 @@ export class Garden {
     return { sun: sunAt(h), moon }
   }
 
+  /**
+   * The glow in `col`, `peak` strong at the disc and falling as (1 - s)² out to `reach`, drawn
+   * `step` px to a pixel. Each pixel's alpha is scattered a little at random, so the faint fade
+   * across a dark sky has no steps to read as rings. The alpha is worked out only
+   * when the size changes; the colour is laid on each time.
+   */
+  private glowSprite(
+    reach: number,
+    R: number,
+    peak: number,
+    col: Rgb,
+    step: number,
+  ) {
+    // Rounded up to 16 px, so a sinking sun's swelling glow is re-made only now and then.
+    const n = Math.ceil(reach / step / 16) * 16
+    const r0 = R / step
+    const key = `${n},${r0.toFixed(1)},${peak},${step}`
+    if (this.glow?.key !== key) {
+      const size = 2 * n
+      const mask = this.glow?.mask ?? document.createElement('canvas')
+      const tint = this.glow?.tint ?? document.createElement('canvas')
+      mask.width = tint.width = size
+      mask.height = tint.height = size
+      const mctx = mask.getContext('2d')
+      if (mctx) {
+        const img = mctx.createImageData(size, size)
+        const d = img.data
+        const out = n - r0
+        for (let y = 0; y < size; y++) {
+          const dy = y + 0.5 - n
+          const row = (y % DITHER) * DITHER
+          for (let x = 0; x < size; x++) {
+            const dx = x + 0.5 - n
+            const s = (Math.sqrt(dx * dx + dy * dy) - r0) / out
+            if (s >= 1) continue
+            const v = (s <= 0 ? 1 : (1 - s) * (1 - s)) * peak * 255
+            // Triangular noise, two steps wide, tapering off in the faint tail so the edge isn't lifted.
+            const j = row + (x % DITHER)
+            const tri = dither[j] + dither[(j * 7 + 13) % dither.length] - 1
+            const i = (y * size + x) * 4
+            d[i] = d[i + 1] = d[i + 2] = 255
+            d[i + 3] = Math.max(
+              0,
+              Math.floor(v + 0.5 + 2 * tri * Math.min(1, v / 3)),
+            )
+          }
+        }
+        mctx.putImageData(img, 0, 0)
+      }
+      this.glow = { key, mask, tint }
+    }
+    const { mask, tint } = this.glow
+    const tctx = tint.getContext('2d')
+    if (tctx) {
+      tctx.globalCompositeOperation = 'copy'
+      tctx.fillStyle = css(col)
+      tctx.fillRect(0, 0, tint.width, tint.height)
+      tctx.globalCompositeOperation = 'destination-in'
+      tctx.drawImage(mask, 0, 0)
+    }
+    return tint
+  }
+
+  /**
+   * The moon's look by height: its own colour high up, a little warmer near the hills as the air
+   * it shines through thickens, as the sun's is; and the disc a touch brighter than its light.
+   */
+  private moonLook(p: Palette) {
+    const { cy } = this.globeAt()
+    const low = 1 - smoothstep(0, this.height * 0.32, this.horizon - cy)
+    const color = mix(p.globe, [255, 196, 120], 0.3 * low * low)
+    // Lifted toward full brightness in its own hue, so a gold moon stays gold.
+    const lift = Math.min(1.15, 255 / Math.max(...color))
+    return { color, disc: color.map((v) => v * lift) as Rgb }
+  }
+
   /** The sun's look by height: pale and round overhead; low, it swells, flattens and reddens. */
   private sunLook(p: Palette) {
     const { cy, R } = this.globeAt()
@@ -2077,12 +2183,15 @@ export class Garden {
     }
   }
 
-  /** The glows move with the sun and moon, so the cached backdrop repaints as they do. */
+  /** The glows move and colour with the sun and moon, so the cached backdrop repaints as they do. */
   backdropKey(p: Palette) {
     const { sun, moon } = this.lights(p)
     if (sun + moon <= 0) return ''
     const { cx, cy } = this.globeAt()
-    return `${Math.round(cx / 4)},${Math.round(cy / 4)},${sun.toFixed(2)},${moon.toFixed(2)},${(this.moonPhase ?? moonPhaseNow()).toFixed(3)}`
+    const col = (sun ? this.sunLook(p) : this.moonLook(p)).color.map(
+      (v) => v | 0,
+    )
+    return `${Math.round(cx / 4)},${Math.round(cy / 4)},${sun.toFixed(2)},${moon.toFixed(2)},${(this.moonPhase ?? moonPhaseNow()).toFixed(3)},${col}`
   }
 
   /** The moon's lit and dark parts for tonight's phase, with which side is lit and how full it is. */
@@ -2129,9 +2238,10 @@ export class Garden {
       // Lit by the phase: the bright limb on the right while waxing, on the left while waning,
       // and the terminator an ellipse that bows toward the light in a crescent, away in a gibbous.
       const { lit, dark, side, k } = this.moonShape()
-      r.fill(lit, p.globe, Kind.Fluff, moon)
+      const { color, disc } = this.moonLook(p)
+      r.fill(lit, disc, Kind.Fluff, moon)
       // Earthshine on the dark side.
-      r.fill(dark, mix(p.globe, p.skyTop, 0.85), Kind.Fluff, 0.22 * moon)
+      r.fill(dark, mix(color, p.skyTop, 0.85), Kind.Fluff, 0.22 * moon)
       // The seas, as darker patches wherever they fall on the lit face.
       const seas = new Shape()
       for (const [sx, sy, rx, ry] of SEAS) {
@@ -2141,7 +2251,7 @@ export class Garden {
         seas.moveTo(cx + (sx + rx) * R, cy + sy * R)
         seas.ellipse(cx + sx * R, cy + sy * R, rx * R, ry * R, 0, 0, TAU)
       }
-      r.fill(seas, mix(p.globe, p.skyTop, 0.6), Kind.Fluff, moon)
+      r.fill(seas, mix(disc, p.skyTop, 0.6), Kind.Fluff, moon)
     }
   }
 }

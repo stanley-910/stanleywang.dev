@@ -38,7 +38,7 @@ Chosen by Stanley, 2026-11-01:
 
 **Bank spruce.** Five small stands along the banks (`BANK_STANDS`), out past the bank's bands, the near ridge's tiered spruce at `(1.2 + 0.016d)` cells tall, a shade toward haze (more after dark, as moonlight), each with a dark rim, `mix(spruce, black, 0.4)`, 0.3 cells round it, so it stands off the meadow. A tree on the near bank stands in front of the water. Stands over the bio are left out.
 
-**Colour.** The water mirrors the sky. As far below the horizon as it lies, it shows the sky as far above, so the far reach carries the horizon's glow and the near water the higher sky: `mix(sky-horizon, sky-top, 0.15 + 1.6d / horizon)`, pulled toward `ground` by 0.12 far to 0.3 near. After dark it mixes toward `mix(haze, globe, 0.3)` by `(0.3 + 0.3 × moonlight) × night`. The glint the lines carry is the light on the water, `mix(mix(sky-horizon, globe, 0.55 + 0.3 × night), white, 0.15)`. The banks are the meadow's floor a shade toward `grass-dark`.
+**Colour.** The water mirrors the sky. As far below the horizon as it lies, it shows the sky as far above, so the far reach carries the horizon's glow and the near water the higher sky: `mix(sky-horizon, sky-top, 0.15 + 1.6d / horizon)`, pulled toward `ground` by 0.12 far to 0.3 near. After dark it mixes toward `mix(haze, globe, 0.3)` by `(0.3 + 0.3 × moonlight) × night`. The glint the lines carry is the light on the water, `mix(mix(sky-horizon, globe, 0.55 + 0.3 × night), white, 0.15)`. After dark `globe` is the moon's colour, so a gold moon from the site menu lays gold on the water. The banks are the meadow's floor a shade toward `grass-dark`.
 
 | Hour | Reads as |
 | --- | --- |
