@@ -716,6 +716,12 @@ export class Typesetter {
                   cg = lc[1]
                   cb = lc[2]
                   alpha = 1
+                  // Its own tile, as the cells under it have, so the snow lies over the summit; with
+                  // the line glyph alone the top row showed the rock through it. Scaled by how much
+                  // of the cell the cap covers, so the crest stays soft rather than a hard step.
+                  tile[i] =
+                    (mat === LandMat.SnowLit ? 0.35 : 0.3) *
+                    Math.min(1, v + 0.2)
                 } else if (mat === LandMat.SnowLit) {
                   let n = 0
                   while (n < 8 && this.snowAt(c, r - 1 - n)) n++
