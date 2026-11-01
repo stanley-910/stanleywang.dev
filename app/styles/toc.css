@@ -5,7 +5,10 @@
   closed "contents" disclosure in the reading column.
 */
 
+/* The post's space-y-12 would give it 48px below, on top of the next block's own top
+   margin; the next block's margin is the gap, as it is after any other block. */
 nav.toc {
+  margin-bottom: 0;
   font-family: var(--font-mono);
   font-size: var(--text-meta);
   line-height: 20px;
@@ -92,9 +95,15 @@ nav.toc a:focus-visible {
     display: none;
   }
 
+  /* Closed, the 44px summary is a touch target round a 20px line: the half it adds below
+     the line is taken back, so the next block sits its usual distance from "contents". */
   .toc-inline {
     display: block;
-    margin: var(--space-3) 0 0;
+    margin: var(--space-3) 0 calc((20px - 44px) / 2);
+  }
+
+  .toc-inline:not([open]) summary {
+    margin-bottom: 0;
   }
 
   .toc-inline[open] {
