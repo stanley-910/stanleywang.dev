@@ -49,10 +49,13 @@ const bitmap = Pixelify_Sans({
 })
 
 // The shell's own face, so what you type reads apart from the site's Geist; it carries
-// the IPA and Greek the poems use, and the Cyrillic the boot turns over through.
+// the IPA and Greek the poems use, and the Cyrillic the boot turns over through. Its subsets
+// leave out box drawing, so tree's lines fall through to the site's mono, not to the
+// metric-matched Arial next/font would put first, whose │ and ├ don't line up.
 const shellFont = JetBrains_Mono({
   subsets: ['latin', 'latin-ext', 'greek', 'cyrillic'],
   variable: '--font-shell',
+  adjustFontFallback: false,
 })
 
 type Entry =
