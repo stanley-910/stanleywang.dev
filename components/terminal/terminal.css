@@ -121,14 +121,18 @@
   }
 }
 
-.terminal-power[aria-pressed='true'] .ring {
-  stroke-dasharray: 100 0;
-  stroke-dashoffset: 0;
-}
+/* Only where CSS can reshape a path. WebKit can't move the key (no `d`), so there it closed the
+   ring around a key that stayed up, which read as neither on nor off: it keeps the plain symbol. */
+@supports (d: path('M0 0')) {
+  .terminal-power[aria-pressed='true'] .ring {
+    stroke-dasharray: 100 0;
+    stroke-dashoffset: 0;
+  }
 
-.terminal-power[aria-pressed='true'] .key {
-  d: path('M8 8.45 V8.45');
-  transform: none;
+  .terminal-power[aria-pressed='true'] .key {
+    d: path('M8 8.45 V8.45');
+    transform: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
