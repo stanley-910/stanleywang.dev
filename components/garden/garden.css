@@ -67,12 +67,6 @@ html:has(.garden-home, .poem-page) body {
   background-color: var(--garden-edge, var(--page));
 }
 
-/* Over the canvas, the top bar and the hero stay on top. */
-.site-header {
-  position: relative;
-  z-index: 1;
-}
-
 /* On home the bar sits on the sky; mount.ts picks the ink that reads best
    against it, whatever the page theme. */
 :root[data-sky='dark'] .site-header {

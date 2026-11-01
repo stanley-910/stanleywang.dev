@@ -13,6 +13,11 @@
 /* ── Top bar ─────────────────────────────────────────────────── */
 
 .site-header {
+  /* Above the page under it, so its panels (the site index and the site
+     menu) open over home's text, photo captions and hover cards; below the
+     terminal (40) and the photo viewer's top layer. */
+  position: relative;
+  z-index: 35;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -198,4 +203,3 @@
     display: flex;
   }
 }
-

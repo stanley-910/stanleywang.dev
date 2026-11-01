@@ -23,7 +23,7 @@ Built: `app/header.tsx`, `app/styles/shell.css` (`.site-header`).
 | Padding       | `space-4` top, `space-5` below                               | `space-3` top, `space-4` below                |
 | Left edge     | `gutter` (20vw from 1024px, else 24px)                       | `gutter`, where the SiteIndex glyph sits      |
 
-The row sits in the page flow at the top; it doesn't stick or hide on scroll. Under 480px the five words crowded the menu's dots, so they fold into SiteIndex's glyph in the top-left corner, and the bar keeps its 20px line so it stays as tall.
+The row sits in the page flow at the top; it doesn't stick or hide on scroll. It stacks above the page under it (`z-index: 35`, below the terminal's 40 and the photo viewer's top layer), so its panels open over home's text, photo captions and hover cards. Under 480px the five words crowded the menu's dots, so they fold into SiteIndex's glyph in the top-left corner, and the bar keeps its 20px line so it stays as tall.
 
 ## States
 
