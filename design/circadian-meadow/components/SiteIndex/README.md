@@ -1,6 +1,6 @@
 # SiteIndex
 
-The top bar on a phone. Under 480px the five words crowded the site menu's dots, so they fold into a glyph in the top-left corner. It opens an index of the site in the site menu's glass. Desktop keeps the row of words (SiteHeader).
+The top bar on a phone, and the site menu's sibling (SiteMenu). Under 480px the five words crowded the site menu's dots, so they fold into a glyph in the top-left corner. It opens an index of the site in the site menu's glass. Desktop keeps the row of words (SiteHeader).
 
 Built: `components/ui/site-index.tsx`, `components/ui/site-index.css`. Shown from `app/header.tsx`, inside the bar's `<nav aria-label="Site">`.
 

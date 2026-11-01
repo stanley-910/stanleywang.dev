@@ -1,6 +1,6 @@
 # Weather
 
-The meadow's weather: clear, rain, snow, storm and eclipse, set from the site menu (SiteHeader) or the terminal's `meadowcontrol` event. A renderer rule, not a site component. It shows on home (`/`) and the poem (`/writing/poem`), lasts for the visit and isn't stored, so a reload is clear.
+The meadow's weather: clear, rain, snow, storm and eclipse, set from the site menu (SiteMenu) or the terminal's `meadowcontrol` event. A renderer rule, not a site component. It shows on home (`/`) and the poem (`/writing/poem`), lasts for the visit and isn't stored, so a reload is clear.
 
 Built in `components/garden/engine/weather.ts` (colours, glyphs, particles, the eclipse), `ascii.ts` (how each cell takes them), `mount.ts` (wiring) and `lib/weather.ts` (the visit's weather). The set and its effects come from the Terminal spec's Meadow effects table; Stanley chose this set on 2026-10-31.
 
@@ -65,7 +65,7 @@ The new moon's face is a tile of its colour on every cell it covers, at the disc
 
 ## Accessibility
 
-Decoration: the canvas stays `aria-hidden`, and the menu's weather items carry the state (SiteHeader). Lightning flashes at most three times per strike (its return strokes, 0.1 s or more apart), a strike at most once every 4 s, the cloud's flickers softer and local, and only the glyphs lift (no tile, backdrop or page flash), so it stays under the three-flashes-a-second limit and well short of a white-out. Under reduced motion there is no lightning. The bio sits below the horizon; flakes and drops cross it as the grass does, and the land behind it stays dark.
+Decoration: the canvas stays `aria-hidden`, and the menu's weather items carry the state (SiteMenu). Lightning flashes at most three times per strike (its return strokes, 0.1 s or more apart), a strike at most once every 4 s, the cloud's flickers softer and local, and only the glyphs lift (no tile, backdrop or page flash), so it stays under the three-flashes-a-second limit and well short of a white-out. Under reduced motion there is no lightning. The bio sits below the horizon; flakes and drops cross it as the grass does, and the land behind it stays dark.
 
 ## Verify
 

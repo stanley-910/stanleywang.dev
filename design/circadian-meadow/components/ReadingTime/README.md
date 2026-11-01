@@ -17,7 +17,7 @@ stanley  projects  film  writing  music  ☾            ← click / Enter / Spac
                                    └───────────────────────────────┘
 ```
 
-- **Opens** under the icon as a popover (`surface`, hairline at 45%, `radius-card`, `shadow-card`, padding `space-2`, 16rem wide; full width between gutters under 480px). It unrolls from the top with the ExperienceCard's timing (`duration-card`, `ease-calm`), rising 4px: a clip, not a fade, since a blur under a fading layer isn't drawn until the fade ends and the glass showed clear for a beat.
+- **Opens** under the icon as the site menu's first section (its glass, spacing and width are in SiteMenu: 18rem, full width between the gutters under 480px). It unrolls from the top with the ExperienceCard's timing (`duration-card`, `ease-calm`), rising 4px: a clip, not a fade, since a blur under a fading layer isn't drawn until the fade ends and the glass showed clear for a beat.
 - **The track** is TimeDial's: the day's horizon from night through dawn, day, golden hour, sunset and twilight, 00:00 to 24:00. The thumb is `radius-hair`.
 - **Readout:** the hour on a 12-hour clock, `9:40 pm` (no leading zero, lowercase `am`/`pm`), in `meta` mono, tabular figures, `ink`; the phase name beside it in `meta` `ink-muted` (no italic). `now` is a `link-quiet` word that returns to the visitor's clock; it shows only while the hour is set by hand.
 - **Keyboard:** the slider is a native range input. Arrows move 15 minutes, Page Up/Down an hour, Home/End midnight. Escape closes and returns focus to the icon. The icon gets `aria-expanded`.
