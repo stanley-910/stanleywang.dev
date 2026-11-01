@@ -101,11 +101,7 @@
   /* Marks and leaders: quieter than the words, still clear on glass. */
   --faint: color-mix(in srgb, var(--ink) 66%, transparent);
   padding: calc(var(--inset) / 2);
-  background: color-mix(
-    in srgb,
-    var(--glass, var(--page)) var(--glass-tint),
-    transparent
-  );
+  background: color-mix(in srgb, var(--glass) var(--glass-tint), transparent);
   -webkit-backdrop-filter: blur(18px) saturate(1.3);
   backdrop-filter: blur(18px) saturate(1.3);
   border: 1px solid color-mix(in srgb, var(--ink) 18%, transparent);
