@@ -107,3 +107,5 @@ Decorative, like the rest of the scene. No text sits over the range, so contrast
 A fix probably has to come from the cells (or from how the backdrop's ridge meets them), not from more paint; if painting is ever the answer, the ridges and trees would need to be drawn the same way so the cap doesn't stand apart.
 
 Resolved: the phone shows the main summit, now that the range is composed and a narrow screen shows the stretch around it.
+
+Resolved (2026-11-01): the apex. The summit's cell is a crest cell, a line glyph with no tile, so the rock's painted tip stood a cell above the top row of snow at every size, dark by day and lit pink at dusk (Stanley's 12:20 screenshot). The backdrop now paints the silhouette's top row and a half under each summit in the cap's own tile (`paintSummits`: the lit flank's colour and 35% while the sun or moon lights it, the shaded flank's and 30% as that fades), so the apex reads as the cells under it and the stepped cells carry on below. Only the apex, three cells each way from the summit: the painted cap and the crest strip above were rejected for reading as a shape drawn round the cap.

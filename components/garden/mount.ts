@@ -446,6 +446,7 @@ export function mountGarden({
     const h = toScene(box.height)
     ascii.resize(w, h, dpr * zoom, CELL)
     raster.resize(ascii.cols, ascii.rows, ascii.cw, ascii.ch)
+    garden.cell = { cw: ascii.cw, ch: ascii.ch }
     meteors.resize(ascii.cols, ascii.rows)
     birds.resize(ascii.cols, ascii.rows)
     weather.resize(ascii.cols, ascii.rows)

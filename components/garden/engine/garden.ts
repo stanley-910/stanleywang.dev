@@ -222,6 +222,8 @@ export class Garden {
   private snowline = new Float32Array(0)
   /** Each snowy massif's true summit, on screen. */
   private summits: { x: number; y: number }[] = []
+  /** The glyph grid's cell, in scene px, so the backdrop can paint to the cells' rows. */
+  cell = { cw: 5, ch: 7 }
   /**
    * The far range's faces: for each point of a coarse grid, the distance to the nearest hidden
    * ridgeline, which side of it the point lies on, and where the ridgeline is.
@@ -1712,6 +1714,58 @@ export class Garden {
   }
 
   /**
+   * The cap's apex, on the silhouette. The cells can't make a point: the summit's cell is a crest
+   * cell, a line glyph with no tile, so the rock's painted tip stood a cell above the top row of
+   * snow at every size, dark by day and oddly lit at dusk. The top row and a half under each
+   * summit takes the cap's own tile on the backdrop, the lit flank's while the sun or moon lights
+   * it and the shaded flank's as that goes, so the apex reads as the cells under it do and the
+   * stepped cells carry on below. Only the apex, three cells each way, which is all the rock's
+   * tip ever spans: painting the cap, or a strip along the whole crest, read as a shape drawn
+   * round it (SnowCap, open questions).
+   */
+  private paintSummits(
+    ctx: CanvasRenderingContext2D,
+    ridge: Float32Array,
+    p: Palette,
+  ) {
+    if (!this.summits.length) return
+    const { cw, ch } = this.cell
+    const fade = smoothstep(0, 0.15, this.slopeLight(p).light)
+    const col = mix(p.snowShade, p.snow, fade).map((v) => v * p.ink) as Rgb
+    const path = this.ridgePath(ridge, this.horizon + 2).toPath2D()
+    ctx.save()
+    ctx.fillStyle = css(col)
+    ctx.globalAlpha = lerp(0.3, 0.35, fade)
+    for (const sm of this.summits) {
+      ctx.save()
+      ctx.beginPath()
+      // Column by column, down to the bottom of the crest cell: the first cell the ridge covers
+      // more than a sliver of (the typesetter's 7%), which prints a line glyph and no tile. The
+      // cells under it carry their own tile, so the paint stops where they start, or the two
+      // would stack and the row read brighter than the cap.
+      const c0 = Math.floor(sm.x / cw) - 3
+      for (let c = c0; c <= c0 + 6; c++) {
+        // The share of a cell row under the ridge, read across the column, as the rasteriser
+        // sees it; on a steep flank the ridge drops a whole row across one cell.
+        const ys = [0.1, 0.3, 0.5, 0.7, 0.9].map((t) =>
+          this.ridgeAt(ridge, (c + t) * cw),
+        )
+        const top = Math.min(...ys)
+        let row = Math.floor(top / ch)
+        const cover = (r: number) =>
+          ys.reduce((s, y) => s + clamp(((r + 1) * ch - y) / ch, 0, 1), 0) /
+          ys.length
+        if (cover(row) <= 0.07) row++
+        ctx.rect(c * cw, top - 1, cw, (row + 1) * ch - top + 1)
+      }
+      ctx.clip()
+      ctx.fill(path)
+      ctx.restore()
+    }
+    ctx.restore()
+  }
+
+  /**
    * The far range's faces per glyph cell, for the typesetter: within 80px of a hidden ridgeline,
    * up to 1 on the face toward the light and down to -1 in its narrower shadow, easing to 0 at each
    * face's edge and in the 30px under the snowline, so they never touch the cap. With the sun low
@@ -1865,6 +1919,7 @@ export class Garden {
     for (const [layer, ridge] of this.ridges.entries()) {
       ctx.fillStyle = `rgb(${colors[layer].map((v) => v | 0).join(',')})`
       ctx.fill(this.ridgePath(ridge, this.horizon + 2).toPath2D())
+      if (layer === 0) this.paintSummits(ctx, ridge, p)
       if (layer === 1)
         this.forest.forEach((shape, k) => {
           ctx.fillStyle = css(trees.rows[k])
