@@ -281,7 +281,7 @@ export abstract class Plant {
       const lobe =
         style === 'lobed'
           ? 0.55 + 0.45 * Math.abs(Math.sin(t * 9 + leaf.seed))
-          : 0.5 + 0.5 * ((i % 2) ^ 1)
+          : 0.5 + 0.5 * (i % 2 ^ 1)
       const w = env0 * lobe
       left.push(mid[i * 2] - nx * w, mid[i * 2 + 1] - ny * w)
       right.push(mid[i * 2] + nx * w, mid[i * 2 + 1] + ny * w)
@@ -1435,6 +1435,19 @@ export class Dandelion extends Plant {
     const t = this.age
     const G = this.G
     const closeAt = G + 14 + this.B
+    // Sown by a click, it comes up the way a cosmos does: a bare stalk shoots up, the bud
+    // swells at its tip as it nears full height, and the head opens out of it, each stage
+    // running into the next. On its own clock the bud was still swelling with a fifth of the
+    // rush to go, and the head burst open in the last quarter second.
+    const u = this.sowing
+    if (u !== null)
+      return {
+        growth: 0.1 + 0.9 * easeOut(u / 0.32),
+        bud: smoothstep(0.1, 0.5, u),
+        open: smoothstep(0.4, 1, u),
+        clock: 0,
+        wither: 0,
+      }
     return {
       growth:
         0.15 +
@@ -1562,26 +1575,43 @@ export class Dandelion extends Plant {
     if (ph.bud < 0.05) return
     const open = ph.open * (1 - 0.85 * p.night)
     const yellow = this.bloomed(p.dandelion, p)
+    const gold = this.bloomed(mix(p.dandelion, GOLD, 0.6), p)
+    const bract = mix(stemColor, p.grassDark, 0.25)
+    const ux = Math.sin(tip)
+    const uy = -Math.cos(tip)
+    // The bud sits on the stalk's tip, its foot over the stalk's last cell, so the head never
+    // floats: printed as grass, the bud was all but lost in the blades, and the yellow peeping
+    // from it hung a cell or two above the stalk. It prints as the stalk does, a closed column
+    // of bracts that the yellow pushes out of, and stays as the cup under the open head.
+    const len = H * 0.4 * ph.bud * (1 - 0.6 * open)
+    const foot = Math.max(len * 0.18, r.minLine * 0.6)
+    const bud = new Shape()
+    bud.moveTo(tx - uy * foot, ty + ux * foot)
+    bud.quadraticCurveTo(
+      tx + ux * len * 0.45 - uy * len * 0.36,
+      ty + uy * len * 0.45 + ux * len * 0.36,
+      tx + ux * len,
+      ty + uy * len,
+    )
+    bud.quadraticCurveTo(
+      tx + ux * len * 0.45 + uy * len * 0.36,
+      ty + uy * len * 0.45 - ux * len * 0.36,
+      tx + uy * foot,
+      ty - ux * foot,
+    )
+    bud.closePath()
+    // The yellow shows at the bud's tip as it breaks, before the head opens out of it.
+    const peep = smoothstep(0, 0.25, ph.open)
     if (open < 0.05) {
-      const bud = new Shape()
-      const len = H * 0.45 * ph.bud
-      bud.ellipse(
-        tx + Math.sin(tip) * len * 0.5,
-        ty - Math.cos(tip) * len * 0.5,
-        len * 0.32,
-        len * 0.55,
-        tip,
-        0,
-        TAU,
-      )
-      r.fill(bud, mix(stemColor, p.grassDark, 0.2), Kind.Foliage)
-      if (ph.open > 0) {
+      r.fill(bud, bract, Kind.Stem)
+      if (peep > 0) {
         const t = new Shape()
+        const at = len * 0.78
         t.ellipse(
-          tx + Math.sin(tip) * len * 0.95,
-          ty - Math.cos(tip) * len * 0.95,
-          len * 0.14,
-          len * 0.12,
+          tx + ux * at,
+          ty + uy * at,
+          Math.max(len * 0.2 * peep, r.minLine * 0.5),
+          Math.max(len * 0.26 * peep, r.minLine * 0.5),
           tip,
           0,
           TAU,
@@ -1590,44 +1620,64 @@ export class Dandelion extends Plant {
       }
       return
     }
+    // The head opens out of the bud's mouth, so its florets fan from where the bud was and the
+    // stalk stays under the whole flower; lifted with `open` from the tip, it never leaves it.
+    const rise = len * lerp(0.6, 0.3, open)
+    const hx = tx + ux * rise
+    const hy = ty + uy * rise
     // Turned well toward the viewer, so the flower reads as a disc rather than an edge-on sliver.
-    const axis = headAxis(tip, lerp(0.5, 0.85, this.facing))
+    const axis = headAxis(tip, lerp(0.5, 0.85, this.facing) * open)
     const list: { depth: number; draw: () => void }[] = []
-    for (const layer of [0, 1]) {
+    // Strap florets in rings, longest outside: many fine rays, each cut square at the tip into
+    // small teeth, and the inner rings deeper gold and more upright, so the head is a ragged
+    // shaggy pompon rather than a daisy's ring of petals round a disc.
+    const rings = [
+      { count: 22, length: 0.52, cup: 0.12, color: yellow, k: 0 },
+      { count: 14, length: 0.4, cup: 0.45, color: shade(yellow, 1.06), k: 1 },
+      {
+        count: 8,
+        length: 0.27,
+        cup: 0.85,
+        color: mix(yellow, gold, 0.5),
+        k: 2,
+      },
+    ]
+    for (const g of rings) {
       drawPetals(
         r,
-        tx,
-        ty,
+        hx,
+        hy,
         axis,
         {
-          count: layer ? 18 : 26,
-          length: H * (layer ? 0.32 : 0.5) * lerp(0.6, 1, open),
-          width: () => H * 0.065,
-          cup: (u) => lerp(1.35, layer ? 0.75 : 0.2, open) + 0.3 * u,
-          crinkle: 0.05,
-          rotation: this.seed + layer,
-          seed: this.seed + layer * 3,
-          front: layer ? shade(yellow, 1.08) : yellow,
-          back: shade(yellow, 0.75),
+          count: g.count,
+          length: H * g.length * lerp(0.45, 1, open),
+          size: (k) => 0.82 + 0.3 * hash(this.seed * 977, k, g.k),
+          width: (s) => H * lerp(0.026, 0.05, s),
+          cup: (s) => lerp(1.4, g.cup, open) + 0.25 * s,
+          crinkle: 0.12,
+          notch: 0.06,
+          rotation: this.seed * 1.7 + g.k * 0.9,
+          seed: this.seed + g.k * 3,
+          front: g.color,
+          back: shade(g.color, 0.72),
           haze: p.haze,
           hazeAmount: 0,
         },
         list,
       )
     }
-    // The heart: a domed tuft of short florets, packed and deepest gold, so the head reads full
-    // to the middle instead of as a brim around a hollow crown. On top once it faces us.
+    // The bracts' cup under the head, drawn behind it.
+    list.push({
+      depth: -Infinity,
+      draw: () => r.fill(bud, bract, Kind.Stem),
+    })
+    // The heart: the youngest florets, packed and deepest gold, still curled over the centre.
     list.push({
       depth: axis[2] > 0 && open > 0.5 ? Infinity : axis[2] * H * 0.1,
       draw: () => {
         r.fill(
-          disc(tx, ty, axis, H * 0.24 * open, H * 0.08),
-          shade(yellow, 0.94),
-          Kind.Petal,
-        )
-        r.fill(
-          disc(tx, ty, axis, Math.max(H * 0.12 * open, r.minLine), H * 0.12),
-          this.bloomed(mix(p.dandelion, GOLD, 0.6), p),
+          disc(hx, hy, axis, Math.max(H * 0.14 * open, r.minLine), H * 0.1),
+          gold,
           Kind.Petal,
         )
       },
