@@ -23,7 +23,6 @@ import {
   type ValueAnimationTransition,
 } from 'motion/react'
 import Link from 'next/link'
-import { useTheme } from 'next-themes'
 import {
   type ComponentProps,
   type CSSProperties,
@@ -313,8 +312,6 @@ const LISTING_H_KEY = 'mini-c-listing-height'
 // stage keeps at least STAGE_MIN.
 const EDITOR_MIN = 240
 const STAGE_MIN = 360
-// Scrollbars turned off in the options menu, per browser.
-const BARE_KEY = 'mini-c-no-scrollbars'
 const GUIDE_KEY = 'mini-c-no-guide'
 const GUIDE_PIN_KEY = 'mini-c-guide-pinned'
 const GUIDE_WINDOW_KEY = 'mini-c-guide-window'
@@ -901,7 +898,6 @@ export default function AnimatedCompiler() {
   // else closes it (Stanley, 2026-10-02).
   const [aboutOpen, setAboutOpen] = useState(false)
   const aboutRef = useRef<HTMLDetailsElement>(null)
-  const { resolvedTheme, setTheme } = useTheme()
   useEffect(() => {
     if (!aboutOpen) return
     const away = (event: PointerEvent) => {
@@ -1456,9 +1452,6 @@ export default function AnimatedCompiler() {
       else localStorage.setItem(key, String(Math.round(size)))
     } catch {}
   }
-  // Scrollbars off: panes scroll by wheel, touch or keys, and keep only
-  // the dashed rail as a hint (animated.css, `.ac.bare`).
-  const [bare, setBare] = useState(false)
   // The syntax guide beside the editor while it has focus; off from the ?
   // menu (Stanley, 2026-10-02).
   const [guideOn, setGuideOn] = useState(true)
@@ -1529,18 +1522,6 @@ export default function AnimatedCompiler() {
       page.style.overflow = was
     }
   }, [max])
-  useEffect(() => {
-    try {
-      setBare(localStorage.getItem(BARE_KEY) === '1')
-    } catch {}
-  }, [])
-  const saveBare = (on: boolean) => {
-    setBare(on)
-    try {
-      if (on) localStorage.setItem(BARE_KEY, '1')
-      else localStorage.removeItem(BARE_KEY)
-    } catch {}
-  }
   // A scrollbar's thumb shows while its pane is scrolled by hand, and while
   // the pointer rests on the scrollbar, but not when a step scrolls the pane
   // (the assembly follows the current row), the pane is only hovered, or the
@@ -5015,7 +4996,7 @@ export default function AnimatedCompiler() {
   return (
     <section
       ref={rootRef}
-      className={`ac ${bare ? 'bare' : ''} ${max ? 'max' : ''}`}
+      className={`ac ${max ? 'max' : ''}`}
       data-phase={frame.phase.toLowerCase()}
     >
       <header className="ac-top">
@@ -6931,15 +6912,6 @@ export default function AnimatedCompiler() {
                 <button
                   type="button"
                   role="menuitemcheckbox"
-                  aria-checked={!bare}
-                  onClick={() => saveBare(!bare)}
-                >
-                  <span aria-hidden="true">{bare ? '[ ]' : '[x]'}</span>
-                  scrollbars
-                </button>
-                <button
-                  type="button"
-                  role="menuitemcheckbox"
                   aria-checked={guideOn}
                   onClick={() => saveGuide(!guideOn)}
                 >
@@ -6954,19 +6926,6 @@ export default function AnimatedCompiler() {
                 >
                   <span aria-hidden="true">{astOn ? '[x]' : '[ ]'}</span>
                   AST guide
-                </button>
-                <button
-                  type="button"
-                  role="menuitemcheckbox"
-                  aria-checked={resolvedTheme === 'dark'}
-                  onClick={() =>
-                    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')
-                  }
-                >
-                  <span aria-hidden="true">
-                    {resolvedTheme === 'dark' ? '[x]' : '[ ]'}
-                  </span>
-                  dark mode
                 </button>
                 {/* The keys, kept here rather than on every button. */}
                 <dl className="ac-more-keys">

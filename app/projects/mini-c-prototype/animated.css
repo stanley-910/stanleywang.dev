@@ -158,12 +158,6 @@
   --thumb: transparent !important;
   --glow: transparent !important;
 }
-.ac.bare [data-curve~='y'] {
-  --rail: transparent !important;
-}
-.ac.bare [data-curve~='x'] {
-  --rail-x: transparent !important;
-}
 .ac ::-webkit-scrollbar-corner {
   background: transparent;
 }
@@ -174,65 +168,6 @@
   }
   .ac [data-reveal] {
     scrollbar-color: var(--ink-muted) transparent;
-  }
-}
-/* Scrollbars off (the options menu): panes scroll by wheel, touch or keys
-   only. The rail stays as a hint, drawn by the pane itself where its
-   scrollbar was, and only while it has more to show (a scroll timeline is
-   inactive on a pane that can't scroll, so the animation never applies). */
-.ac.bare * {
-  scrollbar-width: none;
-}
-.ac.bare :is(.ac-source, .ac-note-body, .ac-listing-scroll, .ac-window-body) {
-  border-right: 9px solid transparent;
-  /* Longhands, so a pane's own background colour stays. */
-  background-image: repeating-linear-gradient(
-    to bottom,
-    var(--rail, transparent) 0 2px,
-    transparent 2px 5px
-  );
-  background-position: right 4px top;
-  background-size: 1px 100%;
-  background-repeat: no-repeat;
-  background-origin: border-box;
-  animation: ac-rail both;
-  animation-timeline: scroll(self);
-}
-@keyframes ac-rail {
-  from,
-  to {
-    --rail: var(--hairline);
-  }
-}
-/* The source and the listing also scroll sideways (long lines): a second
-   rail along the bottom edge, on its own timeline. */
-.ac.bare :is(.ac-source, .ac-listing-scroll) {
-  border-bottom: 9px solid transparent;
-  background-image: repeating-linear-gradient(
-      to bottom,
-      var(--rail, transparent) 0 2px,
-      transparent 2px 5px
-    ),
-    repeating-linear-gradient(
-      to right,
-      var(--rail-x, transparent) 0 2px,
-      transparent 2px 5px
-    );
-  background-position:
-    right 4px top,
-    left bottom 4px;
-  background-size:
-    1px 100%,
-    100% 1px;
-  animation:
-    ac-rail both,
-    ac-rail-x both;
-  animation-timeline: scroll(self), scroll(self x);
-}
-@keyframes ac-rail-x {
-  from,
-  to {
-    --rail-x: var(--hairline);
   }
 }
 .ac button {

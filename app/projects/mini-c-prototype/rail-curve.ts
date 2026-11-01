@@ -119,8 +119,8 @@ function gutterOf(p: HTMLElement) {
 // The rail of a pane on an axis, in viewport px: where it runs, the bar
 // across it and where its 1px line sits, and where the lit stretch is on
 // it. On whole px, as the scrollbar it stands in for is laid out, so the
-// dashes land exactly on its dashes. Same box with scrollbars on or off.
-function railOf(p: HTMLElement, axis: Axis, bare: boolean) {
+// dashes land exactly on its dashes.
+function railOf(p: HTMLElement, axis: Axis) {
   const box = p.getBoundingClientRect()
   const y = axis === 'y'
   // A pane on the zoomed stage (canvas-zoom.ts) is drawn at this scale;
@@ -128,13 +128,7 @@ function railOf(p: HTMLElement, axis: Axis, bare: boolean) {
   const k = (y ? box.height / p.offsetHeight : box.width / p.offsetWidth) || 1
   const dpr = window.devicePixelRatio || 1
   const start = Math.round(
-    y
-      ? bare
-        ? box.top
-        : box.top + p.clientTop * k
-      : bare
-        ? box.left
-        : box.left + p.clientLeft * k,
+    y ? box.top + p.clientTop * k : box.left + p.clientLeft * k,
   )
   // What the pane shows along the axis: its client area, and (sideways) a
   // gutter kept for a vertical scrollbar that isn't there (scrollbar-gutter:
@@ -145,7 +139,7 @@ function railOf(p: HTMLElement, axis: Axis, bare: boolean) {
   const port = y
     ? p.clientHeight
     : p.clientWidth + (hasVerticalBar(p) ? 0 : gutterOf(p))
-  const length = bare ? (y ? box.height : box.width) : port * k
+  const length = port * k
   // How far it scrolls. Its scroll size is a whole px, so up to half a px
   // of this may be out of reach; that close counts as the end.
   const scroll = Math.max(0, (y ? p.scrollHeight : p.scrollWidth) - port - 0.5)
@@ -218,7 +212,6 @@ export function startRailCurve(root: HTMLElement): (() => void) | null {
     if (!ids.has(pane)) ids.set(pane, nextId++)
     return `${ids.get(pane)}${axis}`
   }
-  const bare = () => root.classList.contains('bare')
   let hand: { at: number; target: EventTarget | null } = {
     at: -1e9,
     target: null,
@@ -307,7 +300,7 @@ export function startRailCurve(root: HTMLElement): (() => void) | null {
             ? el.scrollHeight > el.clientHeight
             : el.scrollWidth > el.clientWidth
         if (!/auto|scroll/.test(overflow) || !scrolls) continue
-        const r = railOf(el, axis, bare())
+        const r = railOf(el, axis)
         const across = axis === 'y' ? e.clientX : e.clientY
         const along = axis === 'y' ? e.clientY : e.clientX
         const shown = shownOf(el)
@@ -330,7 +323,7 @@ export function startRailCurve(root: HTMLElement): (() => void) | null {
   // Over the bar, but only the part of it that shows.
   const place = () => {
     if (!gripped) return
-    const r = railOf(gripped.pane, gripped.axis, bare())
+    const r = railOf(gripped.pane, gripped.axis)
     const s = shownOf(gripped.pane)
     const y = gripped.axis === 'y'
     const left = Math.max(y ? r.bar : r.start, s.left)
@@ -382,7 +375,7 @@ export function startRailCurve(root: HTMLElement): (() => void) | null {
     e.preventDefault()
     const { pane, axis, key } = gripped
     hand = { at: performance.now(), target: pane }
-    const r = railOf(pane, axis, bare())
+    const r = railOf(pane, axis)
     const along = axis === 'y' ? e.clientY : e.clientX
     const per = r.length > r.size ? r.scroll / (r.length - r.size) : 0
     let at = r.at
@@ -416,7 +409,7 @@ export function startRailCurve(root: HTMLElement): (() => void) | null {
     held = null
     run()
     // Still over the bar, it stays gripped (and lit, resting).
-    const r = gripped && railOf(gripped.pane, gripped.axis, bare())
+    const r = gripped && railOf(gripped.pane, gripped.axis)
     const across = gripped?.axis === 'y' ? e.clientX : e.clientY
     if (!r || across < r.bar || across > r.end) letGo()
   }
@@ -604,7 +597,7 @@ export function startRailCurve(root: HTMLElement): (() => void) | null {
         resized.unobserve(l.pane)
         continue
       }
-      const r = railOf(l.pane, l.axis, bare())
+      const r = railOf(l.pane, l.axis)
       const floor = held?.key === key ? HELD : resting === key ? RESTING : 0
       const quiet = now - l.lastScroll
       // Rises toward the speed (half lit at any speed: it's where you are)
@@ -677,12 +670,18 @@ export function startRailCurve(root: HTMLElement): (() => void) | null {
   const passive = { capture: true, passive: true }
   const on: On[] = [
     [root, 'scroll', scrolled, passive],
-    ...['wheel', 'touchmove', 'pointerdown', 'pointermove'].map(
-      (type): On => [root, type, touched, passive],
-    ),
-    ...['pointerover', 'touchstart', 'focusin'].map(
-      (type): On => [root, type, noticed, passive],
-    ),
+    ...['wheel', 'touchmove', 'pointerdown', 'pointermove'].map((type): On => [
+      root,
+      type,
+      touched,
+      passive,
+    ]),
+    ...['pointerover', 'touchstart', 'focusin'].map((type): On => [
+      root,
+      type,
+      noticed,
+      passive,
+    ]),
     [root, 'pointermove', moved as EventListener, passive],
     [grip, 'pointerdown', pressed as EventListener, {}],
     [grip, 'pointermove', dragged as EventListener, {}],
