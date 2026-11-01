@@ -33,7 +33,7 @@ Built: `components/ui/site-index.tsx`, `components/ui/site-index.css`, rows in `
 
 ## Tokens
 
-The site menu's glass, exactly as in SiteMenu: `--glass` at `--glass-tint` (72%) under an 18px blur with 1.3 saturation, a 1px border of `ink` at 18%, `radius-card`. Rows and counts: `ink`, so they hold at least 4.9:1 with plain white or black behind the glass at any hour (muted fell to about 1:1 over bright photos); the current one is told by its `@`. Hover and press lay `ink` at 9% under the row, as on the menu's items; focus ring `focus`, 1px. Marks and leaders: `ink` at 66%, at least 3.1:1. Motion: `duration-card`, `duration-quick`, `ease-calm`, and the dots' 320ms overshoot. No new colours.
+The site menu's glass, exactly as in SiteMenu: `--glass` (or the hour's `page`) at `--glass-tint` (44%) under an 18px blur with 1.3 saturation, a 1px border of `ink` at 18%, `radius-card`, and the glass-coloured halo round every glyph. Rows and counts: `ink` (muted fell to about 1:1 over bright photos); the current one is told by its `@`. Measured on `/photos` with the photos swapped for plain white or black, at 6, 12, 18.6, 22 and 23.5 (2026-11-01, Chromium and WebKit), per glyph against the halo under it: text at least 5.3:1, marks and leaders 3.0:1, worst over black at dawn. Without the halo the 44% glass alone gives 1.9:1. Hover and press lay `ink` at 9% under the row, as on the menu's items; focus ring `focus`, 1px. Marks and leaders: `ink` at 66%. Motion: `duration-card`, `duration-quick`, `ease-calm`, and the dots' 320ms overshoot. No new colours.
 
 On home the bar takes the sky's ink and glass (`garden.css`), and so does the panel.
 
