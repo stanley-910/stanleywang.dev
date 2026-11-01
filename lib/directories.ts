@@ -7,9 +7,13 @@ import type { IndexEntry } from '@/components/ui/index-row'
 // (design/circadian-meadow/components/SiteHeader, "Dropdowns"). Text only:
 // no photo is loaded for it.
 
-/** Every project, in the page's order, with its kind. */
+/**
+ * Every project, in the page's order, with its kind. One you can try on the
+ * site (Mini Compiler's walkthrough) opens there; the rest, their place on
+ * the projects page.
+ */
 const projects: IndexEntry[] = PROJECTS.map((p) => ({
-  href: `/projects#${p.slug}`,
+  href: p.snippet?.href ?? `/projects#${p.slug}`,
   label: p.name,
   meta: p.category?.toLowerCase(),
 }))

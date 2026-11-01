@@ -47,11 +47,11 @@ With a mouse (`(hover: hover) and (pointer: fine)`), `projects`, `writing` and `
 └─────────────────────────────────────────┘
 ```
 
-| Word     | Rows (`lib/directories.ts`)                                                                                                        |
-| -------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| projects | every project in the page's order, to its place on `/projects`; meta: its category, lowercase                                      |
-| writing  | every post (`BLOG_POSTS`, `EXPERIENCE_POSTS`) newest first; meta: how long ago, "3 weeks ago". The poem is not listed.             |
-| photos   | each place in the wall's order; meta: its year, and `n photos` when more than one. All open `/photos`, which has no place anchors. |
+| Word     | Rows (`lib/directories.ts`)                                                                                                                                                          |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| projects | every project in the page's order, to its place on `/projects`, or to its own page when it has one to try (Mini Compiler's `/projects/mini-compiler`); meta: its category, lowercase |
+| writing  | every post (`BLOG_POSTS`, `EXPERIENCE_POSTS`) newest first; meta: how long ago, "3 weeks ago". The poem is not listed.                                                               |
+| photos   | each place in the wall's order; meta: its year, and `n photos` when more than one. All open `/photos`, which has no place anchors.                                                   |
 
 - **Place:** under the word, `space-2` below its line less 4px, its names in line with the word (both half insets hang out to the left). As wide as its longest row, 16rem to 26rem; a longer name ends in an ellipsis. Rows are 28px (the mouse's height).
 - **Open:** after the pointer rests on the word 140ms, or at once when another dropdown is already open, so moving along the words switches. Keyboard focus on the word (`:focus-visible`) opens it too. A strip under the word bridges the gap to the rows.
