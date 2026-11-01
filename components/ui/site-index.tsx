@@ -10,43 +10,21 @@ import './site-index.css'
 
 // The top bar on a phone: the five words fold into a glyph in the top-left
 // corner that opens an index of the site, in the site menu's glass
-// (design/circadian-meadow/components/SiteIndex). Each section is a dot on a
-// stalk, the current one a flower's `@`, with a few real entries under it.
+// (design/circadian-meadow/components/SiteIndex). Each section is a dot, the
+// current one a flower's `@`, with a dotted leader out to what's in it.
 
-type Entry = { href: string; label: string; meta?: string }
-type Section = Entry & { entries?: Entry[] }
+type Section = { href: string; label: string; meta?: string }
 
-const POSTS = [...BLOG_POSTS, ...EXPERIENCE_POSTS].sort((a, b) =>
-  b.date.localeCompare(a.date),
-)
+const POSTS = [...BLOG_POSTS, ...EXPERIENCE_POSTS]
 
-/** The top bar's five words (app/header.tsx), each with what's under it. */
+/** The top bar's five words (app/header.tsx), each with how much is in it. */
 const SECTIONS: Section[] = [
   { href: '/', label: 'meadow' },
-  {
-    href: '/projects',
-    label: 'projects',
-    meta: String(PROJECTS.length),
-    entries: PROJECTS.slice(0, 3).map((p) => ({
-      href: `/projects#${p.slug}`,
-      label: p.name,
-    })),
-  },
+  { href: '/projects', label: 'projects', meta: String(PROJECTS.length) },
   { href: '/photos', label: 'photos', meta: String(PHOTOS.length) },
-  {
-    href: '/writing',
-    label: 'writing',
-    meta: String(POSTS.length),
-    entries: POSTS.slice(0, 3).map((p) => ({
-      href: p.link,
-      label: p.title,
-      meta: p.date.slice(0, 7),
-    })),
-  },
+  { href: '/writing', label: 'writing', meta: String(POSTS.length) },
   { href: '/music', label: 'music', meta: 'soon' },
 ]
-
-const ROW_COUNT = SECTIONS.reduce((n, s) => n + 1 + (s.entries?.length ?? 0), 0)
 
 // Opening, each row's words bloom in through the garden's petal ramp, sparse
 // to dense (garden/engine/typeset.ts), and the current section's mark
@@ -59,12 +37,8 @@ const STAGGER = 26
 const LETTER = 5
 /** One letter's run through the ramp. */
 const RAMP = 150
-const LONGEST = Math.max(
-  ...SECTIONS.flatMap((s) => [s, ...(s.entries ?? [])]).map(
-    (e) => e.label.length,
-  ),
-)
-const BLOOM_MS = (ROW_COUNT - 1) * STAGGER + LONGEST * LETTER + RAMP
+const LONGEST = Math.max(...SECTIONS.map((s) => s.label.length))
+const BLOOM_MS = (SECTIONS.length - 1) * STAGGER + LONGEST * LETTER + RAMP
 
 function bloom(text: string, t: number, ramp: string) {
   let out = ''
@@ -190,33 +164,6 @@ export function SiteIndex({ pathname, hidden }: SiteIndexProps) {
     }
   }, [phase, close])
 
-  let row = 0
-  const link = (entry: Entry, mark: string, current: boolean) => {
-    const i = row++
-    return (
-      <Link
-        href={entry.href}
-        className="site-index-row"
-        aria-current={current ? 'page' : undefined}
-        style={{ '--i': i } as React.CSSProperties}
-        onClick={close}
-      >
-        <span className="site-index-mark" aria-hidden="true">
-          {mark === '@' ? <Bloom text="@" row={i} t={t} ramp={DISC} /> : mark}
-        </span>
-        <span className="site-index-name">
-          <Bloom text={entry.label} row={i} t={t} />
-        </span>
-        {entry.meta && (
-          <>
-            <span className="site-index-lead" aria-hidden="true" />
-            <span className="site-index-meta">{entry.meta}</span>
-          </>
-        )}
-      </Link>
-    )
-  }
-
   return (
     <div className="site-index">
       <button
@@ -254,20 +201,34 @@ export function SiteIndex({ pathname, hidden }: SiteIndexProps) {
         }}
       >
         <ol className="site-index-list">
-          {SECTIONS.map((section) => {
+          {SECTIONS.map((section, i) => {
             const current = isCurrent(pathname, section.href)
             return (
               <li key={section.href}>
-                {link(section, current ? '@' : '·', current)}
-                {section.entries && (
-                  <ul className="site-index-list">
-                    {section.entries.map((entry) => (
-                      <li key={entry.href} className="site-index-entry">
-                        {link(entry, '|', pathname === entry.href)}
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                <Link
+                  href={section.href}
+                  className="site-index-row"
+                  aria-current={current ? 'page' : undefined}
+                  style={{ '--i': i } as React.CSSProperties}
+                  onClick={close}
+                >
+                  <span className="site-index-mark" aria-hidden="true">
+                    {current ? (
+                      <Bloom text="@" row={i} t={t} ramp={DISC} />
+                    ) : (
+                      '·'
+                    )}
+                  </span>
+                  <span className="site-index-name">
+                    <Bloom text={section.label} row={i} t={t} />
+                  </span>
+                  {section.meta && (
+                    <>
+                      <span className="site-index-lead" aria-hidden="true" />
+                      <span className="site-index-meta">{section.meta}</span>
+                    </>
+                  )}
+                </Link>
               </li>
             )
           })}

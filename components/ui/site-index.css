@@ -150,11 +150,12 @@
   list-style: none;
 }
 
-/* A row: its mark, its name, and a dotted leader out to a count or date. */
+/* A row: its mark, its name, and a dotted leader out to a count. Compact:
+   28px, an item's height in the site menu, or a finger's 44px. */
 .site-index-row {
   display: flex;
   align-items: center;
-  min-height: 32px;
+  min-height: 28px;
   padding-inline: calc(var(--inset) / 2);
   border-radius: var(--radius-hair);
   color: var(--ink-muted);
@@ -170,10 +171,6 @@
   .site-index-row {
     min-height: 44px;
   }
-}
-
-.site-index-entry .site-index-row {
-  font-size: var(--text-meta);
 }
 
 .site-index-row[aria-current='page'] {
@@ -197,8 +194,7 @@
   outline-offset: 0;
 }
 
-/* A section's dot, or the current one's `@`, with its entries' stalks
-   under it. */
+/* A section's dot, or the current one's `@`. */
 .site-index-mark {
   flex: none;
   width: var(--space-3);

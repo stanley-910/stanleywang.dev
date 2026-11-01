@@ -1,4 +1,4 @@
-<!-- @dsCard group="Site" height=560 subtitle="The phone's index, open on writing, day and night at 375px" -->
+<!-- @dsCard group="Site" height=340 subtitle="The phone's index, open on writing, day and night at 375px" -->
 <!doctype html>
 <html>
 <head>
@@ -13,9 +13,8 @@
   .bar line { stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
   .dots { fill: var(--ink-muted); }
   .pop { margin-top: 14px; padding: 6px; background: color-mix(in srgb, var(--page) 28%, transparent); border: 1px solid color-mix(in srgb, var(--ink) 18%, transparent); border-radius: var(--radius-card); }
-  .pop ol, .pop ul { margin: 0; padding: 0; list-style: none; }
+  .pop ol { margin: 0; padding: 0; list-style: none; }
   .r { display: flex; align-items: center; min-height: 44px; padding-inline: 6px; color: var(--ink-muted); font-size: var(--text-small); text-decoration: none; }
-  .e .r { font-size: var(--text-meta); }
   .r[aria-current] { color: var(--ink); }
   .m { flex: none; width: var(--space-3); font-size: var(--text-meta); color: color-mix(in srgb, var(--ink) 35%, transparent); }
   .r[aria-current] > .m { color: var(--ink); }
@@ -37,11 +36,9 @@
   </div>
   <div class="pop"><ol>
     <li><a class="r" href="#"><span class="m">·</span><span class="n">meadow</span></a></li>
-    <li><a class="r" href="#"><span class="m">·</span><span class="n">projects</span><span class="l"></span><span class="c">10</span></a>
-      <ul class="e"><li><a class="r" href="#"><span class="m">|</span><span class="n">Portal</span></a></li><li><a class="r" href="#"><span class="m">|</span><span class="n">Mini Compiler</span></a></li><li><a class="r" href="#"><span class="m">|</span><span class="n">Eastwatch</span></a></li></ul></li>
+    <li><a class="r" href="#"><span class="m">·</span><span class="n">projects</span><span class="l"></span><span class="c">10</span></a></li>
     <li><a class="r" href="#"><span class="m">·</span><span class="n">photos</span><span class="l"></span><span class="c">4</span></a></li>
-    <li><a class="r" href="#" aria-current="page"><span class="m">@</span><span class="n">writing</span><span class="l"></span><span class="c">4</span></a>
-      <ul class="e"><li><a class="r" href="#"><span class="m">|</span><span class="n">Exploring a Recurrent Neural Network</span><span class="l"></span><span class="c">2026-03</span></a></li><li><a class="r" href="#"><span class="m">|</span><span class="n">Case Study: Developing Structural Analysis Tooling for Experimental Aircraft</span><span class="l"></span><span class="c">2025-07</span></a></li><li><a class="r" href="#"><span class="m">|</span><span class="n">Improvisation on the Artist</span><span class="l"></span><span class="c">2025-06</span></a></li></ul></li>
+    <li><a class="r" href="#" aria-current="page"><span class="m">@</span><span class="n">writing</span><span class="l"></span><span class="c">4</span></a></li>
     <li><a class="r" href="#"><span class="m">·</span><span class="n">music</span><span class="l"></span><span class="c">soon</span></a></li>
   </ol></div>
 </template>

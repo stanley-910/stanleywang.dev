@@ -4,7 +4,7 @@ The top bar on a phone, and the site menu's sibling (SiteMenu). Under 480px the 
 
 Built: `components/ui/site-index.tsx`, `components/ui/site-index.css`. Shown from `app/header.tsx`, inside the bar's `<nav aria-label="Site">`.
 
-> Built ahead of a Claude Design mock, from Stanley's ask on 2026-11-01. Its look still needs his call.
+> Built ahead of a Claude Design mock, from Stanley's ask on 2026-11-01. Tightened the same day from his phone: "it kinda feels too spread out and tall. I don't like the difference between the | and · dot entries. I think just the index pages should be listed." He kept the fonts, the dotted leaders and the counts.
 
 ## Content
 
@@ -13,30 +13,23 @@ Built: `components/ui/site-index.tsx`, `components/ui/site-index.css`. Shown fro
 
   ·  meadow
   ·  projects · · · · · · · · · · · · · 10
-  |  Portal
-  |  Mini Compiler
-  |  Eastwatch
   ·  photos · · · · · · · · · · · · · · 4
   @  writing  · · · · · · · · · · · · · 4
-  |  Exploring a Recurrent Neural …  2026-03
-  |  Case Study: Developing Struc…   2025-07
-  |  Improvisation on the Artist ·   2025-06
-  ·  music  · · · · · · · · · · · ·  soon
+  ·  music  · · · · · · · · · · · · · soon
 ```
 
-- The sections are the bar's five words, in its order and in lowercase.
-- Under projects, the first three of `PROJECTS` (`app/data.ts`), linking to their place on `/projects`. Under writing, the three newest posts from `BLOG_POSTS` and `EXPERIENCE_POSTS`, each with its year and month. The poem is not listed.
-- To the right of each section, in `meta` mono: how many projects, photos and posts there are, and `soon` for music. A dotted leader of `·` runs out to it, as in a book's index.
-- Each section's mark is a `·`. The current section's mark is a flower centre, `@`. Its entries hang under it on `|` stalks.
+- Only the sections: the bar's five words, in its order and in lowercase. No projects or posts under them.
+- To the right of each section, in `meta` mono: how many projects, photos and posts (`BLOG_POSTS` and `EXPERIENCE_POSTS`; the poem is not counted) there are, and `soon` for music. A dotted leader of `·` runs out to it, as in a book's index.
+- Each section's mark is a `·`. The current section's mark is a flower centre, `@`.
 
 ## Layout
 
-| Part  | Spec                                                                                                                                                   |
-| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Glyph | 16px, at the left gutter, in the bar's 20px line, so the bar keeps its height. Its tap target is 44px.                                                 |
-| Panel | `position: fixed`, 52px from the top, between the gutters: where the site menu opens on a phone. Over a short screen it scrolls itself.                |
-| Rows  | Mark column `space-3` wide; name; leader (at least `space-2`); count or date. 44px tall under a coarse pointer, else 32px. Inset half the menu's 12px. |
-| Type  | Sections in `small` (13px) mono; entries, marks, leaders and counts in `meta` (12px) mono.                                                             |
+| Part  | Spec                                                                                                                                                                                                                                                                                    |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Glyph | 16px, at the left gutter, in the bar's 20px line, so the bar keeps its height. Its tap target is 44px.                                                                                                                                                                                  |
+| Panel | `position: fixed`, 52px from the top, between the gutters: where the site menu opens on a phone. Over a short screen it scrolls itself.                                                                                                                                                 |
+| Rows  | Mark column `space-3` wide; name; leader (at least `space-2`); count. Back to back, 44px tall under a coarse pointer (the least a finger's target can be without two overlapping), else 28px like the menu's items. Inset half the menu's 12px. Five rows: about 232px open on a phone. |
+| Type  | Sections in `small` (13px) mono; marks, leaders and counts in `meta` (12px) mono.                                                                                                                                                                                                       |
 
 ## Tokens
 
@@ -66,5 +59,5 @@ With reduced motion the panel opens and closes at once, and the words are there 
 
 - The glyph is a button named "Index", with `aria-expanded` and `aria-controls="site-index"`.
 - Opening moves focus to the first link. Closing hands focus back to the glyph, unless it has already gone somewhere else.
-- The links sit in an ordered list inside the bar's `nav`. The current section and post carry `aria-current="page"`.
+- The links sit in an ordered list inside the bar's `nav`. The current section carries `aria-current="page"`.
 - While words bloom, screen readers get the real words; the glyphs are `aria-hidden`.
