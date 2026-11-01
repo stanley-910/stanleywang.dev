@@ -15,15 +15,15 @@ Built: `app/header.tsx`, `app/styles/shell.css` (`.site-header`).
 
 ## Layout
 
-|               | Desktop                                                      | Under 480px                           |
-| ------------- | ------------------------------------------------------------ | ------------------------------------- |
-| Type          | `nav`: `--font-mono` 14px / 20px                             | 13px                                  |
-| Between words | `space-4` (32px)                                             | 12px                                  |
-| Menu          | `space-4` from the window's right edge, level with the words | at the row's end, at the right gutter |
-| Padding       | `space-4` top, `space-5` below                               | `space-3` top, `space-4` below        |
-| Left edge     | `gutter` (20vw from 1024px, else 24px)                       | `gutter`                              |
+|               | Desktop                                                      | Under 480px                                   |
+| ------------- | ------------------------------------------------------------ | --------------------------------------------- |
+| Type          | `nav`: `--font-mono` 14px / 20px                             | none: the words fold into the SiteIndex glyph |
+| Between words | `space-4` (32px)                                             | —                                             |
+| Menu          | `space-4` from the window's right edge, level with the words | at the row's end, at the right gutter         |
+| Padding       | `space-4` top, `space-5` below                               | `space-3` top, `space-4` below                |
+| Left edge     | `gutter` (20vw from 1024px, else 24px)                       | `gutter`, where the SiteIndex glyph sits      |
 
-The row sits in the page flow at the top; it doesn't stick or hide on scroll. At 375px the five words and the icon fit one row with 13px type and 12px gaps, at about 300px of the 327px between gutters.
+The row sits in the page flow at the top; it doesn't stick or hide on scroll. Under 480px the five words crowded the menu's dots, so they fold into SiteIndex's glyph in the top-left corner, and the bar keeps its 20px line so it stays as tall.
 
 ## States
 
