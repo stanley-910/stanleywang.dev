@@ -5,10 +5,11 @@ import { useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
 
 // The rows of the site index (SiteIndex) and the top bar's dropdowns
-// (SiteHeader): a mark, a name, and a dotted leader out to a count or a date,
-// styled in site-index.css. Opening, each row's words bloom in through the
-// garden's petal ramp, sparse to dense (garden/engine/typeset.ts), and the
-// current row's mark through the flower centre's.
+// (SiteHeader): a mark (the site index's only), a name, and a dotted leader
+// out to a count or a date, styled in site-index.css. Opening, each row's
+// words bloom in through the garden's petal ramp, sparse to dense
+// (garden/engine/typeset.ts), and the current row's mark through the flower
+// centre's.
 
 const PETAL = ".':-=+*x#%"
 const DISC = '.o0O'
@@ -89,9 +90,14 @@ type IndexRowProps = {
   t: number | null
   onClick?: () => void
   tabIndex?: number
+  /** Leads with the mark; the top bar's dropdowns go without. */
+  mark?: boolean
 }
 
-/** One row: `·`, or `@` for the current one, its name, and a leader to its meta. */
+/**
+ * One row: `·`, or `@` for the current one (unless `mark` is off), its name,
+ * and a leader to its meta.
+ */
 export function IndexRow({
   entry,
   row,
@@ -99,6 +105,7 @@ export function IndexRow({
   t,
   onClick,
   tabIndex,
+  mark = true,
 }: IndexRowProps) {
   return (
     <Link
@@ -109,9 +116,11 @@ export function IndexRow({
       tabIndex={tabIndex}
       onClick={onClick}
     >
-      <span className="site-index-mark" aria-hidden="true">
-        {current ? <Bloom text="@" row={row} t={t} ramp={DISC} /> : '·'}
-      </span>
+      {mark && (
+        <span className="site-index-mark" aria-hidden="true">
+          {current ? <Bloom text="@" row={row} t={t} ramp={DISC} /> : '·'}
+        </span>
+      )}
       <span className="site-index-name">
         <Bloom text={entry.label} row={row} t={t} />
       </span>

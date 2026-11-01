@@ -18,12 +18,12 @@
 }
 
 /* Under the word, its rows' names in line with it: the panel's and the
-   row's half insets and the mark's column sit out to the left. As wide as
+   row's half insets sit out to the left. The rows have no mark. As wide as
    its longest row, up to 26rem; past that a name ends in an ellipsis. */
 .nav-drop-pop {
   position: absolute;
   top: calc(100% + var(--space-2) - 4px);
-  left: calc(-1 * (var(--inset) + var(--space-3)));
+  left: calc(-1 * var(--inset));
   z-index: 20;
   width: max-content;
   min-width: 16rem;

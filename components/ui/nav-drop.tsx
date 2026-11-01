@@ -214,6 +214,7 @@ export function NavDrop({
                   current={pathname === entry.href}
                   t={t}
                   tabIndex={-1}
+                  mark={false}
                   onClick={close}
                 />
               </li>

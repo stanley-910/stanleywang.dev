@@ -14,10 +14,29 @@ const projects: IndexEntry[] = PROJECTS.map((p) => ({
   meta: p.category?.toLowerCase(),
 }))
 
-/** Every post, newest first, with its year and month. The poem isn't listed. */
+const AGO = new Intl.RelativeTimeFormat('en', { numeric: 'always' })
+
+/** How long ago a `YYYY-MM-DD` day was: "3 weeks ago", "8 months ago". */
+function ago(date: string, now = new Date()) {
+  const [y, m, d] = date.split('-').map(Number)
+  const then = new Date(y, m - 1, d)
+  const days = Math.floor((now.getTime() - then.getTime()) / 86_400_000)
+  if (days < 1) return 'today'
+  if (days < 7) return AGO.format(-days, 'day')
+  if (days < 30) return AGO.format(-Math.floor(days / 7), 'week')
+  const months =
+    (now.getFullYear() - y) * 12 +
+    now.getMonth() -
+    (m - 1) -
+    (now.getDate() < d ? 1 : 0)
+  if (months < 12) return AGO.format(-Math.max(months, 1), 'month')
+  return AGO.format(-Math.floor(months / 12), 'year')
+}
+
+/** Every post, newest first, with how long ago it was. The poem isn't listed. */
 const writing: IndexEntry[] = [...BLOG_POSTS, ...EXPERIENCE_POSTS]
   .sort((a, b) => b.date.localeCompare(a.date))
-  .map((p) => ({ href: p.link, label: p.title, meta: p.date.slice(0, 7) }))
+  .map((p) => ({ href: p.link, label: p.title, meta: ago(p.date) }))
 
 /**
  * The photos by place, in the wall's order: each place's year, and how many

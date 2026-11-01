@@ -36,13 +36,13 @@ Colour changes take `duration-quick` with `ease-calm`, and none with reduced mot
 
 ## Dropdowns
 
-With a mouse (`(hover: hover) and (pointer: fine)`), `projects`, `writing` and `photos` each drop down what's in them, in SiteIndex's rows and glass: a `·` (the current page's `@`), the name, a dotted leader, and its meta in `meta` mono. Text only; no photo loads for it. Built from Stanley's ask on 2026-11-01, ahead of a mock: "in a similar way to how the menu bar unfurls".
+With a mouse (`(hover: hover) and (pointer: fine)`), `projects`, `writing` and `photos` each drop down what's in them, in SiteIndex's rows and glass without their mark (Stanley, 2026-11-02): the name, a dotted leader, and its meta in `meta` mono. Text only; no photo loads for it. Built from Stanley's ask on 2026-11-01, ahead of a mock: "in a similar way to how the menu bar unfurls".
 
 ```
    projects
 ┌─────────────────────────────────────────┐
-│ · Portal · · · · · · · agentic commerce │
-│ · Mini Compiler · · · · · · · · systems │
+│ Portal · · · · · · · · agentic commerce │
+│ Mini Compiler · · · · · · · · · systems │
 │   …                                     │
 └─────────────────────────────────────────┘
 ```
@@ -50,10 +50,10 @@ With a mouse (`(hover: hover) and (pointer: fine)`), `projects`, `writing` and `
 | Word     | Rows (`lib/directories.ts`)                                                                                                        |
 | -------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | projects | every project in the page's order, to its place on `/projects`; meta: its category, lowercase                                      |
-| writing  | every post (`BLOG_POSTS`, `EXPERIENCE_POSTS`) newest first; meta: year and month. The poem is not listed.                          |
+| writing  | every post (`BLOG_POSTS`, `EXPERIENCE_POSTS`) newest first; meta: how long ago, "3 weeks ago". The poem is not listed.             |
 | photos   | each place in the wall's order; meta: its year, and `n photos` when more than one. All open `/photos`, which has no place anchors. |
 
-- **Place:** under the word, `space-2` below its line less 4px, its names in line with the word (the mark column and both half insets hang out to the left). As wide as its longest row, 16rem to 26rem; a longer name ends in an ellipsis. Rows are 28px (the mouse's height).
+- **Place:** under the word, `space-2` below its line less 4px, its names in line with the word (both half insets hang out to the left). As wide as its longest row, 16rem to 26rem; a longer name ends in an ellipsis. Rows are 28px (the mouse's height).
 - **Open:** after the pointer rests on the word 140ms, or at once when another dropdown is already open, so moving along the words switches. Keyboard focus on the word (`:focus-visible`) opens it too. A strip under the word bridges the gap to the rows.
 - **Close:** 260ms after the pointer leaves word and rows; Escape (focus back to the word); a click outside; focus leaving; following a row or the word; a new page. Opening it closes the site menu and the other dropdowns, and opening the site menu closes it (`lib/menus.ts`).
 - **Motion:** SiteIndex's: unrolls from its top-left corner (`duration-card`), rows come in 26ms apart and bloom through the petal ramp, leaders print out; rolls back (`duration-quick`). With reduced motion it opens and closes at once.
