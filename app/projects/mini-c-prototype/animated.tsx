@@ -3362,6 +3362,20 @@ export default function AnimatedCompiler() {
 
   const deck = decks.get(index)
   const intro = slide > 0 ? deck?.slides[slide - 1] : undefined
+  // A late step with nothing to say (a node set aside or popped back) keeps
+  // the slide before it up, since that slide gives the rule the step
+  // follows, until a step says something of its own, another slide comes,
+  // or the phase ends.
+  const heldSlide = useMemo(() => {
+    const phase = trace.frames[index]?.phase
+    if (slide > 0 || (phase !== 'Emit' && phase !== 'Registers')) return
+    for (let j = index; j > 0; j--) {
+      const held = j < index ? decks.get(j) : undefined
+      if (held) return held.phase === phase ? held.slides.at(-1) : undefined
+      const f = trace.frames[j]
+      if (f.phase !== phase || explain(trace, f)) return
+    }
+  }, [trace, index, slide, decks])
   // The welcome and the slides read aloud, when the footer's speaker is on.
   // (a slide that counts the registers has a part for each count)
   const speaking = useNarration(
@@ -3944,19 +3958,23 @@ export default function AnimatedCompiler() {
   )
   const line = source.slice(0, activeSpan.start).split('\n').length
   // The name pass: the note card holds the scopes instead of a sentence.
+  // (a slide kept up over the silent steps after it, as itself)
+  const held = error ? undefined : heldSlide
   const statusText = error
     ? error.message
-    : intro?.readme
-      ? // (the readme's pages are named by their file: background.txt)
-        ''
-      : intro
-        ? intro.title
-        : index === 0
-          ? // No line over the welcome (Stanley, 2026-10-02).
-            ''
-          : frame.why.kind === 'token'
-            ? `Token: \`${trace.tokens[frame.why.token].text}\``
-            : frame.title
+    : held
+      ? held.title
+      : intro?.readme
+        ? // (the readme's pages are named by their file: background.txt)
+          ''
+        : intro
+          ? intro.title
+          : index === 0
+            ? // No line over the welcome (Stanley, 2026-10-02).
+              ''
+            : frame.why.kind === 'token'
+              ? `Token: \`${trace.tokens[frame.why.token].text}\``
+              : frame.title
   // The notes window's name: the tab it's under, slides and steps alike;
   // a slide's own title is the heading inside (Stanley, 2026-09-28).
   const noteFile = error
@@ -3976,10 +3994,12 @@ export default function AnimatedCompiler() {
       frame.why.kind === 'check.typeError'
     )
       ? 'The compiler stops at its first error. Fix it in the editor and it runs again.'
-      : explain(trace, frame))
+      : held
+        ? withRegisterCount(held.body, trace.backend?.k ?? 18)
+        : explain(trace, frame))
   // The note's first line, over its text: what it is about, when there's
   // a header to show (the welcome, a slide, or an error).
-  const showTitle = !!intro || index === 0 || !!error
+  const showTitle = !!intro || !!held || index === 0 || !!error
   const heading = showTitle && statusText && (
     <span className="ac-window-head">
       <Prose text={statusText} />
