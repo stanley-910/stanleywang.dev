@@ -1250,6 +1250,8 @@ export function Terminal() {
         aria-pressed={open && !closing}
         onClick={() => (open ? hide() : show())}
         aria-label="Terminal"
+        // With the text hidden it's gone for touch, pointer and Tab alike; only ` still opens it.
+        inert={uiHidden}
         data-avoid
       >
         <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden>

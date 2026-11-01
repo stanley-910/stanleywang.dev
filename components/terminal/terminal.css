@@ -163,22 +163,12 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
   color: var(--garden-ink, #e4e2da);
 }
 
-/* Hidden with the rest of the UI (lib/hide-ui.ts); near its corner it comes back. */
+/* Hidden with the rest of the UI (lib/hide-ui.ts), and out of reach too (it's inert), so a
+   tap or a scroll in its corner of the meadow can't switch the terminal on. */
 :root[data-ui-hidden] .terminal-power {
   --avoid: none;
   opacity: 0;
-}
-
-:root[data-ui-hidden] .terminal-power:hover,
-:root[data-ui-hidden] .terminal-power:focus-visible {
-  --avoid: auto;
-  opacity: 1;
-}
-
-:root[data-ui-hidden] .terminal-power::before {
-  content: '';
-  position: absolute;
-  inset: -48px -40px -40px -80px;
+  pointer-events: none;
 }
 
 :root[data-ui-hidden] .terminal-win {
