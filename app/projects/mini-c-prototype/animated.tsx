@@ -1238,11 +1238,12 @@ export default function AnimatedCompiler() {
   const decks = useMemo(() => {
     const at = new Map<number, { phase: Phase; slides: Slide[] }>()
     // (a slide about the bars needs them: the teaching compiler, when the
-    // real one can't run, draws none)
+    // real one can't run, draws none; typed code, with no example's name,
+    // keeps every slide not kept for one example)
     const kept = (s: Slide) =>
       (namedTrace.recorded || !s.lanes) &&
       (!s.onlyIn || s.onlyIn === reference?.name) &&
-      s.notIn !== reference?.name
+      (!s.notIn || s.notIn !== reference?.name)
     for (const [phase, slides] of Object.entries(PHASE_SLIDES)) {
       const first = trace.frames.findIndex(
         (f) => f.phase === phase && f.why.kind !== 'ready',
