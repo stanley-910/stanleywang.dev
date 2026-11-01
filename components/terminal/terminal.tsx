@@ -603,6 +603,8 @@ export function Terminal() {
     setClosing(false)
     setMenu(null)
     setEntries([])
+    // A page change still pending from the last session doesn't hide the next one's prompt.
+    setGoing(null)
   }, [])
 
   // Closing pops it out first (terminal.css), then it goes; held still, it goes at once.
