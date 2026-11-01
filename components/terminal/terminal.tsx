@@ -503,6 +503,8 @@ export function Terminal() {
   const [waving, setWaving] = useState(false)
   /** Waiting on a file for cat; the prompt stays away till it prints. */
   const [busy, setBusy] = useState(false)
+  /** The page a cd or open is on its way to; the prompt waits for it as for a file. */
+  const [going, setGoing] = useState<string | null>(null)
   const [entries, setEntries] = useState<Entry[]>([])
   const [typed, setTyped] = useState('')
   const [view, setView] = useState<'shell' | 'files'>('shell')
@@ -536,6 +538,14 @@ export function Terminal() {
   const typingTimer = useRef(0)
 
   const path = pathFor(pathname)
+
+  // Arrived, or given up on if the page never comes.
+  useEffect(() => setGoing(null), [pathname])
+  useEffect(() => {
+    if (!going) return
+    const t = window.setTimeout(() => setGoing(null), 5000)
+    return () => clearTimeout(t)
+  }, [going])
 
   // The hour, as the rest of the site has it. Shut, only its night or day shows (the power
   // button's colours), so it takes a new hour only across that line: the poem's scroll and the
@@ -706,8 +716,12 @@ export function Terminal() {
         follow,
         wind: windRef.current,
         history: history.current,
-        go: (p) => router.push(routeFor(p)),
-        visit: (url) => router.push(url),
+        go: (p) => ctx.visit(routeFor(p)),
+        visit: (url) => {
+          const to = url.split(/[?#]/)[0]
+          if (to !== pathname) setGoing(to)
+          router.push(url)
+        },
         // The prompt waits for a file that's still on its way, as a shell does.
         photo: (src) => {
           const i = PRINTS.findIndex((p) => p.src === src)
@@ -766,13 +780,24 @@ export function Terminal() {
         focusInput()
       }
     },
-    [open, show, hide, path, hour, follow, router, focusInput, toFiles],
+    [
+      open,
+      show,
+      hide,
+      path,
+      pathname,
+      hour,
+      follow,
+      router,
+      focusInput,
+      toFiles,
+    ],
   )
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const h = hist.current
     if (e.key === 'Enter') {
-      if (busy) return
+      if (busy || going) return
       const v = typed
       setTyped('')
       execute(v)
@@ -1159,7 +1184,7 @@ export function Terminal() {
                   {!entries.some((e) => e.kind === 'boot') && (
                     <div
                       className={typing ? 'line typing' : 'line'}
-                      style={busy ? { opacity: 0 } : undefined}
+                      style={busy || going ? { opacity: 0 } : undefined}
                     >
                       <Prompt path={path} />
                       <span className="typed">{typed}</span>
