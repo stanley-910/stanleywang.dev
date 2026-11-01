@@ -1,0 +1,259 @@
+/* The site menu's weather: five glyphs on one line and a readout under them
+   (design/circadian-meadow/components/SiteMenu). The row and its items take
+   the menu's rhythm from time-control.css (--inset, --reach); everything here
+   is the weather's own. */
+
+/* Spread from the column's left edge to its right: the first glyph starts
+   where the readout does, the last ends where the tracks do. Each target
+   reaches --wx past its glyph to either side, out into the margin. */
+.weather-row-glyphs {
+  --wx: calc(var(--inset) / 2);
+  display: flex;
+  justify-content: space-between;
+  margin-inline: calc(-1 * var(--wx));
+}
+
+/* 28px round the 16px glyph under a mouse; 44px under a finger. */
+.weather-row .weather-row-item {
+  width: auto;
+  margin: calc(-1 * var(--reach)) 0;
+  padding: var(--reach) var(--wx);
+}
+
+@media (pointer: coarse) {
+  .weather-row-glyphs {
+    --wx: 14px;
+  }
+}
+
+.weather-row .weather-row-item[aria-pressed='true'] {
+  color: var(--ink);
+}
+
+/* The readout holds no control, so a finger's 44px over it lands on the
+   glyph above. */
+.weather-row .time-control-readout {
+  pointer-events: none;
+}
+
+/* A name shown for a glyph the mouse rests on, not yet picked. */
+.weather-row .time-control-hour[data-peek] {
+  color: var(--ink-muted);
+}
+
+/* ---------- The glyphs ---------- */
+
+/* The dots' family: a 16px box, a 1.5 stroke with round ends. */
+.weather-glyph {
+  display: block;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.weather-glyph circle {
+  fill: currentColor;
+  fill-opacity: 0;
+}
+
+.weather-glyph .bead {
+  fill-opacity: 1;
+  stroke: none;
+}
+
+/* Clear: a sun, its disc open. Set, the disc fills, as the power glyph's
+   key drops to a dot when on. Hovered, the rays turn a step and reach out. */
+.weather-glyph .rays {
+  transform-origin: 8px 8px;
+}
+
+[data-weather='clear'][aria-pressed='true'] .core {
+  fill-opacity: 1;
+}
+
+/* Rain: four drops on a slant. Hovered, they fall out of the box's bottom
+   right and come back in at its top left, round and round; the box clips
+   them so it reads as a little window onto the rain. */
+[data-weather='rain'] .weather-glyph {
+  overflow: hidden;
+}
+
+/* Snow: six arms. Hovered or set, a V grows out of each, one arm after the
+   next, as if it crystallized. */
+.weather-glyph .branch {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  transform: scale(0);
+}
+
+[data-weather='snow'][aria-pressed='true'] .branch {
+  transform: none;
+}
+
+/* Storm: a bolt. Hovered, it strikes: drawn top to bottom, then a flicker. */
+.weather-glyph .bolt {
+  stroke-dasharray: 1 2;
+  stroke-dashoffset: 0;
+}
+
+/* Eclipse: two rings, the moon's over the sun's, the sun's showing only
+   outside it. Hovered or set, the moon slides over the sun and the sun's arc
+   closes away behind it into its last point, which stays as a bead: a
+   diamond ring. A corona of beads all round read as a second sun. */
+.weather-glyph .sun {
+  stroke-dasharray: 216 400;
+  stroke-dashoffset: 0;
+  transform: translate(1.5px, -1.5px);
+}
+
+.weather-glyph .moon {
+  transform: translate(-1.5px, 1.5px);
+}
+
+.weather-glyph .bead {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scale(0);
+}
+
+[data-weather='eclipse'][aria-pressed='true'] .sun {
+  stroke-dasharray: 0 400;
+  stroke-dashoffset: -108;
+  transform: none;
+}
+
+[data-weather='eclipse'][aria-pressed='true'] .moon,
+[data-weather='eclipse'][aria-pressed='true'] .bead {
+  transform: none;
+}
+
+/* ---------- Hover: a mouse or trackpad only ---------- */
+
+/* A phone keeps :hover on whatever was last tapped, so it gets none of
+   this; it plays the one-shots below instead. With reduced motion, the
+   glyphs keep their poses and nothing moves. */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  [data-weather='clear']:hover .rays {
+    transform: rotate(45deg) scale(1.08);
+  }
+
+  /* data-hover rather than :hover, so a round can finish after the mouse
+     leaves (weather-row.tsx). */
+  [data-weather='rain'][data-hover] .drops,
+  [data-weather='rain'][data-settle] .drops {
+    animation: weather-rain 1.2s linear infinite;
+  }
+
+  [data-weather='snow']:hover .branch {
+    transform: none;
+  }
+
+  [data-weather='storm'][data-hover] .bolt,
+  [data-weather='storm'][data-settle] .bolt {
+    animation: weather-strike 560ms both;
+  }
+
+  [data-weather='eclipse']:hover .sun {
+    stroke-dasharray: 0 400;
+    stroke-dashoffset: -108;
+    transform: none;
+  }
+
+  [data-weather='eclipse']:hover .moon,
+  [data-weather='eclipse']:hover .bead {
+    transform: none;
+  }
+}
+
+/* ---------- Touch: a one-shot on the glyph just picked ---------- */
+
+/* Snow and eclipse need none: their set pose comes in on the same spring. */
+@media (hover: none) and (prefers-reduced-motion: no-preference) {
+  [data-weather='clear'][data-play] .rays {
+    animation: weather-turn 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  [data-weather='rain'][data-play] .drops {
+    animation: weather-rain 900ms linear;
+  }
+
+  [data-weather='storm'][data-play] .bolt {
+    animation: weather-strike 560ms both;
+  }
+}
+
+/* ---------- Motion ---------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .weather-glyph .rays,
+  .weather-glyph .branch,
+  .weather-glyph .moon,
+  .weather-glyph .bead {
+    transition: transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .weather-glyph .core {
+    transition: fill-opacity var(--duration-card) var(--ease-calm);
+  }
+
+  /* One arm after the next. */
+  .weather-glyph .branch {
+    transition-delay: calc(var(--i) * 30ms);
+  }
+
+  /* The sun's arc can't overshoot: a dash below zero long draws the whole
+     ring for a frame. Only its slide takes the spring. */
+  .weather-glyph .sun {
+    transition:
+      transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1),
+      stroke-dasharray 320ms var(--ease-calm),
+      stroke-dashoffset 320ms var(--ease-calm);
+  }
+
+  /* The bead as the sun's arc closes into it. */
+  [data-weather='eclipse']:hover .bead,
+  [data-weather='eclipse'][aria-pressed='true'] .bead {
+    transition-delay: 140ms;
+  }
+}
+
+@keyframes weather-rain {
+  to {
+    transform: translate(6px, 16px);
+  }
+}
+
+@keyframes weather-turn {
+  from {
+    transform: rotate(-45deg);
+  }
+}
+
+/* Drawn top to bottom in the first 40%, then a flicker. The draw starts a
+   touch past the path's start, so no round end shows as a dot before it. */
+@keyframes weather-strike {
+  0% {
+    stroke-dashoffset: 1.05;
+    animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }
+  40% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  52% {
+    opacity: 0.25;
+  }
+  64% {
+    opacity: 1;
+  }
+  76% {
+    opacity: 0.5;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
