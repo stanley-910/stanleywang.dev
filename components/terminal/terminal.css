@@ -689,7 +689,8 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
   flex: 1;
   min-width: 0;
   grid-template-columns: repeat(auto-fill, 104px);
-  grid-auto-rows: 80px;
+  /* A row grows to its longest name, so a name never runs into the icon under it. */
+  grid-auto-rows: minmax(80px, auto);
   align-content: start;
   gap: 6px 4px;
   padding: 14px 10px;
@@ -730,12 +731,21 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
   fill: url(#terminal-dither);
 }
 
+/* Names stop at three lines with an ellipsis; selected, the whole name shows, as a Finder
+   does. */
 .terminal-files span {
+  display: -webkit-box;
+  max-width: 100%;
   padding: 0 4px;
+  overflow: hidden;
   font: 400 12px/15px var(--bitmap);
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
 }
 
 .terminal-files button[aria-selected='true'] span {
+  -webkit-line-clamp: unset;
   background: var(--k-plate);
   color: var(--k-on-plate);
 }

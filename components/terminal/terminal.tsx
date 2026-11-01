@@ -1182,6 +1182,7 @@ export function Terminal() {
                       <button
                         key={it.name}
                         role="option"
+                        title={it.name.replace(/\/$/, '')}
                         aria-selected={selected === it.name}
                         onClick={(e) => {
                           e.stopPropagation()
