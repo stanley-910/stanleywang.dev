@@ -434,6 +434,10 @@ export function run(input: string, ctx: Ctx): string[] {
         ctx.go(`~/${to}`)
         return []
       }
+      // A project lists as a folder, so cd goes into it as open does: to its card.
+      const it = itemOf(args[1], ctx.path)
+      if (it?.kind === 'project') return it.open(ctx)
+      if (it) return [`cd: not a directory: ${args[1]}`]
       return [`cd: no such directory: ${args[1]}`]
     }
     case 'pwd':
@@ -595,11 +599,18 @@ export function run(input: string, ctx: Ctx): string[] {
 export function complete(s: string, path: string) {
   const parts = s.split(' ')
   const here = folder(path).map((it) => it.name)
+  // cd takes the pages and whatever here lists as a folder, by name without the slash.
+  const dirs = [
+    ...new Set([
+      ...PAGES,
+      ...here.filter((n) => n.endsWith('/')).map((n) => n.slice(0, -1)),
+    ]),
+  ]
   const pool =
     parts.length === 1
       ? NAMES
       : parts[0] === 'cd'
-        ? PAGES
+        ? dirs
         : ['cat', 'open', 'ls'].includes(parts[0])
           ? here
           : parts[0] === 'work'
