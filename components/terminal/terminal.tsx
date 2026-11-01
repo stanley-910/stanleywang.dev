@@ -369,6 +369,7 @@ function Boot({
 
 const WAVE_CHARS = ' _abcöõö#$%123ABC'
 const WAVE_INKS = ['g', 'u', 'y', 'h']
+const MODIFIERS = ['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Fn', 'OS']
 
 /**
  * The old site's waves.exe: a field of interfering sine waves in letters, here filling the
@@ -442,8 +443,14 @@ function Waves({ onDone }: { onDone: () => void }) {
     })
     fit.observe(el)
     // The keystroke that started it is still on its way up; listen from the next one.
-    // The key that stops it is only for that; it doesn't reach the prompt.
+    // The key that stops it is only for that; it doesn't reach the prompt. A modifier on its
+    // own or a ⌘ shortcut, as for a screenshot, lets it play on; ^C still stops it.
     const stop = (e: Event) => {
+      if (
+        e instanceof KeyboardEvent &&
+        (e.metaKey || MODIFIERS.includes(e.key))
+      )
+        return
       e.preventDefault()
       done.current()
     }
