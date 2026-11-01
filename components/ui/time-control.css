@@ -32,6 +32,14 @@
   transition: color var(--duration-quick) var(--ease-calm);
 }
 
+.time-control-icon::before {
+  /* A finger-sized target round the 16px dots, without moving the bar, as
+     on the site index's glyph. */
+  content: '';
+  position: absolute;
+  inset: -14px;
+}
+
 .time-control-icon:hover,
 .time-control-icon[aria-expanded='true'] {
   color: var(--ink);
@@ -93,11 +101,19 @@
   top: calc(100% + var(--space-2));
   right: calc(-1 * var(--space-2));
   z-index: 20;
-  /* One inset all round; the item rows sit half of it in from the edges, so
-     their text lines up with the readout's. */
+  /* The rhythm. Text keeps one column, --inset in from each side, where the
+     site index's text sits too. A section has --pad above and below; two
+     controls in one section sit --gap apart; a slider and its readout, 10px.
+     Under a finger every target is 44px, so the steps open up just enough
+     that no two targets overlap: --pad from 12px to space-3, --gap from
+     space-3 to space-4. */
   --inset: 12px;
-  width: 16rem;
-  padding: var(--inset);
+  --pad: 12px;
+  --gap: var(--space-3);
+  /* How far an item's target reaches past its text, above and below. */
+  --reach: 6px;
+  /* Wide enough for the five weathers on one line with room between them. */
+  width: 18rem;
   /* Glass: a thin tint of the colour opposite the ink, blurred, so what's
      under it shows through muddled and the text still reads. */
   background: color-mix(in srgb, var(--glass, var(--page)) 28%, transparent);
@@ -186,10 +202,35 @@
 
 /* A finger-sized target, without moving the layout. */
 @media (pointer: coarse) {
+  .time-control-pop {
+    --pad: var(--space-3);
+    --gap: var(--space-4);
+    --reach: 14px;
+  }
+
   .time-control-range {
     height: 44px;
     margin-block: -16px;
   }
+}
+
+/* The menu's sections: the time, then, where there's a meadow, the meadow's
+   own controls, split by a hairline in the popover's own border. */
+.time-control-section {
+  padding: var(--pad) var(--inset);
+}
+
+.time-control-section + .time-control-section {
+  border-top: 1px solid color-mix(in srgb, var(--ink) 14%, transparent);
+}
+
+.time-control-section > * + * {
+  margin-top: var(--gap);
+}
+
+/* An item's text, not its target, keeps the gap. */
+.time-control-section > * + .time-control-item {
+  margin-top: calc(var(--gap) - var(--reach));
 }
 
 .time-control-readout {
@@ -210,25 +251,35 @@
 }
 
 .time-control-now {
+  /* Over the slider's reach, which runs under the readout. */
+  position: relative;
+  z-index: 1;
   margin-left: auto;
   font: inherit;
   cursor: pointer;
 }
 
-/* Below the slider, the menu's items: rows in the readout's type, on a
-   hairline in the popover's own border, lit on hover like a selection. */
-.time-control-rule {
-  height: 0;
-  margin: var(--inset) calc(-1 * var(--inset)) calc(var(--inset) / 2);
-  border: 0;
-  border-top: 1px solid color-mix(in srgb, var(--ink) 14%, transparent);
+/* The word is three or four letters; its target is an item's. */
+.time-control-now::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
 }
 
+@media (pointer: coarse) {
+  .time-control-now::before {
+    inset: -14px -12px;
+  }
+}
+
+/* The menu's items: rows in the readout's type, their text in the readout's
+   column and their reach out into the margins round it, so a finger's 44px
+   doesn't move the layout. Lit on hover like a selection. */
 .time-control-item {
   display: flex;
   width: calc(100% + var(--inset));
-  margin: 0 calc(var(--inset) / -2) calc(var(--inset) / -2);
-  padding: calc(var(--inset) / 2);
+  margin: calc(-1 * var(--reach)) calc(var(--inset) / -2);
+  padding: var(--reach) calc(var(--inset) / 2);
   border-radius: var(--radius-hair);
   color: var(--ink-muted);
   font-size: var(--text-meta);
@@ -240,7 +291,14 @@
     background-color var(--duration-quick) var(--ease-calm);
 }
 
-.time-control-item:hover,
+@media (hover: hover) {
+  .time-control-item:hover {
+    color: var(--ink);
+    background: color-mix(in srgb, var(--ink) 9%, transparent);
+  }
+}
+
+.time-control-item:active,
 .time-control-item:focus-visible {
   color: var(--ink);
   background: color-mix(in srgb, var(--ink) 9%, transparent);
@@ -251,32 +309,28 @@
   outline-offset: 0;
 }
 
-/* The weather: its six words as two rows of items, the one set in ink. */
+/* The weather: its five words on one line, spread from the readout's left
+   edge to its right, the one set in ink. */
 .time-control-weather {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  margin: 0 calc(var(--inset) / -2) calc(var(--inset) / -2);
+  display: flex;
+  justify-content: space-between;
+  margin-inline: calc(var(--inset) / -2);
 }
 
 .time-control-weather .time-control-item {
   width: auto;
-  margin: 0;
+  justify-content: center;
+  margin-inline: 0;
+}
+
+@media (pointer: coarse) {
+  .time-control-weather .time-control-item {
+    min-width: 44px;
+  }
 }
 
 .time-control-weather .time-control-item[aria-pressed='true'] {
   color: var(--ink);
-}
-
-/* In a storm, under the weather: lightning's colour, a slider like the hour's, from the coolest
-   blue to the warmest gold, with `auto` to hand it back to the hour. */
-.time-control-lightning {
-  margin-top: var(--inset);
-}
-
-/* Under the weather on a meadow: the moon's colour, from its own silver through white to gold and
-   amber, with `auto` to hand it back to the palette. */
-.time-control-moon {
-  margin-top: var(--inset);
 }
 
 /* Hide text (lib/hide-ui.ts): the top bar's links and home's text fade

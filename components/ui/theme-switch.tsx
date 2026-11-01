@@ -29,8 +29,9 @@ import {
 import './time-control.css'
 
 // The site menu in the top bar's corner: four dots that open the time slider
-// (design/circadian-meadow/components/ReadingTime), the meadow's weather
-// where there is a meadow, and, on home, hide text.
+// (design/circadian-meadow/components/ReadingTime) and, where there is a
+// meadow, a second section with its weather, its moon and, on home, hide
+// text (design/circadian-meadow/components/SiteHeader).
 // The page's colours follow the hour shown here, the clock's or one set by
 // hand for this visit, and home's meadow follows the same hour.
 
@@ -278,40 +279,43 @@ export function ThemeSwitch({ className }: { className?: string }) {
       </button>
       {open && (
         <div ref={popRef} className="time-control-pop">
-          <input
-            className="time-control-range"
-            type="range"
-            min={0}
-            max={24}
-            step={0.25}
-            value={hour}
-            aria-label="Hour"
-            aria-valuetext={`${label(hour)}, ${phaseAt(hour)}`}
-            style={
-              {
-                '--track': TRACK,
-                '--bead': trackAt(hour),
-              } as React.CSSProperties
-            }
-            onChange={(e) => setHour(Number(e.target.value))}
-            onKeyDown={onKeyDown}
-          />
-          <p className="time-control-readout">
-            <span className="time-control-hour">{label(hour)}</span>
-            <span className="time-control-phase">{phaseAt(hour)}</span>
-            {set && (
-              <button
-                type="button"
-                className="link-quiet time-control-now"
-                onClick={() => setHour(null)}
-              >
-                now
-              </button>
-            )}
-          </p>
+          <div className="time-control-section">
+            <div className="time-control-dial">
+              <input
+                className="time-control-range"
+                type="range"
+                min={0}
+                max={24}
+                step={0.25}
+                value={hour}
+                aria-label="Hour"
+                aria-valuetext={`${label(hour)}, ${phaseAt(hour)}`}
+                style={
+                  {
+                    '--track': TRACK,
+                    '--bead': trackAt(hour),
+                  } as React.CSSProperties
+                }
+                onChange={(e) => setHour(Number(e.target.value))}
+                onKeyDown={onKeyDown}
+              />
+              <p className="time-control-readout">
+                <span className="time-control-hour">{label(hour)}</span>
+                <span className="time-control-phase">{phaseAt(hour)}</span>
+                {set && (
+                  <button
+                    type="button"
+                    className="link-quiet time-control-now"
+                    onClick={() => setHour(null)}
+                  >
+                    now
+                  </button>
+                )}
+              </p>
+            </div>
+          </div>
           {MEADOWS.includes(pathname) && (
-            <>
-              <hr className="time-control-rule" />
+            <div className="time-control-section">
               <div
                 className="time-control-weather"
                 role="group"
@@ -330,7 +334,7 @@ export function ThemeSwitch({ className }: { className?: string }) {
                 ))}
               </div>
               {weather === 'storm' && (
-                <div className="time-control-lightning">
+                <div className="time-control-dial">
                   <input
                     className="time-control-range"
                     type="range"
@@ -365,7 +369,7 @@ export function ThemeSwitch({ className }: { className?: string }) {
                   </p>
                 </div>
               )}
-              <div className="time-control-moon">
+              <div className="time-control-dial">
                 <input
                   className="time-control-range"
                   type="range"
@@ -399,23 +403,20 @@ export function ThemeSwitch({ className }: { className?: string }) {
                   )}
                 </p>
               </div>
-            </>
-          )}
-          {pathname === '/' && (
-            <>
-              <hr className="time-control-rule" />
-              <button
-                type="button"
-                className="time-control-item"
-                aria-pressed={hidden}
-                onClick={() => {
-                  setUiHidden(!hidden)
-                  setOpen(false)
-                }}
-              >
-                {hidden ? 'show text' : 'hide text'}
-              </button>
-            </>
+              {pathname === '/' && (
+                <button
+                  type="button"
+                  className="time-control-item"
+                  aria-pressed={hidden}
+                  onClick={() => {
+                    setUiHidden(!hidden)
+                    setOpen(false)
+                  }}
+                >
+                  {hidden ? 'show text' : 'hide text'}
+                </button>
+              )}
+            </div>
           )}
         </div>
       )}
