@@ -17,22 +17,22 @@
   .dots { fill: var(--ink); transform: rotate(45deg); }
 
   /* The panel. --pad and --gap are the finger's steps on a phone frame, the mouse's on the desktop frame. */
-  .pop { --inset: 12px; --pad: var(--space-3); --gap: var(--space-4); margin-top: 14px; background: color-mix(in srgb, var(--page) 28%, transparent); border: 1px solid color-mix(in srgb, var(--ink) 18%, transparent); border-radius: var(--radius-card); font-size: var(--text-meta); line-height: var(--leading-meta); }
+  .pop { --inset: 12px; --pad: var(--space-3); --gap: var(--space-4); margin-top: 14px; background: color-mix(in srgb, var(--page) 72%, transparent); border: 1px solid color-mix(in srgb, var(--ink) 18%, transparent); border-radius: var(--radius-card); font-size: var(--text-meta); line-height: var(--leading-meta); }
   .desk .pop { --pad: 12px; --gap: var(--space-3); width: 18rem; margin-left: auto; }
   .sec { padding: var(--pad) var(--inset); }
   .sec + .sec { border-top: 1px solid color-mix(in srgb, var(--ink) 14%, transparent); }
   .sec > * + * { margin-top: var(--gap); }
   .track { position: relative; height: 4px; margin-block: 4px; border-radius: var(--radius-hair); }
-  .track i { position: absolute; top: -3px; width: 10px; height: 10px; box-sizing: border-box; border: 1.25px solid var(--ink-muted); border-radius: 50%; background: var(--b); }
+  .track i { position: absolute; top: -3px; width: 10px; height: 10px; box-sizing: border-box; border: 1.25px solid var(--ink); border-radius: 50%; background: var(--b); }
   /* Approximations of the built tracks (paletteAt, moonAt), from scene tokens. */
   .hour { background: linear-gradient(to right, var(--page-dark), var(--night-sky-horizon) 15%, var(--dawn-sky-horizon) 27%, var(--day-sky-horizon) 40%, var(--day-sky-horizon) 66%, var(--golden-sky-horizon) 72%, var(--sunset-sky-horizon) 78%, var(--twilight-sky-horizon) 84%, var(--night-sky-horizon) 92%, var(--page-dark)); }
   .moon { background: linear-gradient(to right, var(--night-lace), var(--page-light) 35%, var(--golden-dandelion) 70%, var(--golden-sky-horizon)); }
   .out { display: flex; gap: var(--space-1); margin: 10px 0 0; }
-  .out span + span { color: var(--ink-muted); }
-  .out b { margin-left: auto; font-weight: 400; color: var(--ink-muted); }
+  .out span + span { color: var(--ink); }
+  .out b { margin-left: auto; font-weight: 400; color: var(--ink); }
   .wx { display: flex; justify-content: space-between; }
-  .wx span, .item { color: var(--ink-muted); }
-  .wx span[aria-pressed] { color: var(--ink); }
+  .wx span, .item { color: var(--ink); }
+  .wx span[aria-pressed] { color: var(--ink); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
 </style>
 </head>
 <body>
