@@ -1407,29 +1407,42 @@ export class Garden {
     const runs: { path: Shape; w: number }[] = []
     const depth = this.height * [0.05, 0.035, 0.02][layer] * reach
     const n = ridge.length
+    // How deep the strip runs under each point: the facing, averaged over the five points each
+    // way, so a strip thins to nothing where the slope turns or flattens and the lit and shaded
+    // strips meet in a soft V. The envelope belongs to the point, not the run, so neighbouring
+    // runs share their edge and a point stepping from one run to the next moves it by at most a
+    // sixteenth of a sixteenth. Tapering each run at its own ends instead, by whether the next
+    // run had the same sign, made a whole run's end taper come and go the minute a single point
+    // eased across zero: a block of a mountainside lit or shaded at once.
+    const ENV = 5
+    const env = new Float32Array(n)
+    for (let k = 0; k < n; k++) {
+      let sum = 0
+      let wt = 0
+      for (let m = -ENV; m <= ENV; m++) {
+        const q = k + m
+        if (q < 0 || q >= n) continue
+        const t = 1 - Math.abs(m) / (ENV + 1)
+        sum += fs[q] * t
+        wt += t
+      }
+      env[k] = Math.abs(sum / wt)
+    }
     let i = 0
     while (i < n) {
       const f = fs[i]
       let j = i
       while (j + 1 < n && fs[j + 1] === f) j++
-      // Reaching on to the next run where the slope only steps to the next strength, so a run of
-      // a single point still shows and none leave a gap between them.
-      const on = j < n - 1 && Math.sign(fs[j + 1]) === Math.sign(f)
-      const e = on ? j + 1 : j
+      // Each run reaches on to the next point, so a run of a single point still shows and none
+      // leave a gap between them; the shared segment prints with whichever run comes later.
+      const e = Math.min(n - 1, j + 1)
       if (f !== 0 && e > i) {
-        // One shape per run: along the crest, then back along a line up to `depth` below it.
-        // Tapered to nothing where the slope turns or ends, so a run doesn't stop at a hard
-        // vertical edge; not where it only steps to the next strength, or it would pinch there.
-        const a = i > 0 && Math.sign(fs[i - 1]) === Math.sign(f) ? -Infinity : i
-        const b = on ? Infinity : j
+        // One shape per run: along the crest, then back along the envelope below it.
         const path = new Shape()
         path.moveTo(i * RIDGE_STEP, ridge[i])
         for (let k = i + 1; k <= e; k++) path.lineTo(k * RIDGE_STEP, ridge[k])
         for (let k = e; k >= i; k--)
-          path.lineTo(
-            k * RIDGE_STEP,
-            ridge[k] + depth * smoothstep(0, 10, Math.min(k - a, b - k)),
-          )
+          path.lineTo(k * RIDGE_STEP, ridge[k] + depth * env[k])
         path.closePath()
         runs.push({ path, w: f })
       }

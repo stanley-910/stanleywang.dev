@@ -3,7 +3,7 @@
 // thin things, with an ink, an alpha and a tile under it. Far heads and insects print as fixed
 // motifs. Kept free of the DOM so it runs where the frame was rasterised.
 
-import { bayer, clamp, smoothstep } from './math'
+import { bayer, clamp, hash, smoothstep } from './math'
 import { mix, shade, type Palette, type Rgb } from './palette'
 import { Kind, LandMat, RIVER_SPAN, type Cells } from './rasterize'
 
@@ -891,8 +891,13 @@ export class Typesetter {
               }
               // Halftone: ordered dither on brightness, like the cloud and grass studies.
               // The silhouette itself is painted in the backdrop; these are its halftone dots.
+              // The screen's sixteen levels are each spread across their own step, so as the
+              // hour moves the rock's brightness or a slope's light, the cells at a level go
+              // over one at a time, scattered, instead of every sixteenth cell of a mountainside
+              // in the same minute, in a lattice. The order of the screen is kept.
+              const bs = b + (hash(c, r, 31) - 0.5) / 16
               const d = L * 1.3 + (skyRow ? 0.1 : -0.15)
-              if (d > bayer(c, r) * 1.1)
+              if (d > bs * 1.1)
                 g = code(LAND[1 + Math.min(2, Math.floor(d * 2.2))])
               const lc = mix([cr, cg, cb], p.cloud, skyRow ? 0.28 : 0.12)
               cr = lc[0]
@@ -913,7 +918,7 @@ export class Typesetter {
               // side goes bare, so the contrast is all in the lit flank.
               const sl = (this.lit[i] - 0.5) * 2
               if (sl > 0.05) {
-                if (sl > bayer(c, r) * 0.9)
+                if (sl > bs * 0.9)
                   g = code(
                     SLOPE_LIT[
                       Math.min(
@@ -923,7 +928,7 @@ export class Typesetter {
                     ],
                   )
                 alpha = 0.45 + 0.25 * sl
-              } else if (sl < -0.05 && -sl > bayer(c, r)) g = 0
+              } else if (sl < -0.05 && -sl > bs) g = 0
               break
             }
           }
