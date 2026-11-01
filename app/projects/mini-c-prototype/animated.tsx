@@ -563,6 +563,13 @@ function layered(
   return { trace, toBase: origin }
 }
 
+// Given as `onUpdate`, it keeps an element's fades off the browser's own
+// animations (WAAPI). framer-motion 11 ends one of those by cancelling it a
+// frame before it writes the final opacity, so a fading-out piece came
+// back at full opacity for a frame before it was removed: the tree
+// ghosting over the interference graph on the step into Registers.
+const ON_MOTION_LOOP = () => {}
+
 const SCRAMBLE = 'abcdefghijklmnopqrstuvwxyz'
 
 // Text that morphs into its next value: the length steps one letter per tick
@@ -5706,6 +5713,7 @@ export default function AnimatedCompiler() {
                               opacity: sliding ? [1, 1, 0] : 1,
                             }}
                             exit={{ opacity: 0 }}
+                            onUpdate={ON_MOTION_LOOP}
                             transition={
                               // (a node this step adds waits for the edge it
                               // attaches: `arrive`)
@@ -6015,6 +6023,7 @@ export default function AnimatedCompiler() {
                                 : { ...pct(held), opacity: gone ? 0 : 1 }
                             }
                             exit={{ opacity: 0 }}
+                            onUpdate={ON_MOTION_LOOP}
                             transition={
                               spent
                                 ? {
@@ -6189,6 +6198,7 @@ export default function AnimatedCompiler() {
                             top: `${(p.y / 480) * 100}%`,
                           }}
                           exit={{ opacity: 0 }}
+                          onUpdate={ON_MOTION_LOOP}
                           transition={transition}
                           role="img"
                           aria-label={`Virtual register ${vr}${colour ? `, now ${colour}` : order ? `, set aside ${order}` : ''}`}
