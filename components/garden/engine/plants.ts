@@ -150,8 +150,9 @@ export abstract class Plant {
    * Sown by a click: grow straight to full flower over RUSH seconds instead of half a minute.
    * Its age runs evenly to just open, so the stalk draws up (its growth eases out) and then the
    * bud swells, lifts and opens, each in its own time; run on into the bloom, a poppy's nod
-   * straightened in a blink and the head sprang up and bobbed. The stalk starts already bent
-   * as the bud nods, so it doesn't droop while it rises, and it stays in the wind throughout.
+   * straightened in a blink and the head sprang up and bobbed. On the first frame the stalk
+   * snaps to its rest curve (a poppy's is straight then, its hook still to come), and it stays
+   * in the wind throughout.
    */
   hurry() {
     this.rush = { from: this.age, to: Math.max(this.age, this.openAge()), t: 0 }
@@ -404,16 +405,18 @@ export class Poppy extends Plant {
     const t = this.age
     const G = this.G
     const bloomEnd = G + 20 + this.B
-    // Sown by a click, the stalk rises evenly and the hooked bud starts lifting before it's
-    // done, swelling all the while, then opens as it comes upright: on its own clock the
-    // stalk shot up, stopped, and hung hooked before the head flicked up.
+    // Sown by a click, it comes up the way a cosmos does: a bare stalk shoots up, the bud
+    // swells at its tip as it nears full height, and the neck hooks over under the bud's
+    // weight and lifts straight again as the head opens, each stage running into the next. Born
+    // with its hook and a third-grown bud, it read as a whole small poppy scaling up at you.
     const u = this.sowing
     if (u !== null)
       return {
-        growth: 0.12 + 0.88 * smoothstep(0, 0.6, u),
-        nod: 1 - smoothstep(0.35, 0.8, u),
-        bud: lerp(0.35, 1, smoothstep(0, 0.55, u)),
-        open: smoothstep(0.55, 1, u),
+        growth: 0.1 + 0.9 * easeOut(u / 0.3),
+        // Less than its full hook: the stalk's spring carries the heavy bud on past it.
+        nod: 0.65 * smoothstep(0.18, 0.42, u) * (1 - smoothstep(0.38, 0.88, u)),
+        bud: smoothstep(0.12, 0.55, u),
+        open: smoothstep(0.6, 1, u),
         shed: 0,
         pod: 0,
         wither: 0,
@@ -526,7 +529,9 @@ export class Poppy extends Plant {
     // evening deepened every cup, so at dusk they all stood side-on with their hearts hidden.
     const open = ph.open * (1 - 0.8 * smoothstep(0.3, 1, p.night))
     if (ph.open < 0.02) {
-      this.drawBud(r, tx, ty, tip, H * ph.bud, stemColor, p, 0)
+      // A sown stalk shoots up bare before its bud forms, as a cosmos does.
+      if (ph.bud > 0.05)
+        this.drawBud(r, tx, ty, tip, H * ph.bud, stemColor, p, 0)
       return
     }
     const axis = headAxis(tip, this.turn * ph.open)
