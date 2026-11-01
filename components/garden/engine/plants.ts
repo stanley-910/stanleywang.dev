@@ -413,8 +413,9 @@ export class Poppy extends Plant {
     if (u !== null)
       return {
         growth: 0.1 + 0.9 * easeOut(u / 0.3),
-        // Less than its full hook: the stalk's spring carries the heavy bud on past it.
-        nod: 0.65 * smoothstep(0.18, 0.42, u) * (1 - smoothstep(0.38, 0.88, u)),
+        // Only a hint of its hook, leaning in as the stalk rises rather than after it stands:
+        // a full one, or one that waited for the stalk, read as a straight stem that then wilts.
+        nod: 0.3 * smoothstep(0.1, 0.36, u) * (1 - smoothstep(0.36, 0.82, u)),
         bud: smoothstep(0.12, 0.55, u),
         open: smoothstep(0.6, 1, u),
         shed: 0,
