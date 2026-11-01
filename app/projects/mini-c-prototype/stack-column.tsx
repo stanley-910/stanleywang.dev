@@ -363,10 +363,12 @@ export function StackColumn({
                 ? [0, outAt, total]
                 : [0, inAt, total]
           const moving = !still && (appears !== null || gone !== null)
+          // (`link` would pick up the site's link style, shell.css: an
+          // underline, and no bottom border on hover)
           return (
             <motion.div
               key={moving ? `${r.addr}-${step}` : r.addr}
-              className={`ac-stack-cell ${kind} ${r.addr >= 0 && !r.data ? 'caller' : ''} ${r.addr === -4 ? 'edge' : ''} ${r.fold ? 'fold' : ''} ${released ? 'released' : ''} ${touch ? touch.kind : ''} ${value?.kind === 'write' && !still ? 'arrive' : ''}`}
+              className={`ac-stack-cell ${kind === 'link' ? 'linkage' : kind} ${r.addr >= 0 && !r.data ? 'caller' : ''} ${r.addr === -4 ? 'edge' : ''} ${r.fold ? 'fold' : ''} ${released ? 'released' : ''} ${touch ? touch.kind : ''} ${value?.kind === 'write' && !still ? 'arrive' : ''}`}
               style={
                 {
                   top: rowY(i),
