@@ -667,7 +667,8 @@ html:has(.garden-home, .garden-canvas) .terminal-power[aria-pressed='true'] {
   gap: 6px;
   height: 18px;
   padding: 0 6px;
-  font: 400 12px/18px var(--bitmap);
+  /* The menu strip's size, so the folders read as plainly as File, Go and Help. */
+  font: 400 13px/18px var(--bitmap);
   color: var(--k-ink);
   text-align: left;
   background: none;
