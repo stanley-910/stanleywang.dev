@@ -83,12 +83,12 @@ html:has(.garden-home, .poem-page) body {
 }
 
 /* The garden doesn't recede behind the bar (a box there cut a dim rectangle out of the eclipse's
-   glow); a halo close round each glyph holds the words instead, as on the phone's bio. */
+   glow); a halo close round each glyph holds the words instead. Only an edge's width: a wider one,
+   as on the phone's bio, read as dark stains on the bright meadow. */
 :root[data-sky] .site-words > li > a {
   text-shadow:
-    0 0 1px color-mix(in srgb, var(--glass) 60%, transparent),
-    0 0 4px color-mix(in srgb, var(--glass) 45%, transparent),
-    0 0 10px color-mix(in srgb, var(--glass) 28%, transparent);
+    0 0 1px color-mix(in srgb, var(--glass) 50%, transparent),
+    0 0 3px color-mix(in srgb, var(--glass) 22%, transparent);
 }
 
 /* The home text sits on the scene's dark ground at every hour, so it keeps
