@@ -392,8 +392,13 @@ function Waves({ onDone }: { onDone: () => void }) {
     const cw = probe.getBoundingClientRect().width || 7
     const ch = parseFloat(getComputedStyle(el).lineHeight) || 17
     probe.remove()
-    const cols = Math.max(1, Math.floor(el.clientWidth / cw))
-    const rows = Math.max(1, Math.floor(el.clientHeight / ch))
+    let cols = 1
+    let rows = 1
+    const measure = () => {
+      cols = Math.max(1, Math.floor(el.clientWidth / cw))
+      rows = Math.max(1, Math.floor(el.clientHeight / ch))
+    }
+    measure()
     const frame = (time: number) => {
       let out = ''
       for (let r = 1; r <= rows; r++) {
@@ -427,8 +432,15 @@ function Waves({ onDone }: { onDone: () => void }) {
       last = now
       frame((now - t0) / 1000)
     }
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) frame(2)
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (still) frame(2)
     else raf = requestAnimationFrame(tick)
+    // Resized while it plays, the field fills the window's new size from the next frame.
+    const fit = new ResizeObserver(() => {
+      measure()
+      if (still) frame(2)
+    })
+    fit.observe(el)
     // The keystroke that started it is still on its way up; listen from the next one.
     // The key that stops it is only for that; it doesn't reach the prompt.
     const stop = (e: Event) => {
@@ -441,6 +453,7 @@ function Waves({ onDone }: { onDone: () => void }) {
     }, 150)
     return () => {
       cancelAnimationFrame(raf)
+      fit.disconnect()
       clearTimeout(arm)
       window.removeEventListener('keydown', stop)
       el.removeEventListener('pointerdown', stop)
