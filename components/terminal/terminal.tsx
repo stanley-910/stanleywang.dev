@@ -177,14 +177,22 @@ const PROMPT_ICON = [
   '#.......#',
   '#########',
 ]
+// Drawn at twice the grid with one-pixel lines, so it reads as thin as the close x.
 const FOLDER_ICON = [
-  '###......',
-  '#########',
-  '#.......#',
-  '#.......#',
-  '#.......#',
-  '#.......#',
-  '#########',
+  '#######...........',
+  '#.....#...........',
+  '##################',
+  '#................#',
+  '#................#',
+  '#................#',
+  '#................#',
+  '#................#',
+  '#................#',
+  '#................#',
+  '#................#',
+  '#................#',
+  '#................#',
+  '##################',
 ]
 const SIDEBAR_ICON = [
   '#########',
@@ -1062,10 +1070,11 @@ export function Terminal() {
                   view === 'shell' ? toFiles() : setView('shell')
                 }
               >
-                <Pixels
-                  rows={view === 'shell' ? FOLDER_ICON : PROMPT_ICON}
-                  scale={2}
-                />
+                {view === 'shell' ? (
+                  <Pixels rows={FOLDER_ICON} />
+                ) : (
+                  <Pixels rows={PROMPT_ICON} scale={2} />
+                )}
               </button>
             </nav>
 
