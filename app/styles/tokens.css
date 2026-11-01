@@ -36,14 +36,6 @@
     drop-shadow(0 16px 28px #25252242);
   --focus: var(--ink);
 
-  /* The menus' glass (SiteMenu, SiteIndex): a tint of the steady page colour
-     opposite the ink, over an 18px blur. At 72% the ink holds 4.5:1 with
-     plain white or black behind it at any hour; what's under it still shows
-     through, muddled. The page colour drifts with the hour (dawn's is a
-     mid grey), so the glass keeps day's or night's. */
-  --glass: var(--page-light);
-  --glass-tint: 72%;
-
   /* Over photos, whatever the theme. */
   --caption-fill: #1b1b19cc;
   --caption-ink: #e4e2da;
@@ -82,7 +74,6 @@
   --ink-muted: #9d9b94;
   --hairline: #6a6964;
   --surface: #242422;
-  --glass: var(--page-dark);
   --shadow-card: 0 1px 2px #0000004d, 0 10px 28px #00000066;
   /* By night, only a soft dark pool, no cast. */
   --shadow-photo: drop-shadow(0 8px 28px #00000073);

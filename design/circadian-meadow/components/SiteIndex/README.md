@@ -33,7 +33,7 @@ Built: `components/ui/site-index.tsx`, `components/ui/site-index.css`, rows in `
 
 ## Tokens
 
-The site menu's glass, exactly as in SiteMenu: `--glass` at `--glass-tint` (72%) under an 18px blur with 1.3 saturation, a 1px border of `ink` at 18%, `radius-card`. Rows and counts: `ink`, so they hold at least 4.9:1 with plain white or black behind the glass at any hour (muted fell to about 1:1 over bright photos); the current one is told by its `@`. Hover and press lay `ink` at 9% under the row, as on the menu's items; focus ring `focus`, 1px. Marks and leaders: `ink` at 66%, at least 3.1:1. Motion: `duration-card`, `duration-quick`, `ease-calm`, and the dots' 320ms overshoot. No new colours.
+The site menu's glass, exactly as in `time-control.css`: `--glass` (or `page`) at 28% under an 18px blur with 1.3 saturation, a 1px border of `ink` at 18%, `radius-card`. Rows: `ink-muted`, the current one `ink`; hover and press lay `ink` at 9% under the row, as on the menu's items; focus ring `focus`, 1px. Marks and leaders: `ink` at 35%. Motion: `duration-card`, `duration-quick`, `ease-calm`, and the dots' 320ms overshoot. No new colours.
 
 On home the bar takes the sky's ink and glass (`garden.css`), and so does the panel.
 
