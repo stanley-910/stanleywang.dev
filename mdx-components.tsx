@@ -19,7 +19,6 @@ interface SpotifyProps {
 
 interface QuoteProps {
   children: ReactNode
-  mark?: boolean
   className?: string
 }
 
@@ -49,12 +48,8 @@ const Spotify = ({ link, wide = false, className }: SpotifyProps) => {
   )
 }
 
-const Quote = ({ children, mark = false, className }: QuoteProps) => {
-  return (
-    <blockquote className={cn(mark && 'quote-mark', className)}>
-      {children}
-    </blockquote>
-  )
+const Quote = ({ children, className }: QuoteProps) => {
+  return <blockquote className={className}>{children}</blockquote>
 }
 
 export function useMDXComponents(components: MDXComponents): MDXComponents {
@@ -72,7 +67,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     }) => <Stars asHr variant={variant} className={className} />,
     // Add Spotify component to MDX components
     Spotify,
-    // Add an opt-in quote component for decorative quote-mark styling.
+    // A blockquote written as JSX, for quotes that hold JSX.
     Quote,
     Note,
     strike: ({ children }) => <span className="line-through">{children}</span>,

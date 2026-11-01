@@ -212,7 +212,6 @@ html.dark .prose {
 }
 
 .prose blockquote {
-  /* Keep default blockquote styling for quotes without the decorative flag. */
   position: relative;
   font-weight: normal;
   font-style: normal;
@@ -223,40 +222,6 @@ html.dark .prose {
   margin-left: -0.5em;
 }
 
-.prose blockquote.quote-mark {
-  /* Create room for the ornament only when this quote is flagged. */
-  border-inline-start-width: 0;
-  padding: 0.9em 1em 0.5em 1.2em;
-  margin-top: 1.8em;
-}
-
-.prose blockquote.quote-mark::before {
-  /* Place the quote glyph inside the same vertical region as the custom bar. */
-  content: '❞';
-  position: absolute;
-  top: -0.3em;
-  /* Add more horizontal separation between the bar and icon. */
-  left: 0.65em;
-  font-family: var(--font-mono);
-  font-size: 1.75rem;
-  line-height: 1;
-  color: color-mix(in srgb, var(--fg-light) 72%, transparent);
-  pointer-events: none;
-}
-
-.prose blockquote.quote-mark::after {
-  /* Extend the quote bar slightly above the text block and through its full height. */
-  content: '';
-  position: absolute;
-  left: 0;
-  top: -0.42em;
-  bottom: 0;
-  width: 0.18em;
-  background: color-mix(in srgb, var(--fg-light) 46%, transparent);
-  border-radius: 999px;
-  pointer-events: none;
-}
-
 /* Default styles for sm screens (768px) and up */
 @media (min-width: 768px) {
   .prose blockquote {
@@ -264,12 +229,6 @@ html.dark .prose {
     padding: 0.5em 1em;
     margin-top: 1.6em;
     margin-left: -1.1em;
-  }
-
-  .prose blockquote.quote-mark {
-    border-inline-start-width: 0;
-    padding: 0.9em 1em 0.5em 1.1em;
-    margin-top: 1.8em;
   }
 }
 
