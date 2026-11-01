@@ -179,6 +179,7 @@ export function NavDrop({
     <li
       ref={itemRef}
       className="nav-drop"
+      data-open={phase === 'open' || undefined}
       onKeyDown={onKeyDown}
       {...hoverHandlers}
     >

@@ -38,9 +38,21 @@
 }
 
 .site-words > li > a {
+  position: relative;
+  /* Its target over the bridge to its dropdown (nav-drop.css). */
+  z-index: 1;
   color: var(--ink-muted);
   text-decoration: none;
   transition: color var(--duration-quick) var(--ease-calm);
+}
+
+/* Each word's target: the word and a little round it. Hover (and a
+   dropdown's opening) and a click take the same area, and the word's own
+   box, which the garden recedes behind (data-avoid), stays the word's. */
+.site-words > li > a::before {
+  content: '';
+  position: absolute;
+  inset: -8px -10px;
 }
 
 .site-words > li > a:hover,

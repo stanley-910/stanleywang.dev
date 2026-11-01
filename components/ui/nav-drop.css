@@ -6,9 +6,10 @@
   position: relative;
 }
 
-/* A bridge over the gap under the word, so the pointer crossing it to the
-   rows stays on the word. */
-.nav-drop::after {
+/* While it's open, a bridge over the gap under the word, so the pointer
+   crossing it to the rows stays on the word. Closed, it would open the
+   dropdown from below the word, where a click doesn't reach it. */
+.nav-drop[data-open]::after {
   content: '';
   position: absolute;
   top: 100%;
