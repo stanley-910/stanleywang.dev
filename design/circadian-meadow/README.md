@@ -117,7 +117,7 @@ There is no logo or icon set. The name, where it appears outside the home page, 
 Every page other than home is plain `page` with `ink` text. The meadow is never a background there. These rules hold until a component in `components/` says otherwise.
 
 - **Top bar:** SiteHeader. One row of lowercase mono words (`stanley projects film writing music`) and the sun/moon, current page in `ink`, the rest `ink-muted`. No bar, border or background. On a phone the words fold into SiteIndex, a glyph top left that opens an index of the site in the site menu's glass.
-- **Site menu:** SiteMenu. The four dots top right open a glass panel: the hour, then the meadow's weather (five glyphs in the dots' family), moon and hide text where there's a meadow. One 12px text column, sections split by a hairline, every target 44px under a finger. SiteIndex is its sibling.
+- **Site menu:** SiteMenu. The four dots top right open a glass panel: the hour, then the meadow's weather, moon and hide text where there's a meadow. One 12px text column, sections split by a hairline, every target 44px under a finger. SiteIndex is its sibling.
 - **Links:** LinkStyle. In prose, `ink` with a `hairline` underline; quiet rows (socials) are mono `ink-muted`, no underline, heavier on hover.
 - **Experience:** ExperienceCard. Company names in the bio open a small card with the role.
 - **Projects:** ProjectsPage and ProjectCard. One ledger, the compiler first.

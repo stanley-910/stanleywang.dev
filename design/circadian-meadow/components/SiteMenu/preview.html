@@ -1,4 +1,4 @@
-<!-- @dsCard group="Site" height=640 subtitle="The site menu on home: a phone at 375px by day (clear) and night (snow), and the desktop panel (eclipse)" -->
+<!-- @dsCard group="Site" height=640 subtitle="The site menu on home: a phone at 375px by day and night, and the desktop panel" -->
 <!doctype html>
 <html>
 <head>
@@ -30,20 +30,9 @@
   .out { display: flex; gap: var(--space-1); margin: 10px 0 0; }
   .out span + span { color: var(--ink); }
   .out b { margin-left: auto; font-weight: 400; color: var(--ink); }
-  .item { color: var(--ink); }
-  /* The weather glyphs (weather-row.css), at rest and in their set poses. */
   .wx { display: flex; justify-content: space-between; }
-  .wx svg { display: block; width: 16px; height: 16px; overflow: visible; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; color: var(--ink-muted); }
-  .wx svg[data-set] { color: var(--ink); }
-  .wx .core, .wx .moon { fill: currentColor; fill-opacity: 0; }
-  .wx .bead { fill: currentColor; stroke: none; transform-box: fill-box; transform-origin: center; transform: scale(0); }
-  .wx .branch { transform-box: fill-box; transform-origin: 50% 100%; transform: scale(0); }
-  .wx .sun { stroke-dasharray: 216 400; transform: translate(1.5px, -1.5px); }
-  .wx .moon { transform: translate(-1.5px, 1.5px); }
-  .wx [data-w='rain'] { overflow: hidden; }
-  .wx [data-w='clear'][data-set] .core { fill-opacity: 1; }
-  .wx [data-w='snow'][data-set] .branch, .wx [data-w='eclipse'][data-set] .moon, .wx [data-w='eclipse'][data-set] .bead { transform: none; }
-  .wx [data-w='eclipse'][data-set] .sun { stroke-dasharray: 0 400; stroke-dashoffset: -108; transform: none; }
+  .wx span, .item { color: var(--ink); }
+  .wx span[aria-pressed] { color: var(--ink); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
 </style>
 </head>
 <body>
@@ -63,14 +52,7 @@
       <p class="out"><span>1:00 pm</span><span>day</span><b>now</b></p></div>
     </div>
     <div class="sec">
-      <div><div class="wx">
-        <svg viewBox="0 0 16 16" data-w="clear"><circle class="core" cx="8" cy="8" r="2.5"/><path d="M13 8h1.25M11.536 11.536l.884.884M8 13v1.25M4.464 11.536l-.884.884M3 8H1.75M4.464 4.464l-.884-.884M8 3V1.75M11.536 4.464l.884-.884"/></svg>
-        <svg viewBox="0 0 16 16" data-w="rain"><path d="M2.5 2.75l1.125 3M7.25 4.25l1.125 3M12 2.75l1.125 3M4 10.25l1.125 3M8.75 11.75l1.125 3"/></svg>
-        <svg viewBox="0 0 16 16" data-w="snow"><path d="M8 2V14M2.804 5 13.196 11M2.804 11 13.196 5"/><g transform="rotate(0 8 8)"><path class="branch" d="M6.7 2.7 8 4 9.3 2.7"/></g><g transform="rotate(60 8 8)"><path class="branch" d="M6.7 2.7 8 4 9.3 2.7"/></g><g transform="rotate(120 8 8)"><path class="branch" d="M6.7 2.7 8 4 9.3 2.7"/></g><g transform="rotate(180 8 8)"><path class="branch" d="M6.7 2.7 8 4 9.3 2.7"/></g><g transform="rotate(240 8 8)"><path class="branch" d="M6.7 2.7 8 4 9.3 2.7"/></g><g transform="rotate(300 8 8)"><path class="branch" d="M6.7 2.7 8 4 9.3 2.7"/></g></svg>
-        <svg viewBox="0 0 16 16" data-w="storm"><path d="M9.5 1.75 5 8.5l6-1-4.5 6.75"/></svg>
-        <svg viewBox="0 0 16 16" data-w="eclipse"><path class="sun" pathLength="360" d="M4.213 6.071A4.25 4.25 0 1 1 11.787 9.929 4.25 4.25 0 1 1 4.213 6.071"/><circle class="moon" cx="8" cy="8" r="4.25"/><circle class="bead" cx="11.005" cy="4.995" r="1.4"/></svg>
-      </div>
-      <p class="out"><span class="wname"></span><span>weather</span></p></div>
+      <div class="wx"><span aria-pressed="true">clear</span><span>rain</span><span>snow</span><span>storm</span><span>eclipse</span></div>
       <div><div class="track moon"><i style="left: 0; --b: var(--night-lace)"></i></div>
       <p class="out"><span>silver</span><span>moon</span></p></div>
       <div class="item">hide text</div>
@@ -78,13 +60,7 @@
   </div>
 </template>
 <script>
-  const set = { light: 'clear', dark: 'snow', desk: 'eclipse' }
-  for (const id of ['light', 'dark', 'desk']) {
-    const f = document.getElementById(id)
-    f.append(document.getElementById('t').content.cloneNode(true))
-    f.querySelector(`.wx [data-w='${set[id]}']`).setAttribute('data-set', '')
-    f.querySelector('.wname').textContent = set[id]
-  }
+  for (const id of ['light', 'dark', 'desk']) document.getElementById(id).append(document.getElementById('t').content.cloneNode(true))
   document.querySelector('#desk .bar svg:first-child').remove()
 </script>
 </body>
