@@ -116,7 +116,7 @@
     color: var(--ink);
   }
 
-  html:has(.garden-home) .terminal-power:hover {
+  html:has(.garden-home, .garden-canvas) .terminal-power:hover {
     color: var(--garden-ink, #e4e2da);
   }
 }
@@ -160,8 +160,8 @@
   box-shadow: 0 0 0 4px var(--page);
 }
 
-/* On home it sits on the meadow's dark ground, in the bio's colours. */
-html:has(.garden-home) .terminal-power {
+/* On the meadow (home, and the poem over its own) it sits on the dark ground, in the bio's colours. */
+html:has(.garden-home, .garden-canvas) .terminal-power {
   color: var(--garden-ink-muted, #9d9b94);
   background: none;
   box-shadow: none;
@@ -176,7 +176,7 @@ html:has(.garden-home) .terminal-power {
   animation: intro-fade 0.7s ease-out 1.1s both;
 }
 
-html:has(.garden-home) .terminal-power[aria-pressed='true'] {
+html:has(.garden-home, .garden-canvas) .terminal-power[aria-pressed='true'] {
   color: var(--garden-ink, #e4e2da);
 }
 
