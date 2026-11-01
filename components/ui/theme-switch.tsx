@@ -19,12 +19,12 @@ import { announceMenuOpen, useCloseOnOtherMenu } from '@/lib/menus'
 import {
   setLightningTone,
   setMoonTone,
+  setWeather,
   useLightningTone,
   useMoonTone,
   useWeather,
+  WEATHERS,
 } from '@/lib/weather'
-
-import { WeatherRow } from './weather-row'
 
 import './time-control.css'
 
@@ -316,7 +316,23 @@ export function ThemeSwitch({ className }: { className?: string }) {
           </div>
           {MEADOWS.includes(pathname) && (
             <div className="time-control-section">
-              <WeatherRow />
+              <div
+                className="time-control-weather"
+                role="group"
+                aria-label="Weather"
+              >
+                {WEATHERS.map((w) => (
+                  <button
+                    key={w}
+                    type="button"
+                    className="time-control-item"
+                    aria-pressed={weather === w}
+                    onClick={() => setWeather(w)}
+                  >
+                    {w}
+                  </button>
+                ))}
+              </div>
               {weather === 'storm' && (
                 <div className="time-control-dial">
                   <input

@@ -341,6 +341,33 @@
   outline-offset: 0;
 }
 
+/* The weather: its five words on one line, spread from the readout's left
+   edge to its right, the one set in ink. */
+.time-control-weather {
+  display: flex;
+  justify-content: space-between;
+  margin-inline: calc(var(--inset) / -2);
+}
+
+.time-control-weather .time-control-item {
+  width: auto;
+  justify-content: center;
+  margin-inline: 0;
+}
+
+@media (pointer: coarse) {
+  .time-control-weather .time-control-item {
+    min-width: 44px;
+  }
+}
+
+.time-control-weather .time-control-item[aria-pressed='true'] {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+
 /* Hide text (lib/hide-ui.ts): the top bar's links and home's text fade
    away, the garden stops receding behind them (mount.ts skips boxes whose
    --avoid is none), and the menu goes too, coming back while the pointer is
