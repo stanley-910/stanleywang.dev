@@ -2,6 +2,8 @@
 import Link from 'next/link'
 import { useState } from 'react'
 
+import { editorKey } from '@/app/projects/mini-c-prototype/editor-keys'
+
 import type { Project } from '@/app/data'
 
 // The compiler's editor window (mini-c-prototype/animated.css: .ac-bar,
@@ -37,16 +39,7 @@ export function CodeSnippet({
         <textarea
           value={code}
           onChange={(e) => setCode(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key !== 'Tab' || e.shiftKey) return
-            e.preventDefault()
-            const el = e.currentTarget
-            const { selectionStart: start, selectionEnd: end } = el
-            setCode(code.slice(0, start) + '  ' + code.slice(end))
-            requestAnimationFrame(() =>
-              el.setSelectionRange(start + 2, start + 2),
-            )
-          }}
+          onKeyDown={editorKey}
           rows={lineCount}
           spellCheck={false}
           autoCapitalize="off"
