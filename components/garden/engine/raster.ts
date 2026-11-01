@@ -167,6 +167,9 @@ export class Raster {
   opacity = 1
   /** The latest frame, set in type where it was rasterised. */
   material: Material | null = null
+  /** With `probe` on, the cells the latest frame's type was set from, for the page's `?probe` dump. */
+  cells: RasterResult['cells'] = undefined
+  probe = false
   /** True once pixels for the current size have arrived. */
   ready = false
   private sx = 1
@@ -463,6 +466,7 @@ export class Raster {
       box,
       cmds: this.cmds.slice(0, this.n),
       still: this.still,
+      probe: this.probe,
       style: {
         ...look,
         cw: SS / this.sx,
@@ -508,6 +512,7 @@ export class Raster {
     this.hour = hour
     this.palette = palette
     this.material = out.material
+    this.cells = out.cells
     this.ready = true
   }
 }

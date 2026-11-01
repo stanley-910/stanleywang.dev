@@ -80,6 +80,8 @@ export type RasterJob = {
   /** The commands, `[from, to)`, that draw the still layer: the land, the same frame to frame. */
   still: [number, number]
   style: Style
+  /** Send the cells' kind, material and light back with the type, for the page's `?probe` dump. */
+  probe?: boolean
 }
 
 /** A frame reduced to cells: coverage, material and mean colour, and per petal cell its id, light and facing. */
@@ -95,6 +97,8 @@ export type Cells = {
 export type RasterResult = {
   gen: number
   material: Material
+  /** The cells the type was set from, only when the job asked to probe them. */
+  cells?: Pick<Cells, 'kinds' | 'pid' | 'lit' | 'cov'>
 }
 
 type Ctx = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
@@ -229,10 +233,10 @@ export class Rasterizer {
       cols,
       rows,
     )
-    return {
-      gen: job.gen,
-      material: this.type.run(cells, job.style, cols, rows),
-    }
+    const material = this.type.run(cells, job.style, cols, rows)
+    if (!job.probe) return { gen: job.gen, material }
+    const { kinds, pid, lit, cov } = cells
+    return { gen: job.gen, material, cells: { kinds, pid, lit, cov } }
   }
 
   /** Sizes and clears a layer's canvases for a frame, scaled from scene to raster pixels. */

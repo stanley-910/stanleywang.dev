@@ -1459,6 +1459,34 @@ export class Garden {
   }
 
   /**
+   * The slope light's inputs at this hour, for the page's `?probe` dump (the crest-flicker kit in
+   * docs/handoffs/assets/2026-11-01-crest-flicker): where the light stands and how strong it is,
+   * and each far-ridge point's facing, so a scrub's frames can be checked against what the land
+   * was asked to do.
+   */
+  probe(p: Palette) {
+    const { cx, cy, R } = this.globeAt()
+    const { light, color } = this.slopeLight(p)
+    const { sun, moon } = this.lights(p)
+    const far = this.ridges[0] ?? new Float32Array(0)
+    return {
+      hour: this.hour,
+      globe: { cx, cy, R },
+      sun,
+      moon,
+      low: sun > 0 ? this.sunLook(p).low : 0,
+      light,
+      color,
+      against: this.against(p, light),
+      step: RIDGE_STEP,
+      far: Array.from(far),
+      facing: light > 0 ? Array.from(this.facing(far, cx, cy, R * 1.5)) : [],
+      snowline: Array.from(this.snowline),
+      summits: this.summits,
+    }
+  }
+
+  /**
    * How far the range's faces turn away from the light, 0 to 1: fully with the sun low behind it,
    * and as the light itself fades, so the faces and snow ease into shade at dusk instead of
    * snapping between the sun's rim light and the moon's.

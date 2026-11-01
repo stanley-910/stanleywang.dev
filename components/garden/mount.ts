@@ -165,6 +165,9 @@ export function mountGarden({
     weather.tint(withMoon(paletteAt(h), moonTone), sunAt(h))
   const raster = new Raster()
   const ascii = new AsciiRenderer(canvas, font)
+  // `?probe` sends each frame's cells back with its type and exposes the lighting's inputs, for
+  // the crest-flicker kit (docs/handoffs/assets/2026-11-01-crest-flicker).
+  raster.probe = new URLSearchParams(location.search).has('probe')
   const meteors = new Meteors()
   const birds = new Birds()
   // The page's hour (lib/circadian.ts): the clock's, or one set on the time
@@ -1001,6 +1004,31 @@ export function mountGarden({
   if (process.env.NODE_ENV === 'development') {
     Object.assign(window, { garden, ascii, wind, weather })
   }
+  if (raster.probe)
+    Object.assign(window, {
+      __probe: () => {
+        const cells = raster.cells
+        return {
+          hour,
+          shown: raster.hour,
+          cols: ascii.cols,
+          rows: ascii.rows,
+          cw: ascii.cw,
+          ch: ascii.ch,
+          horizon: garden.horizon,
+          frameMs: raster.frameMs,
+          recordMs: quality.recordMs,
+          land: garden.probe(sceneAt(hour)),
+          relief: Array.from(relief),
+          cells: cells && {
+            kinds: Array.from(cells.kinds),
+            pid: Array.from(cells.pid),
+            lit: Array.from(cells.lit),
+            cov: Array.from(cells.cov),
+          },
+        }
+      },
+    })
 
   return () => {
     disposed = true
