@@ -562,6 +562,12 @@ export function run(input: string, ctx: Ctx): string[] {
     }
     case 'wind': {
       if (!a) return [`wind {y|${ctx.wind.toFixed(2)}}`]
+      // A gust passes and the breeze stays as it was.
+      if (a === 'gust') {
+        if (!ctx.meadowHere()) return elsewhere
+        ctx.gust()
+        return [`wind {y|gust} {m|(then ${ctx.wind.toFixed(2)})}`]
+      }
       const w = parseFloat(a)
       if (Number.isNaN(w) || w < 0 || w > 1)
         return [

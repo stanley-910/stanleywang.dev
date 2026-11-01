@@ -82,7 +82,7 @@ const MENUS: [string, Item[]][] = [
       ['sunset', 'time 19:05'],
       ['midnight', 'time 0:00'],
       null,
-      ['gust', './waves.exe'],
+      ['gust', 'wind gust'],
       ['calm', 'wind 0.05'],
       ['breezy', 'wind 0.6'],
       null,
@@ -280,7 +280,8 @@ function Boot({
 }: {
   hour: number
   wind: number
-  onDone: () => void
+  /** Told the lines it printed, so the log keeps them as they were. */
+  onDone: (lines: string[]) => void
 }) {
   const [lines] = useState(() => bootLines(hour, wind))
   const [passes] = useState(greeting)
@@ -331,10 +332,10 @@ function Boot({
         end = Math.max(end, f)
       }
     })
-    later(end + 900, () => done.current())
+    later(end + 900, () => done.current(lines))
     const skip = (e: KeyboardEvent) => {
       if (e.key === '`') return
-      done.current()
+      done.current(lines)
     }
     window.addEventListener('keydown', skip)
     return () => {
@@ -1147,14 +1148,14 @@ export function Terminal() {
                           key={e.id}
                           hour={hour}
                           wind={wind}
-                          onDone={() =>
+                          onDone={(printed) =>
                             setEntries((all) =>
                               all.map((x) =>
                                 x.kind === 'boot'
                                   ? {
                                       kind: 'out',
                                       lines: [
-                                        ...bootLines(hour, wind),
+                                        ...printed,
                                         '',
                                         greeting()[2],
                                         '',
