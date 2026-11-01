@@ -1,0 +1,282 @@
+/* The site index: the top bar's words, folded into a glyph on a phone.
+   design/circadian-meadow/components/SiteIndex. Its panel is the site
+   menu's glass (time-control.css), opening from the other corner. */
+
+.site-index {
+  display: none;
+}
+
+/* Phones only, where the words leave the bar (shell.css). It keeps the
+   words' 20px line, so the bar stays as tall. */
+@media (max-width: 480px) {
+  .site-index {
+    display: flex;
+    height: 20px;
+    align-items: center;
+  }
+}
+
+.site-index-toggle {
+  position: relative;
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: color var(--duration-quick) var(--ease-calm);
+}
+
+/* A finger-sized target round the 16px glyph, without moving the bar. */
+.site-index-toggle::before {
+  content: '';
+  position: absolute;
+  inset: -14px;
+}
+
+.site-index-toggle:hover,
+.site-index-toggle[aria-expanded='true'] {
+  color: var(--ink);
+}
+
+.site-index-toggle:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: 3px;
+}
+
+/* The glyph: three ragged lines, like the start of a page of text, in the
+   dots' weight. Hovered they even out; opening crosses the outer two into a
+   close mark and drops the middle, on the dots' overshoot. */
+.site-index-glyph line {
+  --s: 1;
+  --r: 0deg;
+  --y: 0px;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  transform-origin: 8px 8px;
+  /* Scaled about the middle, then slid back so each line keeps its left end. */
+  transform: rotate(var(--r)) translate(calc(-7px * (1 - var(--s))), var(--y))
+    scaleX(var(--s));
+  transition:
+    transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity var(--duration-quick) var(--ease-calm);
+}
+
+.site-index-glyph line:nth-child(2) {
+  --s: 0.55;
+}
+
+.site-index-glyph line:nth-child(3) {
+  --s: 0.8;
+}
+
+@media (hover: hover) {
+  .site-index-toggle:hover .site-index-glyph line {
+    --s: 1;
+  }
+}
+
+.site-index-toggle[aria-expanded='true'] .site-index-glyph line:nth-child(1) {
+  --s: 1;
+  --r: 45deg;
+  --y: 4px;
+}
+
+.site-index-toggle[aria-expanded='true'] .site-index-glyph line:nth-child(2) {
+  --s: 0;
+  opacity: 0;
+}
+
+.site-index-toggle[aria-expanded='true'] .site-index-glyph line:nth-child(3) {
+  --s: 1;
+  --r: -45deg;
+  --y: -4px;
+}
+
+/* The panel: the site menu's glass at the site menu's place on a phone,
+   scrolling itself if a short screen can't hold it. */
+.site-index-pop {
+  --inset: 12px;
+  --faint: color-mix(in srgb, var(--ink) 35%, transparent);
+  position: fixed;
+  top: 52px;
+  right: var(--gutter);
+  left: var(--gutter);
+  z-index: 20;
+  max-height: calc(100svh - 52px - var(--gutter));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: calc(var(--inset) / 2);
+  background: color-mix(in srgb, var(--glass, var(--page)) 28%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  backdrop-filter: blur(18px) saturate(1.3);
+  border: 1px solid color-mix(in srgb, var(--ink) 18%, transparent);
+  border-radius: var(--radius-card);
+  color: var(--ink);
+  font-family: var(--font-mono);
+}
+
+/* Unrolled from the glyph's corner, as the site menu unrolls from its top
+   edge (clipped, not faded: blur under opacity isn't drawn until the fade
+   ends), and rolled back into it. */
+.site-index-pop[data-state='open'] {
+  animation: site-index-in var(--duration-card) var(--ease-calm);
+}
+
+.site-index-pop[data-state='closing'] {
+  pointer-events: none;
+  animation: site-index-out var(--duration-quick) var(--ease-calm) forwards;
+}
+
+@keyframes site-index-in {
+  from {
+    clip-path: inset(0 100% 100% 0 round var(--radius-card));
+    transform: translateY(-4px);
+  }
+  to {
+    clip-path: inset(0 0 0 0 round var(--radius-card));
+  }
+}
+
+@keyframes site-index-out {
+  to {
+    clip-path: inset(0 100% 100% 0 round var(--radius-card));
+  }
+}
+
+.site-index-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A row: its mark, its name, and a dotted leader out to a count or date. */
+.site-index-row {
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+  padding-inline: calc(var(--inset) / 2);
+  border-radius: var(--radius-hair);
+  color: var(--ink-muted);
+  font-size: var(--text-small);
+  line-height: var(--leading-meta);
+  text-decoration: none;
+  transition:
+    color var(--duration-quick) var(--ease-calm),
+    background-color var(--duration-quick) var(--ease-calm);
+}
+
+@media (pointer: coarse) {
+  .site-index-row {
+    min-height: 44px;
+  }
+}
+
+.site-index-entry .site-index-row {
+  font-size: var(--text-meta);
+}
+
+.site-index-row[aria-current='page'] {
+  color: var(--ink);
+}
+
+@media (hover: hover) {
+  .site-index-row:hover {
+    color: var(--ink);
+    background-color: color-mix(in srgb, var(--ink) 9%, transparent);
+  }
+}
+
+.site-index-row:active {
+  color: var(--ink);
+  background-color: color-mix(in srgb, var(--ink) 9%, transparent);
+}
+
+.site-index-row:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: 0;
+}
+
+/* A section's dot, or the current one's `@`, with its entries' stalks
+   under it. */
+.site-index-mark {
+  flex: none;
+  width: var(--space-3);
+  color: var(--faint);
+  font-size: var(--text-meta);
+}
+
+.site-index-row[aria-current='page'] > .site-index-mark {
+  color: var(--ink);
+}
+
+.site-index-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* Keeps the spaces of a word still blooming in. */
+  white-space: pre;
+}
+
+.site-index-lead {
+  flex: 1 1 0;
+  min-width: var(--space-2);
+  margin-inline: var(--space-1);
+  overflow: hidden;
+  color: var(--faint);
+  font-size: var(--text-meta);
+  white-space: nowrap;
+}
+
+.site-index-lead::before {
+  content: '· · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · ·';
+}
+
+.site-index-meta {
+  flex: none;
+  color: var(--ink-muted);
+  font-size: var(--text-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Opening, the rows come in one after another and their leaders print
+   out to the right, while their words bloom (site-index.tsx). */
+.site-index-pop[data-state='open'] .site-index-row {
+  animation: site-index-row 200ms var(--ease-calm) backwards;
+  animation-delay: calc(var(--i) * 26ms);
+}
+
+.site-index-pop[data-state='open'] .site-index-lead {
+  animation: site-index-lead 360ms var(--ease-calm) backwards;
+  animation-delay: calc(var(--i) * 26ms + 80ms);
+}
+
+@keyframes site-index-row {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+}
+
+@keyframes site-index-lead {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-index-toggle,
+  .site-index-glyph line,
+  .site-index-row {
+    transition: none;
+  }
+
+  .site-index-pop[data-state='open'],
+  .site-index-pop[data-state='open'] .site-index-row,
+  .site-index-pop[data-state='open'] .site-index-lead {
+    animation: none;
+  }
+}

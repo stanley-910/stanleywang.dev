@@ -1,7 +1,7 @@
 'use client'
 import { usePathname } from 'next/navigation'
 import { useTheme } from 'next-themes'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { smoothstep } from '@/components/garden/engine/math'
 import { moonAt, paletteAt } from '@/components/garden/engine/palette'
@@ -15,6 +15,7 @@ import {
   type PageTheme,
 } from '@/lib/circadian'
 import { setUiHidden, useUiHidden } from '@/lib/hide-ui'
+import { announceMenuOpen, useCloseOnOtherMenu } from '@/lib/menus'
 import {
   setLightningTone,
   setMoonTone,
@@ -125,6 +126,10 @@ export function ThemeSwitch({ className }: { className?: string }) {
   const popRef = useRef<HTMLDivElement>(null)
   const family = useRef<PageTheme | null>(null)
   const dip = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const close = useCallback(() => setOpen(false), [])
+
+  // Opening the site index (on a phone, in the other corner) closes this.
+  useCloseOnOtherMenu('settings', open, close)
 
   // Paint the page for the current hour, dipping the text across a family
   // switch so ink never meets a page of its own lightness.
@@ -257,7 +262,10 @@ export function ThemeSwitch({ className }: { className?: string }) {
         aria-label="Menu"
         aria-expanded={open}
         title={label(hour)}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          if (!open) announceMenuOpen('settings')
+          setOpen(!open)
+        }}
       >
         <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
           <g className="time-control-dots">

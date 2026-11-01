@@ -23,7 +23,7 @@
   line-height: 20px;
 }
 
-.site-header ul {
+.site-words {
   display: flex;
   flex-wrap: wrap;
   gap: 4px var(--space-4);
@@ -32,27 +32,28 @@
   list-style: none;
 }
 
-.site-header a {
+.site-words a {
   color: var(--ink-muted);
   text-decoration: none;
   transition: color var(--duration-quick) var(--ease-calm);
 }
 
-.site-header a:hover,
-.site-header a[aria-current='page'] {
+.site-words a:hover,
+.site-words a[aria-current='page'] {
   color: var(--ink);
 }
 
 @media (max-width: 480px) {
-  /* Five words and the icon fit one row at 375px. */
+  /* The words fold into the site index's glyph (components/ui/site-index):
+     at 13px five words and the menu's dots crowded a phone's row. */
   .site-header {
     justify-content: space-between;
     gap: var(--space-1);
     padding-block: var(--space-3) var(--space-4);
     font-size: var(--text-small);
   }
-  .site-header ul {
-    gap: 4px 12px;
+  .site-words {
+    display: none;
   }
 }
 
@@ -127,7 +128,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .site-header a,
+  .site-words a,
   .link,
   .link-quiet {
     transition: none;
