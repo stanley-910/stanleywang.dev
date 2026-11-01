@@ -93,20 +93,13 @@
   --y: -4px;
 }
 
-/* The panel: the site menu's glass at the site menu's place on a phone,
-   scrolling itself if a short screen can't hold it. */
-.site-index-pop {
+/* The panel, and the top bar's dropdowns (nav-drop.css): the site menu's
+   glass. */
+.site-index-pop,
+.nav-drop-pop {
   --inset: 12px;
   /* Marks and leaders: quieter than the words, still clear on glass. */
   --faint: color-mix(in srgb, var(--ink) 66%, transparent);
-  position: fixed;
-  top: 52px;
-  right: var(--gutter);
-  left: var(--gutter);
-  z-index: 20;
-  max-height: calc(100svh - 52px - var(--gutter));
-  overflow-y: auto;
-  overscroll-behavior: contain;
   padding: calc(var(--inset) / 2);
   background: color-mix(in srgb, var(--glass) var(--glass-tint), transparent);
   -webkit-backdrop-filter: blur(18px) saturate(1.3);
@@ -117,14 +110,29 @@
   font-family: var(--font-mono);
 }
 
+/* At the site menu's place on a phone, scrolling itself if a short screen
+   can't hold it. */
+.site-index-pop {
+  position: fixed;
+  top: 52px;
+  right: var(--gutter);
+  left: var(--gutter);
+  z-index: 20;
+  max-height: calc(100svh - 52px - var(--gutter));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
 /* Unrolled from the glyph's corner, as the site menu unrolls from its top
    edge (clipped, not faded: blur under opacity isn't drawn until the fade
    ends), and rolled back into it. */
-.site-index-pop[data-state='open'] {
+.site-index-pop[data-state='open'],
+.nav-drop-pop[data-state='open'] {
   animation: site-index-in var(--duration-card) var(--ease-calm);
 }
 
-.site-index-pop[data-state='closing'] {
+.site-index-pop[data-state='closing'],
+.nav-drop-pop[data-state='closing'] {
   pointer-events: none;
   animation: site-index-out var(--duration-quick) var(--ease-calm) forwards;
 }
@@ -235,12 +243,14 @@
 
 /* Opening, the rows come in one after another and their leaders print
    out to the right, while their words bloom (site-index.tsx). */
-.site-index-pop[data-state='open'] .site-index-row {
+.site-index-pop[data-state='open'] .site-index-row,
+.nav-drop-pop[data-state='open'] .site-index-row {
   animation: site-index-row 200ms var(--ease-calm) backwards;
   animation-delay: calc(var(--i) * 26ms);
 }
 
-.site-index-pop[data-state='open'] .site-index-lead {
+.site-index-pop[data-state='open'] .site-index-lead,
+.nav-drop-pop[data-state='open'] .site-index-lead {
   animation: site-index-lead 360ms var(--ease-calm) backwards;
   animation-delay: calc(var(--i) * 26ms + 80ms);
 }
@@ -270,7 +280,10 @@
 
   .site-index-pop[data-state='open'],
   .site-index-pop[data-state='open'] .site-index-row,
-  .site-index-pop[data-state='open'] .site-index-lead {
+  .site-index-pop[data-state='open'] .site-index-lead,
+  .nav-drop-pop[data-state='open'],
+  .nav-drop-pop[data-state='open'] .site-index-row,
+  .nav-drop-pop[data-state='open'] .site-index-lead {
     animation: none;
   }
 }

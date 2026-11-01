@@ -1,0 +1,43 @@
+/* The top bar's dropdowns on a desktop (nav-drop.tsx): the site index's rows
+   and glass (site-index.css), hung under a word.
+   design/circadian-meadow/components/SiteHeader, "Dropdowns". */
+
+.nav-drop {
+  position: relative;
+}
+
+/* A bridge over the gap under the word, so the pointer crossing it to the
+   rows stays on the word. */
+.nav-drop::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  height: var(--space-2);
+}
+
+/* Under the word, its rows' names in line with it: the panel's and the
+   row's half insets and the mark's column sit out to the left. As wide as
+   its longest row, up to 26rem; past that a name ends in an ellipsis. */
+.nav-drop-pop {
+  position: absolute;
+  top: calc(100% + var(--space-2) - 4px);
+  left: calc(-1 * (var(--inset) + var(--space-3)));
+  z-index: 20;
+  width: max-content;
+  min-width: 16rem;
+  max-width: min(26rem, 100vw - 2 * var(--gutter));
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  text-align: left;
+}
+
+/* A finger keeps the plain words. */
+@media (hover: none), (pointer: coarse) {
+  .nav-drop-pop,
+  .nav-drop::after {
+    display: none;
+  }
+}

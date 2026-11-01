@@ -14,7 +14,7 @@
 
 .site-header {
   /* Above the page under it, so its panels (the site index and the site
-     menu) open over home's text, photo captions and hover cards; below the
+     menu, and the words' dropdowns) open over home's text, photo captions and hover cards; below the
      terminal (40) and the photo viewer's top layer. */
   position: relative;
   z-index: 35;
@@ -37,14 +37,15 @@
   list-style: none;
 }
 
-.site-words a {
+.site-words > li > a {
   color: var(--ink-muted);
   text-decoration: none;
   transition: color var(--duration-quick) var(--ease-calm);
 }
 
-.site-words a:hover,
-.site-words a[aria-current='page'] {
+.site-words > li > a:hover,
+.site-words > li > a[aria-current='page'],
+.site-words > li > a[aria-expanded='true'] {
   color: var(--ink);
 }
 
@@ -133,7 +134,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .site-words a,
+  .site-words > li > a,
   .link,
   .link-quiet {
     transition: none;

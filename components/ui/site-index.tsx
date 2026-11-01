@@ -1,10 +1,13 @@
 'use client'
-import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { BLOG_POSTS, EXPERIENCE_POSTS, PROJECTS } from '@/app/data'
 import { PHOTOS } from '@/app/photos/photos'
 import { announceMenuOpen, useCloseOnOtherMenu } from '@/lib/menus'
+
+import { bloomMs, IndexRow, reducedMotion, useBloom } from './index-row'
+
+import type { IndexEntry } from './index-row'
 
 import './site-index.css'
 
@@ -13,12 +16,10 @@ import './site-index.css'
 // (design/circadian-meadow/components/SiteIndex). Each section is a dot, the
 // current one a flower's `@`, with a dotted leader out to what's in it.
 
-type Section = { href: string; label: string; meta?: string }
-
 const POSTS = [...BLOG_POSTS, ...EXPERIENCE_POSTS]
 
 /** The top bar's five words (app/header.tsx), each with how much is in it. */
-const SECTIONS: Section[] = [
+const SECTIONS: IndexEntry[] = [
   { href: '/', label: 'meadow' },
   { href: '/projects', label: 'projects', meta: String(PROJECTS.length) },
   { href: '/photos', label: 'photos', meta: String(PHOTOS.length) },
@@ -26,50 +27,10 @@ const SECTIONS: Section[] = [
   { href: '/music', label: 'music', meta: 'soon' },
 ]
 
-// Opening, each row's words bloom in through the garden's petal ramp, sparse
-// to dense (garden/engine/typeset.ts), and the current section's mark
-// through the flower centre's.
-const PETAL = ".':-=+*x#%"
-const DISC = '.o0O'
-/** Each row starts this long after the one above it, in ms. */
-const STAGGER = 26
-/** Each letter starts this long after the one before it. */
-const LETTER = 5
-/** One letter's run through the ramp. */
-const RAMP = 150
-const LONGEST = Math.max(...SECTIONS.map((s) => s.label.length))
-const BLOOM_MS = (SECTIONS.length - 1) * STAGGER + LONGEST * LETTER + RAMP
-
-function bloom(text: string, t: number, ramp: string) {
-  let out = ''
-  for (let k = 0; k < text.length; k++) {
-    const c = text[k]
-    const p = (t - k * LETTER) / RAMP
-    out +=
-      c === ' ' || p >= 1 ? c : p < 0 ? ' ' : ramp[Math.floor(p * ramp.length)]
-  }
-  return out
-}
-
-type BloomProps = { text: string; row: number; t: number | null; ramp?: string }
-
-/** Text that blooms in while `t` runs; screen readers get the words as they are. */
-function Bloom({ text, row, t, ramp = PETAL }: BloomProps) {
-  const shown = t === null ? text : bloom(text, t - row * STAGGER, ramp)
-  if (shown === text) return <>{text}</>
-  return (
-    <>
-      <span className="sr-only">{text}</span>
-      <span aria-hidden="true">{shown}</span>
-    </>
-  )
-}
+const BLOOM_MS = bloomMs(SECTIONS.map((s) => s.label))
 
 const isCurrent = (pathname: string, href: string) =>
   href === '/' ? pathname === '/' : pathname.startsWith(href)
-
-const reducedMotion = () =>
-  window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 type Phase = 'closed' | 'open' | 'closing'
 
@@ -77,8 +38,7 @@ type SiteIndexProps = { pathname: string; hidden: boolean }
 
 export function SiteIndex({ pathname, hidden }: SiteIndexProps) {
   const [phase, setPhase] = useState<Phase>('closed')
-  // Time since opening while the rows bloom, else null.
-  const [t, setT] = useState<number | null>(null)
+  const [t, startBloom] = useBloom(phase === 'open', BLOOM_MS)
   const [lastPath, setLastPath] = useState(pathname)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -106,30 +66,17 @@ export function SiteIndex({ pathname, hidden }: SiteIndexProps) {
     if (phase === 'open') return close()
     announceMenuOpen('index')
     setPhase('open')
-    setT(reducedMotion() ? null : 0)
+    startBloom()
   }
 
   useCloseOnOtherMenu('index', phase === 'open', close)
 
-  // Focus goes to the first entry, and the rows bloom.
+  // Focus goes to the first entry.
   useEffect(() => {
     if (phase !== 'open') return
     panelRef.current
       ?.querySelector<HTMLElement>('a')
       ?.focus({ preventScroll: true })
-    if (reducedMotion()) return
-    let raf = 0
-    const t0 = performance.now()
-    const tick = (now: number) => {
-      const e = now - t0
-      setT(e >= BLOOM_MS ? null : e)
-      if (e < BLOOM_MS) raf = requestAnimationFrame(tick)
-    }
-    raf = requestAnimationFrame(tick)
-    return () => {
-      cancelAnimationFrame(raf)
-      setT(null)
-    }
   }, [phase])
 
   // Close on a tap outside, Escape, focus leaving, or the window growing
@@ -205,30 +152,13 @@ export function SiteIndex({ pathname, hidden }: SiteIndexProps) {
             const current = isCurrent(pathname, section.href)
             return (
               <li key={section.href}>
-                <Link
-                  href={section.href}
-                  className="site-index-row"
-                  aria-current={current ? 'page' : undefined}
-                  style={{ '--i': i } as React.CSSProperties}
+                <IndexRow
+                  entry={section}
+                  row={i}
+                  current={current}
+                  t={t}
                   onClick={close}
-                >
-                  <span className="site-index-mark" aria-hidden="true">
-                    {current ? (
-                      <Bloom text="@" row={i} t={t} ramp={DISC} />
-                    ) : (
-                      '·'
-                    )}
-                  </span>
-                  <span className="site-index-name">
-                    <Bloom text={section.label} row={i} t={t} />
-                  </span>
-                  {section.meta && (
-                    <>
-                      <span className="site-index-lead" aria-hidden="true" />
-                      <span className="site-index-meta">{section.meta}</span>
-                    </>
-                  )}
-                </Link>
+                />
               </li>
             )
           })}

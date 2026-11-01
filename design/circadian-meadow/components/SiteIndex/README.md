@@ -2,7 +2,7 @@
 
 The top bar on a phone, and the site menu's sibling (SiteMenu). Under 480px the five words crowded the site menu's dots, so they fold into a glyph in the top-left corner. It opens an index of the site in the site menu's glass. Desktop keeps the row of words (SiteHeader).
 
-Built: `components/ui/site-index.tsx`, `components/ui/site-index.css`. Shown from `app/header.tsx`, inside the bar's `<nav aria-label="Site">`.
+Built: `components/ui/site-index.tsx`, `components/ui/site-index.css`, rows in `components/ui/index-row.tsx`. Shown from `app/header.tsx`, inside the bar's `<nav aria-label="Site">`.
 
 > Built ahead of a Claude Design mock, from Stanley's ask on 2026-11-01. Tightened the same day from his phone: "it kinda feels too spread out and tall. I don't like the difference between the | and · dot entries. I think just the index pages should be listed." He kept the fonts, the dotted leaders and the counts.
 
@@ -18,7 +18,7 @@ Built: `components/ui/site-index.tsx`, `components/ui/site-index.css`. Shown fro
   ·  music  · · · · · · · · · · · · · soon
 ```
 
-- Only the sections: the bar's five words, in its order and in lowercase. No projects or posts under them.
+- Only the sections: the bar's five words, in its order and in lowercase. No projects or posts under them; with a mouse they're in the top bar's dropdowns (SiteHeader), which share these rows and this glass.
 - To the right of each section, in `meta` mono: how many projects, photos and posts (`BLOG_POSTS` and `EXPERIENCE_POSTS`; the poem is not counted) there are, and `soon` for music. A dotted leader of `·` runs out to it, as in a book's index.
 - Each section's mark is a `·`. The current section's mark is a flower centre, `@`.
 
