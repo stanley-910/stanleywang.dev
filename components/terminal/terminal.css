@@ -204,7 +204,9 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
   display: flex;
   width: min(616px, calc(100vw - 2 * var(--gutter)));
   height: min(368px, calc(100svh - 120px));
-  font: 12px/17px var(--font-shell), var(--font-mono);
+  font:
+    12px/17px var(--font-shell),
+    var(--font-mono);
   color: var(--k-ink);
   border-radius: 5px;
   box-shadow:
@@ -479,7 +481,11 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
   height: 1px;
   margin: 4px 0;
   border: 0;
-  background: repeating-linear-gradient(90deg, var(--k-hair) 0 1px, transparent 1px 2px);
+  background: repeating-linear-gradient(
+    90deg,
+    var(--k-hair) 0 1px,
+    transparent 1px 2px
+  );
 }
 
 .terminal-body {
@@ -523,7 +529,11 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
 
 .terminal-screen::-webkit-scrollbar-track {
   border-left: 1px solid var(--k-line);
-  background: repeating-conic-gradient(var(--k-hair) 0 25%, var(--k-paper) 0 50%) 0 0 / 2px 2px;
+  background: repeating-conic-gradient(
+      var(--k-hair) 0 25%,
+      var(--k-paper) 0 50%
+    )
+    0 0 / 2px 2px;
 }
 
 .terminal-screen::-webkit-scrollbar-thumb {
@@ -681,31 +691,36 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
 }
 
 .terminal-files .empty {
-  grid-column: 1 / -1;
+  flex-basis: 100%;
   margin: 0;
   font: 400 12px/15px var(--bitmap);
   color: var(--k-muted);
   text-align: center;
 }
 
+/* Each file is as wide as its name wants, up to a cap, so long names take more room and
+   short ones less. Rows pack from the left and line up at the top. */
 .terminal-files {
-  display: grid;
+  display: flex;
   flex: 1;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  align-content: flex-start;
   min-width: 0;
-  grid-template-columns: repeat(auto-fill, 104px);
-  /* A row grows to its longest name, so a name never runs into the icon under it. */
-  grid-auto-rows: minmax(80px, auto);
-  align-content: start;
-  gap: 6px 4px;
+  gap: 14px 6px;
   padding: 14px 10px;
-  overflow: auto;
+  overflow: hidden auto;
 }
 
+/* A name never breaks inside a word, so its longest piece can push past the cap. */
 .terminal-files button {
   display: flex;
+  flex: none;
   flex-direction: column;
   align-items: center;
   gap: 6px;
+  min-width: min-content;
+  max-width: min(108px, 100%);
   padding: 0;
   color: var(--k-ink);
   background: none;
@@ -735,21 +750,16 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
   fill: url(#terminal-dither);
 }
 
-/* Names stop at three lines with an ellipsis; selected, the whole name shows, as a Finder
-   does. */
+/* Names show whole, broken only where FileName puts a <wbr>. */
 .terminal-files span {
-  display: -webkit-box;
-  max-width: 100%;
+  min-width: 48px;
   padding: 0 4px;
-  overflow: hidden;
   font: 400 12px/15px var(--bitmap);
-  overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
+  text-align: center;
+  text-wrap: balance;
 }
 
 .terminal-files button[aria-selected='true'] span {
-  -webkit-line-clamp: unset;
   background: var(--k-plate);
   color: var(--k-on-plate);
 }
@@ -790,7 +800,8 @@ html:has(.garden-home) .terminal-power[aria-pressed='true'] {
   width: 64px;
   height: 12px;
   flex: none;
-  background: repeating-conic-gradient(var(--k-ink) 0 25%, transparent 0 50%) 0 0 / 2px 2px;
+  background: repeating-conic-gradient(var(--k-ink) 0 25%, transparent 0 50%) 0
+    0 / 2px 2px;
   opacity: 0.35;
 }
 

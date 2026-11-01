@@ -130,6 +130,17 @@ const greeting = () => {
     : ['歡迎你，陌生人！', 'Ласкаво просимо, незнайомцю!', 'Welcome, stranger!']
 }
 
+/** A file name that breaks only after a -, _ or ., never inside a word, and keeps its
+ * extension on its last word: `rain-steam-` `and-` `speed-` `JMW-` `Turner.txt`. */
+function FileName({ name }: { name: string }) {
+  return name.split(/(?<=[-_]|\.(?=[^.]*\.))/).map((part, i) => (
+    <Fragment key={i}>
+      {i > 0 && <wbr />}
+      {part}
+    </Fragment>
+  ))
+}
+
 const isNight = (h: number) => !(h >= LIGHT_FROM && h < DARK_FROM)
 
 /** A small icon drawn cell by cell, on the bitmap face's grid like the close x: `#` is ink. */
@@ -1216,7 +1227,9 @@ export function Terminal() {
                             />
                           </svg>
                         )}
-                        <span>{it.name.replace(/\/$/, '')}</span>
+                        <span>
+                          <FileName name={it.name.replace(/\/$/, '')} />
+                        </span>
                       </button>
                     ))}
                     {!items.length && <p className="empty">empty</p>}
