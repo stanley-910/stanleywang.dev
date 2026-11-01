@@ -266,7 +266,8 @@ function folder(path: string): Item[] {
         kind: 'project' as const,
         path: `~/projects/${p.slug}`,
         open: (ctx: Ctx) => (
-          ctx.visit(`/projects#${p.slug}`), [`Opening ${p.name}...`]
+          ctx.visit(`/projects#${p.slug}`),
+          [`Opening ${p.name}...`]
         ),
       }))
     case '~/writing':
@@ -335,6 +336,12 @@ function runExe(exe: string, ctx: Ctx): string[] {
     return ['Running waves.exe...', '{m|press any key to stop}']
   }
   if (exe === 'datamines.exe') {
+    // The game's own page, where it plays in the browser; its card if it has none.
+    const game = PROJECTS.find((p) => p.slug === 'datamines')
+    if (game?.demo) {
+      ctx.open(game.demo)
+      return ['Running datamines.exe...', `Opening ${game.name}...`]
+    }
     ctx.go('~/projects')
     return [
       'Running datamines.exe...',
@@ -412,7 +419,7 @@ export function run(input: string, ctx: Ctx): string[] {
       const it = itemOf(args[1], ctx.path)
       if (!it) {
         const dir = dirOf(args[1], ctx.path)
-        if (dir) return ctx.go(dir), []
+        if (dir) return (ctx.go(dir), [])
         return [`open: ${args[1]}: No such file or directory`]
       }
       return it.open(ctx)
