@@ -167,44 +167,30 @@ function Pixels({ rows, scale = 1 }: { rows: string[]; scale?: number }) {
   )
 }
 
-// The shell is a little window with a prompt in it, the same size as the folder.
-const PROMPT_ICON = [
-  '#########',
-  '#.......#',
-  '#.#.....#',
-  '#..#....#',
-  '#.#.###.#',
-  '#.......#',
-  '#########',
-]
-// Drawn at twice the grid with one-pixel lines, so it reads as thin as the close x.
-const FOLDER_ICON = [
-  '#######...........',
-  '#.....#...........',
-  '##################',
-  '#................#',
-  '#................#',
-  '#................#',
-  '#................#',
-  '#................#',
-  '#................#',
-  '#................#',
-  '#................#',
-  '#................#',
-  '#................#',
-  '##################',
-]
-const SIDEBAR_ICON = [
-  '#########',
-  '#..#....#',
-  '#..#....#',
-  '#..#....#',
-  '#..#....#',
-  '#..#....#',
-  '#########',
-]
-const BACK_ICON = ['...#', '..#.', '.#..', '#...', '.#..', '..#.', '...#']
-const FORWARD_ICON = ['#...', '.#..', '..#.', '...#', '..#.', '.#..', '#...']
+/**
+ * The menu strip's tool icons, drawn in 1.5px lines: between the close x's
+ * one pixel and the old two-pixel pixel art, one weight for all of them.
+ */
+function Lines({ d, w = 18, h = 14 }: { d: string; w?: number; h?: number }) {
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} aria-hidden>
+      <path
+        d={d}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.5}
+        strokeLinecap="square"
+      />
+    </svg>
+  )
+}
+const SIDEBAR_LINES = 'M0.75 0.75H17.25V13.25H0.75Z M6.75 0.75V13.25'
+const BACK_LINES = 'M6.75 1L1.25 7L6.75 13'
+const FORWARD_LINES = 'M1.25 1L6.75 7L1.25 13'
+const FOLDER_LINES = 'M0.75 3.75V0.75H6.75V3.75 M0.75 3.75H17.25V13.25H0.75Z'
+const PROMPT_LINES =
+  'M0.75 0.75H17.25V13.25H0.75Z M4 4.25L6.75 7L4 9.75 M9 9.75H13.5'
+
 const TREE_FOLDER = [
   '###....',
   '#######',
@@ -1089,7 +1075,7 @@ export function Terminal() {
                     aria-pressed={tree}
                     onClick={() => setTree((t) => !t)}
                   >
-                    <Pixels rows={SIDEBAR_ICON} scale={2} />
+                    <Lines d={SIDEBAR_LINES} />
                   </button>
                   <button
                     aria-label="Back"
@@ -1097,7 +1083,7 @@ export function Terminal() {
                     disabled={!shown.back.length}
                     onClick={back}
                   >
-                    <Pixels rows={BACK_ICON} scale={2} />
+                    <Lines d={BACK_LINES} w={8} />
                   </button>
                   <button
                     aria-label="Forward"
@@ -1105,7 +1091,7 @@ export function Terminal() {
                     disabled={!shown.fwd.length}
                     onClick={forward}
                   >
-                    <Pixels rows={FORWARD_ICON} scale={2} />
+                    <Lines d={FORWARD_LINES} w={8} />
                   </button>
                 </span>
               )}
@@ -1119,9 +1105,9 @@ export function Terminal() {
                 }
               >
                 {view === 'shell' ? (
-                  <Pixels rows={FOLDER_ICON} />
+                  <Lines d={FOLDER_LINES} />
                 ) : (
-                  <Pixels rows={PROMPT_ICON} scale={2} />
+                  <Lines d={PROMPT_LINES} />
                 )}
               </button>
             </nav>
