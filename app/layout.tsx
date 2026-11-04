@@ -4,6 +4,8 @@ import './styles/prose.css'
 import './styles/globals.css'
 import './styles/shell.css'
 import { Analytics } from '@vercel/analytics/react'
+import { GeistPixelLine } from 'geist/font/pixel'
+import { GeistSerifSquare } from 'geist/font/serif'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { ThemeProvider } from 'next-themes'
 
@@ -17,7 +19,8 @@ import { Header } from './header'
 
 import type { Metadata, Viewport } from 'next'
 
-// tokens.css names these --font-sans and --font-mono.
+// tokens.css names these --font-sans and --font-mono; the pixel face sets the
+// top bar's "meadow" and the serif home's bio.
 const geist = Geist({ subsets: ['latin'], variable: '--font-geist' })
 const geistMono = Geist_Mono({
   subsets: ['latin'],
@@ -54,7 +57,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geist.variable} ${geistMono.variable}`}
+      className={`${geist.variable} ${geistMono.variable} ${GeistPixelLine.variable} ${GeistSerifSquare.variable}`}
       suppressHydrationWarning
     >
       <head>

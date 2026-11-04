@@ -163,6 +163,12 @@ html:has(.garden-home, .poem-page) body {
 
 .garden-hero .bio {
   max-width: var(--measure);
+  /* Geist Serif's Square cut (square dots on . ? i), Regular, with SS05's
+     transitional round letters and -3% tracking. */
+  font-family: var(--font-geist-serif-square), var(--font-sans);
+  font-weight: 400;
+  font-feature-settings: 'ss05';
+  letter-spacing: -0.03em;
 }
 
 /* The links sit a little further from the bio than the hero's gap, 24px, so they read as its

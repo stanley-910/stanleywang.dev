@@ -46,6 +46,14 @@
   transition: color var(--duration-quick) var(--ease-calm);
 }
 
+/* Home's word in the pixel face; the rest stay mono. Line's hairline
+   strokes read dimmer than mono in the same ink, lit or not, so it carries a
+   stroke of its own colour to match its neighbours' weight. */
+.site-words > li > a[href='/'] {
+  font-family: var(--font-geist-pixel-line), var(--font-mono);
+  -webkit-text-stroke: 0.25px currentColor;
+}
+
 /* Each word's target: the word and a little round it. Hover (and a
    dropdown's opening) and a click take the same area, and the word's own
    box, which the garden recedes behind (data-avoid), stays the word's. */
