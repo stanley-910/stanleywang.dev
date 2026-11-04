@@ -33,8 +33,8 @@ export const PHOTOS: Photo[] = [
   {
     id: 'XT302381',
     src: '/images/film/yosemite-XT302381.jpg',
-    width: 4160,
-    height: 6240,
+    width: 2560,
+    height: 3840,
     alt: 'Yosemite, CA.',
     location: 'Yosemite, CA',
     camera: 'Fujifilm X-T30 III',
@@ -47,8 +47,8 @@ export const PHOTOS: Photo[] = [
   {
     id: 'XT304576',
     src: '/images/film/zhangjiajie-XT304576.jpg',
-    width: 6240,
-    height: 4160,
+    width: 3840,
+    height: 2560,
     alt: 'Zhangjiajie, China.',
     location: 'Zhangjiajie, China',
     camera: 'Fujifilm X-T30 III',
