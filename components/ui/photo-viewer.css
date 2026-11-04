@@ -115,7 +115,9 @@
   background: none;
   color: var(--ink-muted);
   font: inherit;
-  font-size: var(--text-nav);
+  /* The viewer's own size (12px) like its count and details, so the buttons
+     don't read bigger than the top bar's words; the place's name heads it. */
+  font-size: var(--text-meta);
   cursor: pointer;
   transition: color var(--duration-quick) var(--ease-calm);
 }
