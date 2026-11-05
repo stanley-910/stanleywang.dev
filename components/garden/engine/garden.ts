@@ -1527,7 +1527,7 @@ export class Garden {
    * instead of snapping between the sun's rim light and the moon's.
    */
   private against(p: Palette, light = this.slopeLight(p).light) {
-    const rim = this.lights(p).sun > 0 ? this.sunk() : 0
+    const rim = this.sunk()
     return Math.max(rim, 1 - smoothstep(0, 0.15, light))
   }
 
@@ -2060,7 +2060,7 @@ export class Garden {
    */
   private snowColors(p: Palette) {
     const fade = smoothstep(0, 0.15, this.slopeLight(p).light)
-    const sunk = this.lights(p).sun > 0 ? this.sunk() : 0
+    const sunk = this.sunk()
     const shadeCol = mix(
       p.snowShade,
       this.ridgeColors(p)[0],
@@ -2078,13 +2078,13 @@ export class Garden {
    */
   private drawSnow(r: Raster, ridge: Float32Array, p: Palette, toward: number) {
     const line = this.snowline
-    // Rim light once the sun has sunk behind the crest, and how much light there is at all: the
-    // first narrows the lit flank to the crest as the disc goes down behind the range, the way the
-    // last light leaves a peak from the foot up, and the rock's lit strips thin with it; the
-    // second dims the lit flank's colour toward the shaded one's, so the flank's reach never moves
-    // with the light's strength, which read as a shadow climbing the cap on its own.
-    const rimT = this.lights(p).sun > 0 ? this.sunk() : 0
-    const { shadeCol, litCol } = this.snowColors(p)
+    // Rim light once the sun or moon has sunk behind the crest, and how much light there is at
+    // all: the first draws the lit flank's foot up to the summit as the disc goes down behind the
+    // range, the way the last light leaves a peak from the foot up, and the rock's lit strips thin
+    // with it; the second dims the lit flank's colour toward the shaded one's and its reach toward
+    // its top edge, in step with the rock's strips, so the cap never goes dark under a lit face.
+    const rimT = this.sunk()
+    const { fade, shadeCol, litCol } = this.snowColors(p)
     const n = ridge.length
     const CH = this.height * 0.0125
     // Slope in the range's own units (height share per width share), so a phone, which shows a
@@ -2149,7 +2149,8 @@ export class Garden {
       band(lit, i, j, upper, (q) => {
         const u = upper(q)
         const tip = summitAt(q * RIDGE_STEP).y + 2.2 * CH
-        return Math.max(u, Math.min(line[q], lerp(line[q], tip, rimT)))
+        const foot = Math.max(u, Math.min(line[q], lerp(line[q], tip, rimT)))
+        return u + (foot - u) * fade
       })
       for (let q = i; q <= j; q++) top = Math.min(top, ridge[q])
       i = j + 1
@@ -2170,7 +2171,7 @@ export class Garden {
     // Sunk behind the range, the sun lights only a rim along the crest; low but clear of it, its
     // light rakes across, and the shaded flanks go deeper and run further down.
     const { sun } = this.lights(p)
-    const rim = sun > 0 ? this.sunk() : 0
+    const rim = this.sunk()
     const low = sun > 0 ? this.sunLook(p).low * (1 - rim) : 0
     const trees = this.forestColors(p, colors)
     const rock = { id: LandMat.Rock, light: 0.5, back: false }
