@@ -1453,7 +1453,11 @@ export class Garden {
     return runs
   }
 
-  /** How strongly slopes are lit and in what colour: most with the sun low, a little under the moon. */
+  /**
+   * How strongly slopes are lit and in what colour: most with the sun low, when its light rakes
+   * across the range, flattest with it high; a little under the moon, and less again while the
+   * moon is low, so a moon just up over the hills lifts no shadow.
+   */
   private slopeLight(p: Palette) {
     const { sun, moon } = this.lights(p)
     return sun
@@ -1502,13 +1506,21 @@ export class Garden {
   }
 
   /**
-   * How far the range's faces turn away from the light, 0 to 1: fully with the sun low behind it,
-   * and as the light itself fades, so the faces and snow ease into shade at dusk instead of
-   * snapping between the sun's rim light and the moon's.
+   * How far the range's faces turn away from the light, 0 to 1: fully with the sun sunk behind
+   * the crest, and as the light itself fades, so the faces and snow ease into shade at dusk
+   * instead of snapping between the sun's rim light and the moon's.
    */
   private against(p: Palette, light = this.slopeLight(p).light) {
-    const rim = this.lights(p).sun > 0 ? this.sunLook(p).low : 0
-    return Math.max(smoothstep(0.35, 0.65, rim), 1 - smoothstep(0, 0.15, light))
+    const rim = this.lights(p).sun > 0 ? this.sunk() : 0
+    return Math.max(rim, 1 - smoothstep(0, 0.15, light))
+  }
+
+  /**
+   * How far the ridges are unlit after the sun: 0 while it's up, 1 from dusk on. Once it has
+   * gone they take no light at all, moon or none, and stay dark shapes against the sky.
+   */
+  private unlit(p: Palette) {
+    return (1 - this.lights(p).sun) * smoothstep(0.05, 0.3, p.night)
   }
 
   /** Colour of each ridge: the farther, the more it fades toward the sky. */
@@ -1516,20 +1528,37 @@ export class Garden {
     // With the sun low the ridges stand against it, their near faces in shadow: they go toward
     // silhouette, the nearest most, while the far range keeps its haze.
     const back = this.backlight(p)
-    // By day the far rock takes less of the pale sky, a step darker, so snow and lit faces stand out.
+    // By day the far rock takes less of the pale sky, a step darker, so snow and lit faces stand
+    // out and the three ridges part from each other at midday.
     const day = (1 - smoothstep(0, 0.1, p.night)) * (1 - back)
+    // After the sun the ridges are a darker step of the sky at the horizon, in its own hue, so they
+    // sink into dusk and twilight instead of standing off them in the hill colours' violet.
+    const unlit = this.unlit(p)
+    const dark = mix(p.skyHorizon, p.ground, 0.6)
     return [
       mix(
-        mix(p.hillFar, p.skyHorizon, 0.5 - 0.12 * day),
-        p.ground,
-        0.5 * back + 0.08 * day,
+        mix(
+          mix(p.hillFar, p.skyHorizon, 0.5 - 0.2 * day),
+          p.ground,
+          0.5 * back + 0.08 * day,
+        ),
+        dark,
+        unlit,
       ),
       mix(
-        mix(mix(p.hillFar, p.hillNear, 0.45), p.skyHorizon, 0.25),
-        p.ground,
-        0.5 * back,
+        mix(
+          mix(
+            mix(p.hillFar, p.hillNear, 0.45),
+            p.skyHorizon,
+            0.25 - 0.06 * day,
+          ),
+          p.ground,
+          0.5 * back,
+        ),
+        mix(dark, p.ground, 0.3),
+        unlit,
       ),
-      mix(mix(p.hillNear, p.ground, 0.2), p.ground, 0.6 * back),
+      mix(mix(p.hillNear, p.ground, 0.2), p.ground, 0.6 * back + 0.25 * unlit),
     ]
   }
 
@@ -1912,8 +1941,9 @@ export class Garden {
     }
     const colors = this.ridgeColors(p)
     const trees = this.forestColors(p, colors)
-    // Backlit ridges lose most of their haze and mist, so they read as shapes against the glow.
-    const thin = 1 - 0.6 * this.backlight(p)
+    // Backlit ridges lose most of their haze and mist, so they read as shapes against the glow;
+    // so do unlit ones after the sun, which the haze's dusk colours would lift off the sky.
+    const thin = 1 - 0.6 * Math.max(this.backlight(p), 0.7 * this.unlit(p))
     const hz = p.haze.map((v) => v | 0).join(',')
     const H = this.height
     for (const [layer, ridge] of this.ridges.entries()) {
@@ -1945,7 +1975,7 @@ export class Garden {
         // Thinner by day, so the midday range keeps its body instead of washing into the sky.
         veil.addColorStop(
           1,
-          `rgba(${hz},${(layer ? 0.3 : 0.4) * (0.45 + 0.55 * p.night) * thin})`,
+          `rgba(${hz},${(layer ? 0.3 : 0.4) * (0.45 + 0.3 * p.night) * thin})`,
         )
         ctx.fillStyle = veil
         ctx.fill(this.ridgePath(ridge, this.horizon).toPath2D())
@@ -2213,8 +2243,9 @@ export class Garden {
       })
     r.touchMeta(W, this.riverEnd + 4)
     // Low mist on the horizon, colour only, so the land underneath keeps its kind. It thins
-    // against a low sun so the backlit ridges keep their shadow.
-    const veil = 0.55 * (1 - 0.6 * this.backlight(p))
+    // against a low sun so the backlit ridges keep their shadow, and after it.
+    const veil =
+      0.55 * (1 - 0.6 * Math.max(this.backlight(p), 0.7 * this.unlit(p)))
     const mist = new Shape()
     mist.rect(
       -10,
@@ -2278,9 +2309,33 @@ export class Garden {
   private lights(p: Palette) {
     const h = this.hour
     const day = h >= 6 && h < 18.5
-    const moon = day ? 0 : smoothstep(0.5, 0.9, p.night) * p.moonlight
+    // The moon comes out once the sky has gone over to night's blue (the palette's NIGHT key,
+    // night 1), not while twilight's violet still hangs over the ridges.
+    const moon = day ? 0 : moonUp(p.night, h) * p.moonlight
     return { sun: sunAt(h), moon }
   }
+
+  /**
+   * How far the sun or moon has sunk behind the crest under it, 0 wholly clear to 1 wholly hidden,
+   * eased across the disc's own height. The land is lit from the side only while the disc stands
+   * clear of the ridges; behind them it backlights the range, which goes to silhouette with a rim
+   * along its crest. Read off the highest crest across the disc's width, so a jag in the ridge
+   * doesn't flick it; cached by the hour, since every pass over the land asks.
+   */
+  private sunk() {
+    const key = `${this.hour},${this.width},${this.height}`
+    if (this.sunkFor === key) return this.sunkValue
+    const { cx, cy, R } = this.globeAt()
+    let top = this.horizon
+    for (let dx = -R; dx <= R; dx += RIDGE_STEP)
+      top = Math.min(top, this.hillTop(cx + dx))
+    this.sunkFor = key
+    this.sunkValue = 1 - smoothstep(-R, R, top - cy)
+    return this.sunkValue
+  }
+
+  private sunkFor = ''
+  private sunkValue = 0
 
   /**
    * The glow in `col`, `peak` strong at the disc and falling as (1 - s)² out to `reach`, drawn
@@ -2361,7 +2416,7 @@ export class Garden {
     const color = mix(p.globe, [255, 196, 120], 0.3 * low * low)
     // Lifted toward full brightness in its own hue, so a gold moon stays gold.
     const lift = Math.min(1.15, 255 / Math.max(...color))
-    return { color, disc: color.map((v) => v * lift) as Rgb }
+    return { low, color, disc: color.map((v) => v * lift) as Rgb }
   }
 
   /** The sun's look by height: pale and round overhead; low, it swells, flattens and reddens. */
@@ -2475,6 +2530,16 @@ export function sunAt(hour: number) {
   return hour >= 6 && hour < 18.5
     ? smoothstep(6, 6.75, hour) * (1 - smoothstep(17.75, 18.5, hour))
     : 0
+}
+
+/**
+ * How much of the moon is out for the palette's `night` at `hour`: in the evening none until the
+ * sky has all but reached night's blue, full with it, about 21:10 to 21:40; before dawn it holds
+ * while the night lifts, going by 5:35, so it sets behind the ridges as the slider's moonset
+ * says. palette.ts's withMoon follows the same curve for the slider's moon colour.
+ */
+export function moonUp(night: number, hour: number) {
+  return hour >= 12 ? smoothstep(0.9, 1, night) : smoothstep(0.5, 0.9, night)
 }
 
 /** Darker seas on the moon's face, as [x, y, rx, ry] in moon radii from its centre. */

@@ -167,7 +167,7 @@ export function mountGarden({
   let moonTone = currentMoonTone()
   /** The hour's palette, with the moon in the menu's colour, under the weather. */
   const sceneAt = (h: number) =>
-    weather.tint(withMoon(paletteAt(h), moonTone), sunAt(h))
+    weather.tint(withMoon(paletteAt(h), moonTone, h), sunAt(h))
   const raster = new Raster()
   const ascii = new AsciiRenderer(canvas, font)
   // `?probe` sends each frame's cells back with its type and exposes the lighting's inputs, for

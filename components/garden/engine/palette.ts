@@ -352,9 +352,15 @@ const luma = ([r, g, b]: Rgb) => 0.2126 * r + 0.7152 * g + 0.0722 * b
  * brightness for the moon, dimmer toward midnight, and takes over only as the night does, so the
  * disc, its glow and the moonlit slopes all turn with it.
  */
-export function withMoon(p: Palette, tone: number | null): Palette {
+export function withMoon(
+  p: Palette,
+  tone: number | null,
+  hour: number,
+): Palette {
   if (tone === null) return p
-  const w = smoothstep(0.5, 0.9, p.night)
+  // The same curve the moon comes out on (garden.ts's moonUp): late in the evening, early before dawn.
+  const w =
+    hour >= 12 ? smoothstep(0.9, 1, p.night) : smoothstep(0.5, 0.9, p.night)
   if (w <= 0) return p
   const c = moonAt(tone)
   const k = luma(p.globe) / luma(NIGHT.globe)

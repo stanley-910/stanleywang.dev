@@ -636,7 +636,7 @@ export class Typesetter {
                 // After dark the cells the moon fills take a faint body in its colour, so the disc
                 // stands as a stark mark and shows its colour; seeds and fireflies never fill one.
                 tile[i] =
-                  0.2 * smoothstep(0.85, 1, v) * smoothstep(0.5, 0.9, p.night)
+                  0.2 * smoothstep(0.85, 1, v) * smoothstep(0.9, 1, p.night)
               }
               break
             case Kind.Stem:
