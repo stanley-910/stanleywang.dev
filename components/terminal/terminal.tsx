@@ -14,6 +14,7 @@ import {
   setHour,
 } from '@/lib/circadian'
 import { useUiHidden } from '@/lib/hide-ui'
+import { isLofi, setLofi } from '@/lib/lofi'
 import {
   currentBreeze,
   meadowHere,
@@ -746,6 +747,8 @@ export function Terminal() {
         weather: currentWeather(),
         setWeather,
         meadowHere,
+        lofi: isLofi(),
+        setLofi,
         open: (url) => window.open(url, '_blank', 'noopener,noreferrer'),
         copy: (s) => void navigator.clipboard?.writeText(s).catch(() => {}),
         clear: () => (cleared = true),

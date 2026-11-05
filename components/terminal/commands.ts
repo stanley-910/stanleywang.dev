@@ -40,6 +40,9 @@ export type Ctx = {
   weather: WeatherKind
   setWeather: (weather: WeatherKind) => void
   meadowHere: () => boolean
+  /** Lo-fi (lib/lofi.ts): home without the meadow's animation. */
+  lofi: boolean
+  setLofi: (on: boolean) => void
   open: (url: string) => void
   copy: (text: string) => void
   clear: () => void
@@ -152,6 +155,7 @@ const HELP = [
   '  {g|wind}      Set the breeze: wind 0.6',
   '  {g|weather}   Change the weather: weather rain',
   '  {g|regrow}    Grow a new meadow',
+  '  {g|lofi}      A lighter home, no meadow: lofi on',
   '  {g|reboot}    Restart the terminal',
   '',
   '{y|[tab]} complete  {y|[ctrl+l]} clear  {y|[`]} open or close',
@@ -188,6 +192,7 @@ const NAMES = [
   'wind',
   'regrow',
   'weather',
+  'lofi',
   ...EXES.map((e) => `./${e}`),
 ]
 
@@ -592,6 +597,13 @@ export function run(input: string, ctx: Ctx): string[] {
         ...(ctx.meadowHere() ? [] : elsewhere),
       ]
     }
+    case 'lofi': {
+      if (!a) return [`lofi {y|${ctx.lofi ? 'on' : 'off'}}`]
+      if (a !== 'on' && a !== 'off')
+        return [`lofi: {e|${args[1]}} isn't on or off. Try lofi on`]
+      ctx.setLofi(a === 'on')
+      return [`lofi {y|${a}} {m|(was ${ctx.lofi ? 'on' : 'off'})}`]
+    }
     case 'regrow': {
       if (!ctx.meadowHere()) return elsewhere
       const seed = 1e9 + Math.floor(Math.random() * 9e8)
@@ -623,7 +635,9 @@ export function complete(s: string, path: string) {
             ? WORK.map((w) => w.key)
             : parts[0] === 'weather'
               ? [...WEATHERS]
-              : []
+              : parts[0] === 'lofi'
+                ? ['on', 'off']
+                : []
   const last = parts[parts.length - 1]
   const hits = pool.filter((n) => n.startsWith(last))
   if (hits.length !== 1) return s

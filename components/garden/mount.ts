@@ -32,6 +32,7 @@ import { Raster } from './engine/raster'
 import { Weather } from './engine/weather'
 import { Wind } from './engine/wind'
 import { playIntro } from './intro'
+import { LagDetector } from './lag'
 import { Quality } from './quality'
 
 // Stepped at 120 Hz so a 120 Hz display gets a new pose every frame; the stems' springs scale
@@ -121,6 +122,8 @@ type GardenOptions = {
   zoom?: number
   /** How hard the wind blows, 1 a full breeze. */
   wind?: number
+  /** Called once if the scene runs slow for a sustained stretch (lag.ts), to offer lo-fi. */
+  onLag?: () => void
 }
 
 function localHour() {
@@ -140,9 +143,11 @@ export function mountGarden({
   onReady,
   zoom: sceneZoom = SCENE_ZOOM,
   wind: windStrength = 0.2,
+  onLag,
 }: GardenOptions) {
   const html = document.documentElement
   const quality = new Quality()
+  const lag = onLag ? new LagDetector(onLag) : null
   let zoom = sceneZoom
   const toScene = (v: number) => v / zoom
   /** The scene's zoom for a canvas this size in CSS px: sceneZoom, or closer within the budget. */
@@ -737,7 +742,9 @@ export function mountGarden({
       quality.resettle()
     }
     if (!quality.skip(frames)) draw(false, quality.calm)
-    quality.frame(now, performance.now() - began, now > busyUntil)
+    const quiet = now > busyUntil
+    quality.frame(now, performance.now() - began, quiet)
+    lag?.frame(now, quiet && raster.warm && !quality.away)
     raf = requestAnimationFrame(frame)
   }
 
@@ -770,6 +777,7 @@ export function mountGarden({
     }
     last = performance.now()
     quality.reset()
+    lag?.reset()
     raf = requestAnimationFrame(frame)
   }
 
@@ -1008,7 +1016,7 @@ export function mountGarden({
   })
 
   if (process.env.NODE_ENV === 'development') {
-    Object.assign(window, { garden, ascii, wind, weather })
+    Object.assign(window, { garden, ascii, wind, weather, __lag: lag })
   }
   if (raster.probe)
     Object.assign(window, {

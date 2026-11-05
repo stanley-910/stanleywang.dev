@@ -15,6 +15,7 @@ import {
   type PageTheme,
 } from '@/lib/circadian'
 import { setUiHidden, useUiHidden } from '@/lib/hide-ui'
+import { setLofi, useLofi } from '@/lib/lofi'
 import { announceMenuOpen, useCloseOnOtherMenu } from '@/lib/menus'
 import {
   setLightningTone,
@@ -119,6 +120,7 @@ export function ThemeSwitch({ className }: { className?: string }) {
   const [open, setOpen] = useState(false)
   const { setTheme } = useTheme()
   const pathname = usePathname()
+  const lofi = useLofi()
   const hidden = useUiHidden()
   const weather = useWeather()
   const tone = useLightningTone()
@@ -432,6 +434,17 @@ export function ThemeSwitch({ className }: { className?: string }) {
                   }}
                 >
                   {hidden ? 'show text' : 'hide text'}
+                </button>
+              )}
+              {pathname === '/' && (
+                // TODO(design): the label, and whether it belongs here (LF1).
+                <button
+                  type="button"
+                  className="time-control-item"
+                  aria-pressed={lofi}
+                  onClick={() => setLofi(!lofi)}
+                >
+                  {lofi ? 'full meadow' : 'lo-fi'}
                 </button>
               )}
             </div>

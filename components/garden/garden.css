@@ -248,3 +248,11 @@ html:has(.garden-home, .poem-page) body {
     transform: translateY(-100%);
   }
 }
+
+/* Lo-fi (lib/lofi.ts): no scene, the canvas left blank on the scene's dark
+   ground, which the bio's colours already sit on.
+   TODO(design): "a couple flowers" on this ground, drawn once and still. */
+.garden-home[data-lofi] .garden-canvas {
+  background-color: var(--page-dark);
+  cursor: auto;
+}

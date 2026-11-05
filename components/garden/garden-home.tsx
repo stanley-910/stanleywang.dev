@@ -2,7 +2,10 @@
 import { useEffect, useRef } from 'react'
 
 import { useUiHidden } from '@/lib/hide-ui'
+import { askLofi, isLofi, useLofi } from '@/lib/lofi'
 
+import { playIntro } from './intro'
+import { LofiPrompt } from './lofi-prompt'
 import { mountGarden } from './mount'
 
 import './garden.css'
@@ -19,11 +22,28 @@ export function GardenHome({ children }: GardenHomeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const hidden = useUiHidden()
+  const lofi = useLofi()
 
   useEffect(() => {
     const canvas = canvasRef.current
     const root = rootRef.current
     if (!canvas || !root) return
+    // Lo-fi (lib/lofi.ts): no scene and no loop, just the scene's dark ground behind the bio.
+    // Read live rather than from `lofi`, which is still the server's `false` on the hydrating pass,
+    // so a saved lo-fi never starts the meadow's workers for a frame.
+    if (isLofi()) {
+      const html = document.documentElement
+      // The bar sits on dark ground, as on the night sky.
+      html.dataset.sky = 'dark'
+      html.style.setProperty('--garden-top', 'var(--page-dark)')
+      html.style.setProperty('--garden-edge', 'var(--page-dark)')
+      playIntro()
+      return () => {
+        delete html.dataset.sky
+        html.style.removeProperty('--garden-top')
+        html.style.removeProperty('--garden-edge')
+      }
+    }
     const mono = getComputedStyle(document.documentElement)
       .getPropertyValue('--font-geist-mono')
       .trim()
@@ -31,12 +51,19 @@ export function GardenHome({ children }: GardenHomeProps) {
       canvas,
       root,
       font: mono || 'ui-monospace, Menlo, monospace',
+      onLag: askLofi,
     })
-  }, [])
+  }, [lofi])
 
   return (
-    <div ref={rootRef} className="garden-home">
-      <canvas ref={canvasRef} className="garden-canvas" aria-hidden="true" />
+    <div ref={rootRef} className="garden-home" data-lofi={lofi || undefined}>
+      {/* A fresh canvas on each switch, so lo-fi doesn't keep the scene's last frame. */}
+      <canvas
+        key={lofi ? 'lofi' : 'scene'}
+        ref={canvasRef}
+        className="garden-canvas"
+        aria-hidden="true"
+      />
       {/* Safari tints its bars from fixed elements at the window's edges. */}
       <div className="garden-tint garden-tint-top" aria-hidden="true" />
       <div className="garden-tint garden-tint-bottom" aria-hidden="true" />
@@ -45,6 +72,7 @@ export function GardenHome({ children }: GardenHomeProps) {
           {children}
         </div>
       </div>
+      <LofiPrompt />
     </div>
   )
 }
