@@ -50,8 +50,12 @@ export function setLofi(on: boolean) {
   if (was !== on) window.dispatchEvent(new Event(EVENT))
 }
 
+/** The dismissal, kept here too in case session storage is blocked. */
+let dismissed = false
+
 /** Whether the offer was dismissed this session. */
 export function lofiDismissed() {
+  if (dismissed) return true
   try {
     return sessionStorage.getItem(DISMISSED_KEY) === '1'
   } catch {
@@ -60,6 +64,7 @@ export function lofiDismissed() {
 }
 
 export function dismissLofi() {
+  dismissed = true
   try {
     sessionStorage.setItem(DISMISSED_KEY, '1')
   } catch {
@@ -79,8 +84,16 @@ export function lofiAskForced() {
 }
 
 const subscribe = (fire: () => void) => {
+  // A choice made in another tab arrives as a storage event.
+  const onStorage = (e: StorageEvent) => {
+    if (e.key === KEY || e.key === null) fire()
+  }
   window.addEventListener(EVENT, fire)
-  return () => window.removeEventListener(EVENT, fire)
+  window.addEventListener('storage', onStorage)
+  return () => {
+    window.removeEventListener(EVENT, fire)
+    window.removeEventListener('storage', onStorage)
+  }
 }
 
 /** Whether lo-fi is on, kept current; off on the server and through hydration. */
