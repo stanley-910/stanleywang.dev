@@ -2369,21 +2369,28 @@ export class Garden {
   }
 
   /**
-   * How far the sun or moon has sunk behind the crest under it, 0 wholly clear to 1 wholly hidden,
-   * eased across the disc's own height. The land is lit from the side only while the disc stands
-   * clear of the ridges; behind them it backlights the range, which goes to silhouette with a rim
-   * along its crest. Read off the highest crest across the disc's width, so a jag in the ridge
-   * doesn't flick it; cached by the hour, since every pass over the land asks.
+   * How far the sun or moon has sunk behind the crest under it: the share of the disc hidden, 0
+   * wholly clear to 1 wholly behind. The land is lit from the side only while the disc stands
+   * clear of the ridges; behind them it backlights the range, which goes to silhouette with its
+   * summits' tips lit. An area, so a jag in the ridge moves it by a sliver; cached by the hour,
+   * since every pass over the land asks.
    */
   private sunk() {
     const key = `${this.hour},${this.width},${this.height}`
     if (this.sunkFor === key) return this.sunkValue
     const { cx, cy, R } = this.globeAt()
-    let top = this.horizon
-    for (let dx = -R; dx <= R; dx += RIDGE_STEP)
-      top = Math.min(top, this.hillTop(cx + dx))
+    // The share of the disc's area under the crest, column by column, as sunTimes reads it: a
+    // peak beside the disc hides only the columns it stands in.
+    let hidden = 0
+    let area = 0
+    for (let dx = -R; dx <= R; dx += RIDGE_STEP) {
+      const half = Math.sqrt(Math.max(0, R * R - dx * dx))
+      const top = this.hillTop(cx + dx)
+      area += 2 * half
+      hidden += clamp(cy + half - Math.max(top, cy - half), 0, 2 * half)
+    }
     this.sunkFor = key
-    this.sunkValue = 1 - smoothstep(-R, R, top - cy)
+    this.sunkValue = area > 0 ? hidden / area : 0
     return this.sunkValue
   }
 
