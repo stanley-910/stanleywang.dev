@@ -60,8 +60,8 @@
    from the top. Held open, its key drops in, as the menu's dots turn. */
 .terminal-power {
   position: fixed;
-  right: 32px;
-  bottom: 34px;
+  right: max(32px, env(safe-area-inset-right));
+  bottom: calc(34px + env(safe-area-inset-bottom));
   z-index: 40;
   display: inline-flex;
   width: 16px;
@@ -197,8 +197,8 @@ html:has(.garden-home, .garden-canvas) .terminal-power[aria-pressed='true'] {
 
 .terminal-win {
   position: fixed;
-  right: 32px;
-  bottom: 62px;
+  right: max(32px, env(safe-area-inset-right));
+  bottom: calc(62px + env(safe-area-inset-bottom));
   /* Above the power button: moved over it, it covers it, and its own close box shuts it. */
   z-index: 41;
   display: flex;
@@ -842,13 +842,13 @@ html:has(.garden-home, .garden-canvas) .terminal-power[aria-pressed='true'] {
 @media (max-width: 480px) {
   /* The menu sits at the end of the links' row here, the gutter in and about 20px down. */
   .terminal-power {
-    right: var(--gutter);
-    bottom: 20px;
+    right: max(var(--gutter), env(safe-area-inset-right));
+    bottom: calc(20px + env(safe-area-inset-bottom));
   }
   .terminal-win {
-    right: 8px;
-    bottom: 48px;
-    left: 8px;
+    right: max(8px, env(safe-area-inset-right));
+    bottom: calc(48px + env(safe-area-inset-bottom));
+    left: max(8px, env(safe-area-inset-left));
     width: auto;
     height: min(368px, 60svh);
   }

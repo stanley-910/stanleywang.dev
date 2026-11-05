@@ -4,15 +4,19 @@
   bottom like the prototype, and the rest of home follows on page colour.
 */
 
-/* The top bar's height (shell.css: its padding plus a 20px line), so the
-   hero ends where the first screen does. */
+/* The top bar's height (shell.css: its padding plus a 20px line) and the
+   shell's safe-area padding, so the hero ends where the first screen does. */
 .garden-home {
-  --header-block: 116px;
+  --header-block: calc(
+    116px + env(safe-area-inset-top) + env(safe-area-inset-bottom)
+  );
 }
 
 @media (max-width: 480px) {
   .garden-home {
-    --header-block: 70px;
+    --header-block: calc(
+      70px + env(safe-area-inset-top) + env(safe-area-inset-bottom)
+    );
   }
 }
 

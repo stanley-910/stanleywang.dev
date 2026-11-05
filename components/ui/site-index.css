@@ -113,11 +113,14 @@
    can't hold it. */
 .site-index-pop {
   position: fixed;
-  top: 52px;
-  right: var(--gutter);
-  left: var(--gutter);
+  top: calc(52px + env(safe-area-inset-top));
+  right: max(var(--gutter), env(safe-area-inset-right));
+  left: max(var(--gutter), env(safe-area-inset-left));
   z-index: 20;
-  max-height: calc(100svh - 52px - var(--gutter));
+  max-height: calc(
+    100svh - 52px - var(--gutter) - env(safe-area-inset-top) -
+      env(safe-area-inset-bottom)
+  );
   overflow-y: auto;
   overscroll-behavior: contain;
 }

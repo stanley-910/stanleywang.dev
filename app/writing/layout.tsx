@@ -136,7 +136,7 @@ export default function LayoutBlogPost({
   return (
     <>
       <ScrollProgress
-        className="fixed top-0 z-20 h-0.5 bg-gray-300 dark:bg-zinc-600"
+        className="fixed top-[env(safe-area-inset-top)] z-20 h-0.5 bg-gray-300 dark:bg-zinc-600"
         springOptions={{
           bounce: 0,
         }}

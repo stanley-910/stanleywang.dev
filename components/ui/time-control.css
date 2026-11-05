@@ -375,9 +375,9 @@
 @media (max-width: 480px) {
   .time-control-pop {
     position: fixed;
-    top: 52px;
-    right: var(--gutter);
-    left: var(--gutter);
+    top: calc(52px + env(safe-area-inset-top));
+    right: max(var(--gutter), env(safe-area-inset-right));
+    left: max(var(--gutter), env(safe-area-inset-left));
     width: auto;
   }
 }

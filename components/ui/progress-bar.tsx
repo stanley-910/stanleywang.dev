@@ -35,7 +35,7 @@ export function ProgressBar() {
 
   return (
     <div
-      className="pointer-events-none fixed top-0 left-0 z-[1031] w-full"
+      className="pointer-events-none fixed top-[env(safe-area-inset-top)] left-0 z-[1031] w-full"
       role="progressbar"
       aria-valuemin={0}
       aria-valuemax={100}

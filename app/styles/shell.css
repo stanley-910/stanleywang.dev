@@ -6,7 +6,11 @@
 /* Content sits at the gutter (20vw from 1024px), like the home bio. A
    closed hover card past the window's edge mustn't widen the page. */
 .site-shell {
-  padding-inline: var(--gutter);
+  /* viewport-fit=cover (app/layout.tsx) puts the page under a phone's notch,
+     toolbar and home indicator; the insets keep it clear (0 elsewhere). */
+  padding-block: env(safe-area-inset-top) env(safe-area-inset-bottom);
+  padding-inline: max(var(--gutter), env(safe-area-inset-left))
+    max(var(--gutter), env(safe-area-inset-right));
   overflow-x: clip;
 }
 

@@ -30,6 +30,9 @@ const geistMono = Geist_Mono({
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  // The page runs under iPhone Safari's bars (the garden tints them), so the controls that sit
+  // by an edge keep clear of them with env(safe-area-inset-*).
+  viewportFit: 'cover',
   // theme-color follows the hour, not the OS: THEME_SCRIPT and
   // ThemeSwitch set it (lib/circadian.ts).
 }
