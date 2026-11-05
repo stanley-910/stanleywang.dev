@@ -1475,7 +1475,8 @@ export class Garden {
           color: this.sunLook(p).color,
         }
       : {
-          light: 0.18 * moon * (1 - 0.7 * this.moonLook(p).low),
+          light:
+            0.18 * moon * this.moonRise() * (1 - 0.7 * this.moonLook(p).low),
           color: p.globe,
         }
   }
@@ -1833,7 +1834,9 @@ export class Garden {
     const { sun, moon } = this.lights(p)
     // With nothing lighting the range, or the sun behind it, the faces go flat: a shape, not a
     // set of grooves. The moon shows them at half the sun's depth.
-    const show = (1 - this.against(p, light)) * (sun > 0 ? 1 : 0.5 * moon)
+    const show =
+      (1 - this.against(p, light)) *
+      (sun > 0 ? 1 : 0.5 * moon * this.moonRise())
     if (show <= 0) return { color, lit }
     const { cx, cy, R } = this.globeAt()
     const [far, mid] = this.ridges
@@ -2366,6 +2369,15 @@ export class Garden {
     // night 1), not while twilight's violet still hangs over the ridges.
     const moon = day ? 0 : moonUp(p.night, h) * p.moonlight
     return { sun: sunAt(h), moon }
+  }
+
+  /**
+   * How far the risen moon's light has come onto the land: the disc shows as the sky turns blue
+   * (moonUp), but its light grows over the hour after, as the sun's does over three quarters of
+   * one, so the slopes and the cap take it a little at a time, not in the half hour the disc has.
+   */
+  private moonRise() {
+    return this.hour >= 12 ? smoothstep(21, 22.2, this.hour) : 1
   }
 
   /**
