@@ -281,7 +281,7 @@ export abstract class Plant {
       const lobe =
         style === 'lobed'
           ? 0.55 + 0.45 * Math.abs(Math.sin(t * 9 + leaf.seed))
-          : 0.5 + 0.5 * (i % 2 ^ 1)
+          : 0.5 + 0.5 * ((i % 2) ^ 1)
       const w = env0 * lobe
       left.push(mid[i * 2] - nx * w, mid[i * 2 + 1] - ny * w)
       right.push(mid[i * 2] + nx * w, mid[i * 2 + 1] + ny * w)
@@ -713,10 +713,15 @@ export class Poppy extends Plant {
   ) {
     const len = size * 0.72
     const wid = size * 0.42
-    const cx = tx + Math.sin(tip) * len * 0.45
-    const cy = ty - Math.cos(tip) * len * 0.45
     const rot = tip
     const fade = 1 - split
+    // The parting sepals shrink back into the head's base as the petals push out, gone by the
+    // time their fade (alpha under 0.25 from split 0.75) drops them from print. A cell prints whole
+    // or not at all, so a fade alone held them at full size, then lost them in one frame: at night,
+    // standing out past the furled head, the bud seemed to snap into it.
+    const keep = 1 - smoothstep(0, 0.75, split)
+    const cx = tx + Math.sin(tip) * len * 0.45 * keep
+    const cy = ty - Math.cos(tip) * len * 0.45 * keep
     // A poppy's colour from the first: the bud prints as flower, not as grass strokes in the
     // stalk's grey, and warms toward the deep red as it swells.
     const bud = mix(
@@ -726,12 +731,12 @@ export class Poppy extends Plant {
     )
     for (const sd of [-1, 1]) {
       const path = new Shape()
-      const off = sd * split * wid * 1.2
+      const off = sd * split * wid * 1.2 * keep
       path.ellipse(
         cx + Math.cos(rot) * off,
         cy + Math.sin(rot) * off,
-        wid * (0.55 + 0.45 * fade) * 0.55,
-        len * 0.55,
+        wid * (0.55 + 0.45 * fade) * 0.55 * keep,
+        len * 0.55 * keep,
         rot + sd * split * 0.6,
         0,
         TAU,
