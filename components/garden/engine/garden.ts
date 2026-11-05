@@ -1397,7 +1397,8 @@ export class Garden {
    * Strips under a ridge's crest, one per run of slope that faces the light at (`toward`, `above`)
    * the same way: `w` is 1 for a slope fully lit, -1 fully in shade, and eases between as the light
    * moves, in sixteenths, so a mountainside turns into shadow over a stretch of the hour rather than
-   * at once. `reach` scales how far down from the crest they run; `fs` is each point's facing,
+   * at once. `reach` scales how far down from the crest they run, and `shadeReach` the shaded
+   * runs further still, for the long shadows a low light throws; `fs` is each point's facing,
    * from `facing`, worked out once for all four reaches.
    */
   private slopes(
@@ -1405,9 +1406,10 @@ export class Garden {
     layer: number,
     reach: number,
     fs: Float32Array,
+    shadeReach = 1,
   ) {
     const runs: { path: Shape; w: number }[] = []
-    const depth = this.height * [0.05, 0.035, 0.02][layer] * reach
+    const depth0 = this.height * [0.05, 0.035, 0.02][layer] * reach
     const n = ridge.length
     // How deep the strip runs under each point: the facing, averaged over the five points each
     // way, so a strip thins to nothing where the slope turns or flattens and the lit and shaded
@@ -1440,6 +1442,7 @@ export class Garden {
       const e = Math.min(n - 1, j + 1)
       if (f !== 0 && e > i) {
         // One shape per run: along the crest, then back along the envelope below it.
+        const depth = f < 0 ? depth0 * shadeReach : depth0
         const path = new Shape()
         path.moveTo(i * RIDGE_STEP, ridge[i])
         for (let k = i + 1; k <= e; k++) path.lineTo(k * RIDGE_STEP, ridge[k])
@@ -1465,16 +1468,22 @@ export class Garden {
           light: (0.34 + 0.26 * this.sunLook(p).low) * sun,
           color: this.sunLook(p).color,
         }
-      : { light: 0.42 * moon, color: p.globe }
+      : {
+          light: 0.18 * moon * (1 - 0.7 * this.moonLook(p).low),
+          color: p.globe,
+        }
   }
 
   /**
-   * How much the range stands against a low sun, 0 to 1. The square root holds it while the sun
-   * climbs clear of the crests.
+   * How much the range stands against the sun, 0 to 1: wholly once the disc has gone behind the
+   * crest, and part way with the sun low but clear, when the air between thins the far ridges to
+   * shapes.
    */
   private backlight(p: Palette) {
     const { sun } = this.lights(p)
-    return sun > 0 ? sun * Math.sqrt(this.sunLook(p).low) : 0
+    return sun > 0
+      ? sun * Math.max(0.45 * Math.sqrt(this.sunLook(p).low), this.sunk())
+      : 0
   }
 
   /**
@@ -1494,6 +1503,7 @@ export class Garden {
       sun,
       moon,
       low: sun > 0 ? this.sunLook(p).low : 0,
+      sunk: this.sunk(),
       light,
       color,
       against: this.against(p, light),
@@ -1759,8 +1769,8 @@ export class Garden {
   ) {
     if (!this.summits.length) return
     const { cw, ch } = this.cell
-    const fade = smoothstep(0, 0.15, this.slopeLight(p).light)
-    const col = mix(p.snowShade, p.snow, fade).map((v) => v * p.ink) as Rgb
+    const { fade, litCol } = this.snowColors(p)
+    const col = litCol.map((v) => v * p.ink) as Rgb
     const path = this.ridgePath(ridge, this.horizon + 2).toPath2D()
     ctx.save()
     ctx.fillStyle = css(col)
@@ -1814,9 +1824,16 @@ export class Garden {
     const lit = light > 0 ? lerp(0.08, 0.025, smoothstep(0.3, 0.7, p.night)) : 0
     const F = this.faces
     if (!F) return { color, lit }
-    const back = this.against(p, light)
-    const { cx } = this.globeAt()
+    const { sun, moon } = this.lights(p)
+    // With nothing lighting the range, or the sun behind it, the faces go flat: a shape, not a
+    // set of grooves. The moon shows them at half the sun's depth.
+    const show = (1 - this.against(p, light)) * (sun > 0 ? 1 : 0.5 * moon)
+    if (show <= 0) return { color, lit }
+    const { cx, cy, R } = this.globeAt()
     const [far, mid] = this.ridges
+    // The crest's own facing over each column: a face on the flank turned from the light can't
+    // come out lit, however its hidden ridgeline sits to the light.
+    const fs = this.facing(far, cx, cy, R * 1.5)
     for (let r = 0; r < rows; r++) {
       const y = (r + 0.5) * ch
       if (y < F.top || y >= this.horizon) continue
@@ -1835,12 +1852,20 @@ export class Garden {
         const under = Number.isNaN(line) ? 1 : smoothstep(0, 30, y - line)
         if (under <= 0) continue
         // How far this face turns toward the light: eased across the light's crossing, not flipped.
-        const toward =
-          (1 - smoothstep(-150, 150, F.side[g] * (F.qx[g] - cx))) * (1 - back)
+        const toward = 1 - smoothstep(-150, 150, F.side[g] * (F.qx[g] - cx))
+        const flank = smoothstep(
+          -0.3,
+          0.4,
+          fs[Math.min(fs.length - 1, Math.round(x / RIDGE_STEP))],
+        )
         const shadeV =
           d < FACE_SHADE ? -smoothstep(0, 1, 1 - d / FACE_SHADE) : 0
-        const v = lerp(shadeV, smoothstep(0, 1, 1 - d / FACE_LIT), toward)
-        out[r * cols + c] = v * under
+        const v = lerp(
+          shadeV,
+          smoothstep(0, 1, 1 - d / FACE_LIT) * flank,
+          toward,
+        )
+        out[r * cols + c] = v * under * show
       }
     }
     return { color, lit }
@@ -2024,6 +2049,21 @@ export class Garden {
   }
 
   /**
+   * The cap's two flanks' colours: the lit flank dims toward the shaded one's as the light goes,
+   * and unlit the cap is a paler patch of the rock, not a colour of its own.
+   */
+  private snowColors(p: Palette) {
+    const fade = smoothstep(0, 0.15, this.slopeLight(p).light)
+    const sunk = this.lights(p).sun > 0 ? this.sunk() : 0
+    const shadeCol = mix(
+      p.snowShade,
+      this.ridgeColors(p)[0],
+      0.5 * Math.max(1 - fade, sunk),
+    )
+    return { fade, shadeCol, litCol: mix(shadeCol, p.snow, fade) }
+  }
+
+  /**
    * Snow on the massifs' tops, its own material, in two flanks. The lit flank faces the sun or
    * moon; the split between the flanks runs down from the summit on a diagonal, leaning away from
    * the light, the way a ridge parts a peak's two faces. Split column by column, the edge fell
@@ -2032,11 +2072,13 @@ export class Garden {
    */
   private drawSnow(r: Raster, ridge: Float32Array, p: Palette, toward: number) {
     const line = this.snowline
-    // Rim light with the sun low behind the range, and how much light there is at all: both ease,
-    // so the lit flank narrows to the crest at sunset and fades out before the moon's comes in.
-    const low = this.lights(p).sun > 0 ? this.sunLook(p).low : 0
-    const rimT = smoothstep(0.35, 0.65, low)
-    const fade = smoothstep(0, 0.15, this.slopeLight(p).light)
+    // Rim light once the sun has sunk behind the crest, and how much light there is at all: the
+    // first narrows the lit flank to the crest as the disc goes down behind the range, the way the
+    // last light leaves a peak from the foot up, and the rock's lit strips thin with it; the
+    // second dims the lit flank's colour toward the shaded one's, so the flank's reach never moves
+    // with the light's strength, which read as a shadow climbing the cap on its own.
+    const rimT = this.lights(p).sun > 0 ? this.sunk() : 0
+    const { shadeCol, litCol } = this.snowColors(p)
     const n = ridge.length
     const CH = this.height * 0.0125
     // Slope in the range's own units (height share per width share), so a phone, which shows a
@@ -2049,11 +2091,15 @@ export class Garden {
         (2 * RIDGE_STEP)
       return Math.abs(steep) * unit <= 2.7
     }
-    // Where the lit flank starts at x: the diagonal from the nearest summit, 0.8px across per px down.
-    const litFrom = (x: number) => {
+    const summitAt = (x: number) => {
       let sm = this.summits[0]
       for (const q of this.summits)
         if (Math.abs(x - q.x) < Math.abs(x - sm.x)) sm = q
+      return sm
+    }
+    // Where the lit flank starts at x: the diagonal from the nearest summit, 0.8px across per px down.
+    const litFrom = (x: number) => {
+      const sm = summitAt(x)
       // Which way the split leans, eased as the light passes over the summit.
       const away = clamp((sm.x - toward) / 300, -1, 1)
       return sm.y + Math.max(0, away * (x - sm.x)) / 0.8
@@ -2089,25 +2135,23 @@ export class Garden {
         (q) => ridge[q],
         (q) => line[q],
       )
-      // The flank's band morphs into the crest rim's, then thins to nothing as the light goes.
+      // The lit flank's foot rises from the snowline to just under its summit as the sun sinks
+      // behind the crest, the way the last light leaves a peak from the foot up and the first
+      // comes down it; its top edge, the split, never moves with the sun's height.
       const upper = (q: number) =>
-        lerp(
-          Math.min(line[q], Math.max(ridge[q], litFrom(q * RIDGE_STEP))),
-          ridge[q],
-          rimT,
-        )
+        Math.min(line[q], Math.max(ridge[q], litFrom(q * RIDGE_STEP)))
       band(lit, i, j, upper, (q) => {
         const u = upper(q)
-        const l = lerp(line[q], Math.min(line[q], ridge[q] + 2.2 * CH), rimT)
-        return u + Math.max(0, l - u) * fade
+        const tip = summitAt(q * RIDGE_STEP).y + 2.2 * CH
+        return Math.max(u, Math.min(line[q], lerp(line[q], tip, rimT)))
       })
       for (let q = i; q <= j; q++) top = Math.min(top, ridge[q])
       i = j + 1
     }
     if (top === this.horizon) return
     const meta = (id: number) => ({ id, light: 0.5, back: false })
-    r.fill(shade, p.snowShade, Kind.Land, 1, meta(LandMat.SnowShade))
-    r.fill(lit, p.snow, Kind.Land, 1, meta(LandMat.SnowLit))
+    r.fill(shade, shadeCol, Kind.Land, 1, meta(LandMat.SnowShade))
+    r.fill(lit, litCol, Kind.Land, 1, meta(LandMat.SnowLit))
   }
 
   private drawLand(r: Raster, p: Palette) {
@@ -2117,9 +2161,11 @@ export class Garden {
     // shade. Only the glyphs carry it: lit slopes print a denser, brighter halftone.
     const { cx, cy, R } = this.globeAt()
     const { light, color: lightCol } = this.slopeLight(p)
-    // A low sun sits behind the range, so the slopes we see face away from it: the light only
-    // catches a rim along the crest and the shade side deepens.
-    const rim = this.lights(p).sun > 0 ? this.sunLook(p).low : 0
+    // Sunk behind the range, the sun lights only a rim along the crest; low but clear of it, its
+    // light rakes across, and the shaded flanks go deeper and run further down.
+    const { sun } = this.lights(p)
+    const rim = sun > 0 ? this.sunk() : 0
+    const low = sun > 0 ? this.sunLook(p).low * (1 - rim) : 0
     const trees = this.forestColors(p, colors)
     const rock = { id: LandMat.Rock, light: 0.5, back: false }
     this.ridges.forEach((ridge, layer) => {
@@ -2142,7 +2188,7 @@ export class Garden {
         const s = q * (0.35 + 0.65 * (k / 3))
         const sl = s * (1 - rim * (1 - k / 3))
         for (const { path, w } of fs
-          ? this.slopes(ridge, layer, reach, fs)
+          ? this.slopes(ridge, layer, reach, fs, 1 + 0.6 * low)
           : []) {
           if (w > 0)
             r.fill(
@@ -2158,7 +2204,7 @@ export class Garden {
               mix(
                 colors[layer],
                 p.ground,
-                light * 0.6 * s * -w * (1 + 0.6 * rim),
+                light * 0.6 * s * -w * (1 + 0.6 * Math.max(low, rim)),
               ),
               Kind.Land,
               1,
