@@ -1362,24 +1362,30 @@ export class Garden {
     // Which way each point faces, read over a wide window so a whole mountainside goes one way
     // instead of flickering with every crease: down toward the light faces it.
     const W = 6
+    const dx = 2 * W * RIDGE_STEP
     const face = (i: number) => {
       const x = i * RIDGE_STEP
       const dy = ridge[Math.min(n - 1, i + W)] - ridge[Math.max(0, i - W)]
       if (Math.abs(dy) < 2) return 0
-      // A slope turned away still catches a light standing well above it, as both flanks of a
-      // peak do under a high moon; only a light lower than about twice its pitch leaves it in
-      // shade, and it goes over 40px of the light's fall.
-      const pitch = Math.abs(dy) / (2 * W * RIDGE_STEP)
-      const w =
-        Math.sign(dy) === Math.sign(toward - x)
-          ? 1
-          : 2 *
-              smoothstep(
-                -20,
-                20,
-                ridge[i] - above - 2 * pitch * Math.abs(toward - x),
-              ) -
-            1
+      // The cosine between the flank's normal (up, and out the way it falls) and the way to the
+      // light, as light on a surface goes: a flank turned toward a low light is lit, the flank
+      // behind it in shadow, and a high light lifts the far flank only so far as it stands above
+      // the flank's pitch. The shade side is steeper than the lit, since a face the light can't
+      // reach is wholly dark, where a lit one brightens by the angle.
+      const lx = toward - x
+      // A low light is far off, at the horizon's height for every point, so a flank turned toward
+      // it is lit though the disc stands under the crest on screen; a high one is read from the
+      // point itself, which parts the two flanks of a peak under it.
+      const ly =
+        above -
+        lerp(
+          this.horizon,
+          ridge[i],
+          smoothstep(0.08, 0.3, (this.horizon - above) / this.height),
+        )
+      const cos =
+        (dy * lx - dx * ly) / (Math.hypot(dy, dx) * (Math.hypot(lx, ly) || 1))
+      const w = cos >= 0 ? Math.min(1, 1.5 * cos) : Math.max(-1, 4 * cos)
       // Where the sun or moon sits behind the ridge, the ridge stands in front of it, its near
       // face turned away: lit there, the slope would print as the globe showing through the hill.
       const open = Math.max(
@@ -1465,7 +1471,7 @@ export class Garden {
     const { sun, moon } = this.lights(p)
     return sun
       ? {
-          light: (0.34 + 0.26 * this.sunLook(p).low) * sun,
+          light: (0.26 + 0.34 * this.sunLook(p).low) * sun,
           color: this.sunLook(p).color,
         }
       : {
