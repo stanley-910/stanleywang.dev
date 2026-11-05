@@ -126,8 +126,13 @@ export function ThemeSwitch({ className }: { className?: string }) {
   const buttonRef = useRef<HTMLButtonElement>(null)
   const popRef = useRef<HTMLDivElement>(null)
   const family = useRef<PageTheme | null>(null)
+  const openRef = useRef(false)
   const dip = useRef<ReturnType<typeof setTimeout> | null>(null)
   const close = useCallback(() => setOpen(false), [])
+
+  useEffect(() => {
+    openRef.current = open
+  }, [open])
 
   // Opening the site index (on a phone, in the other corner) closes this.
   useCloseOnOtherMenu('settings', open, close)
@@ -139,8 +144,13 @@ export function ThemeSwitch({ className }: { className?: string }) {
     const html = document.documentElement
     const paint = () => {
       const now = currentHour()
-      setHourState(now.hour)
-      setSet(now.set)
+      // The hour and its flag show only in the open menu, which opening refreshes. Closed, the
+      // clock's tick and a scrub from elsewhere (the poem's scroll) would re-render the bar's
+      // icon for nothing.
+      if (openRef.current) {
+        setHourState(now.hour)
+        setSet(now.set)
+      }
       const c = readingColours(now.hour)
       const switching = family.current !== null && family.current !== c.theme
       family.current = c.theme
@@ -262,9 +272,17 @@ export function ThemeSwitch({ className }: { className?: string }) {
         data-avoid
         aria-label="Menu"
         aria-expanded={open}
-        title={label(hour)}
+        // Read when pointed at rather than kept in state, so the clock doesn't re-render it.
+        onPointerEnter={(e) => {
+          e.currentTarget.title = label(currentHour().hour)
+        }}
         onClick={() => {
-          if (!open) announceMenuOpen('settings')
+          if (!open) {
+            announceMenuOpen('settings')
+            const now = currentHour()
+            setHourState(now.hour)
+            setSet(now.set)
+          }
           setOpen(!open)
         }}
       >
