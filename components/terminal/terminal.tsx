@@ -14,7 +14,12 @@ import {
   setHour,
 } from '@/lib/circadian'
 import { useUiHidden } from '@/lib/hide-ui'
-import { meadowHere, sendMeadow } from '@/lib/meadow-control'
+import {
+  currentBreeze,
+  meadowHere,
+  sendMeadow,
+  setBreeze,
+} from '@/lib/meadow-control'
 import { currentWeather, setWeather } from '@/lib/weather'
 
 import {
@@ -511,7 +516,6 @@ export function Terminal() {
   const [typing, setTyping] = useState(false)
   const [hour, setHourState] = useState(12)
   const [follow, setFollow] = useState(true)
-  const [wind, setWindState] = useState(0.2)
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null)
   const [size, setSize] = useState<{ w: number; h: number } | null>(null)
 
@@ -521,7 +525,6 @@ export function Terminal() {
   const input = useRef<HTMLInputElement>(null)
   const history = useRef<string[]>([])
   const hist = useRef({ list: [] as string[], at: 0 })
-  const windRef = useRef(0.2)
   const typingTimer = useRef(0)
 
   const path = pathFor(pathname)
@@ -703,7 +706,7 @@ export function Terminal() {
         path,
         hour,
         follow,
-        wind: windRef.current,
+        wind: currentBreeze(),
         history: history.current,
         go: (p) => ctx.visit(routeFor(p)),
         visit: (url) => {
@@ -734,8 +737,7 @@ export function Terminal() {
           } else ctx.hour = h
         },
         setWind: (w) => {
-          windRef.current = w
-          setWindState(w)
+          setBreeze(w)
           sendMeadow({ kind: 'wind', value: w })
         },
         gust: () => sendMeadow({ kind: 'gust' }),
@@ -1135,7 +1137,7 @@ export function Terminal() {
                         <Boot
                           key={e.id}
                           hour={hour}
-                          wind={wind}
+                          wind={currentBreeze()}
                           onDone={(printed) =>
                             setEntries((all) =>
                               all.map((x) =>

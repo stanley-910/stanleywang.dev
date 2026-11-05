@@ -19,6 +19,18 @@ export function sendMeadow(command: MeadowCommand) {
   window.dispatchEvent(new CustomEvent(MEADOW_EVENT, { detail: command }))
 }
 
+/**
+ * The breeze the terminal reports, 0 to 1. Each meadow sets its own on mounting (home's 0.2, the
+ * poem's calmer 0.13) and the terminal's `wind` command sets it after, so what it says is what blows.
+ */
+let breeze = 0.2
+
+export const currentBreeze = () => breeze
+
+export const setBreeze = (value: number) => {
+  breeze = value
+}
+
 /** Whether a meadow is on this page to hear it. */
 export function meadowHere() {
   return document.querySelector('.garden-canvas') !== null

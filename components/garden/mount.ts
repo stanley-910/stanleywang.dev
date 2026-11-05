@@ -2,7 +2,11 @@
 // ascii-garden prototype (its main.ts, minus the dev control panel).
 
 import { currentHour, HOUR_EVENT, setHour } from '@/lib/circadian'
-import { MEADOW_EVENT, type MeadowCommand } from '@/lib/meadow-control'
+import {
+  MEADOW_EVENT,
+  type MeadowCommand,
+  setBreeze,
+} from '@/lib/meadow-control'
 import {
   currentLightningTone,
   currentMoonTone,
@@ -155,6 +159,7 @@ export function mountGarden({
   wind.strength = windStrength
   /** The breeze without a gust or the weather's gale, which ease in on top of it. */
   let breeze = windStrength
+  setBreeze(windStrength)
   let gust = 0
   const weather = new Weather()
   weather.set(currentWeather(), true, reduced.matches)
