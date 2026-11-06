@@ -72,15 +72,18 @@ html:has(.garden-home, .poem-page) body {
 }
 
 /* On home the bar sits on the sky; mount.ts picks the ink that reads best
-   against it, whatever the page theme. */
-:root[data-sky='dark'] .site-header {
+   against it, whatever the page theme. The lo-fi offer (lofi-prompt.css) hangs under the bar in
+   the same glass and takes the same ink. */
+:root[data-sky='dark'] .site-header,
+:root[data-sky='dark'] .lofi-offer {
   /* The hour's toned cream (mount.ts), as on the bio. */
   --ink: var(--garden-ink, #e4e2da);
   --ink-muted: var(--garden-ink-muted, #b4b2aa);
   --glass: #10141c;
 }
 
-:root[data-sky='light'] .site-header {
+:root[data-sky='light'] .site-header,
+:root[data-sky='light'] .lofi-offer {
   --ink: #1b1b19;
   --ink-muted: #3b3a37;
   --glass: #ebeae6;

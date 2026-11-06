@@ -1,0 +1,140 @@
+/* The lo-fi offer (lofi-prompt.tsx): a note in the site menu's glass (time-control.css), hung under
+   the bar at the gutter, so it sits on the bio's reading line, over the sky, clear of the bio
+   below and the menu's dots across from it. One sentence of hint, its two answers right under it.
+   The glass takes the sky's ink like the bar does (garden.css), so it reads over the meadow at
+   any hour. */
+
+.lofi-offer {
+  position: fixed;
+  top: calc(var(--space-5) + env(safe-area-inset-top));
+  left: max(var(--gutter), env(safe-area-inset-left));
+  /* Over the hero's text, under the bar's panels (35) and the terminal (40). */
+  z-index: 30;
+  /* The menu's column: text --inset in from each side, --pad above and below. */
+  --inset: 12px;
+  --pad: 12px;
+  /* How far an answer's target reaches past its word. */
+  --reach: 6px;
+  width: 18rem;
+  max-width: calc(100vw - 2 * var(--gutter));
+  padding: var(--pad) var(--inset);
+  background: color-mix(in srgb, var(--glass, var(--page)) 28%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  backdrop-filter: blur(18px) saturate(1.3);
+  border: 1px solid color-mix(in srgb, var(--ink) 18%, transparent);
+  border-radius: var(--radius-card);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  line-height: var(--leading-meta);
+  /* Unrolled from the bar rather than faded in, like the menu: blur under a fading glass isn't
+     drawn until the fade ends. Twice the menu's time, since nothing was clicked to open it. */
+  animation: lofi-offer-in calc(2 * var(--duration-card)) var(--ease-calm)
+    backwards;
+}
+
+.lofi-offer[data-leaving] {
+  animation: lofi-offer-out var(--duration-card) var(--ease-calm) forwards;
+  pointer-events: none;
+}
+
+@keyframes lofi-offer-in {
+  from {
+    clip-path: inset(0 0 100% 0 round var(--radius-card));
+    transform: translateY(-4px);
+  }
+
+  to {
+    clip-path: inset(0 0 0 0 round var(--radius-card));
+  }
+}
+
+@keyframes lofi-offer-out {
+  from {
+    clip-path: inset(0 0 0 0 round var(--radius-card));
+  }
+
+  to {
+    clip-path: inset(0 0 100% 0 round var(--radius-card));
+    transform: translateY(-4px);
+  }
+}
+
+.lofi-offer-text {
+  margin: 0;
+}
+
+/* The answers, right under the sentence, where the menu's `now` and `auto` stand. */
+.lofi-offer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  margin-inline: calc(var(--inset) / -2);
+}
+
+.lofi-offer-item {
+  margin-block: calc(-1 * var(--reach));
+  padding: var(--reach) calc(var(--inset) / 2);
+  border-radius: var(--radius-hair);
+  color: var(--ink-muted);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    color var(--duration-quick) var(--ease-calm),
+    background-color var(--duration-quick) var(--ease-calm);
+}
+
+.lofi-offer-primary {
+  color: var(--ink);
+}
+
+@media (hover: hover) {
+  .lofi-offer-item:hover {
+    color: var(--ink);
+    background: color-mix(in srgb, var(--ink) 9%, transparent);
+  }
+}
+
+.lofi-offer-item:active,
+.lofi-offer-item:focus-visible {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 9%, transparent);
+}
+
+.lofi-offer-item:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: 0;
+}
+
+/* A finger-sized target (44px), without moving the layout. */
+@media (pointer: coarse) {
+  .lofi-offer {
+    --reach: 14px;
+  }
+
+  .lofi-offer-actions {
+    margin-top: var(--space-2);
+  }
+}
+
+/* On a phone it spans the gutters under the bar, where the menu opens. */
+@media (max-width: 480px) {
+  .lofi-offer {
+    top: calc(52px + env(safe-area-inset-top));
+    right: max(var(--gutter), env(safe-area-inset-right));
+    width: auto;
+    max-width: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lofi-offer,
+  .lofi-offer[data-leaving] {
+    animation: none;
+  }
+
+  .lofi-offer-item {
+    transition: none;
+  }
+}
