@@ -1,13 +1,14 @@
-/* The lo-fi offer (lofi-prompt.tsx): a note in the site menu's glass (time-control.css), hung under
-   the bar at the gutter, so it sits on the bio's reading line, over the sky, clear of the bio
-   below and the menu's dots across from it. One sentence of hint, its two answers right under it.
+/* The lo-fi offer (lofi-prompt.tsx): a note in the site menu's glass (time-control.css), hung from
+   the menu's dots where the menu opens, so it reads as the menu speaking. One sentence of hint, its two answers right under it.
    The glass takes the sky's ink like the bar does (garden.css), so it reads over the meadow at
    any hour. */
 
 .lofi-offer {
   position: fixed;
-  top: calc(var(--space-5) + env(safe-area-inset-top));
-  left: max(var(--gutter), env(safe-area-inset-left));
+  /* Hung from the menu's dots like the menu (lofi-prompt.tsx sets these); the fallback is the
+     dots' corner. */
+  top: var(--offer-top, calc(var(--space-5) + env(safe-area-inset-top)));
+  right: var(--offer-right, max(var(--gutter), env(safe-area-inset-right)));
   /* Over the hero's text, under the bar's panels (35) and the terminal (40). */
   z-index: 30;
   /* The menu's column: text --inset in from each side, --pad above and below. */
@@ -118,11 +119,12 @@
   }
 }
 
-/* On a phone it spans the gutters under the bar, where the menu opens. */
+/* On a phone it spans the gutters under the bar, where the menu opens (time-control.css). */
 @media (max-width: 480px) {
   .lofi-offer {
     top: calc(52px + env(safe-area-inset-top));
     right: max(var(--gutter), env(safe-area-inset-right));
+    left: max(var(--gutter), env(safe-area-inset-left));
     width: auto;
     max-width: none;
   }

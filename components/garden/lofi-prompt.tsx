@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import {
   dismissLofi,
@@ -15,7 +15,7 @@ import './lofi-prompt.css'
 // lo-fi on and keeps it; dismissing it means it isn't offered again this session. It doesn't take
 // focus from the page; a live region, always present, announces it instead.
 //
-// A note in the site menu's glass, under the bar on the bio's reading line (lofi-prompt.css). OK
+// A note in the site menu's glass, hung from the menu's dots where the menu itself opens (lofi-prompt.css). OK
 // closes it at once, since the whole page changes under it; Not now rolls it back up first.
 export function LofiPrompt() {
   const [open, setOpen] = useState(false)
@@ -23,6 +23,30 @@ export function LofiPrompt() {
   // Lo-fi turned on elsewhere (the menu, the terminal, another tab) answers the offer.
   const lofi = useLofi()
   const shown = open && !lofi
+  const ref = useRef<HTMLDivElement>(null)
+
+  // Hang it from the menu's dots, as the menu hangs: their bottom edge plus the menu's gap, its
+  // right edge where the menu's is. The dots move between the phone's row and the corner, so
+  // this is read from them rather than restated in CSS.
+  useLayoutEffect(() => {
+    const note = ref.current
+    if (!shown || !note) return
+    const place = () => {
+      const dots = document.querySelector('.time-control-icon')
+      if (!dots) return
+      const r = dots.getBoundingClientRect()
+      const gap =
+        parseFloat(getComputedStyle(note).getPropertyValue('--space-2')) || 16
+      note.style.setProperty('--offer-top', `${r.bottom + gap}px`)
+      note.style.setProperty(
+        '--offer-right',
+        `${Math.max(0, innerWidth - r.right - gap)}px`,
+      )
+    }
+    place()
+    addEventListener('resize', place)
+    return () => removeEventListener('resize', place)
+  }, [shown])
 
   useEffect(() => {
     const ask = () => setOpen(true)
@@ -58,6 +82,7 @@ export function LofiPrompt() {
     <div aria-live="polite">
       {(shown || leaving) && (
         <div
+          ref={ref}
           role="group"
           aria-label="Lighter home"
           data-no-sow
