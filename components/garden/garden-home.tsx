@@ -28,21 +28,13 @@ export function GardenHome({ children }: GardenHomeProps) {
     const canvas = canvasRef.current
     const root = rootRef.current
     if (!canvas || !root) return
-    // Lo-fi (lib/lofi.ts): no scene and no loop, just the scene's dark ground behind the bio.
+    // Lo-fi (lib/lofi.ts): no scene and no loop. Home takes the hour's page theme like every other
+    // page (lib/circadian.ts), so the bar and the bio keep the site's own colours, day or night.
     // Read live rather than from `lofi`, which is still the server's `false` on the hydrating pass,
     // so a saved lo-fi never starts the meadow's workers for a frame.
     if (isLofi()) {
-      const html = document.documentElement
-      // The bar sits on dark ground, as on the night sky.
-      html.dataset.sky = 'dark'
-      html.style.setProperty('--garden-top', 'var(--page-dark)')
-      html.style.setProperty('--garden-edge', 'var(--page-dark)')
       playIntro()
-      return () => {
-        delete html.dataset.sky
-        html.style.removeProperty('--garden-top')
-        html.style.removeProperty('--garden-edge')
-      }
+      return
     }
     const mono = getComputedStyle(document.documentElement)
       .getPropertyValue('--font-geist-mono')

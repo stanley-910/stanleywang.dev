@@ -249,10 +249,18 @@ html:has(.garden-home, .poem-page) body {
   }
 }
 
-/* Lo-fi (lib/lofi.ts): no scene, the canvas left blank on the scene's dark
-   ground, which the bio's colours already sit on.
-   TODO(design): "a couple flowers" on this ground, drawn once and still. */
+/* Lo-fi (lib/lofi.ts): no scene. Home follows the hour's page theme like the
+   rest of the site, so the hero drops the scene's night-ground colours. */
 .garden-home[data-lofi] .garden-canvas {
-  background-color: var(--page-dark);
+  background-color: var(--page);
   cursor: auto;
+}
+
+.garden-home[data-lofi] .garden-hero {
+  --page: inherit;
+  --ink: inherit;
+  --ink-muted: inherit;
+  --hairline: inherit;
+  --surface: inherit;
+  --focus: inherit;
 }
