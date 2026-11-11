@@ -8,6 +8,22 @@ import type { Wind } from './wind'
 /** The scene is laid out in strips this wide from the left edge, each from its own seed. */
 export const STRIP = 240
 
+/** Segments along a blade. */
+const N = 4
+/**
+ * How the wind's bend and the width spread along a blade, by segment: the same powers every
+ * blade worked out per frame, now once. Doubles, written with the very expressions the draw used.
+ */
+const ARCH: number[] = []
+const TAPER: number[] = []
+for (let k = 0; k <= N; k++) {
+  const s = k / N
+  ARCH.push(s ** 1.5)
+  TAPER.push((1 - s) ** 0.85)
+}
+/** One blade's outline, both edges, reused blade after blade rather than a fresh array each. */
+const PTS = new Float64Array((N + 1) * 4)
+
 /**
  * Grass in tufts: a few blades fanned from one root, arching and drooping at the tip, with bare
  * ground between tufts so the field reads as clumps rather than a scatter of strokes. Each blade
@@ -172,15 +188,9 @@ export class Meadow {
     const blades = new Map<number, { path: Shape; color: Rgb }>()
     const seedPaths = new Map<number, { path: Shape; color: Rgb }>()
     const night = p.night
-    const bucket = (
-      map: Map<number, { path: Shape; color: Rgb }>,
-      key: number,
-      color: () => Rgb,
-    ) => {
-      let b = map.get(key)
-      if (!b) map.set(key, (b = { path: new Shape(), color: color() }))
-      return b.path
-    }
+    const color = (lit: number, hz: number) =>
+      mix(mix(p.grassDark, p.grassLight, lit), p.haze, hz)
+    const pts = PTS
     for (; i < this.count && this.z[i] < zMax; i++) {
       const H = this.h[i] * grow
       if (H < 1.5) continue
@@ -194,23 +204,28 @@ export class Meadow {
         ) / 12
       const hz = Math.round(haze(this.z[i]) * (1 - night * 0.3) * 12) / 12
       const key = lit * 1000 + hz
-      const color = () => mix(mix(p.grassDark, p.grassLight, lit), p.haze, hz)
-      const pts: number[] = []
       let px = this.x[i]
       let py = this.y[i]
-      const N = 4
       let a = lean
       for (let k = 0; k <= N; k++) {
         const s = k / N
-        a = lean + this.curl[i] * s * s + b * s ** 1.5
-        const w = W * (1 - s) ** 0.85
-        const nx = Math.cos(a) * w * 0.5
-        const ny = Math.sin(a) * w * 0.5
-        pts.push(px - nx, py - ny, px + nx, py + ny)
-        px += (Math.sin(a) * H) / N
-        py -= (Math.cos(a) * H) / N
+        a = lean + this.curl[i] * s * s + b * ARCH[k]
+        const w = W * TAPER[k]
+        const cos = Math.cos(a)
+        const sin = Math.sin(a)
+        const nx = cos * w * 0.5
+        const ny = sin * w * 0.5
+        pts[k * 4] = px - nx
+        pts[k * 4 + 1] = py - ny
+        pts[k * 4 + 2] = px + nx
+        pts[k * 4 + 3] = py + ny
+        px += (sin * H) / N
+        py -= (cos * H) / N
       }
-      const path = bucket(blades, key, color)
+      let bucket = blades.get(key)
+      if (!bucket)
+        blades.set(key, (bucket = { path: new Shape(), color: color(lit, hz) }))
+      const path = bucket.path
       path.moveTo(pts[0], pts[1])
       for (let k = 1; k <= N; k++) path.lineTo(pts[k * 4], pts[k * 4 + 1])
       for (let k = N; k >= 0; k--) path.lineTo(pts[k * 4 + 2], pts[k * 4 + 3])
@@ -218,9 +233,16 @@ export class Meadow {
 
       if (this.head[i]) {
         // Nodding spikelets hung along the top of the culm.
-        const seeds = bucket(seedPaths, key, () =>
-          mix(color(), p.grassLight, 0.35),
-        )
+        let head = seedPaths.get(key)
+        if (!head)
+          seedPaths.set(
+            key,
+            (head = {
+              path: new Shape(),
+              color: mix(color(lit, hz), p.grassLight, 0.35),
+            }),
+          )
+        const seeds = head.path
         let sx = px
         let sy = py
         let sa = a
