@@ -1,7 +1,7 @@
 import { createCompositor, type Compositor } from './gl'
 import { bayer, clamp, hash, latticeFbm2, smoothstep } from './math'
-import { mix, type Palette, type Rgb } from './palette'
-import { CLOUD, code, GLYPHS, MAT, PLANT } from './typeset'
+import { mix, samePalette, type Palette, type Rgb } from './palette'
+import { CLOUD, code, GLYPHS, MAT, PLANT, type Material } from './typeset'
 import { FLASH, SHADOW, type Disc, type Weather } from './weather'
 
 import type { Birds } from './birds'
@@ -91,6 +91,38 @@ export class AsciiRenderer {
   private starRate = new Float32Array(0)
   private starCross = new Uint8Array(0)
   private dimKey = ''
+  /** Bumped when the fade under the text changes, so a draw knows the last one's cells are stale. */
+  private dimVersion = 0
+  /** Every row whole, as [row, from column, to column) spans: what a full draw composes. */
+  private allRows = new Int32Array(0)
+  /** This draw's spans when only some cells changed since the last, and how many are in use. */
+  private spans = new Int32Array(0)
+  /** Cells where a star can show at all, for the draws on which only they twinkle. */
+  private starCells = new Int32Array(0)
+  /** How many draws composed only the cells that changed, for the gate's report. */
+  partialDraws = 0
+  /** What the last draw composed the cells from, so the next can tell which have changed. */
+  private last: {
+    material: Material | null
+    palette: Palette | null
+    horizon: number
+    dim: number
+    ink: Uint8ClampedArray | null
+    quiet: boolean
+    x: number
+    y: number
+    lit: boolean
+  } = {
+    material: null,
+    palette: null,
+    horizon: 0,
+    dim: -1,
+    ink: null,
+    quiet: false,
+    x: 0,
+    y: 0,
+    lit: false,
+  }
   /** Sky, ridges and mist, painted once per palette and handed to the GPU as the layer under the glyphs. */
   private bg = document.createElement('canvas')
   private bgKey = ''
@@ -157,6 +189,17 @@ export class AsciiRenderer {
         this.starRate[i] = 1 + hash(c, r, 5) * 3
         this.starCross[i] = hash(c, r, 9) < 0.2 ? 1 : 0
       }
+    this.allRows = new Int32Array(this.rows * 3)
+    for (let r = 0; r < this.rows; r++) {
+      this.allRows[r * 3] = r
+      this.allRows[r * 3 + 2] = this.cols
+    }
+    const twinkling: number[] = []
+    for (let i = 0; i < n; i++) if (this.star[i] < STAR_SHARE) twinkling.push(i)
+    this.starCells = Int32Array.from(twinkling)
+    // Room for a third of the rows' clouds, the cursor's light where it was and is, and the stars.
+    this.spans = new Int32Array((3 * this.rows + twinkling.length + 2) * 3)
+    this.last.material = null
     this.dimKey = ''
     this.bg.width = this.canvas.width
     this.bg.height = this.canvas.height
@@ -229,6 +272,7 @@ export class AsciiRenderer {
       .join(';')
     if (key === this.dimKey) return
     this.dimKey = key
+    this.dimVersion++
     dim.fill(1)
     for (const b of boxes) {
       // A nav word takes two-fifths of the bio's dimming, fading over 4 cells: enough to read on a
@@ -316,6 +360,7 @@ export class AsciiRenderer {
     if (veil >= 1) {
       // Another page: nothing but the page colour.
       this.gl.clear(page)
+      this.last.material = null
       return
     }
     const { cols, rows, cw, ch } = this
@@ -394,7 +439,82 @@ export class AsciiRenderer {
     const fc = weather?.flashCol ?? [0, 0, 0]
     const storm = weather?.glow
     this.skyEdge = horizon
-    for (let r = 0; r < rows; r++) {
+    // With no weather, bird or shooting star in the frame, now or at the last draw, a cell is made
+    // of the plant frame, the palette, the fade under the text, the cursor's light, its cloud and
+    // its star's twinkle. Between plant frames the first three hold, so only the cells under the
+    // cursor's light, where it was and where it is, the rows whose clouds are due and the stars
+    // by night can come out any different: those are composed, and the rest left as they stand.
+    const quiet =
+      veil === 0 &&
+      !streaks &&
+      !flock &&
+      !fall &&
+      cover === 0 &&
+      !band &&
+      !disc &&
+      flash === 0 &&
+      !storm
+    const was = this.last
+    const partial =
+      quiet &&
+      was.quiet &&
+      tick !== -1 &&
+      // The stars kept for these draws are those that can show at a full night's share.
+      stars <= 1 &&
+      was.material === m &&
+      was.ink === inkData &&
+      was.horizon === horizon &&
+      was.dim === this.dimVersion &&
+      was.palette !== null &&
+      samePalette(was.palette, p)
+    let spans = this.allRows
+    let count = rows
+    if (partial) {
+      this.partialDraws++
+      spans = this.spans
+      count = 0
+      const span = (r: number, c0: number, c1: number) => {
+        spans[count * 3] = r
+        spans[count * 3 + 1] = c0
+        spans[count * 3 + 2] = c1
+        count++
+      }
+      if (tick >= 0)
+        for (let r = tick; r < rows; r += 3)
+          if (r * ch + ch / 2 < horizon) span(r, 0, cols)
+      // The light reaches lightR from the cursor; a cell more each way, for the rounding.
+      const under = (x: number, y: number) => {
+        const r0 = Math.max(0, Math.floor((y - lightR) / ch) - 1)
+        const r1 = Math.min(rows, Math.ceil((y + lightR) / ch) + 2)
+        const c0 = Math.max(0, Math.floor((x - lightR) / cw) - 1)
+        const c1 = Math.min(cols, Math.ceil((x + lightR) / cw) + 2)
+        if (c1 > c0) for (let r = r0; r < r1; r++) span(r, c0, c1)
+      }
+      const lit = pointer.active
+      if (
+        lit !== was.lit ||
+        (lit && (pointer.x !== was.x || pointer.y !== was.y))
+      ) {
+        if (was.lit) under(was.x, was.y)
+        if (lit) under(pointer.x, pointer.y)
+      }
+      if (stars > 0.1)
+        for (const i of this.starCells)
+          span((i / cols) | 0, i % cols, (i % cols) + 1)
+    }
+    was.material = m
+    was.palette = p
+    was.horizon = horizon
+    was.dim = this.dimVersion
+    was.ink = inkData
+    was.quiet = quiet
+    was.x = pointer.x
+    was.y = pointer.y
+    was.lit = pointer.active
+    for (let s = 0; s < count; s++) {
+      const r = spans[s * 3]
+      const from = spans[s * 3 + 1]
+      const to = spans[s * 3 + 2]
       const y = r * ch + ch / 2
       const skyRow = y < horizon
       // Background colour at this row, which glyphs are mixed toward as they fade.
@@ -411,7 +531,7 @@ export class AsciiRenderer {
       const lit = pointer.active && Math.abs(py) < lightR
       const discRow = disc && Math.abs(y - disc.y) < disc.R ? disc : null
       const stormRow = storm && Math.abs(y - storm.y) < storm.R ? storm : null
-      for (let c = 0; c < cols; c++) {
+      for (let c = from; c < to; c++) {
         const i = r * cols + c
         const o = i * 4
         let g = 0
@@ -479,7 +599,7 @@ export class AsciiRenderer {
               cb = (b2 + (clB - b2) * w) * k
               s = clamp(0.3 + shape, 0, 1)
             }
-          } else if (stars > 0.1 && star[i] < 0.006 * stars) {
+          } else if (stars > 0.1 && star[i] < STAR_SHARE * stars) {
             const tw = 0.5 + 0.5 * Math.sin(time * starRate[i] + c)
             g = starCross[i] ? PLUS : PERIOD
             cr = 230 * k
@@ -699,5 +819,8 @@ export class AsciiRenderer {
     this.gl.draw(inkData, tileData, veil > 0 ? this.veilData : null)
   }
 }
+
+/** The share of sky cells a star can show in, at full night. */
+const STAR_SHARE = 0.006
 
 const rgbCss = (c: Rgb) => `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`
