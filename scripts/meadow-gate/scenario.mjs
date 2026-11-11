@@ -200,6 +200,8 @@ export async function run({ only = null, log = () => {} } = {}) {
     ])
     const c = raster.cells
     const cells = await digest([c.kinds, c.pid, c.lit, c.cov])
+    // The sampler's colour and facing, which the type reads but the page's probe doesn't show.
+    const raw = await digest([c.rgb, c.back])
 
     const scene = raster.palette ?? palette
     const secs = clock / 1000
@@ -261,7 +263,7 @@ export async function run({ only = null, log = () => {} } = {}) {
       )
       pixels = await digest([px])
     }
-    return { record, type, cells, page, pixels }
+    return { record, type, cells, raw, page, pixels }
   }
 
   /**
@@ -320,6 +322,7 @@ export async function run({ only = null, log = () => {} } = {}) {
       record: '',
       type: await digest([m.glyph, m.alpha, m.tile, m.ink, m.tileCol, m.flags]),
       cells: await digest([c.kinds, c.pid, c.lit, c.cov]),
+      raw: await digest([c.rgb, c.back]),
       page: '',
       pixels: '',
     }

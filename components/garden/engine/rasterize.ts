@@ -98,7 +98,7 @@ export type RasterResult = {
   gen: number
   material: Material
   /** The cells the type was set from, only when the job asked to probe them. */
-  cells?: Pick<Cells, 'kinds' | 'pid' | 'lit' | 'cov'>
+  cells?: Cells
 }
 
 type Ctx = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
@@ -235,8 +235,7 @@ export class Rasterizer {
     )
     const material = this.type.run(cells, job.style, cols, rows)
     if (!job.probe) return { gen: job.gen, material }
-    const { kinds, pid, lit, cov } = cells
-    return { gen: job.gen, material, cells: { kinds, pid, lit, cov } }
+    return { gen: job.gen, material, cells }
   }
 
   /** Sizes and clears a layer's canvases for a frame, scaled from scene to raster pixels. */

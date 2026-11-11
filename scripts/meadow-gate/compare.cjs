@@ -11,7 +11,7 @@ const read = (p) => {
 }
 const run = read(process.argv[2] ?? path.join(__dirname, '.out', 'run.json'))
 const gold = read(process.argv[3] ?? path.join(__dirname, 'golden.json'))
-const stages = ['record', 'cells', 'type', 'page', 'pixels']
+const stages = ['record', 'cells', 'raw', 'type', 'page', 'pixels']
 // A change to what is recorded that leaves the picture alone lists the stages it may move.
 const allow = new Set((process.env.ALLOW ?? '').split(',').filter(Boolean))
 
