@@ -84,6 +84,7 @@ export async function run({ only = null, log = () => {} } = {}) {
   let relief = new Float32Array(0)
   let river = new Int8Array(0)
   let riverFor = ''
+  let tally = { cells: 0, of: 0 }
   const gl = canvas.getContext('webgl2')
 
   const resize = (cssW, cssH) => {
@@ -189,6 +190,12 @@ export async function run({ only = null, log = () => {} } = {}) {
       },
       hour,
     )
+    // How much of the frame the sampler worked out afresh, for the run's report; not compared.
+    const rs = raster.local?.resampled
+    if (rs) {
+      tally.cells += rs.cells
+      tally.of += rs.of
+    }
     const m = raster.material
     const type = await digest([
       m.glyph,
@@ -338,10 +345,12 @@ export async function run({ only = null, log = () => {} } = {}) {
   }
 
   const rows = []
+  const resampled = {}
   /** A run of frames: `each(i)` sets the frame up, then `steps` simulation steps, then a frame. */
   const segment = async (name, count, each = () => {}, steps = 3) => {
     if (only && !name.includes(only)) return
     log(name)
+    tally = resampled[name] = { cells: 0, of: 0 }
     for (let i = 0; i < count; i++) {
       each(i)
       step(steps)
@@ -427,5 +436,5 @@ export async function run({ only = null, log = () => {} } = {}) {
   // The day's palette holds from nine to four while the sun and its shadows move: the hour alone
   // changes, held for a few frames at each stop.
   await segment('flat-hours', 24, (i) => (hour = 10 + 0.5 * (i >> 2)))
-  return { cols: ascii.cols, rows: ascii.rows, frames: rows }
+  return { cols: ascii.cols, rows: ascii.rows, frames: rows, resampled }
 }

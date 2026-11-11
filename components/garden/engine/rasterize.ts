@@ -177,6 +177,10 @@ export class Rasterizer {
   private stillCmds = new Float32Array(0)
   private stillScale = ''
   private type = new Typesetter()
+  /** The last frame's pixels and the cells sampled from them, for sampleCells to sample only what changed. */
+  private sampled: Sampled | null = null
+  /** Of the last frame's cells with anything in them, how many were sampled again, for `?probe`. */
+  resampled = { cells: 0, of: 0 }
 
   constructor(make: () => Ctx) {
     this.color = make()
@@ -224,15 +228,30 @@ export class Rasterizer {
         : null
     const cols = width / SS
     const rows = height / SS
+    const cd = color.getImageData(0, 0, width, height).data
+    const kd = kind.getImageData(0, 0, width, height).data
     const cells = sampleCells(
-      color.getImageData(0, 0, width, height).data,
-      kind.getImageData(0, 0, width, height).data,
+      cd,
+      kd,
       md,
       job.box,
       width,
       cols,
       rows,
+      this.sampled,
+      this.resampled,
     )
+    // Kept as sampled: the type clears the kinds of the heads it stamps, and nothing else here.
+    this.sampled = {
+      cd,
+      kd,
+      md,
+      box: job.box,
+      W: width,
+      cols,
+      rows,
+      cells: { ...cells, kinds: cells.kinds.slice() },
+    }
     const material = this.type.run(cells, job.style, cols, rows)
     if (!job.probe) return { gen: job.gen, material }
     return { gen: job.gen, material, cells }
@@ -352,6 +371,8 @@ function sampleCells(
   W: number,
   cols: number,
   rows: number,
+  last: Sampled | null,
+  count: { cells: number; of: number },
 ): Cells {
   const total = cols * rows
   const cov = new Float32Array(total)
@@ -373,7 +394,33 @@ function sampleCells(
   const kb = new Float32Array(8)
   const ids = new Int32Array(n)
   const cells = { cov, kinds, rgb, pid, lit, back }
+  // The last frame stands in for any cell whose pixels it shares, if it was read the same way:
+  // the same grid, and the meta layer from the same box, since a cell reads meta only inside it.
+  const was =
+    last &&
+    last.W === W &&
+    last.cols === cols &&
+    last.rows === rows &&
+    last.cd.length === cd.length &&
+    last.box[0] === bx0 &&
+    last.box[1] === by0 &&
+    last.box[2] === bx1 &&
+    last.box[3] === by1 &&
+    (last.md === null) === (md === null) &&
+    (md === null || last.md?.length === md.length)
+      ? last
+      : null
+  count.cells = 0
+  count.of = 0
   const at: Sampling = {
+    c32: words(cd),
+    k32: words(kd),
+    m32: md && words(md),
+    pc32: was && words(was.cd),
+    pk32: was && words(was.kd),
+    pm32: was && was.md && words(was.md),
+    was: was && was.cells,
+    count,
     cd,
     kd,
     md,
@@ -398,8 +445,33 @@ function sampleCells(
   return cells
 }
 
+/** A frame's pixels as sampleCells read them, and the cells it made of them. */
+type Sampled = {
+  cd: Uint8ClampedArray
+  kd: Uint8ClampedArray
+  md: Uint8ClampedArray | null
+  box: [number, number, number, number]
+  W: number
+  cols: number
+  rows: number
+  cells: Cells
+}
+
+/** A canvas's pixels a whole pixel to a word, for telling two apart at a glance. */
+const words = (d: Uint8ClampedArray) =>
+  new Uint32Array(d.buffer, d.byteOffset, d.byteLength >> 2)
+
 /** What sampleRow reads and writes: sampleCells's inputs, scratch and output. */
 type Sampling = {
+  /** This frame's colour, kind and meta pixels a word each, and the last frame's, if it can stand in. */
+  c32: Uint32Array
+  k32: Uint32Array
+  m32: Uint32Array | null
+  pc32: Uint32Array | null
+  pk32: Uint32Array | null
+  pm32: Uint32Array | null
+  was: Cells | null
+  count: { cells: number; of: number }
   cd: Uint8ClampedArray
   kd: Uint8ClampedArray
   md: Uint8ClampedArray | null
@@ -429,6 +501,7 @@ function sampleRow(at: Sampling, r: number) {
   const { cd, kd, md, bx0, by0, bx1, by1, bw, W, cols, n, floor } = at
   const { weight, mats, kr, kg, kb, ids } = at
   const { cov, kinds, rgb, pid, lit, back } = at
+  const { c32, k32, m32, pc32, pk32, pm32, was, count } = at
   for (let c = 0; c < cols; c++) {
     const i = r * cols + c
     // Most of the sky is bare: nothing drawn in any subsample.
@@ -441,6 +514,45 @@ function sampleRow(at: Sampling, r: number) {
       lit[i] = 0.5
       continue
     }
+    count.of++
+    // Most of what's left is land that hasn't changed since the last frame. A cell is worked out
+    // from its own subsamples alone, in the colour and kind layers and the meta inside the box, so
+    // one whose every such pixel is as it was takes the cell worked out then, to the bit.
+    if (was && pc32 && pk32) {
+      let same = true
+      for (let sy = 0; same && sy < SS; sy++) {
+        const py = r * SS + sy
+        let o = py * W + c * SS
+        for (let sx = 0; sx < SS; sx++, o++) {
+          if (c32[o] !== pc32[o] || k32[o] !== pk32[o]) {
+            same = false
+            break
+          }
+          if (m32 && pm32) {
+            const px = c * SS + sx
+            if (px >= bx0 && px < bx1 && py >= by0 && py < by1) {
+              const m = (py - by0) * bw + (px - bx0)
+              if (m32[m] !== pm32[m]) {
+                same = false
+                break
+              }
+            }
+          }
+        }
+      }
+      if (same) {
+        cov[i] = was.cov[i]
+        kinds[i] = was.kinds[i]
+        rgb[i * 3] = was.rgb[i * 3]
+        rgb[i * 3 + 1] = was.rgb[i * 3 + 1]
+        rgb[i * 3 + 2] = was.rgb[i * 3 + 2]
+        pid[i] = was.pid[i]
+        lit[i] = was.lit[i]
+        back[i] = was.back[i]
+        continue
+      }
+    }
+    count.cells++
     // Kinds present in this cell, one bit each; a kind's sums are cleared when it first shows.
     let seen = 0
     let a = 0
