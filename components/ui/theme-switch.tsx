@@ -3,9 +3,9 @@ import { usePathname } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { AUTO_TOP, lightningAt } from '@/components/garden/engine/lightning'
 import { smoothstep } from '@/components/garden/engine/math'
 import { moonAt, paletteAt } from '@/components/garden/engine/palette'
-import { AUTO_TOP, lightningAt } from '@/components/garden/engine/weather'
 import {
   applyColours,
   currentHour,
