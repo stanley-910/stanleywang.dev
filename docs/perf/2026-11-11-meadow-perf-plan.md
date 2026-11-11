@@ -79,7 +79,7 @@ Where the time goes:
 |---|---|---|---|---|---|
 | A1 | Clear the land votes when land first shows in a cell, not with `fill(0)` on every cell | `rasterize.ts:443` | 0.6–0.8 ms per plant frame in the worker (Node benchmark) | 0.1–0.3 ms | Clear in the first-seen branch for `Kind.Land`, not on the first valid meta pixel |
 | A2 | Cache the land's commands, the relief and the river field while their inputs hold | `garden.ts:1736`, `mount.ts:355` | 0.6–0.9 ms per plant frame on the main thread | 0.5–0.8 ms | Keys below |
-| A3 | Send relief, river, palette and sprites to a worker only when their bytes change | `raster.ts:460–496` | 0.3–0.5 ms per plant frame, 454 KB less cloned | 0.15–0.35 ms | Rules below |
+| A3 (dropped, see below) | Send relief, river, palette and sprites to a worker only when their bytes change | `raster.ts:460–496` | 0.3–0.5 ms per plant frame, 454 KB less cloned | 0.15–0.35 ms | Rules below |
 | A4 | Grass drawn without per-blade arrays and closures | `meadow.ts:184–217` | 0.15–0.25 ms per plant frame | 0.1–0.25 ms | Double-precision scratch, original expressions and order; no `Float32Array` tables |
 | A5 | The cloud refresh reuses lattice hashes shared by neighbouring cells | `ascii.ts:444–454` | 0.6 ms per refresh frame, 20 a second | 0.2–0.5 ms | Cache hashes by lattice point and octave seed only, never interpolated noise; bounded |
 | A6 | The wind's time-only factors once per step; petal noise memoised | `wind.ts:48`, `bloom.ts:109,155` | 0.02–0.06 ms per step | same | Strength applied after the cache; the petal key is the signed width, notch and tip width |
@@ -183,6 +183,61 @@ run replaces them.
 Gate → A1, A4, A5, A8 → A2 → A3 → A6 → B1–B3 → C2 (hit-rate counter first) → C3 → C6 → C1 → C5.
 One commit each, measured after each group. Stop when the 4× case holds 120 and idle sits under a
 core.
+
+## Step 1 as landed, 2026-11-11
+
+Landed: the gate, A1, A2, A4, A5, A6 (the wind's factors and the petal's cup; the petal-noise memo
+wasn't worth its key), A8, B1, B2, B3. Local commits cfde805 to 16f42d4, not pushed.
+
+**The gate** (`scripts/meadow-gate`): the real engine, transpiled and run in Chrome through a
+fixed sequence with a seeded `Math.random` and a fixed clock: 500 frames in 29 segments (night,
+noon, the pointer arriving and leaving, sunset and dawn scrubs, midnight, moon tone, each weather
+in, held and out, regrow, resize, hours stepping while the day's palette holds, and 48 frames sent
+to real workers in bursts of one to four). Each frame hashes what was recorded, the cells, the
+type, the composed ink and tile bytes, and on three frames a segment the framebuffer. The baseline
+was recorded from a9953a4's engine, twice, identically. Every change above gives the same 500
+rows. A deliberately broken land-cache key (the hour left out) is caught.
+
+To run it: `node scripts/meadow-gate/build.cjs`, start `meadow-gate` from `.claude/launch.json`,
+open `http://127.0.0.1:3212/gate.html` in a visible Chrome, save `await __gate.run()` to
+`scripts/meadow-gate/.out/run.json`, then `node scripts/meadow-gate/compare.cjs`.
+
+What it doesn't cover: `mount.ts`'s own wiring (the scenario copies its draw), Safari and Firefox,
+and pre-stamp cells or raw readbacks, which C2 will need added.
+
+**Measured**, production builds of a9953a4 and 16f42d4 side by side, same Chrome, 1512×860 at 2×,
+`?seed=1715089390`, 8 s a case, machine at load 4–6. Two runs each at 1×, one at 4×.
+
+| Case | Before | After |
+|---|---|---|
+| Idle: main-thread rAF work per display frame | 1.13, 1.12 ms | 0.92, 0.85 ms |
+| Cursor moving at 60 plant frames/s: the same | 2.25, 2.32 ms | 1.90 ms |
+| Cursor moving: plant frames/s | 60, 64 | 60, 110 |
+| 4× main thread, idle: page fps, plant frames/s | 113, 30 | 120, 39 |
+| 4× main thread, idle: frame gap p95, worst frame | 16.4, 19.7 ms | 9.8, 14.0 ms |
+| 4× main thread, cursor moving: page fps, plant frames/s | 102.5, 34 | 111.8, 56 |
+| 4× main thread, cursor moving: frame gap p95, p99 | 16.2, 20.1 ms | 12.7, 15.3 ms |
+| Worker ms per plant frame, idle | 25.8, 22.1 | 22.6, 21.8 |
+| Cores, all of Chrome, idle | 1.75, 1.51 | 1.47, 1.48 |
+| Cores, cursor moving | 2.75, 2.71 at 60 | 2.38 at 60; 4.56 at 110 |
+| Font files preloaded on home | 17 | 4 |
+
+- **Recording a plant frame costs about 0.55 ms less**, from about 1.5 to about 0.93 ms (worked out
+  from the rAF totals at two plant rates), in line with the estimates for A2 and A4.
+- **The cursor-moving rate is no longer held at 60.** `RECORD_BUDGET` was what held it: recording
+  had grown past 2.1 ms with the river and the relief. Under it again, the plants reach the
+  display's rate on this machine as [2026-10-30-active-rate.md](2026-10-30-active-rate.md)
+  intended, and that costs the cores it did then (about 4.5 while the cursor moves). This is the
+  budget doing what it was set to do, but it is more CPU in that case than yesterday's build.
+- **The worker changes (A1, A8) are within the noise** here, under a millisecond a frame, as Astra
+  estimated and not as the Node benchmark suggested.
+- **A slow main thread** keeps 120 fps idle and gets about nine more frames a second with the
+  cursor moving, while drawing 60% more plant frames. C6 and C1 are what would take it the rest of
+  the way.
+
+**A3 dropped.** Posting the relief and the river with a job measured 0.05 ms in Chrome, against
+0.05–0.2 ms to compare them by value first. The 0.65 ms `postMessage` in the trace was mostly the
+probe's own wrapper. Not worth a per-worker protocol.
 
 ## Dropped after review
 
