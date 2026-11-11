@@ -70,6 +70,62 @@ export function fbm2(x: number, y: number, seed = 0, octaves = 4) {
   return sum / norm
 }
 
+/**
+ * fbm2 for callers that sample along a row, where neighbouring samples share
+ * an octave's lattice cell. Each octave keeps the last cell's four corner
+ * hashes, keyed by its integer corner and seed; a hash depends only on those,
+ * so a hit returns what hash would, and the arithmetic otherwise matches fbm2
+ * step for step. Interpolated noise is never kept: fractions drift with time.
+ * Give each sampling stream its own instance so one doesn't evict the other.
+ */
+export function latticeFbm2(maxOctaves = 8) {
+  const kx = new Float64Array(maxOctaves).fill(NaN)
+  const ky = new Float64Array(maxOctaves).fill(NaN)
+  const ks = new Float64Array(maxOctaves).fill(NaN)
+  const corner = new Float64Array(maxOctaves * 4)
+  return (x: number, y: number, seed = 0, octaves = 4) => {
+    let sum = 0
+    let amp = 0.5
+    let norm = 0
+    for (let o = 0; o < octaves; o++) {
+      const s = seed + o * 17
+      const xi = Math.floor(x)
+      const yi = Math.floor(y)
+      const u = smoothstep(0, 1, x - xi)
+      const v = smoothstep(0, 1, y - yi)
+      const k = o * 4
+      // NaN keys never match, so an unfilled slot or a NaN coordinate recomputes.
+      if (o >= maxOctaves || kx[o] !== xi || ky[o] !== yi || ks[o] !== s) {
+        const a = hash(xi, yi, s)
+        const b = hash(xi + 1, yi, s)
+        const c = hash(xi, yi + 1, s)
+        const d = hash(xi + 1, yi + 1, s)
+        if (o < maxOctaves) {
+          kx[o] = xi
+          ky[o] = yi
+          ks[o] = s
+          corner[k] = a
+          corner[k + 1] = b
+          corner[k + 2] = c
+          corner[k + 3] = d
+        }
+        sum += (a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v) * amp
+      } else {
+        const a = corner[k]
+        const b = corner[k + 1]
+        const c = corner[k + 2]
+        const d = corner[k + 3]
+        sum += (a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v) * amp
+      }
+      norm += amp
+      x *= 2.03
+      y *= 2.03
+      amp *= 0.5
+    }
+    return sum / norm
+  }
+}
+
 export function fbm1(x: number, seed = 0, octaves = 3) {
   let sum = 0
   let amp = 0.5

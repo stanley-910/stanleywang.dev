@@ -1,5 +1,5 @@
 import { createCompositor, type Compositor } from './gl'
-import { bayer, clamp, fbm2, hash, smoothstep } from './math'
+import { bayer, clamp, hash, latticeFbm2, smoothstep } from './math'
 import { mix, type Palette, type Rgb } from './palette'
 import { CLOUD, code, GLYPHS, MAT, PLANT } from './typeset'
 import { FLASH, SHADOW, type Disc, type Weather } from './weather'
@@ -18,6 +18,10 @@ export type Rect = {
 }
 
 const CLOUD_CODES = [...CLOUD].map(code)
+// Cloud noise, sampled cell by cell along each sky row, reuses each octave's lattice corners.
+// The lit sample sits a quarter lattice lower, so it keeps its own corners.
+const cloudNoise = latticeFbm2()
+const cloudUnder = latticeFbm2()
 const DOT = code('·')
 const PERIOD = code('.')
 const PLUS = code('+')
@@ -444,12 +448,16 @@ export class AsciiRenderer {
           if (refresh) {
             const nx = x / 280 - cloudT
             const ny = y / 120
-            const base = fbm2(nx, ny, 5, 4)
+            const base = cloudNoise(nx, ny, 5, 4)
             cloudBase[i] = base
             // Lit from above: brighter where the cloud thins below. Only clouds need it.
             cloudLit[i] =
               base > 0.5
-                ? clamp(0.55 + (base - fbm2(nx, ny + 0.25, 5, 4)) * 4, 0.2, 1)
+                ? clamp(
+                    0.55 + (base - cloudUnder(nx, ny + 0.25, 5, 4)) * 4,
+                    0.2,
+                    1,
+                  )
                 : 0
           }
           const shape = smoothstep(0.5, 0.74, cloudBase[i]) * cloudRow
