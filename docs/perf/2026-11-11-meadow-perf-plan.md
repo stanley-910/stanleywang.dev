@@ -239,6 +239,64 @@ and pre-stamp cells or raw readbacks, which C2 will need added.
 0.05–0.2 ms to compare them by value first. The 0.65 ms `postMessage` in the trace was mostly the
 probe's own wrapper. Not worth a per-worker protocol.
 
+## Step 2 as landed, 2026-11-12
+
+Landed: C2 (the sampler's memo) and C1 (composing only the cells that changed). Local commits up
+to the one that adds this section, not pushed.
+
+**The gate grew to 978 frames in 40 segments.** It now also hashes the sampler's colour and
+facing arrays, and draws the page several times a plant frame: the cursor's light moving, leaving
+and coming back, the stars by night, the clouds taking their turns, rain, a storm and snow coming
+and going, the text's fade removed and restored between two draws, and a new size. Its baseline
+was recorded from the engine before each change. Both changes give the same 978 rows.
+
+**Each rule in C1 was broken on purpose and caught:** leaving out the cursor's old position, the
+stars, the clouds' rows, the fade's version, and the last draw's overlays. The first scenario
+missed the fade's version, because it only changed the fade at the start of a plant frame, where a
+whole draw happens anyway; the scenario was fixed and re-baselined before C1 was committed.
+
+**C2 as built.** Each rasteriser keeps its last frame's three readbacks and its cells as sampled
+(the kinds copied before the type clears the heads it stamps). A cell with anything in it is
+compared with that frame a pixel to a 32-bit word, in colour, kind, and the meta inside the box,
+and takes the last cell when all match; the memo is used only when the grid and the meta box are
+the same. In the gate, a held hour samples 12–25% of those cells again, a scrub about 90%.
+
+**C1 as built.** A draw composes only some cells when all of these hold: the same plant frame,
+palette, horizon, grid and fade as the last draw; no veil; and no weather, snow lying, gust band,
+eclipse, flash, storm glow, bird or shooting star, on this draw or the last. Then it composes the
+rows whose clouds are due, the cells within the light's reach of the cursor's last and present
+positions, and by night every cell a star can show in. Any other draw composes the whole grid as
+before. Both textures are still uploaded whole.
+
+**Measured**, production builds, same Chrome, 1512×860 at 2×, `?seed=1715089390`, 8 s a case,
+load 3–6. "Before" is a9953a4 from the step 1 runs; "after step 2" is one run of this build, at
+midnight scene time, when the stars are out.
+
+| Case | Before | After step 1 | After step 2 |
+|---|---|---|---|
+| Worker ms per plant frame, idle | 22.1–25.8 | 21.8–22.6 | 16.2–17.6 |
+| Worker ms per plant frame, cursor moving | 25.3–25.9 | 25.5–26.8 | 18.0–20.9 |
+| Main-thread rAF work per display frame, idle | 1.12 ms | 0.85–0.92 ms | 0.73 ms |
+| Cursor moving at about 112 plant frames/s: the same | — | 2.28 ms | 1.95 ms |
+| 4× main thread, idle: page fps | 113 | 120 | 120 |
+| 4× main thread, cursor moving: page fps | 102.5 | 111.8 | 119.9 |
+| 4× main thread, cursor moving: rAF work per frame | 8.75 ms | 7.91 ms | 4.99 ms |
+| 4× main thread, cursor moving: frame gap p95, p99 | 16.2, 20.1 ms | 12.7, 15.3 ms | 10.1, 11.2 ms |
+| 4× main thread, cursor moving: plant frames/s | 34 | 56 | 60 |
+| Cores, all of Chrome, idle | 1.5–1.75 | 1.5 | about 1.05 |
+
+The 4× case holds 120 and idle sits at about a core, which is where the plan said to stop.
+
+**Not done.**
+
+- **C6, uploading only changed rows.** `texSubImage2D` was under 1.2% of the main thread in the
+  trace, and comparing 726 KB to find the changed rows costs more than uploading them.
+- **C3, reusing the cells' and the type's arrays.** Astra's 0.1–0.4 ms a frame, for a buffer
+  ownership protocol between the page and four workers. Not worth its risk now.
+- **C5, the terminal's window on demand.** A load-time saving of 8–16 KB gz that changes how the
+  terminal first opens; left for a change of its own.
+- **Still unmeasured:** a real mid-range laptop, Safari and Firefox. The gate runs in Chrome only.
+
 ## Dropped after review
 
 - **A7, integer land colours.** Exact, but worthless: the clock moves the land once a minute, not
