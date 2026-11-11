@@ -338,6 +338,22 @@ const MOON_STOPS: Rgb[] = [
   DUSK.globe,
 ]
 
+/** Whether two palettes hold the same values throughout, colour for colour and number for number. */
+export function samePalette(a: Palette, b: Palette) {
+  if (a === b) return true
+  const ka = Object.keys(a) as (keyof Palette)[]
+  if (ka.length !== Object.keys(b).length) return false
+  for (const k of ka) {
+    const x = a[k]
+    const y = b[k]
+    if (typeof x === 'number' || typeof y === 'number') {
+      if (x !== y) return false
+    } else if (!y || x[0] !== y[0] || x[1] !== y[1] || x[2] !== y[2])
+      return false
+  }
+  return true
+}
+
 /** The moon's colour along the site menu's slider, 0 the palette's own silver to 1 amber. */
 export function moonAt(t: number): Rgb {
   const x = clamp(t, 0, 1) * (MOON_STOPS.length - 1)

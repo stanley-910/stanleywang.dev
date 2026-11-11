@@ -155,6 +155,9 @@ type Box = [number, number, number, number]
  * one frame behind the simulation. When a frame must be exact now (the first one, after a
  * resize, with reduced motion) or workers aren't available, the same replay runs right here.
  */
+/** A still layer's commands and meta bounds (scene px), and the opacity they were recorded at. */
+export type StillBlock = { cmds: Float32Array; touch: Box; opacity: number }
+
 export class Raster {
   /** Heads and sprites recorded this frame, for the simulation (butterflies, clicks). */
   heads: Head[] = []
@@ -176,6 +179,9 @@ export class Raster {
   private sy = 1
   /** Bounds of this frame's meta draws in scene pixels, and of the last adopted frame's in raster pixels. */
   private touch: Box = [Infinity, Infinity, -Infinity, -Infinity]
+  /** While the still layer is recorded: the frame's bounds so far, and after it the layer's own. */
+  private outer: Box = [Infinity, Infinity, -Infinity, -Infinity]
+  private stillTouch: Box = [Infinity, Infinity, -Infinity, -Infinity]
   private cmds = new Float32Array(1 << 16)
   private n = 0
   /** Where this frame's still layer (the land) starts and ends among its commands. */
@@ -337,10 +343,52 @@ export class Raster {
    */
   beginStill() {
     this.still = [this.n, this.n]
+    // The layer's own meta bounds are gathered apart, so they can be kept with its commands.
+    this.outer = this.touch
+    this.touch = [Infinity, Infinity, -Infinity, -Infinity]
   }
 
   endStill() {
     this.still[1] = this.n
+    const own = this.touch
+    this.stillTouch = own
+    const b = this.outer
+    this.touch = [
+      Math.min(b[0], own[0]),
+      Math.min(b[1], own[1]),
+      Math.max(b[2], own[2]),
+      Math.max(b[3], own[3]),
+    ]
+  }
+
+  /**
+   * The still layer as just recorded, between beginStill and endStill's pair: its commands and
+   * its meta bounds, for `layStill` to put back on a later frame in place of recording it again.
+   */
+  keptStill(): StillBlock {
+    return {
+      cmds: this.cmds.slice(this.still[0], this.still[1]),
+      touch: [...this.stillTouch] as Box,
+      opacity: this.opacity,
+    }
+  }
+
+  /**
+   * Lays a kept still layer in, between beginStill and endStill, as the same numbers its draws
+   * would record; false if it was recorded at another opacity, which is in every draw's alpha.
+   */
+  layStill(block: StillBlock) {
+    if (block.opacity !== this.opacity) return false
+    this.room(block.cmds.length)
+    this.cmds.set(block.cmds, this.n)
+    this.n += block.cmds.length
+    const b = this.touch
+    const t = block.touch
+    b[0] = Math.min(b[0], t[0])
+    b[1] = Math.min(b[1], t[1])
+    b[2] = Math.max(b[2], t[2])
+    b[3] = Math.max(b[3], t[3])
+    return true
   }
 
   private room(k: number) {

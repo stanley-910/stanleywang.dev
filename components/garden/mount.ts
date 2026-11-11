@@ -346,7 +346,7 @@ export function mountGarden({
       }
       if (relief.length !== ascii.cols * ascii.rows)
         relief = new Float32Array(ascii.cols * ascii.rows)
-      const riverKey = `${ascii.cols}/${ascii.rows}/${garden.riverVersion}`
+      const riverKey = `${ascii.cols}/${ascii.rows}/${ascii.cw}/${ascii.ch}/${garden.riverVersion}`
       if (riverKey !== riverFor) {
         riverFor = riverKey
         river = new Int8Array(ascii.cols * ascii.rows)

@@ -12,7 +12,7 @@ import {
   TAU,
 } from './math'
 import { Meadow, STRIP } from './meadow'
-import { css, mix, type Palette, type Rgb } from './palette'
+import { css, mix, samePalette, type Palette, type Rgb } from './palette'
 import { particle, Particles } from './particles'
 import {
   createPlant,
@@ -31,6 +31,7 @@ import {
   type Raster,
   RIVER_SPAN,
   Shape,
+  type StillBlock,
 } from './raster'
 
 import type { Rect } from './ascii'
@@ -740,6 +741,7 @@ export class Garden {
     this.buildFaces()
     this.buildForest(midAt, nearAt)
     this.buildRiver()
+    this.landGen++
   }
 
   /**
@@ -1734,8 +1736,23 @@ export class Garden {
     this.drawGlobe(r, p)
     // The land changes only with the hour; marked so the rasteriser can keep it filled.
     r.beginStill()
-    this.drawLand(r, p)
-    r.endStill()
+    const kept = this.landKept
+    if (
+      !kept ||
+      kept.gen !== this.landGen ||
+      kept.hour !== this.hour ||
+      !samePalette(kept.palette, p) ||
+      !r.layStill(kept.block)
+    ) {
+      this.drawLand(r, p)
+      r.endStill()
+      this.landKept = {
+        gen: this.landGen,
+        hour: this.hour,
+        palette: copyPalette(p),
+        block: r.keptStill(),
+      }
+    } else r.endStill()
     const haze = (z: number) => 0.68 * (1 - z) ** 1.6
     // After dark every flower steps back toward the ground alike, but the poem's rose.
     const dim = 0.28 * smoothstep(0.5, 1, p.night)
@@ -1819,6 +1836,40 @@ export class Garden {
    * the light at 8% by day, 2.5% at night, where more showed every cell's edge as a stair step.
    */
   relief(
+    out: Float32Array,
+    cols: number,
+    rows: number,
+    cw: number,
+    ch: number,
+    p: Palette,
+  ) {
+    const grid = `${cols}/${rows}/${cw}/${ch}`
+    const kept = this.reliefKept
+    if (
+      kept &&
+      kept.gen === this.landGen &&
+      kept.hour === this.hour &&
+      kept.grid === grid &&
+      kept.field.length === out.length &&
+      samePalette(kept.palette, p)
+    ) {
+      out.set(kept.field)
+      return { color: [...kept.color] as Rgb, lit: kept.lit }
+    }
+    const face = this.reliefNow(out, cols, rows, cw, ch, p)
+    this.reliefKept = {
+      gen: this.landGen,
+      hour: this.hour,
+      palette: copyPalette(p),
+      grid,
+      field: out.slice(),
+      color: [...face.color] as Rgb,
+      lit: face.lit,
+    }
+    return face
+  }
+
+  private reliefNow(
     out: Float32Array,
     cols: number,
     rows: number,
@@ -2409,6 +2460,30 @@ export class Garden {
   private sunkFor = ''
   private sunkValue = 0
 
+  /** Bumped whenever the land's shapes are rebuilt, so what was worked out from them is dropped. */
+  private landGen = 0
+  /**
+   * The land's commands as last recorded. They come out the same while its shapes, the hour and
+   * every colour of the palette hold, which on the clock is a minute at a time, so they're laid
+   * back in instead of recorded again, number for number.
+   */
+  private landKept: {
+    gen: number
+    hour: number
+    palette: Palette
+    block: StillBlock
+  } | null = null
+  /** The rock's faces as last worked out, kept the same way, for the same grid. */
+  private reliefKept: {
+    gen: number
+    hour: number
+    palette: Palette
+    grid: string
+    field: Float32Array
+    color: Rgb
+    lit: number
+  } | null = null
+
   /**
    * The glow in `col`, `peak` strong at the disc and falling as (1 - s)² out to `reach`, drawn
    * `step` px to a pixel. Each pixel's alpha is scattered a little at random, so the faint fade
@@ -2592,6 +2667,16 @@ export class Garden {
       r.fill(seas, mix(disc, p.skyTop, 0.6), Kind.Fluff, moon, GLOBE)
     }
   }
+}
+
+/** A palette's values on their own, so a later change to the one they came from can't reach them. */
+function copyPalette(p: Palette): Palette {
+  const out = { ...p }
+  for (const k of Object.keys(out) as (keyof Palette)[]) {
+    const v = out[k]
+    if (typeof v !== 'number') (out[k] as Rgb) = [v[0], v[1], v[2]]
+  }
+  return out
 }
 
 /**
