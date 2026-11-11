@@ -52,6 +52,7 @@ const bitmap = Pixelify_Sans({
   subsets: ['latin'],
   weight: ['400', '500'],
   variable: '--font-bitmap',
+  preload: false,
 })
 
 // The shell's own face, so what you type reads apart from the site's Geist; it carries
@@ -62,7 +63,21 @@ const shellFont = JetBrains_Mono({
   subsets: ['latin', 'latin-ext', 'greek', 'cyrillic'],
   variable: '--font-shell',
   adjustFontFallback: false,
+  preload: false,
 })
+
+// Shut, the terminal shows neither face, so they aren't preloaded ahead of the page's own. They're
+// fetched once the page has settled, or as the pointer or focus reaches the power button, so the
+// window still opens in its own type.
+let warmed = false
+function warmFonts() {
+  if (warmed) return
+  warmed = true
+  for (const weight of ['400', '500'])
+    void document.fonts.load(`${weight} 16px ${bitmap.style.fontFamily}`)
+  // A letter from each subset the shell's face is split into: Latin, extended, Greek, Cyrillic.
+  void document.fonts.load(`16px ${shellFont.style.fontFamily}`, 'aāαб')
+}
 
 type Entry =
   | { kind: 'cmd'; path: string; text: string }
@@ -519,6 +534,11 @@ export function Terminal() {
   const [follow, setFollow] = useState(true)
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null)
   const [size, setSize] = useState<{ w: number; h: number } | null>(null)
+
+  useEffect(() => {
+    const timer = window.setTimeout(warmFonts, 2500)
+    return () => window.clearTimeout(timer)
+  }, [])
 
   const win = useRef<HTMLElement>(null)
   const word = useRef<HTMLButtonElement>(null)
@@ -1314,6 +1334,8 @@ export function Terminal() {
         className="terminal-power"
         aria-pressed={open && !closing}
         onClick={() => (open ? hide() : show())}
+        onPointerEnter={warmFonts}
+        onFocus={warmFonts}
         aria-label="Terminal"
         // With the text hidden it's gone for touch, pointer and Tab alike; only ` still opens it.
         inert={uiHidden}
