@@ -49,3 +49,6 @@ AGENTS.md
 
 # private plaintext (scripts/encrypt-poem.mjs encrypts it)
 /content/private/
+
+# meadow gate build
+/scripts/meadow-gate/.out/

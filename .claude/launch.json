@@ -17,6 +17,36 @@
       "cwd": "${workspaceFolder}"
     },
     {
+      "name": "meadow-gate",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "3212",
+        "--bind",
+        "127.0.0.1",
+        "--directory",
+        "scripts/meadow-gate/.out"
+      ],
+      "port": 3212,
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "meadow-perf-prod",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "start",
+        "--",
+        "--hostname",
+        "127.0.0.1",
+        "--port",
+        "3211"
+      ],
+      "port": 3211,
+      "cwd": "${workspaceFolder}"
+    },
+    {
       "name": "main",
       "runtimeExecutable": "npm",
       "runtimeArgs": [
