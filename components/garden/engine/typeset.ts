@@ -326,6 +326,23 @@ for (const set of [
 for (const ch of FOLD) code(ch)
 for (const ch of '@#Oo.+:·') code(ch)
 
+// Each ramp's codes by position, read per cell instead of the registry. Every glyph in them is
+// registered above, so looking them up here numbers nothing new. Where a ramp's index could fall
+// outside it, the cell asks the registry as before.
+const codesOf = (ramp: string | string[]) => {
+  const out: number[] = []
+  for (let i = 0; i < ramp.length; i++) out.push(code(ramp[i]))
+  return out
+}
+const LINES_C = codesOf(LINES)
+const FOLD_C = codesOf(FOLD)
+const DISC_C = codesOf(DISC)
+const FLUFF_C = codesOf(FLUFF)
+const FOLIAGE_C = codesOf(FOLIAGE)
+const LAND_C = codesOf(LAND)
+const SLOPE_LIT_C = codesOf(SLOPE_LIT)
+const SNOW_C = codesOf(SNOW)
+
 /** A head as the typesetter needs it: no owner, which can't cross to a worker. */
 export type HeadMark = Omit<Head, 'owner'>
 
@@ -517,7 +534,7 @@ export class Typesetter {
                 rim >= 0 && v >= 0.7 && this.headCells(c, r) < 22 ? -1 : rim
               alpha = 1
               if (edge >= 0) {
-                g = code(LINES[edge])
+                g = LINES_C[edge]
                 // A rim inside the head, where one petal's edge lies over another, keeps the
                 // body under it; only the head's outer rim thins, so the field never shows inside.
                 // A head still opening is nearly all rim, its petals cupped slivers: thinned, it
@@ -532,7 +549,7 @@ export class Typesetter {
               tile[i] = body
               const seam = this.petalSeam(c, r)
               if (seam >= 0) {
-                g = code(LINES[seam])
+                g = LINES_C[seam]
                 ;[cr, cg, cb] = mix([cr, cg, cb], p.ground, 0.85)
                 break
               }
@@ -545,7 +562,7 @@ export class Typesetter {
                   : lit >= 0.3
                     ? 1
                     : 2
-              g = code(FOLD[Math.max(0, step - (p.night > 0.5 ? 1 : 0))])
+              g = FOLD_C[Math.max(0, step - (p.night > 0.5 ? 1 : 0))]
               ;[cr, cg, cb] = mix([cr, cg, cb], p.ground, 0.7)
               break
             }
@@ -583,14 +600,11 @@ export class Typesetter {
                 ;[cr, cg, cb] = shade([cr, cg, cb], 0.7)
               } else {
                 const d = clamp(0.35 + v * 0.6 - L * 0.3, 0, 1)
-                g = code(
-                  DISC[
-                    Math.min(
-                      DISC.length - 1,
-                      1 + Math.floor(d * (DISC.length - 1)),
-                    )
-                  ],
+                const j = Math.min(
+                  DISC.length - 1,
+                  1 + Math.floor(d * (DISC.length - 1)),
                 )
+                g = DISC_C[j] ?? code(DISC[j])
                 tile[i] = v * 0.18
               }
               break
@@ -605,7 +619,7 @@ export class Typesetter {
                 const rim = this.edgeOf(c, r, this.looseCov)
                 alpha = 1
                 if (rim >= 0) {
-                  g = code(LINES[rim])
+                  g = LINES_C[rim]
                   ;[cr, cg, cb] = mix(
                     [cr, cg, cb],
                     inkAt(x, y).ink,
@@ -617,14 +631,11 @@ export class Typesetter {
                 }
                 break
               }
-              g = code(
-                FLUFF[
-                  Math.min(
-                    FLUFF.length - 1,
-                    1 + Math.floor(clamp(v * 1.2, 0, 1) * (FLUFF.length - 2)),
-                  )
-                ],
+              const j = Math.min(
+                FLUFF.length - 1,
+                1 + Math.floor(clamp(v * 1.2, 0, 1) * (FLUFF.length - 2)),
               )
+              g = FLUFF_C[j] ?? code(FLUFF[j])
               alpha = clamp(v * 2.2, 0.35, 1)
               if (this.lit[i] > 0.75) {
                 // Lace and seed heads get a soft body in their own colour, with the glyphs inked
@@ -650,7 +661,7 @@ export class Typesetter {
               )
                 break
               if (v < 0.1) g = code(k === Kind.Sky ? '·' : '.')
-              else if (dir >= 0) g = code(LINES[dir])
+              else if (dir >= 0) g = LINES_C[dir]
               else g = code(v > 0.5 ? '+' : ':')
               // Stalks hold a firm floor so a flower reads down to its root; grass is a separate kind.
               alpha = clamp(v * 3.5, 0.55, 1)
@@ -676,17 +687,14 @@ export class Typesetter {
             case Kind.Foliage: {
               // Blades print as strokes along their run; only broad leaf cells fall back to the fill ramp.
               const dir = this.lineAt(c, r, k)
-              if (dir > 0) g = code(LINES[dir])
+              if (dir > 0) g = LINES_C[dir]
               else {
                 const d = clamp(v * 0.55 + L * 0.7, 0, 1)
-                g = code(
-                  FOLIAGE[
-                    Math.min(
-                      FOLIAGE.length - 1,
-                      1 + Math.floor(d * (FOLIAGE.length - 1)),
-                    )
-                  ],
+                const j = Math.min(
+                  FOLIAGE.length - 1,
+                  1 + Math.floor(d * (FOLIAGE.length - 1)),
                 )
+                g = FOLIAGE_C[j] ?? code(FOLIAGE[j])
               }
               // Grass is texture, not subject: a little quieter than the flowers, and holding its
               // strength toward the viewer so near tufts read as grass rather than static.
@@ -733,11 +741,11 @@ export class Typesetter {
                   while (n < 8 && this.snowAt(c, r - 1 - n)) n++
                   const dl =
                     0.15 + 0.85 * (1 - Math.min(1, ((n + 0.5) * ch) / 70))
-                  g = code(
-                    SNOW[
-                      Math.min(SNOW.length - 1, Math.floor(dl * SNOW.length))
-                    ],
+                  const j = Math.min(
+                    SNOW.length - 1,
+                    Math.floor(dl * SNOW.length),
                   )
+                  g = SNOW_C[j] ?? code(SNOW[j])
                   tile[i] = 0.35
                   alpha = 0.9
                 } else {
@@ -897,8 +905,7 @@ export class Typesetter {
               // in the same minute, in a lattice. The order of the screen is kept.
               const bs = b + (hash(c, r, 31) - 0.5) / 16
               const d = L * 1.3 + (skyRow ? 0.1 : -0.15)
-              if (d > bs * 1.1)
-                g = code(LAND[1 + Math.min(2, Math.floor(d * 2.2))])
+              if (d > bs * 1.1) g = LAND_C[1 + Math.min(2, Math.floor(d * 2.2))]
               const lc = mix([cr, cg, cb], p.cloud, skyRow ? 0.28 : 0.12)
               cr = lc[0]
               cg = lc[1]
@@ -919,14 +926,13 @@ export class Typesetter {
               const sl = (this.lit[i] - 0.5) * 2
               if (sl > 0.05) {
                 if (sl > bs * 0.9)
-                  g = code(
-                    SLOPE_LIT[
+                  g =
+                    SLOPE_LIT_C[
                       Math.min(
                         SLOPE_LIT.length - 1,
                         Math.floor(sl * SLOPE_LIT.length),
                       )
-                    ],
-                  )
+                    ]
                 alpha = 0.45 + 0.25 * sl
               } else if (sl < -0.05 && -sl > bs) g = 0
               break

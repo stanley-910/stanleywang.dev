@@ -267,10 +267,16 @@ export class Rasterizer {
     while (i < to) {
       const op = cmds[i]
       if (op === Op.Fill) {
-        const [r, g, b, k, a, hasMeta, mr, mg, mb, len] = cmds.subarray(
-          i + 1,
-          i + 11,
-        )
+        const r = cmds[i + 1]
+        const g = cmds[i + 2]
+        const b = cmds[i + 3]
+        const k = cmds[i + 4]
+        const a = cmds[i + 5]
+        const hasMeta = cmds[i + 6]
+        const mr = cmds[i + 7]
+        const mg = cmds[i + 8]
+        const mb = cmds[i + 9]
+        const len = cmds[i + 10]
         const start = i + 11
         const path = buildPath(cmds, start, start + len)
         color.globalAlpha = a
@@ -285,7 +291,13 @@ export class Rasterizer {
         }
         i = start + len
       } else if (op === Op.Stroke) {
-        const [r, g, b, k, a, w, len] = cmds.subarray(i + 1, i + 8)
+        const r = cmds[i + 1]
+        const g = cmds[i + 2]
+        const b = cmds[i + 3]
+        const k = cmds[i + 4]
+        const a = cmds[i + 5]
+        const w = cmds[i + 6]
+        const len = cmds[i + 7]
         const start = i + 8
         const path = buildPath(cmds, start, start + len)
         color.globalAlpha = a
@@ -440,7 +452,6 @@ function sampleRow(at: Sampling, r: number) {
     // Hills carry slope light in the same layer: 0.5 neutral, up toward the light, down in shade.
     let ll = 0
     let ln = 0
-    mats.fill(0)
     // Fluff marked as a loose petal (LOOSE_PETAL) carries the back flag.
     let lb = 0
     // Subsamples of the sun or moon (GLOBE), which stand behind the land.
@@ -463,6 +474,9 @@ function sampleRow(at: Sampling, r: number) {
           kr[k] = 0
           kg[k] = 0
           kb[k] = 0
+          // The land votes are read only for a land cell, and a cell can only be land once land
+          // shows in it, so they're cleared here rather than for every cell drawn on.
+          if (k === Kind.Land) for (let x = 0; x < 8; x++) mats[x] = 0
         }
         weight[k] += kal
         // The meta pixel, if this subsample is inside the box that was read back.
