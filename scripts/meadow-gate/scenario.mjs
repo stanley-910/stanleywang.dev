@@ -126,6 +126,72 @@ export async function run({ only = null, log = () => {} } = {}) {
     clock += n * STEP * 1000
   }
 
+  /** mount.ts's page draw on the frame last rasterised: the overlays, then the compositor, hashed. */
+  const compose = async (withPixels) => {
+    const palette = sceneAt(hour)
+    const scene = raster.palette ?? palette
+    const secs = clock / 1000
+    meteors.paint(secs, scene, scene.ink)
+    birds.fly(
+      secs,
+      scene.night < BY_DAY
+        ? {
+            W: width,
+            H: height,
+            cw: ascii.cw,
+            ch: ascii.ch,
+            top: 0.14 * height,
+            bottom: Math.max(
+              0.14 * height,
+              Math.min(0.3 * height, peak - 3 * ascii.ch),
+            ),
+          }
+        : null,
+    )
+    birds.paint(secs, scene)
+    weather.paint(secs, scene, wind, {
+      W: width,
+      H: height,
+      cw: ascii.cw,
+      ch: ascii.ch,
+      horizon: garden.horizon,
+      cloud: ascii.cloudShape,
+      globe: garden.globe(scene),
+    })
+    ascii.render({
+      raster,
+      palette: scene,
+      time: garden.time,
+      horizon: garden.horizon,
+      page: [20, 20, 20],
+      veil: 0,
+      pointer: wind.pointer,
+      meteors,
+      birds,
+      weather,
+      backdrop: (ctx) => garden.backdrop(ctx, scene),
+      backdropKey: garden.backdropKey(scene),
+    })
+    const page = await digest([ascii.inkData, ascii.tileData])
+    let pixels = ''
+    if (withPixels) {
+      const px = new Uint8Array(
+        gl.drawingBufferWidth * gl.drawingBufferHeight * 4,
+      )
+      gl.readPixels(
+        0,
+        0,
+        gl.drawingBufferWidth,
+        gl.drawingBufferHeight,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        px,
+      )
+      pixels = await digest([px])
+    }
+    return { page, pixels }
+  }
+
   /** mount.ts's draw(true): record, rasterise here, compose, and hash each stage. */
   const frame = async (withPixels) => {
     const palette = sceneAt(hour)
@@ -210,66 +276,7 @@ export async function run({ only = null, log = () => {} } = {}) {
     // The sampler's colour and facing, which the type reads but the page's probe doesn't show.
     const raw = await digest([c.rgb, c.back])
 
-    const scene = raster.palette ?? palette
-    const secs = clock / 1000
-    meteors.paint(secs, scene, scene.ink)
-    birds.fly(
-      secs,
-      scene.night < BY_DAY
-        ? {
-            W: width,
-            H: height,
-            cw: ascii.cw,
-            ch: ascii.ch,
-            top: 0.14 * height,
-            bottom: Math.max(
-              0.14 * height,
-              Math.min(0.3 * height, peak - 3 * ascii.ch),
-            ),
-          }
-        : null,
-    )
-    birds.paint(secs, scene)
-    weather.paint(secs, scene, wind, {
-      W: width,
-      H: height,
-      cw: ascii.cw,
-      ch: ascii.ch,
-      horizon: garden.horizon,
-      cloud: ascii.cloudShape,
-      globe: garden.globe(scene),
-    })
-    ascii.render({
-      raster,
-      palette: scene,
-      time: garden.time,
-      horizon: garden.horizon,
-      page: [20, 20, 20],
-      veil: 0,
-      pointer: wind.pointer,
-      meteors,
-      birds,
-      weather,
-      backdrop: (ctx) => garden.backdrop(ctx, scene),
-      backdropKey: garden.backdropKey(scene),
-    })
-    const page = await digest([ascii.inkData, ascii.tileData])
-    let pixels = ''
-    if (withPixels) {
-      const px = new Uint8Array(
-        gl.drawingBufferWidth * gl.drawingBufferHeight * 4,
-      )
-      gl.readPixels(
-        0,
-        0,
-        gl.drawingBufferWidth,
-        gl.drawingBufferHeight,
-        gl.RGBA,
-        gl.UNSIGNED_BYTE,
-        px,
-      )
-      pixels = await digest([px])
-    }
+    const { page, pixels } = await compose(withPixels)
     return { record, type, cells, raw, page, pixels }
   }
 
@@ -359,6 +366,42 @@ export async function run({ only = null, log = () => {} } = {}) {
       rows.push({ name, i, ...row })
     }
   }
+  /**
+   * Plant frames with page draws between them, as while the cursor moves on a slow machine: after
+   * each frame, `draws` more draws of the same one, `between(i, d)` setting each up, `steps`
+   * simulation steps apart.
+   */
+  const displaySegment = async (
+    name,
+    count,
+    each = () => {},
+    between = () => {},
+    draws = 3,
+    steps = 1,
+  ) => {
+    if (only && !name.includes(only)) return
+    log(name)
+    tally = resampled[name] = { cells: 0, of: 0 }
+    for (let i = 0; i < count; i++) {
+      each(i)
+      step(3)
+      rows.push({ name, i, ...(await frame(i === 0)) })
+      for (let d = 1; d <= draws; d++) {
+        between(i, d)
+        step(steps)
+        const drawn = await compose(d === draws && i % 3 === 0)
+        rows.push({
+          name,
+          i: `${i}.${d}`,
+          record: '',
+          type: '',
+          cells: '',
+          raw: '',
+          ...drawn,
+        })
+      }
+    }
+  }
   const pointerAt = (x, y, active = true) => {
     const p = wind.pointer
     p.vx = (x - p.x) / STEP / 3
@@ -436,5 +479,126 @@ export async function run({ only = null, log = () => {} } = {}) {
   // The day's palette holds from nine to four while the sun and its shadows move: the hour alone
   // changes, held for a few frames at each stop.
   await segment('flat-hours', 24, (i) => (hour = 10 + 0.5 * (i >> 2)))
+  // The page drawn several times a plant frame. By day only the cursor's light moves between them.
+  hour = 13
+  const bio = { ...garden.keepClear, light: false }
+  await displaySegment(
+    'display-day',
+    12,
+    (i) => {
+      // The text's fade goes and comes back, as when the bio is hidden and shown.
+      if (i === 5) ascii.setDimBoxes([])
+      if (i === 8) ascii.setDimBoxes([bio])
+    },
+    (i, d) => {
+      // Across the meadow, off it for a few frames, back on somewhere else, and still for a while.
+      if (i === 3 || i === 4) pointerAt(-9999, -9999, false)
+      else if (i !== 9)
+        pointerAt(
+          width * (0.15 + 0.06 * i + 0.012 * d),
+          height * (0.55 + 0.03 * i),
+        )
+    },
+  )
+  // By night the stars twinkle between them too.
+  hour = 23
+  await displaySegment(
+    'display-night',
+    12,
+    () => {},
+    (i, d) => {
+      if (i === 6) pointerAt(-9999, -9999, false)
+      else if (i < 10)
+        pointerAt(
+          width * (0.8 - 0.05 * i - 0.01 * d),
+          height * (0.3 + 0.05 * i),
+        )
+    },
+    4,
+  )
+  // Long gaps between draws, so the clouds take their turns at refreshing between plant frames.
+  hour = 10
+  await displaySegment(
+    'display-clouds',
+    6,
+    () => {},
+    (i, d) => {
+      if (d % 2) pointerAt(width * (0.3 + 0.02 * d), height * 0.7)
+    },
+    8,
+    9,
+  )
+  hour = 20.5
+  await displaySegment(
+    'display-dusk-clouds',
+    4,
+    () => {},
+    () => {},
+    8,
+    9,
+  )
+  // Weather coming in and going between draws, and birds by day: the whole page changes.
+  hour = 15
+  await displaySegment(
+    'display-rain',
+    8,
+    (i) => i === 0 && setWeather('rain')(),
+    () => {},
+    3,
+    12,
+  )
+  await displaySegment(
+    'display-clearing',
+    12,
+    (i) => i === 0 && setWeather('clear')(),
+    (i, d) => pointerAt(width * (0.4 + 0.01 * (3 * i + d)), height * 0.75),
+    3,
+    12,
+  )
+  hour = 22
+  await displaySegment(
+    'display-storm',
+    10,
+    (i) => i === 0 && setWeather('storm')(),
+    () => {},
+    4,
+    10,
+  )
+  await displaySegment(
+    'display-storm-out',
+    10,
+    (i) => i === 0 && setWeather('clear')(),
+    () => {},
+    3,
+    20,
+  )
+  hour = 9.5
+  await displaySegment(
+    'display-snow',
+    8,
+    (i) => i === 0 && setWeather('snow')(),
+    () => {},
+    3,
+    20,
+  )
+  await displaySegment(
+    'display-thaw',
+    12,
+    (i) => i === 0 && setWeather('clear')(),
+    () => {},
+    3,
+    30,
+  )
+  // A new size between draws.
+  resize(1280, 800)
+  step(30)
+  hour = 23.5
+  await displaySegment(
+    'display-resized',
+    6,
+    () => {},
+    (i, d) => pointerAt(width * (0.2 + 0.02 * (4 * i + d)), height * 0.6),
+    4,
+  )
   return { cols: ascii.cols, rows: ascii.rows, frames: rows, resampled }
 }
