@@ -485,12 +485,12 @@ export async function run({ only = null, log = () => {} } = {}) {
   await displaySegment(
     'display-day',
     12,
-    (i) => {
-      // The text's fade goes and comes back, as when the bio is hidden and shown.
-      if (i === 5) ascii.setDimBoxes([])
-      if (i === 8) ascii.setDimBoxes([bio])
-    },
+    () => {},
     (i, d) => {
+      // The text's fade goes and comes back between two draws of one plant frame, as when the bio
+      // is hidden and shown.
+      if (i === 5 && d === 2) ascii.setDimBoxes([])
+      if (i === 8 && d === 2) ascii.setDimBoxes([bio])
       // Across the meadow, off it for a few frames, back on somewhere else, and still for a while.
       if (i === 3 || i === 4) pointerAt(-9999, -9999, false)
       else if (i !== 9)
@@ -600,5 +600,11 @@ export async function run({ only = null, log = () => {} } = {}) {
     (i, d) => pointerAt(width * (0.2 + 0.02 * (4 * i + d)), height * 0.6),
     4,
   )
-  return { cols: ascii.cols, rows: ascii.rows, frames: rows, resampled }
+  return {
+    cols: ascii.cols,
+    rows: ascii.rows,
+    frames: rows,
+    resampled,
+    partialDraws: ascii.partialDraws,
+  }
 }
