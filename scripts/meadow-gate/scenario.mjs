@@ -17,7 +17,9 @@ const CELL = 5
 const BY_DAY = 0.5
 
 const hex = (buf) =>
-  Array.from(new Uint8Array(buf, 0, 8), (b) => b.toString(16).padStart(2, '0')).join('')
+  Array.from(new Uint8Array(buf, 0, 8), (b) =>
+    b.toString(16).padStart(2, '0'),
+  ).join('')
 
 /** A short hash of the exact bytes of some typed arrays and plain values. */
 async function digest(parts) {
@@ -30,7 +32,10 @@ async function digest(parts) {
       bytes = new Uint8Array(p.buffer, p.byteOffset, p.byteLength)
     else bytes = new TextEncoder().encode(JSON.stringify(p))
     // Each part's length goes in too, so two splits of the same bytes differ.
-    chunks.push(new Uint8Array(new Uint32Array([bytes.byteLength]).buffer), bytes)
+    chunks.push(
+      new Uint8Array(new Uint32Array([bytes.byteLength]).buffer),
+      bytes,
+    )
     size += 4 + bytes.byteLength
   }
   const all = new Uint8Array(size)
@@ -54,9 +59,17 @@ export async function run({ only = null, log = () => {} } = {}) {
   weather.set('clear', true, false)
   let moonTone = null
   let hour = 22.2
-  const sceneAt = (h) => weather.tint(withMoon(paletteAt(h), moonTone, h), sunAt(h))
+  const sceneAt = (h) =>
+    weather.tint(withMoon(paletteAt(h), moonTone, h), sunAt(h))
+  // Every frame but the workers' own run is rasterised here, through the Rasterizer a worker runs.
+  const RealWorker = window.Worker
+  window.Worker = undefined
   const raster = new Raster()
+  window.Worker = RealWorker
   raster.probe = true
+  /** The same recording sent to real workers, for what crosses to them and back. */
+  const sent = new Raster()
+  sent.probe = true
   const ascii = new AsciiRenderer(canvas, 'Menlo, monospace')
   const meteors = new Meteors()
   const birds = new Birds()
@@ -81,6 +94,7 @@ export async function run({ only = null, log = () => {} } = {}) {
     const h = cssH / SCENE_ZOOM
     ascii.resize(w, h, dpr * SCENE_ZOOM, CELL)
     raster.resize(ascii.cols, ascii.rows, ascii.cw, ascii.ch)
+    sent.resize(ascii.cols, ascii.rows, ascii.cw, ascii.ch)
     garden.cell = { cw: ascii.cw, ch: ascii.ch }
     meteors.resize(ascii.cols, ascii.rows)
     birds.resize(ascii.cols, ascii.rows)
@@ -88,7 +102,12 @@ export async function run({ only = null, log = () => {} } = {}) {
     width = w
     height = h
     // The bio's box, as home lays it out at this size, roughly.
-    garden.keepClear = { left: 0.12 * w, top: 0.42 * h, right: 0.52 * w, bottom: 0.7 * h }
+    garden.keepClear = {
+      left: 0.12 * w,
+      top: 0.42 * h,
+      right: 0.52 * w,
+      bottom: 0.7 * h,
+    }
     garden.resize(w, h)
     garden.skipIntro()
     ascii.setDimBoxes([{ ...garden.keepClear, light: false }])
@@ -120,19 +139,34 @@ export async function run({ only = null, log = () => {} } = {}) {
     }
     if (relief.length !== ascii.cols * ascii.rows)
       relief = new Float32Array(ascii.cols * ascii.rows)
-    const riverKey = `${ascii.cols}/${ascii.rows}/${garden.riverVersion}`
+    const riverKey = `${ascii.cols}/${ascii.rows}/${ascii.cw}/${ascii.ch}/${garden.riverVersion}`
     if (riverKey !== riverFor) {
       riverFor = riverKey
       river = new Int8Array(ascii.cols * ascii.rows)
       garden.riverField(river, ascii.cols, ascii.rows, ascii.cw, ascii.ch)
     }
-    const face = garden.relief(relief, ascii.cols, ascii.rows, ascii.cw, ascii.ch, palette)
+    const face = garden.relief(
+      relief,
+      ascii.cols,
+      ascii.rows,
+      ascii.cw,
+      ascii.ch,
+      palette,
+    )
     // What was recorded, before it is handed over.
     const record = await digest([
       raster.cmds.subarray(0, raster.n),
       raster.still,
       raster.touch,
-      raster.heads.map((h) => [h.x, h.y, h.r, h.species, h.petal, h.disc, h.alpha]),
+      raster.heads.map((h) => [
+        h.x,
+        h.y,
+        h.r,
+        h.species,
+        h.petal,
+        h.disc,
+        h.alpha,
+      ]),
       raster.sprites,
       hill,
       relief,
@@ -156,7 +190,14 @@ export async function run({ only = null, log = () => {} } = {}) {
       hour,
     )
     const m = raster.material
-    const type = await digest([m.glyph, m.alpha, m.tile, m.ink, m.tileCol, m.flags])
+    const type = await digest([
+      m.glyph,
+      m.alpha,
+      m.tile,
+      m.ink,
+      m.tileCol,
+      m.flags,
+    ])
     const c = raster.cells
     const cells = await digest([c.kinds, c.pid, c.lit, c.cov])
 
@@ -172,7 +213,10 @@ export async function run({ only = null, log = () => {} } = {}) {
             cw: ascii.cw,
             ch: ascii.ch,
             top: 0.14 * height,
-            bottom: Math.max(0.14 * height, Math.min(0.3 * height, peak - 3 * ascii.ch)),
+            bottom: Math.max(
+              0.14 * height,
+              Math.min(0.3 * height, peak - 3 * ascii.ch),
+            ),
           }
         : null,
     )
@@ -203,11 +247,91 @@ export async function run({ only = null, log = () => {} } = {}) {
     const page = await digest([ascii.inkData, ascii.tileData])
     let pixels = ''
     if (withPixels) {
-      const px = new Uint8Array(gl.drawingBufferWidth * gl.drawingBufferHeight * 4)
-      gl.readPixels(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, px)
+      const px = new Uint8Array(
+        gl.drawingBufferWidth * gl.drawingBufferHeight * 4,
+      )
+      gl.readPixels(
+        0,
+        0,
+        gl.drawingBufferWidth,
+        gl.drawingBufferHeight,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        px,
+      )
       pixels = await digest([px])
     }
     return { record, type, cells, page, pixels }
+  }
+
+  /**
+   * Records `burst` frames and sends each to a worker without waiting, as the loop does when the
+   * cursor moves, then hashes the type the last one comes back as.
+   */
+  const viaWorkers = async (burst) => {
+    for (let k = 0; k < burst; k++) {
+      step(3)
+      const palette = sceneAt(hour)
+      garden.hour = hour
+      sent.clear()
+      garden.draw(sent, palette)
+      if (hill.length !== ascii.cols) hill = new Float32Array(ascii.cols)
+      for (let c = 0; c < hill.length; c++)
+        hill[c] = garden.hillTop((c + 0.5) * ascii.cw)
+      if (relief.length !== ascii.cols * ascii.rows)
+        relief = new Float32Array(ascii.cols * ascii.rows)
+      const riverKey = `${ascii.cols}/${ascii.rows}/${ascii.cw}/${ascii.ch}/${garden.riverVersion}`
+      if (riverKey !== riverFor) {
+        riverFor = riverKey
+        river = new Int8Array(ascii.cols * ascii.rows)
+        garden.riverField(river, ascii.cols, ascii.rows, ascii.cw, ascii.ch)
+      }
+      const face = garden.relief(
+        relief,
+        ascii.cols,
+        ascii.rows,
+        ascii.cw,
+        ascii.ch,
+        palette,
+      )
+      sent.submit(
+        false,
+        {
+          palette,
+          horizon: garden.horizon,
+          hill,
+          relief,
+          reliefLight: face.color,
+          reliefLit: face.lit,
+          river,
+        },
+        hour,
+      )
+    }
+    const began = performance.now()
+    while (sent.inFlight.size > 0) {
+      if (performance.now() - began > 20000)
+        throw new Error('a worker did not answer')
+      await new Promise((r) => setTimeout(r, 4))
+    }
+    const m = sent.material
+    const c = sent.cells
+    return {
+      record: '',
+      type: await digest([m.glyph, m.alpha, m.tile, m.ink, m.tileCol, m.flags]),
+      cells: await digest([c.kinds, c.pid, c.lit, c.cov]),
+      page: '',
+      pixels: '',
+    }
+  }
+  const workerSegment = async (name, count, each = () => {}) => {
+    if (only && !name.includes(only)) return
+    log(name)
+    for (let i = 0; i < count; i++) {
+      each(i)
+      // One, two, three and four at once in turn, so every worker takes frames in every order.
+      rows.push({ name, i, ...(await viaWorkers(1 + (i % 4))) })
+    }
   }
 
   const rows = []
@@ -239,7 +363,10 @@ export async function run({ only = null, log = () => {} } = {}) {
 
   await segment('night-still', 24)
   await segment('night-pointer', 24, (i) =>
-    pointerAt(width * (0.3 + 0.02 * i), height * (0.78 + 0.1 * Math.sin(i / 3))),
+    pointerAt(
+      width * (0.3 + 0.02 * i),
+      height * (0.78 + 0.1 * Math.sin(i / 3)),
+    ),
   )
   await segment('pointer-leaves', 6, (i) => {
     if (i === 0) pointerAt(-9999, -9999, false)
@@ -250,7 +377,11 @@ export async function run({ only = null, log = () => {} } = {}) {
   await segment('dawn-scrub', 24, (i) => (hour = 4.6 + (i * 2.6) / 23))
   await segment('midnight', 8, (i) => (hour = i < 4 ? 23.98 : 0.02))
   hour = 21
-  await segment('moon-tone', 12, (i) => (moonTone = i < 4 ? null : i < 8 ? 0.2 : 0.9))
+  await segment(
+    'moon-tone',
+    12,
+    (i) => (moonTone = i < 4 ? null : i < 8 ? 0.2 : 0.9),
+  )
   moonTone = null
   for (const [kind, at] of [
     ['rain', 15],
@@ -262,13 +393,27 @@ export async function run({ only = null, log = () => {} } = {}) {
     // In, held, and out again, with enough simulation between frames to cross each fade.
     await segment(`${kind}-in`, 20, (i) => i === 0 && setWeather(kind)(), 24)
     await segment(`${kind}-held`, 10, () => {}, 6)
-    await segment(`${kind}-out`, 20, (i) => i === 0 && setWeather('clear')(), 24)
+    await segment(
+      `${kind}-out`,
+      20,
+      (i) => i === 0 && setWeather('clear')(),
+      24,
+    )
   }
   hour = 18.4
   await segment('long-run', 40, () => {}, 12)
   await segment('regrow', 10, (i) => i === 0 && garden.regrow(1715089391))
+  hour = 22.2
+  await workerSegment('workers-still', 12)
+  await workerSegment('workers-scrub', 16, (i) => (hour = 17.2 + i * 0.09))
+  await workerSegment(
+    'workers-steady-then-step',
+    12,
+    (i) => (hour = i < 6 ? 9 : 9.25),
+  )
   resize(1100, 720)
   step(60)
+  await workerSegment('workers-resized', 8)
   await segment('resized', 16, (i) =>
     pointerAt(width * (0.5 + 0.01 * i), height * 0.8),
   )
@@ -276,5 +421,8 @@ export async function run({ only = null, log = () => {} } = {}) {
   step(60)
   hour = 22.2
   await segment('back', 12)
+  // The day's palette holds from nine to four while the sun and its shadows move: the hour alone
+  // changes, held for a few frames at each stop.
+  await segment('flat-hours', 24, (i) => (hour = 10 + 0.5 * (i >> 2)))
   return { cols: ascii.cols, rows: ascii.rows, frames: rows }
 }

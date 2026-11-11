@@ -5,7 +5,9 @@ const path = require('node:path')
 const ts = require('typescript')
 
 const root = path.join(__dirname, '..', '..')
-const src = path.join(root, 'components', 'garden', 'engine')
+// Another tree's engine can be built instead (node build.cjs <dir>), to record a golden run from
+// a commit that is not checked out.
+const src = process.argv[2] ?? path.join(root, 'components', 'garden', 'engine')
 const out = path.join(__dirname, '.out')
 const eng = path.join(out, 'eng')
 fs.rmSync(out, { recursive: true, force: true })
@@ -23,6 +25,7 @@ for (const f of fs.readdirSync(src)) {
       },
     })
     .outputText.replace(/from '(\.\/[\w.-]+)'/g, "from '$1.mjs'")
+    .replace("'./raster.worker.ts'", "'./raster.worker.mjs'")
   if (/from '@\//.test(js))
     throw new Error(`${f} imports app code at run time; the gate can't load it`)
   fs.writeFileSync(path.join(eng, f.replace(/\.ts$/, '.mjs')), js)

@@ -26,8 +26,6 @@
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296
   }
   Date.now = () => 1794268800000
-  // No workers: every frame is rasterised here, through the same Rasterizer a worker runs.
-  window.Worker = undefined
   const { run } = await import('./scenario.mjs')
   window.__gate = { run, done: null }
   document.getElementById('log').textContent = 'ready'
