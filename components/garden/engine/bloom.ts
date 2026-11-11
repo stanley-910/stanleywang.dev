@@ -171,10 +171,15 @@ export function drawPetals(
       point(s, w, tip)
     }
 
+    // `cup` depends on s alone (every spec's does), so one call serves both axes and all three
+    // components rather than six.
+    const cup = spec.cup(0.6)
+    const cc = Math.cos(cup)
+    const cs = Math.sin(cup)
     const along = norm([
-      rd[0] * Math.cos(spec.cup(0.6)) + axis[0] * Math.sin(spec.cup(0.6)),
-      rd[1] * Math.cos(spec.cup(0.6)) + axis[1] * Math.sin(spec.cup(0.6)),
-      rd[2] * Math.cos(spec.cup(0.6)) + axis[2] * Math.sin(spec.cup(0.6)),
+      rd[0] * cc + axis[0] * cs,
+      rd[1] * cc + axis[1] * cs,
+      rd[2] * cc + axis[2] * cs,
     ])
     let n = norm(cross(along, td))
     const backside = n[2] < 0

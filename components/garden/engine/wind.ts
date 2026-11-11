@@ -44,9 +44,28 @@ export class Wind {
     p.vy *= Math.exp(-dt * 5)
   }
 
+  /**
+   * The breeze's swell and the gusts' envelope depend on the time alone, and `at` is asked
+   * thousands of times a step at one time, so they're kept for the time they were worked out
+   * at. Keyed on the exact time (NaN to start, which no time equals), so a step, a scrub or a
+   * time set from outside works them out afresh; strength is applied on every call, as before.
+   */
+  private keptAt = NaN
+  private swell = 0
+  private envelope = 0
+
+  private keep() {
+    const t = this.time
+    if (t === this.keptAt) return
+    this.keptAt = t
+    this.swell = 0.35 + 0.25 * noise1(t * 0.045, 3)
+    this.envelope = 0.55 + 0.45 * noise1(t * 0.07, 5)
+  }
+
   /** Steady breeze, swelling and easing over tens of seconds. */
   base() {
-    return this.strength * (0.35 + 0.25 * noise1(this.time * 0.045, 3))
+    this.keep()
+    return this.strength * this.swell
   }
 
   /** Horizontal wind at (x, y) in roughly -2..2. Positive pushes right. */
@@ -56,7 +75,8 @@ export class Wind {
     // Gust fronts travel left to right; nearer rows are hit slightly later.
     const phase = (x - t * this.travel) / 420 + depth * 0.8
     const gust = Math.max(0, fbm1(phase, 11) * 1.7 + 0.15) ** 1.6
-    const envelope = 0.55 + 0.45 * noise1(t * 0.07, 5)
+    this.keep()
+    const envelope = this.envelope
     const flutter = 0.12 * noise1(x * 0.02 + t * 2.3, 9)
     // A soft ceiling on each gust, so it still rolls across as a wave but never shoves a stem
     // flat: uncapped, the strongest bent a cosmos 40° and laid its head on the bio.
