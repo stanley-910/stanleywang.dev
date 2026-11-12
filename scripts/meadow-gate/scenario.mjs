@@ -438,6 +438,11 @@ export async function run({ only = null, log = () => {} } = {}) {
     (i) => (moonTone = i < 4 ? null : i < 8 ? 0.2 : 0.9),
   )
   moonTone = null
+  // A half moon, bright and then dim, so the seas on its lit face are in the picture: at the
+  // fixed date's own phase the moon is too thin to show one.
+  garden.moonPhase = 0.25
+  await segment('half-moon', 8, (i) => (hour = i < 4 ? 22 : 0.5))
+  garden.moonPhase = null
   for (const [kind, at] of [
     ['rain', 15],
     ['snow', 9.5],

@@ -205,8 +205,9 @@ export class Rasterizer {
         this.stillScale = scale
       }
       // The still layer goes down first as a plain copy, and what the frame drew before it (the
-      // sun and moon) goes in behind it: the same pixels as drawing them in order, without
-      // blending the whole layer in.
+      // sun and moon) goes in behind it, last command first, since each goes under the ones
+      // already there: the same picture as drawing them in order, without blending the whole
+      // layer in.
       for (const k of ['color', 'kind', 'meta'] as const) {
         const ctx = frame[k]
         ctx.setTransform(1, 0, 0, 1, 0, 0)
@@ -216,7 +217,10 @@ export class Rasterizer {
         ctx.globalCompositeOperation = 'destination-over'
         ctx.setTransform(sx, 0, 0, sy, 0, 0)
       }
-      this.replay(frame, cmds, 0, from)
+      const starts: number[] = []
+      for (let i = 0; i < from; i = commandEnd(cmds, i)) starts.push(i)
+      for (let s = starts.length - 1; s >= 0; s--)
+        this.replay(frame, cmds, starts[s], starts[s + 1] ?? from)
       for (const k of ['color', 'kind', 'meta'] as const)
         frame[k].globalCompositeOperation = 'source-over'
     } else this.replay(frame, cmds, 0, from)
@@ -278,7 +282,7 @@ export class Rasterizer {
     layer.color.lineCap = 'round'
   }
 
-  /** Replays the commands in `cmds[from..to)` onto a layer. */
+  /** Replays the commands in `cmds[from..to)` onto a layer. `commandEnd` knows their lengths too. */
   private replay(layer: Layer, cmds: Float32Array, from: number, to: number) {
     const { color, kind, meta } = layer
     let i = from
@@ -704,4 +708,16 @@ function sampleRow(at: Sampling, r: number) {
       rgb[i * 3 + 2] = cb / norm
     }
   }
+}
+
+/** Where the command at `cmds[i]` ends, as `replay` reads it. */
+function commandEnd(cmds: Float32Array, i: number) {
+  const op = cmds[i]
+  if (op === Op.Fill) return i + 11 + cmds[i + 10]
+  if (op === Op.Stroke) return i + 8 + cmds[i + 7]
+  if (op === Op.Gradient) {
+    const j = i + 4 + cmds[i + 3] * 5
+    return j + 1 + cmds[j]
+  }
+  return Infinity
 }

@@ -2652,18 +2652,25 @@ export class Garden {
       // and the terminator an ellipse that bows toward the light in a crescent, away in a gibbous.
       const { lit, dark, side, k } = this.moonShape()
       const { color, disc } = this.moonLook(p)
-      r.fill(lit, disc, Kind.Fluff, moon, GLOBE)
-      // Earthshine on the dark side.
-      r.fill(dark, mix(color, p.skyTop, 0.85), Kind.Fluff, 0.22 * moon, GLOBE)
-      // The seas, as darker patches wherever they fall on the lit face.
+      // The seas, as darker patches wherever they fall on the lit face. They're cut out of the
+      // face and laid in the holes, a quarter cell over the edge so no seam shows: over the face
+      // instead, a dim moon would be twice as solid there and print the seas as its brightest part.
       const seas = new Shape()
+      const over = this.cell.cw / 4
       for (const [sx, sy, rx, ry] of SEAS) {
         const dy = clamp(sy, -0.99, 0.99)
         const edge = side * k * Math.sqrt(1 - dy * dy)
         if (side * sx < side * edge + rx) continue
-        seas.moveTo(cx + (sx + rx) * R, cy + sy * R)
-        seas.ellipse(cx + sx * R, cy + sy * R, rx * R, ry * R, 0, 0, TAU)
+        const x = cx + sx * R
+        const y = cy + sy * R
+        lit.moveTo(x + rx * R, y)
+        lit.ellipse(x, y, rx * R, ry * R, 0, 0, TAU, side > 0)
+        seas.moveTo(x + rx * R + over, y)
+        seas.ellipse(x, y, rx * R + over, ry * R + over, 0, 0, TAU)
       }
+      r.fill(lit, disc, Kind.Fluff, moon, GLOBE)
+      // Earthshine on the dark side.
+      r.fill(dark, mix(color, p.skyTop, 0.85), Kind.Fluff, 0.22 * moon, GLOBE)
       r.fill(seas, mix(disc, p.skyTop, 0.6), Kind.Fluff, moon, GLOBE)
     }
   }
