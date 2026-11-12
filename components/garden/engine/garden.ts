@@ -2603,7 +2603,7 @@ export class Garden {
     return `${Math.round(cx / 4)},${Math.round(cy / 4)},${sun.toFixed(2)},${moon.toFixed(2)},${(this.moonPhase ?? moonPhaseNow()).toFixed(3)},${col}`
   }
 
-  /** The moon's lit and dark parts for tonight's phase, with which side is lit and how full it is. */
+  /** The moon's lit and dark parts for tonight's phase. */
   private moonShape() {
     const { cx, cy, R } = this.globeAt()
     const f = this.moonPhase ?? moonPhaseNow()
@@ -2623,7 +2623,7 @@ export class Garden {
       lit.lineTo(x, cy + R * Math.sin(a))
       dark.lineTo(x, cy + R * Math.sin(a))
     }
-    return { lit, dark, side, k }
+    return { lit, dark }
   }
 
   /** By day a halftone sun, after dark the moon; both go down behind the hills. */
@@ -2650,28 +2650,11 @@ export class Garden {
     if (moon > 0) {
       // Lit by the phase: the bright limb on the right while waxing, on the left while waning,
       // and the terminator an ellipse that bows toward the light in a crescent, away in a gibbous.
-      const { lit, dark, side, k } = this.moonShape()
+      const { lit, dark } = this.moonShape()
       const { color, disc } = this.moonLook(p)
-      // The seas, as darker patches wherever they fall on the lit face. They're cut out of the
-      // face and laid in the holes, a quarter cell over the edge so no seam shows: over the face
-      // instead, a dim moon would be twice as solid there and print the seas as its brightest part.
-      const seas = new Shape()
-      const over = this.cell.cw / 4
-      for (const [sx, sy, rx, ry] of SEAS) {
-        const dy = clamp(sy, -0.99, 0.99)
-        const edge = side * k * Math.sqrt(1 - dy * dy)
-        if (side * sx < side * edge + rx) continue
-        const x = cx + sx * R
-        const y = cy + sy * R
-        lit.moveTo(x + rx * R, y)
-        lit.ellipse(x, y, rx * R, ry * R, 0, 0, TAU, side > 0)
-        seas.moveTo(x + rx * R + over, y)
-        seas.ellipse(x, y, rx * R + over, ry * R + over, 0, 0, TAU)
-      }
       r.fill(lit, disc, Kind.Fluff, moon, GLOBE)
       // Earthshine on the dark side.
       r.fill(dark, mix(color, p.skyTop, 0.85), Kind.Fluff, 0.22 * moon, GLOBE)
-      r.fill(seas, mix(disc, p.skyTop, 0.6), Kind.Fluff, moon, GLOBE)
     }
   }
 }
@@ -2705,14 +2688,6 @@ export function sunAt(hour: number) {
 export function moonUp(night: number, hour: number) {
   return hour >= 12 ? smoothstep(0.9, 1, night) : smoothstep(0.5, 0.9, night)
 }
-
-/** Darker seas on the moon's face, as [x, y, rx, ry] in moon radii from its centre. */
-const SEAS: [number, number, number, number][] = [
-  [0.3, -0.3, 0.22, 0.17],
-  [-0.25, -0.15, 0.2, 0.24],
-  [0.15, 0.35, 0.16, 0.13],
-  [-0.4, 0.3, 0.12, 0.15],
-]
 
 /**
  * Where the moon is in its month, 0..1 from new through full (0.5) and back, from a known new
