@@ -295,7 +295,7 @@ export abstract class Plant {
     r.fill(p, color, Kind.Foliage)
   }
 
-  /** Short bristles on a bud or stalk, as on a corn poppy. */
+  /** Short bristles on a bud or stalk, as on a corn poppy; `reach` 0..1 draws them back in. */
   protected hairs(
     r: Raster,
     cx: number,
@@ -305,6 +305,7 @@ export abstract class Plant {
     angle: number,
     color: Rgb,
     n: number,
+    reach = 1,
   ) {
     const p = new Shape()
     const ca = Math.cos(angle)
@@ -315,7 +316,7 @@ export abstract class Plant {
       const ey = Math.sin(t) * ry
       const x = cx + ex * ca - ey * sa
       const y = cy + ex * sa + ey * ca
-      const len = 1 + 0.7 * Math.abs(noise1(i * 2.3, this.seed))
+      const len = (1 + 0.7 * Math.abs(noise1(i * 2.3, this.seed))) * reach
       p.moveTo(x, y)
       p.lineTo(
         cx + (x - cx) * (1 + 0.35 * len),
@@ -535,6 +536,11 @@ export class Poppy extends Plant {
         this.drawBud(r, tx, ty, tip, H * ph.bud, stemColor, p, 0)
       return
     }
+    // The petals push out of the bud from nothing over the first stretch of opening, as its hairs
+    // draw in and its red seam closes. Drawn at their folded length from the first, they stood
+    // out past the bud in one frame, and the hairs and seam went in that same frame: by night,
+    // when the cup stays furled at most of its length, the bud seemed to burst.
+    const emerge = smoothstep(0.02, 0.12, ph.open)
     const axis = headAxis(tip, this.turn * ph.open)
     const list: { depth: number; draw: () => void; back?: boolean }[] = []
     const poppy = this.bloomed(p.poppy, p)
@@ -549,10 +555,11 @@ export class Poppy extends Plant {
       {
         count: 4,
         // Closing, the petals keep most of their length and wrap round each other.
-        length: H * lerp(0.82, 1, open),
+        length: H * lerp(0.82, 1, open) * emerge,
         width: (u) =>
           H *
           0.66 *
+          emerge *
           (0.22 + 0.78 * Math.sin(Math.min(1, u * 1.08) * Math.PI * 0.5)),
         // Open, a shallow bowl, so a head tipped toward you shows its whole inside.
         cup: (u) => lerp(1.42, 0.3, open) + 0.3 * u * open,
@@ -690,6 +697,7 @@ export class Poppy extends Plant {
         stemColor,
         p,
         smoothstep(0, 0.35, ph.open),
+        1 - emerge,
       )
     flush(list)
   }
@@ -710,6 +718,7 @@ export class Poppy extends Plant {
     color: Rgb,
     p: Palette,
     split: number,
+    bare = 1,
   ) {
     const len = size * 0.72
     const wid = size * 0.42
@@ -743,11 +752,23 @@ export class Poppy extends Plant {
       )
       r.fill(path, bud, Kind.Petal, Math.max(0.15, fade))
     }
-    if (split === 0) {
+    // The hairs and the seam belong to the closed bud: as the petals push out they draw back into
+    // it, the hairs shortening on its shrinking outline and the seam closing over the same
+    // stretch, gone once it has parted.
+    if (bare > 0) {
+      const close = keep * bare
       // Red showing through the seam just before it opens.
       if (this.age > this.G + 11) {
         const seam = new Shape()
-        seam.ellipse(cx, cy, wid * 0.12, len * 0.42, rot, 0, TAU)
+        seam.ellipse(
+          cx,
+          cy,
+          wid * 0.12 * close,
+          len * 0.42 * close,
+          rot,
+          0,
+          TAU,
+        )
         r.fill(
           seam,
           this.bloomed(p.poppy, p),
@@ -759,11 +780,12 @@ export class Poppy extends Plant {
         r,
         cx,
         cy,
-        wid * 0.55,
-        len * 0.55,
+        wid * 0.55 * keep,
+        len * 0.55 * keep,
         rot,
         mix(bud, p.fluff, 0.35),
         14,
+        bare,
       )
     }
   }
