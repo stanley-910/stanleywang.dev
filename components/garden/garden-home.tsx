@@ -1,10 +1,10 @@
 'use client'
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 
 import { useUiHidden } from '@/lib/hide-ui'
 import { askLofi, isLofi, useLofi } from '@/lib/lofi'
 
-import { playIntro } from './intro'
+import { dropReturn, holdReturn, playIntro } from './intro'
 import { LofiPrompt } from './lofi-prompt'
 import { mountGarden } from './mount'
 
@@ -23,6 +23,12 @@ export function GardenHome({ children }: GardenHomeProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const hidden = useUiHidden()
   const lofi = useLofi()
+
+  // Before the first paint, so a return to home never shows the bio on a bare ground first.
+  useLayoutEffect(() => {
+    holdReturn()
+    return dropReturn
+  }, [])
 
   useEffect(() => {
     const canvas = canvasRef.current
