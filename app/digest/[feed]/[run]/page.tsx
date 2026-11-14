@@ -3,11 +3,10 @@ import { notFound } from 'next/navigation'
 
 import { requireSession } from '@/lib/digest/auth'
 import { getRun } from '@/lib/digest/store'
+import { factRows, type DigestItem } from '@/lib/digest/types'
 
 import { SectionTabs } from './section-tabs'
 import { when } from '../../format'
-
-import type { DigestItem } from '@/lib/digest/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -56,12 +55,16 @@ function Item({ item }: { item: DigestItem }) {
         ) : (
           <span>{item.title}</span>
         )}
-        {item.facts && item.facts.length > 0 && (
-          <ul className="digest-facts">
-            {item.facts.map((f, k) => (
-              <li key={k}>{f}</li>
+        {factRows(item).length > 0 && (
+          <div className="digest-fact-rows">
+            {factRows(item).map((row, r) => (
+              <ul key={r} className="digest-facts">
+                {row.map((f, k) => (
+                  <li key={k}>{f}</li>
+                ))}
+              </ul>
             ))}
-          </ul>
+          </div>
         )}
         {item.note && <p className="digest-note">{item.note}</p>}
       </div>

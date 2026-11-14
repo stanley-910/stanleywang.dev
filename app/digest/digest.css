@@ -146,6 +146,12 @@
 }
 
 /* Facts sit apart by space, not by a separator glyph. */
+.digest-fact-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .digest-facts {
   display: flex;
   flex-wrap: wrap;

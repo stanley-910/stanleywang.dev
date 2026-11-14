@@ -8,8 +8,9 @@ export interface DigestItem {
   /** Who or what it's about, e.g. the company or the store. */
   subtitle?: string
   mark?: Mark
-  /** Short facts shown on one line, e.g. ["NYC, SF", "$130k-180k", "rolling"]. */
-  facts?: string[]
+  /** Short facts. One row: ["$130k-180k", "NYC, SF"]. Several rows, one line each:
+   *  [["$130k-180k", "NYC, SF"], ["Fall 2026 to Summer 2027", "posted 3d ago", "rolling"]]. */
+  facts?: string[] | string[][]
   note?: string
   url?: string
   /** Groups consecutive items under a heading, e.g. "Good fits" / "Maybes". */
@@ -51,6 +52,24 @@ function httpUrl(v: unknown, field: string): string | undefined {
   return u.toString()
 }
 
+function parseFacts(facts: unknown[], field: string): string[] | string[][] {
+  const row = (r: unknown[], f: string) =>
+    r.slice(0, 8).map((x, j) => str(x, 120, `${f}[${j}]`))
+  if (facts.every((r) => Array.isArray(r)))
+    return (facts as unknown[][])
+      .slice(0, 4)
+      .map((r, k) => row(r, `${field}[${k}]`))
+  return row(facts, field)
+}
+
+/** Fact rows, whether the item was posted with one row or several. */
+export function factRows(item: DigestItem): string[][] {
+  const f = item.facts
+  if (!f || f.length === 0) return []
+  const rows = (Array.isArray(f[0]) ? f : [f]) as string[][]
+  return rows.filter((r) => r.length > 0)
+}
+
 /** Validates a producer payload. Throws with a message safe to return to the producer. */
 export function parseRun(
   body: unknown,
@@ -83,9 +102,7 @@ export function parseRun(
       title: str(it.title, 300, `items[${i}].title`),
       subtitle: optStr(it.subtitle, 120, `items[${i}].subtitle`),
       mark,
-      facts: facts
-        ?.slice(0, 8)
-        .map((f, j) => str(f, 120, `items[${i}].facts[${j}]`)),
+      facts: facts && parseFacts(facts, `items[${i}].facts`),
       note: optStr(it.note, 1000, `items[${i}].note`),
       url: httpUrl(it.url, `items[${i}].url`),
       section: optStr(it.section, 60, `items[${i}].section`),
