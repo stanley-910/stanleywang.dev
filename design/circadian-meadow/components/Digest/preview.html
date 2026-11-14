@@ -1,0 +1,71 @@
+<!-- @dsCard group="Site" height=720 subtitle="Private digest: a jobs run with sections by day; the index at 375px by night" -->
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Digest</title>
+<style>
+  body { margin: 0; }
+  .row { display: flex; flex-wrap: wrap; gap: 1px; background: var(--hairline); align-items: stretch; }
+  .frame { background: var(--page); color: var(--ink); padding: var(--space-4) var(--gutter); font: 15px/24px var(--font-sans); box-sizing: border-box; display: flex; flex-direction: column; gap: var(--space-5); }
+  .wide { flex: 1 1 640px; } .narrow { flex: 0 0 375px; }
+  p, h1, h2, ul, ol { margin: 0; padding: 0; }
+  ul, ol { list-style: none; }
+  .meta { color: var(--ink-muted); font: 12px/16px var(--font-mono); }
+  .note { color: var(--ink-muted); font-size: 13px; line-height: 19px; max-width: var(--measure-read); }
+  .title { font-size: 15px; font-weight: 500; }
+  .crumbs { display: flex; gap: var(--space-1); margin-bottom: var(--space-3); color: var(--ink-muted); font: 13px/20px var(--font-mono); }
+  .crumbs .sep { color: var(--hairline); }
+  .head { display: flex; flex-direction: column; gap: 2px; }
+  .head .note { margin-top: var(--space-1); }
+  .sec { color: var(--ink-muted); font: 400 12px/16px var(--font-mono); margin-bottom: var(--space-3); }
+  .ledger { display: flex; flex-direction: column; gap: var(--space-4); }
+  .r { display: grid; grid-template-columns: 10rem minmax(0, 1fr); align-items: baseline; gap: 2px var(--space-4); }
+  .r .m { display: flex; flex-direction: column; gap: 2px; }
+  .r .b { grid-column: 2; display: flex; flex-direction: column; gap: var(--space-1); }
+  .name { font-weight: 500; }
+  .link { color: var(--ink); text-decoration: underline; text-decoration-color: var(--hairline); text-underline-offset: 3px; }
+  .facts { display: flex; flex-wrap: wrap; gap: 2px var(--space-3); max-width: var(--measure-read); color: var(--ink-muted); font: 12px/16px var(--font-mono); }
+  .quiet { color: var(--ink-muted); font: 13px/20px var(--font-mono); }
+  .narrow .r { grid-template-columns: 1fr; }
+  .narrow .r .b { grid-column: 1; }
+  .narrow .r .m { flex-direction: row; flex-wrap: wrap; gap: 0 var(--space-2); }
+</style>
+</head>
+<body>
+<div class="row">
+  <div class="frame wide" data-theme="light">
+    <header class="head">
+      <p class="crumbs"><span>digest</span><span class="sep">/</span><span>jobs</span></p>
+      <h1 class="title">Jobs: 2 good, 1 maybe</h1>
+      <p class="meta">Today, 7:42 PM</p>
+      <p class="note">Affirm, DoorDash, Nuro</p>
+    </header>
+    <section>
+      <h2 class="sec">Good fits</h2>
+      <ol class="ledger">
+        <li class="r"><p class="m"><span class="name">Affirm</span></p><div class="b"><a class="link">Software Engineer, Early Career (NYC)</a><ul class="facts"><li>New York City, San Francisco</li><li>$130k-180k</li><li>grad dates not stated</li><li>deadline rolling</li></ul><p class="note">Catch: Grad year unstated; confirm December 2026 grads fit the cohort.</p></div></li>
+        <li class="r"><p class="m"><span class="name">DoorDash</span></p><div class="b"><a class="link">Software Engineer I, Entry-Level (Graduation Date: Fall 2026-Summer 2027) - US</a><ul class="facts"><li>San Francisco, Sunnyvale, Seattle, New York</li><li>$107.4k-158k</li><li>Fall 2026 to Summer 2027</li><li>deadline rolling</li></ul><p class="note">Catch: Asks for two prior internships or equivalent experience; check your fit.</p></div></li>
+      </ol>
+    </section>
+    <section>
+      <h2 class="sec">Maybes</h2>
+      <ol class="ledger">
+        <li class="r"><p class="m"><span class="name">Nuro</span></p><div class="b"><a class="link">Software Engineer, AI Platform - New Grad</a><ul class="facts"><li>Mountain View</li><li>$153k-176k</li><li>by Dec 2026, up to June 2027</li><li>deadline rolling</li></ul><p class="note">Doubt: Team assigned among several (data, onboard, ML infra); some C++ and hardware-adjacent work</p></div></li>
+      </ol>
+    </section>
+  </div>
+  <div class="frame narrow" data-theme="dark">
+    <h1 class="title">Digest</h1>
+    <section>
+      <h2 class="sec">Today</h2>
+      <ol class="ledger">
+        <li class="r"><p class="m meta"><span>Jobs</span><span>7:42 PM</span></p><div class="b"><a class="link">Jobs: 2 good, 1 maybe</a><p class="note">Affirm, DoorDash, Nuro</p></div></li>
+        <li class="r"><p class="m meta"><span>Flights</span><span>7:42 PM</span></p><div class="b"><a class="link">HKG to SFO dropped to $612</a><p class="note">Cheapest since you started watching.</p></div></li>
+      </ol>
+    </section>
+    <p class="quiet">sign out</p>
+  </div>
+</div>
+</body>
+</html>

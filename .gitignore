@@ -52,3 +52,6 @@ AGENTS.md
 
 # meadow gate build
 /scripts/meadow-gate/.out/
+
+# digest: local dev storage (production uses Vercel Blob)
+/.digest-data/

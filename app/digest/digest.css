@@ -1,0 +1,287 @@
+/* Digest: design/circadian-meadow/components/Digest. A private inbox read at a
+   glance, mostly on a phone: whitespace between things instead of rules, one
+   strong word per row, and controls in the site's quiet mono. */
+
+.digest-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: var(--measure);
+  margin-inline: auto;
+  padding-bottom: var(--space-5);
+  color: var(--ink);
+}
+
+.digest-title {
+  font-size: var(--text-body);
+  font-weight: var(--weight-strong);
+  line-height: var(--leading-body);
+}
+
+.digest-meta {
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  line-height: var(--leading-meta);
+}
+
+.digest-note {
+  max-width: var(--measure-read);
+  color: var(--ink-muted);
+  font-size: var(--text-small);
+  line-height: var(--leading-small);
+}
+
+.digest-clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+/* ── Controls: LinkStyle's quiet row, with a finger-sized target ── */
+
+.digest-quiet {
+  position: relative;
+  padding: 0;
+  background: none;
+  font-size: var(--text-small);
+  line-height: 20px;
+}
+
+.digest-crumbs {
+  margin-bottom: var(--space-3);
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+}
+
+/* ── Run header ──────────────────────────────────────────────── */
+
+.digest-run-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.digest-run-head > .digest-note {
+  margin-top: var(--space-1);
+}
+
+/* ── Sections and rows ───────────────────────────────────────── */
+
+/* The header sits 32px above the first section; sections sit 64px apart. */
+.digest-section + .digest-section {
+  margin-top: calc(var(--space-5) - var(--space-4));
+}
+
+.digest-section-title {
+  margin-bottom: var(--space-3);
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  font-weight: var(--weight-body);
+  line-height: var(--leading-meta);
+}
+
+.digest-ledger {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* ProjectsPage's ledger, without its rules: what it is on the left, the
+   item on the right. One column on a phone. */
+.digest-row {
+  display: grid;
+  grid-template-columns: 10rem minmax(0, 1fr);
+  align-items: baseline;
+  gap: 2px var(--space-4);
+}
+
+.digest-row-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.digest-row-body {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.digest-name {
+  font-weight: var(--weight-strong);
+  overflow-wrap: anywhere;
+}
+
+.digest-row[data-mark='alert'] .digest-mark {
+  color: var(--ink);
+}
+
+/* Titles and quiet controls get a bigger target through an invisible box, so
+   the focus ring still hugs the words. A title's reaches the gap above and
+   below (24px line + 2 × space-1 = 40px) without covering its facts. */
+.digest-link {
+  position: relative;
+  overflow-wrap: anywhere;
+}
+
+.digest-link::after,
+.digest-quiet::after {
+  content: '';
+  position: absolute;
+  inset: calc(-1 * var(--space-1)) 0;
+}
+
+.digest-quiet::after {
+  inset: -12px calc(-1 * var(--space-1));
+}
+
+/* Facts sit apart by space, not by a separator glyph. */
+.digest-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px var(--space-3);
+  max-width: var(--measure-read);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  line-height: var(--leading-meta);
+}
+
+.digest-foot {
+  display: flex;
+}
+
+/* ── Sign in ─────────────────────────────────────────────────── */
+
+.digest-login {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-width: 20rem;
+}
+
+.digest-page:has(> .digest-login) {
+  gap: var(--space-4);
+}
+
+.digest-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.digest-input {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  padding-inline: var(--space-1);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-none);
+  background: transparent;
+  color: var(--ink);
+  font-size: 16px; /* under 16px, iOS zooms the page on focus */
+}
+
+.digest-enter {
+  height: 44px;
+  padding-inline: var(--space-1);
+}
+
+.digest-enter::after {
+  content: none;
+}
+
+@media (max-width: 720px) {
+  .digest-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .digest-row-body {
+    grid-column: 1;
+  }
+
+  .digest-row-meta {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 var(--space-2);
+  }
+}
+
+/* A faint underline at rest, so a long run isn't striped; full on hover. */
+.link.digest-link {
+  text-decoration-color: color-mix(in srgb, var(--hairline) 40%, transparent);
+}
+
+.link.digest-link:hover,
+.link.digest-link:focus-visible {
+  text-decoration-color: var(--hairline);
+}
+
+/* ── Section tabs: same quiet mono as the section titles; one 1px ink line
+   slides under the active tab. ─────────────────────────────────── */
+
+.digest-tablist {
+  position: relative;
+  display: flex;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.digest-tab {
+  position: relative;
+  padding: 0 0 6px;
+  background: none;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  line-height: var(--leading-meta);
+  transition: color var(--duration-quick) var(--ease-calm);
+}
+
+/* A 44px target without changing what you see. */
+.digest-tab::after {
+  content: '';
+  position: absolute;
+  inset: -14px calc(-1 * var(--space-1)) -8px;
+}
+
+.digest-tab[aria-selected='true'],
+.digest-tab:hover {
+  color: var(--ink);
+}
+
+.digest-tab:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 4px;
+}
+
+.digest-tab-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  background: var(--ink);
+  transition:
+    transform 240ms var(--ease-calm),
+    width 240ms var(--ease-calm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .digest-tab-bar {
+    transition: none;
+  }
+}

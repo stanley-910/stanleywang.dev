@@ -8,13 +8,15 @@
 :root {
   /* Type: one sans, one mono. The families come from next/font in
      app/layout.tsx; these names are what the rest of the site uses. */
-  --font-sans: var(--font-geist), system-ui, -apple-system, 'Segoe UI',
-    sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, 'SF Mono', Menlo, monospace;
+  --font-sans:
+    var(--font-geist), system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono:
+    var(--font-geist-mono), ui-monospace, 'SF Mono', Menlo, monospace;
 
   --text-body: 15px;
   --leading-body: 1.6;
   --text-small: 13px;
+  --leading-small: 19px;
   --text-meta: 12px;
   --leading-meta: 16px;
   --text-nav: 14px;

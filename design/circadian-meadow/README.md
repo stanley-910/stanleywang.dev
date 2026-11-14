@@ -121,6 +121,7 @@ Every page other than home is plain `page` with `ink` text. The meadow is never 
 - **Links:** LinkStyle. In prose, `ink` with a `hairline` underline; quiet rows (socials) are mono `ink-muted`, no underline, heavier on hover.
 - **Experience:** ExperienceCard. Company names in the bio open a small card with the role.
 - **Projects:** ProjectsPage and ProjectCard. One ledger, the compiler first.
+- **Digest:** Digest. The private `/digest` inbox, read at a glance on a phone: who, what, facts, one note per item; whitespace instead of rules; controls in quiet mono.
 - **Photos:** PhotoCaption, on `/film`. A pill over each photo's corner.
 - **Time off home:** ReadingTime (spec only). Reading colours drift with the hour, a slider under the sun/moon, and a 150ms exit from home in place of the veil.
 - **Project pages and blog posts:** one column, its text at most `measure-read` (40rem), left-aligned to the same gutter as the home bio, so moving between pages doesn't shift the reading line. Headings in `body` weight 500.
