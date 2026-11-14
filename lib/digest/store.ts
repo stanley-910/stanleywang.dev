@@ -11,6 +11,13 @@ import type { DigestRun } from './types'
 // Without BLOB_READ_WRITE_TOKEN in development they live in .digest-data/ instead.
 
 const PREFIX = 'digest/'
+const FILES = 'digest-files/'
+
+// Runs and their files delete themselves this many days after upload (Blob TTL).
+const TTL_DAYS = Math.min(
+  730,
+  Math.max(1, Number(process.env.DIGEST_TTL_DAYS) || 45),
+)
 const LOCAL_DIR = path.join(process.cwd(), '.digest-data')
 
 function blobEnabled(): boolean {
@@ -30,6 +37,7 @@ export async function saveRun(run: DigestRun): Promise<void> {
       contentType: 'application/json',
       addRandomSuffix: false,
       allowOverwrite: true,
+      ttlDays: TTL_DAYS,
     })
     return
   }
@@ -92,4 +100,62 @@ export async function listRuns(): Promise<RunRef[]> {
     }
   }
   return refs.sort((a, b) => b.uploadedAt.getTime() - a.uploadedAt.getTime())
+}
+
+const filePath = (feed: string, run: string, name: string) =>
+  `${FILES}${feed}/${run}/${name}`
+
+const TYPES: Record<string, string> = {
+  pdf: 'application/pdf',
+  typ: 'text/plain; charset=utf-8',
+  txt: 'text/plain; charset=utf-8',
+  md: 'text/markdown; charset=utf-8',
+  json: 'application/json',
+}
+
+export function contentTypeFor(name: string): string {
+  return TYPES[name.split('.').pop() ?? ''] ?? 'application/octet-stream'
+}
+
+export async function saveFile(
+  feed: string,
+  run: string,
+  name: string,
+  body: Buffer,
+): Promise<void> {
+  if (blobEnabled()) {
+    await put(filePath(feed, run, name), body, {
+      access: 'private',
+      contentType: contentTypeFor(name),
+      addRandomSuffix: false,
+      allowOverwrite: true,
+      ttlDays: TTL_DAYS,
+    })
+    return
+  }
+  const file = path.join(LOCAL_DIR, filePath(feed, run, name))
+  await fs.mkdir(path.dirname(file), { recursive: true })
+  await fs.writeFile(file, body)
+}
+
+export async function getFile(
+  feed: string,
+  run: string,
+  name: string,
+): Promise<ReadableStream<Uint8Array> | null> {
+  if (blobEnabled()) {
+    const res = await get(filePath(feed, run, name), {
+      access: 'private',
+      useCache: false,
+    })
+    return res && res.statusCode === 200 ? res.stream : null
+  }
+  try {
+    const buf = await fs.readFile(
+      path.join(LOCAL_DIR, filePath(feed, run, name)),
+    )
+    return new Response(buf).body
+  } catch {
+    return null
+  }
 }

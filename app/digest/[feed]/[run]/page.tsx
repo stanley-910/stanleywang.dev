@@ -27,7 +27,7 @@ function groups(
 /** A mark prints only outside a section: inside one, the heading ("Good fits") already says it. */
 const SHOWN_MARKS = new Set(['good', 'maybe', 'alert'])
 
-function Item({ item }: { item: DigestItem }) {
+function Item({ item, base }: { item: DigestItem; base: string }) {
   const mark =
     !item.section && item.mark && SHOWN_MARKS.has(item.mark)
       ? item.mark
@@ -67,6 +67,31 @@ function Item({ item }: { item: DigestItem }) {
           </div>
         )}
         {item.note && <p className="digest-note">{item.note}</p>}
+        {item.files && item.files.length > 0 && (
+          <p className="link-row digest-files">
+            {item.files.map((f) => (
+              <a
+                key={f.name}
+                className="link-quiet digest-quiet"
+                href={`${base}/${f.name}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {f.label}
+              </a>
+            ))}
+          </p>
+        )}
+        {item.details?.map((d) => (
+          <details key={d.label} className="digest-details">
+            <summary className="digest-quiet">{d.label}</summary>
+            <ul>
+              {d.lines.map((l, k) => (
+                <li key={k}>{l}</li>
+              ))}
+            </ul>
+          </details>
+        ))}
       </div>
     </li>
   )
@@ -104,7 +129,11 @@ export default async function DigestRunPage({
         const list = (items: DigestItem[]) => (
           <ol className="digest-ledger">
             {items.map((it, j) => (
-              <Item key={j} item={it} />
+              <Item
+                key={j}
+                item={it}
+                base={`/digest/files/${run.feed}/${run.id}`}
+              />
             ))}
           </ol>
         )

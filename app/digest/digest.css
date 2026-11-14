@@ -291,3 +291,65 @@
     transition: none;
   }
 }
+
+/* ── Files and details: quiet mono controls under the note ─────────── */
+
+.digest-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px var(--space-3);
+  margin: 0;
+}
+
+.digest-details > summary {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  cursor: pointer;
+  list-style: none;
+}
+
+.digest-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* A small turned caret, no icon font. */
+.digest-details > summary::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-right: 1px solid currentColor;
+  border-bottom: 1px solid currentColor;
+  transform: translateY(-2px) rotate(-45deg);
+  transition: transform var(--duration-quick) var(--ease-calm);
+}
+
+.digest-details[open] > summary::before {
+  transform: translateY(-3px) rotate(45deg);
+}
+
+.digest-details > summary:hover {
+  color: var(--ink);
+}
+
+.digest-details > ul {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: var(--measure-read);
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ink-muted);
+  font-size: var(--text-small);
+  line-height: var(--leading-small);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .digest-details > summary::before {
+    transition: none;
+  }
+}

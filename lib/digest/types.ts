@@ -15,7 +15,25 @@ export interface DigestItem {
   url?: string
   /** Groups consecutive items under a heading, e.g. "Good fits" / "Maybes". */
   section?: string
+  /** Collapsed extras, each its own toggle, e.g. { label: "Materials", lines: [...] }. */
+  details?: DigestDetails[]
+  /** Files uploaded for this run (POST /api/digest/upload), linked under the item. */
+  files?: DigestFileRef[]
 }
+
+export interface DigestDetails {
+  label: string
+  lines: string[]
+}
+
+export interface DigestFileRef {
+  /** Link text, e.g. "Resume for Stripe". */
+  label: string
+  /** The uploaded file's name within its run, e.g. "stripe-resume.pdf". */
+  name: string
+}
+
+export const FILE_NAME = /^[a-z0-9][a-z0-9._-]{0,99}$/
 
 export interface DigestRun {
   feed: string
@@ -28,7 +46,7 @@ export interface DigestRun {
   source: string
 }
 
-const SLUG = /^[a-z0-9][a-z0-9-]{0,63}$/
+export const SLUG = /^[a-z0-9][a-z0-9-]{0,63}$/
 const MARKS: Mark[] = ['good', 'maybe', 'info', 'alert']
 const MAX_ITEMS = 300
 
@@ -60,6 +78,34 @@ function parseFacts(facts: unknown[], field: string): string[] | string[][] {
       .slice(0, 4)
       .map((r, k) => row(r, `${field}[${k}]`))
   return row(facts, field)
+}
+
+function parseDetails(v: unknown, field: string): DigestDetails[] | undefined {
+  if (v === undefined || v === null) return undefined
+  if (!Array.isArray(v)) throw new Error(`${field} must be an array`)
+  return v.slice(0, 6).map((d, k) => {
+    const o = (d ?? {}) as Record<string, unknown>
+    if (!Array.isArray(o.lines))
+      throw new Error(`${field}[${k}].lines must be an array`)
+    return {
+      label: str(o.label, 40, `${field}[${k}].label`),
+      lines: o.lines
+        .slice(0, 20)
+        .map((l, j) => str(l, 300, `${field}[${k}].lines[${j}]`)),
+    }
+  })
+}
+
+function parseFiles(v: unknown, field: string): DigestFileRef[] | undefined {
+  if (v === undefined || v === null) return undefined
+  if (!Array.isArray(v)) throw new Error(`${field} must be an array`)
+  return v.slice(0, 6).map((f, k) => {
+    const o = (f ?? {}) as Record<string, unknown>
+    const name = str(o.name, 100, `${field}[${k}].name`)
+    if (!FILE_NAME.test(name))
+      throw new Error(`${field}[${k}].name must be a lowercase file name`)
+    return { label: str(o.label, 80, `${field}[${k}].label`), name }
+  })
 }
 
 /** Fact rows, whether the item was posted with one row or several. */
@@ -106,6 +152,8 @@ export function parseRun(
       note: optStr(it.note, 1000, `items[${i}].note`),
       url: httpUrl(it.url, `items[${i}].url`),
       section: optStr(it.section, 60, `items[${i}].section`),
+      details: parseDetails(it.details, `items[${i}].details`),
+      files: parseFiles(it.files, `items[${i}].files`),
     }
   })
   return {
