@@ -18,10 +18,11 @@
 // than clear it, so a slow machine that someone keeps scrubbing is still caught at rest.
 
 /** How much of the counted frames' time each judgement covers, in ms. */
-const WINDOW = 1500
+const WINDOW = 700
 /**
- * Slow windows in a row before the page is called slow: four and a half seconds of trouble at
- * least, and more than one bad moment can make (see above).
+ * Slow windows in a row before the page is called slow: two seconds of trouble, since a machine
+ * either holds the meadow or doesn't and it shows at once, and more than one bad moment can make
+ * (see above).
  */
 const STRIKES = 3
 /** Stanley's line: under 30 frames a second is not fine. */
@@ -48,7 +49,7 @@ const FAST_SHARE = 0.2
 const HITCH = 40
 /** The same on a display capped at 30 Hz, where one missed refresh already leaves a 67 ms frame. */
 const CAPPED_HITCH = 50
-/** Hitches a second that make a window slow: three in a window, a judder anyone can see. */
+/** Hitches a second that make a window slow: two in a window, a judder anyone can see. */
 const HITCH_RATE = 2
 /**
  * The plant frames a second under which the plants themselves read as stuttering, whatever the
@@ -68,7 +69,7 @@ const PLANT_SHARE = 0.45
  */
 const CAPPED_SLOW_PLANTS = 10.5
 /** Counted ms after a start before frames count, while the page and the workers settle. */
-const SETTLE = 3000
+const SETTLE = 1500
 /** A gap longer than this, in ms, is a pause (a debugger, a frozen tab), not a slow frame. */
 const PAUSE = 1000
 /**
