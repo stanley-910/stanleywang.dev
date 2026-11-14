@@ -79,7 +79,14 @@ const nextConfig = {
   // No dev badge: it sat on the compiler's phone controls.
   devIndicators: false,
   async headers() {
-    return [{ source: '/:path*', headers: securityHeaders }]
+    return [
+      { source: '/:path*', headers: securityHeaders },
+      // giscus.app loads the comments' day theme with crossorigin.
+      {
+        source: '/giscus/:path*',
+        headers: [{ key: 'Access-Control-Allow-Origin', value: '*' }],
+      },
+    ]
   },
   async redirects() {
     return [

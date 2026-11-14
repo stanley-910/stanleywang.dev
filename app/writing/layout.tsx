@@ -9,7 +9,7 @@ import '@/app/styles/markdown.css'
 import '@/app/styles/code.css'
 import 'katex/dist/katex.css'
 import { useTheme } from 'next-themes'
-import { useEffect } from 'react'
+import { useEffect, useSyncExternalStore } from 'react'
 
 import { BLOG_POSTS } from '@/app/data'
 import PostsPage from '@/app/writing/page'
@@ -18,6 +18,17 @@ import { ScrollProgress } from '@/components/ui/scroll-progress'
 
 // Unlisted pages that bring their own layout: no post header or comments.
 const UNLISTED = ['/writing/poem']
+
+// Comments by day: the site's own giscus theme, which giscus.app fetches from
+// this origin. That needs https: a browser won't let giscus.app read a
+// stylesheet off localhost, and the comments come up unstyled, so in
+// development they keep giscus's light.
+const noSubscribe = () => () => {}
+const dayThemeHere = () =>
+  window.location.protocol === 'https:'
+    ? `${window.location.origin}/giscus/day.css`
+    : 'light'
+const dayThemeServer = () => 'light'
 
 const VARIANTS_CONTAINER = {
   hidden: { opacity: 0 },
@@ -116,6 +127,11 @@ export default function LayoutBlogPost({
   children: React.ReactNode
 }) {
   const { resolvedTheme } = useTheme()
+  const dayTheme = useSyncExternalStore(
+    noSubscribe,
+    dayThemeHere,
+    dayThemeServer,
+  )
   const pathname = usePathname()
   const isPostsPage = pathname === '/writing'
 
@@ -186,7 +202,7 @@ export default function LayoutBlogPost({
             reactionsEnabled="0"
             emitMetadata="0"
             inputPosition="top"
-            theme={resolvedTheme === 'dark' ? 'transparent_dark' : 'light'}
+            theme={resolvedTheme === 'dark' ? 'transparent_dark' : dayTheme}
             lang="en"
             loading="lazy"
           />
