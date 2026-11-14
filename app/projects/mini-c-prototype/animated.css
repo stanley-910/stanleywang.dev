@@ -264,9 +264,7 @@
   width: 340px;
   padding: 10px 12px;
   border: 1px solid var(--hairline);
-  background: var(--control);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+  background: var(--page);
   color: var(--ink);
 }
 .ac-about p {
@@ -397,9 +395,7 @@
   padding: 4px 0;
   list-style: none;
   border: 1px solid var(--hairline);
-  background: var(--control);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+  background: var(--page);
   outline: none;
 }
 .ac-picker li {
@@ -2008,7 +2004,7 @@
   max-width: calc(100% - 16px);
   overflow: hidden;
   border: 1px solid var(--hairline);
-  /* Nearly the page, without the popovers' blur: it stays open over a
+  /* Nearly the page, with no backdrop blur: it stays open over a
      stage that repaints every frame, and a backdrop blur there costs a
      readback and a blur per frame (WebKit most). */
   background: color-mix(in srgb, var(--page) 94%, transparent);
@@ -3242,9 +3238,7 @@
   z-index: 5;
   padding: 4px 0;
   border: 1px solid var(--hairline);
-  background: var(--control);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+  background: var(--page);
 }
 .ac-keys .ac-more-menu button {
   gap: 8px;
