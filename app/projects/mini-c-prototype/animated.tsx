@@ -3077,6 +3077,84 @@ export default function AnimatedCompiler() {
   const touchListing = () => {
     listingHand.current = performance.now()
   }
+  // A placeholder opening into its saves or restores (or closing back, a
+  // step back) holds the rows below it where they were, lanes and all, and
+  // pushes what's above it up, when it sits in the pane's top half; one in
+  // the bottom half pushes the rows below down as before. Either way the
+  // larger part of the pane stays put, and the step's scroll then brings
+  // the new lines in, rows and lanes moving together (Stanley, 2026-11-14:
+  // the lanes jumped as registers were pushed). Reduced motion's scroll is
+  // instant, so it skips the hold rather than show it for a frame. What
+  // the scroll can't take (at the top, or the bottom) the listing takes as
+  // a shift, rows and lanes together, easing off with the step's scroll.
+  const savesShift = useRef<Animation | null>(null)
+  // (where that shift has the rows now, px)
+  const savesShiftNow = () => {
+    const list = instructionRef.current
+    if (!savesShift.current || !list) return 0
+    const t = getComputedStyle(list).transform
+    return t && t !== 'none' ? new DOMMatrix(t).m42 : 0
+  }
+  const savesHold = useRef<{
+    trace: Trace
+    fn: number
+    stage: 'mark' | 'push' | 'pop'
+    /** Where the row after each placeholder starts in the listing. */
+    below: Map<number, number>
+  } | null>(null)
+  useLayoutEffect(() => {
+    const was = savesHold.current
+    savesHold.current = null
+    const pane = listingRef.current
+    const list = instructionRef.current
+    if (!regView || !saves || !pane || !list) return
+    const at = (op: string) =>
+      trace.instructions.findIndex((ins) => ins.fn === fnIndex && ins.op === op)
+    const row = (i: number) =>
+      i < 0 ? null : list.querySelector<HTMLElement>(`[data-row="${i}"]`)
+    const push = at('pushRegisters')
+    const pop = at('popRegisters')
+    const below = new Map<number, number>()
+    for (const i of [push, pop]) {
+      const next = row(i + 1)
+      if (next) below.set(i, next.offsetTop)
+    }
+    savesHold.current = { trace, fn: fnIndex, stage: saves, below }
+    if (reduced || !was || was.trace !== trace || was.fn !== fnIndex) return
+    // (one placeholder at a time: a scrub past both leaves them be)
+    const pair = [was.stage, saves].sort().join()
+    const k = pair === 'mark,push' ? push : pair === 'pop,push' ? pop : -1
+    const before = was.below.get(k)
+    const after = below.get(k)
+    const own = row(k)
+    if (before === undefined || after === undefined || !own) return
+    // (one shift at a time, and measured without it)
+    savesShift.current?.cancel()
+    savesShift.current = null
+    const box = pane.getBoundingClientRect()
+    if (own.getBoundingClientRect().top - box.top > box.height / 2) return
+    const moved = after - before
+    if (Math.abs(moved) < 0.5) return
+    // (the step's own scroll, not a hand's)
+    listingAuto.current = performance.now()
+    const from = pane.scrollTop
+    pane.scrollTop = from + moved
+    // The rows below moved `moved` down the listing and the pane scrolled
+    // part of it; the rest shows on screen until the shift takes it up.
+    const rest = pane.scrollTop - from - moved
+    if (Math.abs(rest) < 0.5) return
+    const shift = list.animate(
+      [{ transform: `translateY(${rest}px)` }, { transform: 'none' }],
+      {
+        duration: transition.duration * 1000,
+        easing: `cubic-bezier(${EASE.join(',')})`,
+      },
+    )
+    savesShift.current = shift
+    shift.onfinish = () => {
+      if (savesShift.current === shift) savesShift.current = null
+    }
+  })
   // Emit and registers: a step scrolls the listing to its current block
   // and pans the canvas to the node it came from with its register badge,
   // each just far enough to bring it in.
@@ -3105,11 +3183,13 @@ export default function AnimatedCompiler() {
       performance.now() - listingHand.current > 1500
     ) {
       const box = pane.getBoundingClientRect()
+      // (where the rows will be once a save step's shift is off)
+      const shifted = savesShiftNow()
       // Four lines of context either side of the current ones, as the
       // cursor walks up or down (less in a short pane).
       const dy = into(
-        rows[0].getBoundingClientRect().top,
-        rows[rows.length - 1].getBoundingClientRect().bottom,
+        rows[0].getBoundingClientRect().top - shifted,
+        rows[rows.length - 1].getBoundingClientRect().bottom - shifted,
         box.top,
         box.bottom,
         Math.min(4 * 19, box.height / 4),
@@ -6374,11 +6454,15 @@ export default function AnimatedCompiler() {
                   <div
                     className="ac-listing-scroll"
                     ref={listingRef}
-                    style={
-                      listingSide
+                    style={{
+                      ...(listingSide
                         ? { width: listingW - 1 }
-                        : { height: listingH - 1 }
-                    }
+                        : { height: listingH - 1 }),
+                      // (the saves steps hold the rows themselves:
+                      // savesHold; the browser's anchoring would add its
+                      // own shift to it)
+                      ...(regView && saves && { overflowAnchor: 'none' }),
+                    }}
                     onWheel={touchListing}
                     onTouchStart={touchListing}
                     onPointerDown={touchListing}

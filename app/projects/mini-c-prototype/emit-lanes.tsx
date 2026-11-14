@@ -59,9 +59,17 @@ export function EmitLanes({
   layout?: number
 }) {
   const ref = useRef<SVGSVGElement>(null)
-  // Row centres, measured: labels and comments sit between the rows.
-  const [centres, setCentres] = useState<number[]>([])
-  const [half, setHalf] = useState(9.5)
+  // Row centres, measured: labels and comments sit between the rows. Rows
+  // that moved without new ones (`layout`) are drawn where they are now in
+  // the same frame: their lines start over there rather than glide, which
+  // left them behind their dots, ticks and rows for a moment.
+  const [measured, setMeasured] = useState({
+    centres: [] as number[],
+    half: 9.5,
+    layout,
+    relaid: false,
+  })
+  const { centres, half } = measured
   const previous = useRef(count)
   const shrinking = count < previous.current
   useLayoutEffect(() => {
@@ -75,8 +83,12 @@ export function EmitLanes({
     rows.forEach((el) => {
       out[Number(el.dataset.row)] = el.offsetTop + el.offsetHeight / 2
     })
-    setCentres(out)
-    if (rows[0]) setHalf(rows[0].offsetHeight / 2)
+    setMeasured((was) => ({
+      centres: out,
+      half: rows[0] ? rows[0].offsetHeight / 2 : was.half,
+      layout,
+      relaid: was.layout !== layout,
+    }))
   }, [count, lanes, layout])
 
   if (columns === 0) return null
@@ -142,10 +154,11 @@ export function EmitLanes({
               }
             >
               <motion.line
+                key={String(measured.layout)}
                 className={open ? 'open' : ''}
                 x1={x}
                 x2={x}
-                initial={{ y1, y2: y1 }}
+                initial={measured.relaid ? { y1, y2 } : { y1, y2: y1 }}
                 animate={{ y1, y2 }}
                 transition={grow}
               />
