@@ -31,7 +31,13 @@ export const setBreeze = (value: number) => {
   breeze = value
 }
 
-/** Whether a meadow is on this page to hear it. */
+/** Whether a meadow is on this page to hear it; lo-fi home keeps the canvas but runs no scene. */
 export function meadowHere() {
-  return document.querySelector('.garden-canvas') !== null
+  const canvas = document.querySelector('.garden-canvas')
+  return canvas !== null && !canvas.closest('[data-lofi]')
+}
+
+/** Whether this is lo-fi home (lib/lofi.ts), where the meadow would be. */
+export function lofiHere() {
+  return document.querySelector('[data-lofi] .garden-canvas') !== null
 }

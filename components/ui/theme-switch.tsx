@@ -32,7 +32,9 @@ import './time-control.css'
 // The site menu in the top bar's corner: four dots that open the time slider
 // (design/circadian-meadow/components/ReadingTime) and, where there is a
 // meadow, a second section with its weather, its moon and, on home, hide
-// text (design/circadian-meadow/components/SiteHeader).
+// text (design/circadian-meadow/components/SiteHeader). Lo-fi home has no
+// scene, so that section keeps only the lo-fi switch there; the weather set
+// before holds for when the meadow comes back.
 // The page's colours follow the hour shown here, the clock's or one set by
 // hand for this visit, and home's meadow follows the same hour.
 
@@ -131,6 +133,8 @@ export function ThemeSwitch({ className }: { className?: string }) {
   const openRef = useRef(false)
   const dip = useRef<ReturnType<typeof setTimeout> | null>(null)
   const close = useCallback(() => setOpen(false), [])
+  /** Lo-fi home: no scene for the weather, the moon or hide text to act on. */
+  const sceneless = pathname === '/' && lofi
 
   useEffect(() => {
     openRef.current = open
@@ -189,6 +193,11 @@ export function ThemeSwitch({ className }: { className?: string }) {
 
   // Hidden text only lasts while home is shown.
   useEffect(() => setUiHidden(false), [pathname])
+
+  // Nor does it last into lo-fi, which has no scene to leave alone and no menu item to bring it back.
+  useEffect(() => {
+    if (sceneless) setUiHidden(false)
+  }, [sceneless])
 
   // Escape brings hidden text back.
   useEffect(() => {
@@ -336,24 +345,26 @@ export function ThemeSwitch({ className }: { className?: string }) {
           </div>
           {MEADOWS.includes(pathname) && (
             <div className="time-control-section">
-              <div
-                className="time-control-weather"
-                role="group"
-                aria-label="Weather"
-              >
-                {WEATHERS.map((w) => (
-                  <button
-                    key={w}
-                    type="button"
-                    className="time-control-item"
-                    aria-pressed={weather === w}
-                    onClick={() => setWeather(w)}
-                  >
-                    {w}
-                  </button>
-                ))}
-              </div>
-              {weather === 'storm' && (
+              {!sceneless && (
+                <div
+                  className="time-control-weather"
+                  role="group"
+                  aria-label="Weather"
+                >
+                  {WEATHERS.map((w) => (
+                    <button
+                      key={w}
+                      type="button"
+                      className="time-control-item"
+                      aria-pressed={weather === w}
+                      onClick={() => setWeather(w)}
+                    >
+                      {w}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {!sceneless && weather === 'storm' && (
                 <div className="time-control-dial">
                   <input
                     className="time-control-range"
@@ -389,41 +400,43 @@ export function ThemeSwitch({ className }: { className?: string }) {
                   </p>
                 </div>
               )}
-              <div className="time-control-dial">
-                <input
-                  className="time-control-range"
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  value={moonTone ?? 0}
-                  aria-label="Moon colour"
-                  aria-valuetext={moonName(moonTone ?? 0)}
-                  style={
-                    {
-                      '--track': MOON_TRACK,
-                      '--bead': rgb(moonAt(moonTone ?? 0)),
-                    } as React.CSSProperties
-                  }
-                  onChange={(e) => setMoonTone(Number(e.target.value))}
-                />
-                <p className="time-control-readout">
-                  <span className="time-control-hour">
-                    {moonName(moonTone ?? 0)}
-                  </span>
-                  <span className="time-control-phase">moon</span>
-                  {moonTone !== null && (
-                    <button
-                      type="button"
-                      className="link-quiet time-control-now"
-                      onClick={() => setMoonTone(null)}
-                    >
-                      auto
-                    </button>
-                  )}
-                </p>
-              </div>
-              {pathname === '/' && (
+              {!sceneless && (
+                <div className="time-control-dial">
+                  <input
+                    className="time-control-range"
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={moonTone ?? 0}
+                    aria-label="Moon colour"
+                    aria-valuetext={moonName(moonTone ?? 0)}
+                    style={
+                      {
+                        '--track': MOON_TRACK,
+                        '--bead': rgb(moonAt(moonTone ?? 0)),
+                      } as React.CSSProperties
+                    }
+                    onChange={(e) => setMoonTone(Number(e.target.value))}
+                  />
+                  <p className="time-control-readout">
+                    <span className="time-control-hour">
+                      {moonName(moonTone ?? 0)}
+                    </span>
+                    <span className="time-control-phase">moon</span>
+                    {moonTone !== null && (
+                      <button
+                        type="button"
+                        className="link-quiet time-control-now"
+                        onClick={() => setMoonTone(null)}
+                      >
+                        auto
+                      </button>
+                    )}
+                  </p>
+                </div>
+              )}
+              {pathname === '/' && !lofi && (
                 <button
                   type="button"
                   className="time-control-item"

@@ -14,9 +14,10 @@ import {
   setHour,
 } from '@/lib/circadian'
 import { useUiHidden } from '@/lib/hide-ui'
-import { isLofi, setLofi } from '@/lib/lofi'
+import { isLofi, setLofi, useLofi } from '@/lib/lofi'
 import {
   currentBreeze,
+  lofiHere,
   meadowHere,
   sendMeadow,
   setBreeze,
@@ -128,6 +129,15 @@ const MENUS: [string, Item[]][] = [
     ],
   ],
 ]
+/** The menus on lo-fi home, which has no weather: File without it, or the rule before it. */
+const isWeatherItem = (it: Item | undefined) => !!it?.[1].startsWith('weather ')
+const LOFI_MENUS: [string, Item[]][] = MENUS.map(([name, list]) => [
+  name,
+  list.filter(
+    (it, i) =>
+      !isWeatherItem(it) && !(it === null && isWeatherItem(list[i + 1])),
+  ),
+])
 
 const BOOT_KEY = 'terminal-booted'
 const GLITCH = '!@#$%^&*()_+-=[]{}|;:,.<>?~©λ'
@@ -505,6 +515,8 @@ export function Terminal() {
   const router = useRouter()
   const pathname = usePathname() ?? '/'
   const uiHidden = useUiHidden()
+  const lofi = useLofi()
+  const menus = lofi && pathname === '/' ? LOFI_MENUS : MENUS
   const [open, setOpen] = useState(false)
   /** Popping out, before it unmounts. */
   const [closing, setClosing] = useState(false)
@@ -767,6 +779,7 @@ export function Terminal() {
         weather: currentWeather(),
         setWeather,
         meadowHere,
+        lofiHere,
         lofi: isLofi(),
         setLofi,
         open: (url) => window.open(url, '_blank', 'noopener,noreferrer'),
@@ -1058,7 +1071,7 @@ export function Terminal() {
             </header>
 
             <nav className="terminal-menu" aria-label="Terminal menu">
-              {MENUS.map(([name, list]) => (
+              {menus.map(([name, list]) => (
                 <div key={name}>
                   <button
                     aria-expanded={menu === name}

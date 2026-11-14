@@ -40,6 +40,8 @@ export type Ctx = {
   weather: WeatherKind
   setWeather: (weather: WeatherKind) => void
   meadowHere: () => boolean
+  /** Whether this is lo-fi home, where the meadow would be but isn't drawn. */
+  lofiHere: () => boolean
   /** Lo-fi (lib/lofi.ts): home without the meadow's animation. */
   lofi: boolean
   setLofi: (on: boolean) => void
@@ -198,6 +200,10 @@ const NAMES = [
 
 /** Off home, the meadow commands say where the meadow is. */
 const elsewhere = ["{m|The meadow's at home. 'cd ~' to see it.}"]
+/** On lo-fi home, they say how to bring it back. */
+const sceneless = ["{m|Lo-fi has no meadow. 'lofi off' brings it back.}"]
+/** What the meadow commands say where no meadow is drawn. */
+const noMeadow = (ctx: Ctx) => (ctx.lofiHere() ? sceneless : elsewhere)
 
 /** Something in a folder: how ls shows it, what open does, and what cat prints. */
 type Kind = 'dir' | 'project' | 'text' | 'post' | 'photo' | 'exe' | 'pdf'
@@ -569,7 +575,7 @@ export function run(input: string, ctx: Ctx): string[] {
       if (!a) return [`wind {y|${ctx.wind.toFixed(2)}}`]
       // A gust passes and the breeze stays as it was.
       if (a === 'gust') {
-        if (!ctx.meadowHere()) return elsewhere
+        if (!ctx.meadowHere()) return noMeadow(ctx)
         ctx.gust()
         return [`wind {y|gust} {m|(then ${ctx.wind.toFixed(2)})}`]
       }
@@ -582,11 +588,13 @@ export function run(input: string, ctx: Ctx): string[] {
       ctx.setWind(w)
       return [
         `wind {y|${w.toFixed(2)}} {m|(was ${was.toFixed(2)})}`,
-        ...(ctx.meadowHere() ? [] : elsewhere),
+        ...(ctx.meadowHere() ? [] : noMeadow(ctx)),
       ]
     }
     case 'weather': {
       const kinds = `{m|${WEATHERS.join(', ')}}`
+      // Lo-fi home has no weather to change; the visit's holds for when the meadow comes back.
+      if (ctx.lofiHere()) return [`weather {y|off} {m|(lo-fi)}`, ...sceneless]
       if (!a) return [`weather {y|${ctx.weather}}`, kinds]
       if (!isWeather(a))
         return [`weather: {e|${args[1]}} isn't one I know. Try ${kinds}`]
@@ -594,7 +602,7 @@ export function run(input: string, ctx: Ctx): string[] {
       ctx.setWeather(a)
       return [
         `weather {y|${a}} {m|(was ${was})}`,
-        ...(ctx.meadowHere() ? [] : elsewhere),
+        ...(ctx.meadowHere() ? [] : noMeadow(ctx)),
       ]
     }
     case 'lofi': {
@@ -605,7 +613,7 @@ export function run(input: string, ctx: Ctx): string[] {
       return [`lofi {y|${a}} {m|(was ${ctx.lofi ? 'on' : 'off'})}`]
     }
     case 'regrow': {
-      if (!ctx.meadowHere()) return elsewhere
+      if (!ctx.meadowHere()) return noMeadow(ctx)
       const seed = 1e9 + Math.floor(Math.random() * 9e8)
       ctx.regrow(seed)
       return [`regrowing  {m|seed ${seed}}`]
