@@ -2376,9 +2376,14 @@ export class Garden {
   /** Where the sun or moon is: across the sky by day, and again by night. */
   private globeAt() {
     const day = this.hour >= 6 && this.hour < 18.5
+    // The moon's arc starts as it comes out (moonUp), not at sunset: started then, it had climbed
+    // two thirds of the way by the time the sky was dark enough to show it, and faded in high
+    // over the range instead of rising from behind it. Until then it waits at the foot of its arc.
     const t = day
       ? (this.hour - 6) / 12.5
-      : ((this.hour + 24 - 18.5) % 24) / 11.5
+      : this.hour >= 18.5 && this.hour < MOON_FROM
+        ? 0
+        : ((this.hour + 24 - MOON_FROM) % 24) / (30 - MOON_FROM)
     // A wide screen's sun sets into the saddle between the two snowy massifs. A phone's runs
     // nearly edge to edge, up past the dawn notch and down the far side of the saddle, so a swipe
     // carries it a longer way for the same hours; a tablet falls between.
@@ -2678,6 +2683,9 @@ export function sunAt(hour: number) {
     ? smoothstep(6, 6.75, hour) * (1 - smoothstep(17.75, 18.5, hour))
     : 0
 }
+
+/** When the moon starts up its arc, a little before the sky is dark enough to show it. */
+const MOON_FROM = 20.8
 
 /**
  * How much of the moon is out for the palette's `night` at `hour`: in the evening none until the
