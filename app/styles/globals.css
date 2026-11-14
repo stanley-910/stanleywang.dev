@@ -15,6 +15,10 @@
 html {
   overflow-y: scroll;
   scrollbar-gutter: stable;
+  /* Inherited, so panels that scroll take it too. Where it's set, Chromium
+     drops ::-webkit-scrollbar styles, so a panel with its own sets it back
+     to auto (terminal.css, the mini-c prototype's animated.css). */
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
 @layer base {

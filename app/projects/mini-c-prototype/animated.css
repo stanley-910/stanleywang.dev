@@ -161,6 +161,13 @@
 .ac ::-webkit-scrollbar-corner {
   background: transparent;
 }
+/* The page sets scrollbar-color (globals.css), which would switch these off. */
+@supports selector(::-webkit-scrollbar) {
+  .ac,
+  .ac * {
+    scrollbar-color: auto;
+  }
+}
 @supports not selector(::-webkit-scrollbar) {
   .ac * {
     scrollbar-width: thin;

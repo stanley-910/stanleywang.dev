@@ -35,6 +35,10 @@
   --shadow-photo: drop-shadow(0 2px 2px #2525222e)
     drop-shadow(0 16px 28px #25252242);
   --focus: var(--ink);
+  /* Scrollbars, mixed from the hour's own ink and page so the thumb holds
+     about 3:1 or better at every hour (dawn's grey page is the weakest). */
+  --scrollbar-thumb: color-mix(in oklab, var(--ink) 60%, var(--page));
+  --scrollbar-track: color-mix(in oklab, var(--ink) 4%, var(--page));
 
   /* Over photos, whatever the theme. */
   --caption-fill: #1b1b19cc;

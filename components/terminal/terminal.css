@@ -516,6 +516,8 @@ html:has(.garden-home, .garden-canvas) .terminal-power[aria-pressed='true'] {
   padding: 8px 10px 10px;
   overflow: hidden auto;
   overscroll-behavior: contain;
+  /* The page's scrollbar-color would switch off the bar below in Chromium. */
+  scrollbar-color: auto;
 }
 
 .terminal-screen ::selection {
