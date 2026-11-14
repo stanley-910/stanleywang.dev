@@ -91,6 +91,15 @@ html.dark .prose {
   --fg-deeper: #fff;
 }
 
+/* List bullets and numbers in the hour's muted ink: the typography plugin's fixed pale grey
+   vanished on the greyer grounds of early morning and evening. */
+.prose.prose-gray {
+  --tw-prose-bullets: var(--ink-muted);
+  --tw-prose-counters: var(--ink-muted);
+  --tw-prose-invert-bullets: var(--ink-muted);
+  --tw-prose-invert-counters: var(--ink-muted);
+}
+
 .prose {
   --fg-light: #888;
   --fg: #333;
