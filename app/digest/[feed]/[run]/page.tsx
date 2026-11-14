@@ -5,6 +5,7 @@ import { requireSession } from '@/lib/digest/auth'
 import { getRun } from '@/lib/digest/store'
 import { factRows, type DigestItem } from '@/lib/digest/types'
 
+import { CopyButton } from './copy-button'
 import { SectionTabs } from './section-tabs'
 import { when } from '../../format'
 
@@ -67,9 +68,10 @@ function Item({ item, base }: { item: DigestItem; base: string }) {
           </div>
         )}
         {item.note && <p className="digest-note">{item.note}</p>}
-        {item.files && item.files.length > 0 && (
+        {(item.copy || (item.files && item.files.length > 0)) && (
           <p className="link-row digest-files">
-            {item.files.map((f) => (
+            {item.copy && <CopyButton text={item.copy} />}
+            {item.files?.map((f) => (
               <a
                 key={f.name}
                 className="link-quiet digest-quiet"

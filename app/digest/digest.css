@@ -301,6 +301,13 @@
   margin: 0;
 }
 
+/* A button that reads like the quiet links beside it. */
+.digest-copy {
+  border: 0;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+
 .digest-details > summary {
   display: inline-flex;
   align-items: baseline;

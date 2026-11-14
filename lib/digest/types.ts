@@ -19,6 +19,8 @@ export interface DigestItem {
   details?: DigestDetails[]
   /** Files uploaded for this run (POST /api/digest/upload), linked under the item. */
   files?: DigestFileRef[]
+  /** Plain text a "Copy brief" control puts on the clipboard, e.g. context to paste into an agent chat. */
+  copy?: string
 }
 
 export interface DigestDetails {
@@ -154,6 +156,7 @@ export function parseRun(
       section: optStr(it.section, 60, `items[${i}].section`),
       details: parseDetails(it.details, `items[${i}].details`),
       files: parseFiles(it.files, `items[${i}].files`),
+      copy: optStr(it.copy, 24000, `items[${i}].copy`),
     }
   })
   return {

@@ -7,7 +7,7 @@ import { parseRun } from '@/lib/digest/types'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-const MAX_BYTES = 512 * 1024
+const MAX_BYTES = 1024 * 1024
 
 export async function POST(req: Request) {
   const source = producerFor(req.headers.get('authorization'))
