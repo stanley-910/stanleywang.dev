@@ -67,7 +67,11 @@ function Item({ item, base }: { item: DigestItem; base: string }) {
             ))}
           </div>
         )}
-        {item.note && <p className="digest-note">{item.note}</p>}
+        {item.note?.split('\n').map((para, k) => (
+          <p key={k} className="digest-note">
+            {para}
+          </p>
+        ))}
         {(item.copy || (item.files && item.files.length > 0)) && (
           <p className="link-row digest-files">
             {item.copy && <CopyButton text={item.copy} />}

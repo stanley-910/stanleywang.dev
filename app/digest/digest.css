@@ -149,13 +149,21 @@
 .digest-fact-rows {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  width: fit-content;
+  max-width: 100%;
+}
+
+/* Rows split by a faint rule: what and where above, who and when below. */
+.digest-facts + .digest-facts {
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px solid color-mix(in srgb, var(--hairline) 30%, transparent);
 }
 
 .digest-facts {
   display: flex;
   flex-wrap: wrap;
-  gap: 2px var(--space-3);
+  gap: 2px 0;
   max-width: var(--measure-read);
   margin: 0;
   padding: 0;
@@ -164,6 +172,21 @@
   font-family: var(--font-mono);
   font-size: var(--text-meta);
   line-height: var(--leading-meta);
+}
+
+/* The dot trails each fact, so a wrapped row never starts with one. */
+.digest-facts > li:not(:last-child)::after {
+  content: '·';
+  margin: 0 0.6ch;
+  color: var(--hairline);
+}
+
+.digest-fact-rows + .digest-note {
+  margin-top: 4px;
+}
+
+.digest-note + .digest-note {
+  margin-top: 6px;
 }
 
 .digest-foot {
@@ -301,11 +324,19 @@
   margin: 0;
 }
 
-/* A button that reads like the quiet links beside it. */
+/* The one action on a row: a faint outlined chip, so it doesn't read as text. */
 .digest-copy {
-  border: 0;
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--hairline) 45%, transparent);
+  border-radius: 4px;
+  font-size: var(--text-meta);
   letter-spacing: inherit;
   cursor: pointer;
+  transition: border-color var(--duration-quick) var(--ease-calm);
+}
+
+.digest-copy:hover {
+  border-color: var(--hairline);
 }
 
 .digest-details > summary {
