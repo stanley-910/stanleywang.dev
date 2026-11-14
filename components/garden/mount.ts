@@ -315,7 +315,7 @@ export function mountGarden({
   /** Where across the river each cell lies, and the grid and river it was worked out for. */
   let river = new Int8Array(0)
   let riverFor = ''
-  /** The plant frame the page last drew. */
+  /** The plant frame the page last drew; lag.ts counts how often it changes. */
   let drawn = -1
 
   /**
@@ -744,7 +744,7 @@ export function mountGarden({
     if (!quality.skip(frames)) draw(false, quality.calm)
     const quiet = now > busyUntil
     quality.frame(now, performance.now() - began, quiet)
-    lag?.frame(now, quiet && raster.warm && !quality.away)
+    lag?.frame(now, quiet && raster.warm && !quality.away, drawn)
     raf = requestAnimationFrame(frame)
   }
 
