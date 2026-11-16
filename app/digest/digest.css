@@ -318,38 +318,72 @@
   gap: 44px;
 }
 
-/* The index's ledger again: who on the left, the role and everything about
-   it on the right. One column on a phone. */
+/* Two balanced columns. Left, the posting at a glance: who, then its facts.
+   Right, the role: its title, then what to make of it. Each column stacks on
+   its own, so a two-line title never pushes the facts down. On a phone the
+   columns dissolve into one, in reading order: who, title, facts, points. */
 .digest-item {
   display: grid;
-  grid-template-columns: 10rem minmax(0, var(--measure-read));
-  align-items: baseline;
-  gap: 2px var(--space-4);
+  grid-template-columns: 14rem minmax(0, var(--measure-read));
+  align-items: start;
+  gap: 0 var(--space-4);
+}
+
+.digest-item-side,
+.digest-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.digest-item-side > .digest-fact-rows {
+  margin-top: 0;
 }
 
 .digest-item-body {
-  grid-column: 2;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   min-width: 0;
 }
 
-/* The title, with copy at the end of its row. */
+/* The title, with copy right after it. */
 .digest-item-title {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-2);
+  gap: var(--space-1);
+  min-width: 0;
 }
 
 @media (max-width: 720px) {
   .digest-item {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'who' 'title' 'facts' 'body';
+    gap: 3px;
+  }
+
+  .digest-item-side,
+  .digest-item-main {
+    display: contents;
+  }
+
+  .digest-item-who {
+    grid-area: who;
+  }
+
+  .digest-item-title {
+    grid-area: title;
+  }
+
+  .digest-item-side > .digest-fact-rows {
+    grid-area: facts;
+    margin-top: 3px;
   }
 
   .digest-item-body {
-    grid-column: 1;
+    grid-area: body;
+    margin-top: var(--space-1);
   }
 }
 
