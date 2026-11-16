@@ -5,9 +5,8 @@ import { requireSession } from '@/lib/digest/auth'
 import { getRun } from '@/lib/digest/store'
 import { factRows, type DigestItem } from '@/lib/digest/types'
 
-import { FactIcon } from './fact-icon'
-
 import { CopyButton } from './copy-button'
+import { FactIcon } from './fact-icon'
 import { SectionTabs } from './section-tabs'
 import { when } from '../../format'
 
