@@ -3,14 +3,26 @@
 
 export type Mark = 'good' | 'maybe' | 'info' | 'alert'
 
+export const FACT_ICONS = ['place', 'grad', 'date'] as const
+export type FactIcon = (typeof FACT_ICONS)[number]
+
+/** A fact with a small icon in front (where, who it's for, when), or `strong` to
+ *  print it in ink, e.g. the pay. */
+export interface DigestFactObject {
+  text: string
+  icon?: FactIcon
+  strong?: boolean
+}
+export type DigestFact = string | DigestFactObject
+
 export interface DigestItem {
   title: string
   /** Who or what it's about, e.g. the company or the store. */
   subtitle?: string
   mark?: Mark
   /** Short facts. One row: ["$130k-180k", "NYC, SF"]. Several rows, one line each:
-   *  [["$130k-180k", "NYC, SF"], ["Fall 2026 to Summer 2027", "posted 3d ago", "rolling"]]. */
-  facts?: string[] | string[][]
+   *  [[{ text: "$130k-180k", strong: true }], [{ icon: "place", text: "NYC, SF" }]]. */
+  facts?: DigestFact[] | DigestFact[][]
   note?: string
   /** Labelled lines read top to bottom, e.g. { label: "Fit", text: "…" }. */
   points?: DigestPoint[]
@@ -79,9 +91,21 @@ function httpUrl(v: unknown, field: string): string | undefined {
   return u.toString()
 }
 
-function parseFacts(facts: unknown[], field: string): string[] | string[][] {
+function parseFact(x: unknown, field: string): DigestFact {
+  if (typeof x !== 'object' || x === null) return str(x, 120, field)
+  const o = x as Record<string, unknown>
+  const fact: DigestFactObject = { text: str(o.text, 120, `${field}.text`) }
+  if (FACT_ICONS.includes(o.icon as FactIcon)) fact.icon = o.icon as FactIcon
+  if (o.strong === true) fact.strong = true
+  return fact
+}
+
+function parseFacts(
+  facts: unknown[],
+  field: string,
+): DigestFact[] | DigestFact[][] {
   const row = (r: unknown[], f: string) =>
-    r.slice(0, 8).map((x, j) => str(x, 120, `${f}[${j}]`))
+    r.slice(0, 8).map((x, j) => parseFact(x, `${f}[${j}]`))
   if (facts.every((r) => Array.isArray(r)))
     return (facts as unknown[][])
       .slice(0, 4)
@@ -130,11 +154,13 @@ function parseFiles(v: unknown, field: string): DigestFileRef[] | undefined {
 }
 
 /** Fact rows, whether the item was posted with one row or several. */
-export function factRows(item: DigestItem): string[][] {
+export function factRows(item: DigestItem): DigestFactObject[][] {
   const f = item.facts
   if (!f || f.length === 0) return []
-  const rows = (Array.isArray(f[0]) ? f : [f]) as string[][]
-  return rows.filter((r) => r.length > 0)
+  const rows = (Array.isArray(f[0]) ? f : [f]) as DigestFact[][]
+  return rows
+    .filter((r) => r.length > 0)
+    .map((r) => r.map((x) => (typeof x === 'string' ? { text: x } : x)))
 }
 
 /** Validates a producer payload. Throws with a message safe to return to the producer. */

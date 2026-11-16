@@ -108,9 +108,20 @@ A plant wins a cell over the land behind it once it covers a quarter of the cell
 - **Reduced motion:** the garden is drawn grown and still.
 - **Weather:** clear, rain, snow, storm and eclipse, picked from the site menu (Weather). Falling and blown things are capped overlay glyphs; anything that recolours the scene moves in steps. Every weather colour is a mix of the palette's keyframes, never a new hex. Fog was cut.
 
+## Interaction
+
+These hold on every page.
+
+- **The target is what you see.** A text link is clickable on its words and nowhere else: not the rest of its row, not the gap above or below. A button is clickable inside its drawn edge. No invisible boxes (`::before`, `::after`, padding) that widen a text link's target.
+- **Links stay inline.** A link that is a direct child of a flex or grid container stretches into a block as wide as the row. Put it inside a `p`, heading or `li`, so its box is the text. A row of links (`.link-row`) is fine: each link is as wide as its word.
+- **Small targets get space, not a bigger box.** Where a control has to be easy to hit on a phone, draw it as a button (the site menu's 44px rows, the digest's Copy brief) or give it room from its neighbours.
+- **One underline per block.** Underlines mark `.link` only. Rules and borders never sit directly under a line of text, where they read as a second underline.
+- **Hover never moves anything.** It changes colour, underline colour or mono weight. No size, padding, border-width or sans weight changes.
+- **Focus hugs the control.** The global ring (`focus`, 1px, offset 3px) follows the same box as the target.
+
 ## Iconography
 
-There is no logo or icon set. The name, where it appears outside the home page, is plain `ink` text.
+There is no logo and no general icon set. The name, where it appears outside the home page, is plain `ink` text. The exceptions are small and closed: the top bar's sun/moon and menu glyphs, and the Digest's three fact icons and copy icon. New icons follow the Digest's drawing rules (14px on a 16 grid, 1.2 stroke, `currentColor`) and are added to a component's spec first.
 
 ## Site pages
 

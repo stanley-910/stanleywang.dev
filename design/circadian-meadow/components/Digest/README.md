@@ -4,11 +4,11 @@
 
 Built: `app/digest/page.tsx` (index), `app/digest/[feed]/[run]/page.tsx` (one run), `app/digest/login/page.tsx`, `app/digest/digest.css`, `app/digest/format.ts`. Data: `DigestRun` and `DigestItem` in `lib/digest/types.ts`, posted by producers such as `digest_payload()` in `~/Developer/job-alerts/job_alerts.py`. Copy comes from the producer, verbatim.
 
-Related: ProjectsPage (the ledger this borrows, without its rules), LinkStyle (titles are `.link`, controls are `.link-quiet`), SiteHeader (sits above every digest page unchanged).
+Related: ProjectsPage (the ledger this borrows, without its rules), LinkStyle (titles are `.link`, quiet controls are `.link-quiet`), SiteHeader (sits above every digest page unchanged).
 
 ## The one idea
 
-A run is a short list you skim, not a page you read. Each item is four lines at most, in falling weight: who (the company or store, `body` 500), what (the title, a `.link`), the facts (mono `meta`, `ink-muted`), and the one note that might change your mind (`small`, `ink-muted`). Nothing else competes: no rules between items, no badges, no arrows, no boxes.
+A run is a short list you skim, not a page you read. Each item reads top to bottom in one order: who (the company or store, `body` 500), what (the title, a `.link` and the only underlined thing), the facts (mono `meta`, `ink-muted`), a few labelled lines (About, Work, Fit, Catch), and one action. Nothing else competes: no rules between or inside items, no badges, no arrows, no cards.
 
 ## Pages
 
@@ -48,15 +48,27 @@ Affirm, DoorDash, Nuro
 Good fits
 Affirm
 Software Engineer, Early Career (NYC)
-New York City, San Francisco   $130k-180k   grad dates not stated   deadline rolling
-Catch: Grad year unstated; confirm December 2026 grads fit the cohort.
+$130k-180k
+(pin) New York City, San Francisco
+(cap) grad dates not stated   (calendar) posted Nov 12 · rolling deadline
+
+About  Consumer lending; pay-over-time at checkout.
+Work   Backend services for the card product, in Kotlin and Python.
+Fit    Two backend internships line up with the stack.
+Catch  Grad year unstated; confirm December 2026 grads fit the cohort.
+
+[copy icon]
 ```
 
 - **Way back:** a `.link-row` of `.link-quiet` words, `digest / jobs`: `digest` links to the index, the feed name is the current page (`aria-current`), the slash is `hairline`. It replaces "← digest". Lowercase mono, so it reads as the top bar's sibling, not a button.
 - **Head:** the run's title (`h1`, `body` 500), then when (`meta`: "Today, 7:49 PM"), then the summary (`small`, `ink-muted`). The producer key ("from mac") is not shown.
 - **Sections:** consecutive items with the same `section` share a heading in mono `meta` `ink-muted` ("Good fits", "Maybes"). Items without one run on with no heading.
-- **Item:** subtitle (`body` 500, `ink`), title (`.link`, opens in a new tab; plain text without a `url`), facts, note.
-- **Facts** are a wrapping list, each fact its own unit, separated by `space-3` of space and no glyph. A fact longer than the line wraps inside itself.
+- **Item:** subtitle (`body` 500, `ink`), title (`.link`, opens in a new tab; plain text without a `url`), facts, points, actions. Items sit 44px apart.
+- **Title:** an inline link inside its own `p.digest-heading`, so the target is the words and a wrapped title's target follows its lines.
+- **Facts:** up to four rows of mono `meta`, 6px apart, 6px under the title. A fact is plain text, or carries one of three icons: `place` (pin), `grad` (cap), `date` (calendar). A `strong` fact prints in `ink`: the pay, alone on the first row, no icon. In a row with icons, facts sit `space-3` apart, each icon 6px before its text, and a long fact wraps beside its icon; on a phone the facts stack. Two dates under one calendar are one fact, joined by a middle dot. A row of plain facts flows as one line of text with a `hairline` middle dot between them.
+- **Fact icons:** 14px line drawings on a 16 grid, 1.2 stroke, round joins, `currentColor`, `aria-hidden` (`fact-icon.tsx`). The set is closed at these three; a new kind of fact goes in as text first.
+- **Points** (`points` on the item): a `dl` with the label in a 3.25rem mono `meta` `ink-muted` column and the line in `small` `ink`. At most eight. Older runs with a `note` and no points show the note in `small` `ink-muted` instead.
+- **Actions:** any private files as `.digest-action` buttons (28px tall, 1px `hairline` edge, `radius-hair`, mono `meta`, `ink-muted`), then copy: the same button, 28px square, holding only the copy icon (two offset rounded squares, drawn like the fact icons), labelled "Copy brief" for screen readers and as its tooltip. Clicking it prints `copied brief` beside it in mono `meta` for 1.6s, the way the home page's email says `copied`; the button doesn't change or move.
 - **Mark** prints as a `meta` word after the subtitle only when the item has no section and the mark is `good`, `maybe` or `alert` (`alert` in `ink`). Inside a section the heading already says it, and `info` means nothing to say.
 
 ### Sign in (`/digest/login`)
@@ -75,7 +87,8 @@ Catch: Grad year unstated; confirm December 2026 grads fit the cohort.
 | Between blocks (head, sections, foot) | `space-5` | same |
 | Section heading to first row | `space-3` | same |
 | Between rows | `space-4`, no rule | same |
-| Inside a row | subtitle and title 2px apart; title, facts and note `space-1` apart | same |
+| Inside an index row | title and summary `space-1` apart | same |
+| Inside a run item | who, title and facts 3px apart; head, points and actions `space-2` apart | same |
 | Facts, note, summary | at most `measure-read` | same |
 | Sign-in form | at most 20rem, `space-4` under the title | same |
 
@@ -85,17 +98,20 @@ Catch: Grad year unstated; confirm December 2026 grads fit the cohort.
 
 ## States
 
-- **Hover:** titles' underline goes `ink`; quiet controls go `ink` at weight 600 (LinkStyle).
-- **Focus:** the global ring (`focus`, 1px, offset 3px) hugs the words. Bigger touch targets come from an invisible `::after`, not padding, so the ring never covers the next line: titles grow by `space-1` above and below (40px on a one-line title), quiet words 12px above and below and 8px each side (44px).
+- **Hover:** titles' underline goes from a faint `hairline` to full `hairline`; quiet controls go `ink` at weight 600 (LinkStyle); an action's edge and text go `ink`. Nothing changes size.
+- **Targets:** the words of a title or quiet control, and the drawn edge of an action, and nothing more (the system README's Interaction section). No invisible `::after` boxes: they made the gaps around `digest` and every title clickable.
+- **Focus:** the global ring (`focus`, 1px, offset 3px) hugs the same box.
 - **Long titles** ("Software Engineer I, Entry-Level (Graduation Date: Fall 2026-Summer 2027) - US") wrap; nothing truncates on the run page.
 
 ## Don't
 
 - No rules between rows, no cards, no fills behind items.
-- No middle dots: facts are separated by space, the meta line by its own spans.
+- No middle dots outside a facts row.
+- No rule under or between fact rows: under a line of text it reads as a second underline.
+- No Materials toggle or other disclosure inside an item; detail belongs in the copied brief.
 - No arrows on the back link, no all-caps, no mark badges or colour-coded dots.
-- No bordered full-width buttons.
+- No bordered full-width buttons, and no `.link-quiet` inside a bordered box.
 
 ## Verify
 
-Light and dark (set the hour from the site menu, or `sessionStorage['hour-override']` = 12 / 22 and reload), at 1280px and 375px: the index, a 17-item jobs run with good and maybe sections, a two-item run with no sections (marks show), and sign in with and without the error. No horizontal scroll at 375px. Tab from `digest` through every title: the ring hugs each and doesn't cover the facts.
+Light and dark (set the hour from the site menu, or `sessionStorage['hour-override']` = 12 / 22 and reload), at 1280px and 375px: the index, a 17-item jobs run with good and maybe sections, a two-item run with no sections (marks show), and sign in with and without the error. No horizontal scroll at 375px. Tab from `digest` through every title: the ring hugs each and doesn't cover the facts. Move the pointer across each row: it turns to a hand only over `digest`, a title's words, an action and `sign out`.

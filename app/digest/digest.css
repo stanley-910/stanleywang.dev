@@ -40,10 +40,9 @@
   overflow: hidden;
 }
 
-/* ── Controls: LinkStyle's quiet row, with a finger-sized target ── */
+/* ── Controls: LinkStyle's quiet row. The target is the words. ── */
 
 .digest-quiet {
-  position: relative;
   padding: 0;
   background: none;
   font-size: var(--text-small);
@@ -126,23 +125,11 @@
   color: var(--ink);
 }
 
-/* Titles and quiet controls get a bigger target through an invisible box, so
-   the focus ring still hugs the words. A title's reaches the gap above and
-   below (24px line + 2 × space-1 = 40px) without covering its facts. */
-.digest-link {
-  position: relative;
+/* A title is an inline link inside its own block, so only the words are the
+   target: not the rest of the row, and not the gap above or below. */
+.digest-heading {
+  margin: 0;
   overflow-wrap: anywhere;
-}
-
-.digest-link::after,
-.digest-quiet::after {
-  content: '';
-  position: absolute;
-  inset: calc(-1 * var(--space-1)) 0;
-}
-
-.digest-quiet::after {
-  inset: -12px calc(-1 * var(--space-1));
 }
 
 /* Facts: one quiet mono line per row, a dot between facts. */
@@ -169,6 +156,43 @@
   content: '·';
   margin: 0 0.6ch;
   color: var(--hairline);
+}
+
+/* Pay and other headline facts print in ink. */
+.digest-facts > li[data-strong] {
+  color: var(--ink);
+}
+
+/* A row with icons: each fact is its icon and its text, facts sit space-3
+   apart, and a long fact wraps beside its icon. No dots; the icons divide. */
+.digest-facts[data-icons] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px var(--space-3);
+}
+
+.digest-facts[data-icons] > li {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.digest-facts[data-icons] > li::after {
+  content: none;
+}
+
+/* Centred on the first line of text (leading-meta tall). */
+.digest-fact-icon {
+  flex: none;
+  margin-top: calc((var(--leading-meta) - 14px) / 2);
+}
+
+.digest-fact-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
 }
 
 .digest-foot {
@@ -209,10 +233,6 @@
 .digest-enter {
   height: 44px;
   padding-inline: var(--space-1);
-}
-
-.digest-enter::after {
-  content: none;
 }
 
 @media (max-width: 720px) {
@@ -261,13 +281,6 @@
   font-size: var(--text-meta);
   line-height: var(--leading-meta);
   transition: color var(--duration-quick) var(--ease-calm);
-}
-
-/* A 44px target without changing what you see. */
-.digest-tab::after {
-  content: '';
-  position: absolute;
-  inset: -14px calc(-1 * var(--space-1)) -8px;
 }
 
 .digest-tab[aria-selected='true'],
@@ -322,19 +335,6 @@
   display: flex;
   align-items: baseline;
   gap: var(--space-1);
-}
-
-.digest-item-head > .digest-link,
-.digest-item-head > span {
-  align-self: flex-start;
-}
-
-.digest-item-head > .digest-facts {
-  margin-top: 3px;
-}
-
-.digest-item-head > .digest-facts + .digest-facts {
-  margin-top: 0;
 }
 
 /* Label on the left in quiet mono, the line itself in ink. */
@@ -397,6 +397,31 @@
   transition:
     color var(--duration-quick) var(--ease-calm),
     border-color var(--duration-quick) var(--ease-calm);
+}
+
+/* Copy: the icon alone, square. What it did prints beside it for a moment,
+   like the home page's email, without moving anything. */
+.digest-action-icon {
+  min-width: 0;
+  width: 28px;
+  padding: 0;
+}
+
+.digest-copy {
+  position: relative;
+  display: inline-flex;
+}
+
+.digest-copy-said {
+  position: absolute;
+  top: 0;
+  left: calc(100% + var(--space-1));
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  line-height: 28px;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .digest-action:hover {

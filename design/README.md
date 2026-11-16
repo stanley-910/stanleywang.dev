@@ -7,3 +7,4 @@ The site's visual system is Circadian Meadow, in `design/circadian-meadow/`.
 - Build a component from its spec in `circadian-meadow/components/<Name>/README.md`. If there's no spec, don't invent one: ask the `designer` agent (`.claude/agents/designer.md`) to design it first.
 - The garden owns the scene colours. Its palette lives in `~/Developer/sides/ascii-garden/src/palette.ts`, and the `designer` agent regenerates the scene tokens from it.
 - Check every page in both the light (day) and dark (night) page themes, at desktop and 375px wide.
+- Follow the README's Interaction section on every page: a link's click target is its words, a button's is its drawn edge, and hover never moves anything.

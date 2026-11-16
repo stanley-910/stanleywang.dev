@@ -32,23 +32,41 @@ export function CopyButton({ text }: { text: string }) {
   }, [state])
 
   return (
-    <button
-      type="button"
-      className="digest-action"
-      onClick={() =>
-        copyText(text).then(
-          () => setState('copied'),
-          () => setState('failed'),
-        )
-      }
-    >
-      <span aria-live="polite">
+    <span className="digest-copy">
+      <button
+        type="button"
+        className="digest-action digest-action-icon"
+        aria-label="Copy brief"
+        title="Copy brief"
+        onClick={() =>
+          copyText(text).then(
+            () => setState('copied'),
+            () => setState('failed'),
+          )
+        }
+      >
+        <svg
+          viewBox="0 0 16 16"
+          width="14"
+          height="14"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" />
+          <path d="M10.5 5.5V4A1.5 1.5 0 0 0 9 2.5H4A1.5 1.5 0 0 0 2.5 4v5A1.5 1.5 0 0 0 4 10.5h1.5" />
+        </svg>
+      </button>
+      <span className="digest-copy-said" aria-live="polite">
         {state === 'copied'
-          ? 'Copied'
+          ? 'copied brief'
           : state === 'failed'
-            ? 'Copy failed'
-            : 'Copy brief'}
+            ? 'copy failed'
+            : ''}
       </span>
-    </button>
+    </span>
   )
 }

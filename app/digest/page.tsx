@@ -45,12 +45,14 @@ export default async function DigestIndex() {
                   <span>{time(run.createdAt)}</span>
                 </p>
                 <div className="digest-row-body">
-                  <Link
-                    className="link digest-link"
-                    href={`/digest/${run.feed}/${run.id}`}
-                  >
-                    {run.title}
-                  </Link>
+                  <p className="digest-heading">
+                    <Link
+                      className="link digest-link"
+                      href={`/digest/${run.feed}/${run.id}`}
+                    >
+                      {run.title}
+                    </Link>
+                  </p>
                   {run.summary && (
                     <p className="digest-note digest-clamp">{run.summary}</p>
                   )}

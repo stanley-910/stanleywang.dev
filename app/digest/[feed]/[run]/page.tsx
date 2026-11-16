@@ -5,6 +5,8 @@ import { requireSession } from '@/lib/digest/auth'
 import { getRun } from '@/lib/digest/store'
 import { factRows, type DigestItem } from '@/lib/digest/types'
 
+import { FactIcon } from './fact-icon'
+
 import { CopyButton } from './copy-button'
 import { SectionTabs } from './section-tabs'
 import { when } from '../../format'
@@ -45,25 +47,38 @@ function Item({ item, base }: { item: DigestItem; base: string }) {
             {mark && <span className="digest-meta digest-mark">{mark}</span>}
           </p>
         )}
-        {item.url ? (
-          <a
-            className="link digest-link"
-            href={item.url}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {item.title}
-          </a>
-        ) : (
-          <span>{item.title}</span>
-        )}
-        {rows.map((row, r) => (
-          <ul key={r} className="digest-facts">
-            {row.map((f, k) => (
-              <li key={k}>{f}</li>
+        <p className="digest-heading">
+          {item.url ? (
+            <a
+              className="link digest-link"
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {item.title}
+            </a>
+          ) : (
+            item.title
+          )}
+        </p>
+        {rows.length > 0 && (
+          <div className="digest-fact-rows">
+            {rows.map((row, r) => (
+              <ul
+                key={r}
+                className="digest-facts"
+                data-icons={row.some((f) => f.icon) ? '' : undefined}
+              >
+                {row.map((f, k) => (
+                  <li key={k} data-strong={f.strong ? '' : undefined}>
+                    {f.icon && <FactIcon kind={f.icon} />}
+                    <span>{f.text}</span>
+                  </li>
+                ))}
+              </ul>
             ))}
-          </ul>
-        ))}
+          </div>
+        )}
       </div>
       {item.points && item.points.length > 0 && (
         <dl className="digest-points">
@@ -96,7 +111,6 @@ function Item({ item, base }: { item: DigestItem; base: string }) {
       ))}
       {(item.copy || (item.files && item.files.length > 0)) && (
         <div className="digest-actions">
-          {item.copy && <CopyButton text={item.copy} />}
           {item.files?.map((f) => (
             <a
               key={f.name}
@@ -108,6 +122,7 @@ function Item({ item, base }: { item: DigestItem; base: string }) {
               {f.label}
             </a>
           ))}
+          {item.copy && <CopyButton text={item.copy} />}
         </div>
       )}
     </li>
