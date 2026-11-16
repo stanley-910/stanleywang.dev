@@ -571,6 +571,8 @@ function sampleRow(at: Sampling, r: number) {
     let lb = 0
     // Subsamples of the sun or moon (GLOBE), which stand behind the land.
     let globe = 0
+    // The kinds that show plainly in this cell, one bit each; worked out only if a pixel asks.
+    let plain = -1
     for (let sy = 0; sy < SS; sy++) {
       const py = r * SS + sy
       let o = (py * W + c * SS) * 4
@@ -582,17 +584,19 @@ function sampleRow(at: Sampling, r: number) {
         const k0 = kd[o]
         const k1 = kd[o + 1]
         const k2 = kd[o + 2]
+        let k = (k0 > 127 ? 4 : 0) | (k1 > 127 ? 2 : 0) | (k2 > 127 ? 1 : 0)
         // An even blend of two kinds that differ in two channels or more (a blade's edge over the
-        // land) sits at the middle in each, and off by a step there one channel falls each side:
-        // a kind that's neither. It votes for nothing rather than for a petal in the grass.
-        if (
-          +(k0 > MID_LO && k0 < MID_HI) +
-            +(k1 > MID_LO && k1 < MID_HI) +
-            +(k2 > MID_LO && k2 < MID_HI) >
-          1
-        )
-          continue
-        const k = (k0 > 127 ? 4 : 0) | (k1 > 127 ? 2 : 0) | (k2 > 127 ? 1 : 0)
+        // land) sits at the middle in each, and off by a step there one channel can fall each
+        // side: a kind that's neither, a petal in the grass. Such a pixel is held to the kinds
+        // that show plainly in its cell and what each would blend with to sit there.
+        const mid =
+          (k0 > MID_LO && k0 < MID_HI ? 4 : 0) |
+          (k1 > MID_LO && k1 < MID_HI ? 2 : 0) |
+          (k2 > MID_LO && k2 < MID_HI ? 1 : 0)
+        if (mid & (mid - 1)) {
+          if (plain < 0) plain = plainKinds(kd, (r * SS * W + c * SS) * 4, W)
+          if (plain && !((plain >> k) & 1)) k = settle(k, plain, k0, k1, k2)
+        }
         if (!((seen >> k) & 1)) {
           seen |= 1 << k
           weight[k] = 0
@@ -727,7 +731,8 @@ function sampleRow(at: Sampling, r: number) {
  * A meta byte under this is nothing: no petal's id, no light, no back flag. Not a bare zero, since
  * a browser that guards against canvas fingerprinting (Helium, Brave) hands pixels back a step off,
  * and a fluff cell with nothing behind it then read as lit from below: seed heads and fireflies
- * flashed as solid blocks, a different few each frame. Un-premultiplied at a fringe the step is a few; marks sit at 128 or 255 and ids 24 apart.
+ * flashed as solid blocks, a different few each frame. At a fringe, un-premultiplied, the step
+ * is a few; marks sit at 128 or 255 and ids 24 apart.
  */
 const FAINT = 12
 
@@ -737,6 +742,69 @@ const FAINT = 12
  */
 const MID_LO = 119
 const MID_HI = 136
+
+/** The kinds of a cell's subsamples that sit clear of the middle in every channel, one bit each. */
+function plainKinds(kd: Uint8ClampedArray, at: number, W: number) {
+  let plain = 0
+  for (let sy = 0; sy < SS; sy++) {
+    let o = at + sy * W * 4
+    for (let sx = 0; sx < SS; sx++, o += 4) {
+      if (kd[o + 3] === 0) continue
+      const k0 = kd[o]
+      const k1 = kd[o + 1]
+      const k2 = kd[o + 2]
+      if (
+        (k0 > MID_LO && k0 < MID_HI) ||
+        (k1 > MID_LO && k1 < MID_HI) ||
+        (k2 > MID_LO && k2 < MID_HI)
+      )
+        continue
+      plain |=
+        1 << ((k0 > 127 ? 4 : 0) | (k1 > 127 ? 2 : 0) | (k2 > 127 ? 1 : 0))
+    }
+  }
+  return plain
+}
+
+/**
+ * The kind of a pixel near the middle in two channels or more, which reads as `k`. Against each
+ * kind that shows plainly in its cell, the pixel is that kind blended with the one that differs
+ * from it in every channel the pixel has left it in. `k` stands if it is one of those; otherwise
+ * it is a step's doing, and the nearest of them stands in.
+ */
+function settle(k: number, plain: number, k0: number, k1: number, k2: number) {
+  let best = k
+  let near = Infinity
+  for (let a = 0; a < 8; a++) {
+    if (!((plain >> a) & 1)) continue
+    const d0 = k0 - (a & 4 ? 255 : 0)
+    const d1 = k1 - (a & 2 ? 255 : 0)
+    const d2 = k2 - (a & 1 ? 255 : 0)
+    const b =
+      a ^
+      ((d0 > LEFT || d0 < -LEFT ? 4 : 0) |
+        (d1 > LEFT || d1 < -LEFT ? 2 : 0) |
+        (d2 > LEFT || d2 < -LEFT ? 1 : 0))
+    if (k === a || k === b) return k
+    const da = d0 * d0 + d1 * d1 + d2 * d2
+    if (da < near) {
+      near = da
+      best = a
+    }
+    const e0 = k0 - (b & 4 ? 255 : 0)
+    const e1 = k1 - (b & 2 ? 255 : 0)
+    const e2 = k2 - (b & 1 ? 255 : 0)
+    const db = e0 * e0 + e1 * e1 + e2 * e2
+    if (db < near) {
+      near = db
+      best = b
+    }
+  }
+  return best
+}
+
+/** How far a channel must stand from a kind's own value to have left it. */
+const LEFT = 32
 
 /** Where the command at `cmds[i]` ends, as `replay` reads it. */
 function commandEnd(cmds: Float32Array, i: number) {
