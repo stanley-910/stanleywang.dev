@@ -381,6 +381,12 @@
     margin-top: 3px;
   }
 
+  /* On a phone every fact gets its own line. */
+  .digest-facts[data-icons] {
+    flex-direction: column;
+    gap: 6px;
+  }
+
   .digest-item-body {
     grid-area: body;
     margin-top: var(--space-1);
