@@ -401,26 +401,27 @@
   min-width: 0;
 }
 
-/* Label on the left in quiet mono, the line itself in ink. */
+/* Each point: its label on a line of its own in quiet mono, the text under
+   it in ink at the column's full width, so the right column isn't indented
+   a second time. */
 .digest-points {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-2);
   margin: 0;
 }
 
 .digest-points > div {
-  display: grid;
-  grid-template-columns: 3.25rem minmax(0, 1fr);
-  align-items: baseline;
-  gap: var(--space-1);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .digest-points dt {
   color: var(--ink-muted);
   font-family: var(--font-mono);
   font-size: var(--text-meta);
-  line-height: var(--leading-small);
+  line-height: var(--leading-meta);
 }
 
 .digest-points dd {

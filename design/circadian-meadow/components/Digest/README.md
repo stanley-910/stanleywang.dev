@@ -50,12 +50,16 @@ Affirm
 Software Engineer, Early Career (NYC)
 $130k-180k
 (pin) New York City, San Francisco
-(cap) grad dates not stated   (calendar) posted Nov 12 · rolling deadline
+(cap) N/A   (calendar) Nov 12 · rolling deadline
 
-About  Consumer lending; pay-over-time at checkout.
-Work   Backend services for the card product, in Kotlin and Python.
-Fit    Two backend internships line up with the stack.
-Catch  Grad year unstated; confirm December 2026 grads fit the cohort.
+About
+Consumer lending; pay-over-time at checkout.
+Work
+Backend services for the card product, in Kotlin and Python.
+Fit
+Two backend internships line up with the stack.
+Catch
+Grad year unstated; confirm December 2026 grads fit the cohort.
 
 ```
 
@@ -64,9 +68,9 @@ Catch  Grad year unstated; confirm December 2026 grads fit the cohort.
 - **Sections:** consecutive items with the same `section` share a heading in mono `meta` `ink-muted` ("Good fits", "Maybes"). Items without one run on with no heading.
 - **Item:** subtitle (`body` 500, `ink`), title (`.link`, opens in a new tab; plain text without a `url`), facts, points, actions. Items sit 44px apart.
 - **Title:** an inline link inside its own `p.digest-heading`, so the target is the words and a wrapped title's target follows its lines.
-- **Facts:** up to four rows of mono `meta`, 6px apart, 6px under the title. A fact is plain text, or carries one of three icons: `place` (pin), `grad` (cap), `date` (calendar). A `strong` fact prints in `ink`: the pay, alone on the first row, no icon. In a row with icons, facts sit `space-3` apart, each icon 6px before its text, and a long fact wraps beside its icon; on a phone the facts stack. Two dates under one calendar are one fact, joined by a middle dot. A row of plain facts flows as one line of text with a `hairline` middle dot between them.
+- **Facts:** up to four rows of mono `meta`, 6px apart, 6px under the title. A fact is plain text (`N/A` when unknown, no prefixes like "grads" or "posted": the icon says what it is), or carries one of three icons: `place` (pin), `grad` (cap), `date` (calendar). A `strong` fact prints in `ink`: the pay, alone on the first row, no icon. In a row with icons, facts sit `space-3` apart, each icon 6px before its text, and a long fact wraps beside its icon; on a phone the facts stack. Two dates under one calendar are one fact, joined by a middle dot. A row of plain facts flows as one line of text with a `hairline` middle dot between them.
 - **Fact icons:** 14px line drawings on a 16 grid, 1.2 stroke, round joins, `currentColor`, `aria-hidden` (`fact-icon.tsx`). The set is closed at these three; a new kind of fact goes in as text first.
-- **Points** (`points` on the item): a `dl` with the label in a 3.25rem mono `meta` `ink-muted` column and the line in `small` `ink`. At most eight. Older runs with a `note` and no points show the note in `small` `ink-muted` instead.
+- **Points** (`points` on the item): a `dl`, each point its label on its own line (mono `meta`, `ink-muted`) with the text under it in `small` `ink` at the column's full width, `space-2` between points. No label column: the right column is indented enough already. At most eight. Older runs with a `note` and no points show the note in `small` `ink-muted` instead.
 - **Layout:** two columns that each stack on their own. Left (`14rem`): who, then the facts, so the posting can be sized up without reading. Right (at most `measure-read`): the title with copy right after it, then the points. A two-line title never pushes the facts down. At 720px and under the columns dissolve (`display: contents`) into one, in reading order: who, title, facts, points.
 - **Copy:** the copy icon (two offset rounded squares, 16px, drawn like the fact icons) right after the title, in a 24px box with no edge, `ink-muted` going `ink` on hover. Labelled "Copy brief" for screen readers and as its tooltip. Clicking it prints `copied brief` under it in mono `meta` for 1.6s, the way the home page's email says `copied`; nothing moves. It never gets a row of its own.
 - **Files:** any private files sit in a last row as `.digest-action` buttons (28px tall, 1px `hairline` edge, `radius-hair`, mono `meta`, `ink-muted`).
