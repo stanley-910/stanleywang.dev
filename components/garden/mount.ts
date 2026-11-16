@@ -744,7 +744,8 @@ export function mountGarden({
     if (!quality.skip(frames)) draw(false, quality.calm)
     const quiet = now > busyUntil
     quality.frame(now, performance.now() - began, quiet)
-    lag?.frame(now, quiet && raster.warm && !quality.away, drawn)
+    // A window out of use runs slow on purpose, here and in the browser: none of it counts.
+    lag?.frame(now, quiet && raster.warm && !unfocused, drawn)
     raf = requestAnimationFrame(frame)
   }
 
@@ -953,12 +954,14 @@ export function mountGarden({
   }
 
   // A window on screen but out of use keeps its meadow moving, slowly (quality.ts).
-  let unfocused = false
+  let unfocused = !document.hasFocus()
   /** When the window last went out of use. */
   let blurredAt = 0
   const onFocus = () => {
     const out = !document.hasFocus()
     if (out && !unfocused) blurredAt = performance.now()
+    // Back in use: what the window did while out of it says nothing about the machine (lag.ts).
+    if (!out && unfocused) lag?.reset()
     unfocused = out
   }
 

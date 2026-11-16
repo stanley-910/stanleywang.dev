@@ -94,8 +94,7 @@ export function LofiPrompt() {
         >
           {/* Draft copy; Stanley rewrites it (docs/handoffs/2026-11-05-overnight-lofi.md). */}
           <p className="lofi-offer-text">
-            The meadow&apos;s running slow here.{' '}
-            <span className="whitespace-nowrap">Lo-fi</span> instead?
+            The meadow&apos;s running slow here.
           </p>
           <div className="lofi-offer-actions">
             <button
@@ -115,7 +114,7 @@ export function LofiPrompt() {
               }}
               disabled={leaving}
             >
-              OK
+              lo-fi mode
             </button>
           </div>
         </div>

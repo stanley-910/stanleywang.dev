@@ -14,8 +14,10 @@
 // Only frames that say something about the machine count: none while the tab is hidden or the
 // loop is stopped (mount.ts resets on every start), none in the first seconds while the page and
 // the workers settle, none while the page does work of its own (a scrub, a new hour, a resize),
-// and none while the window is out of use and runs slow on purpose. Those pause the window rather
-// than clear it, so a slow machine that someone keeps scrubbing is still caught at rest.
+// and none while the window is out of use (another app or window has the focus), when the meadow
+// runs slow on purpose and the browser may slow the page besides. Those pause the window rather
+// than clear it, so a slow machine that someone keeps scrubbing is still caught at rest; coming
+// back into use starts over (mount.ts), settling time included.
 
 /** How much of the counted frames' time each judgement covers, in ms. */
 const WINDOW = 700
