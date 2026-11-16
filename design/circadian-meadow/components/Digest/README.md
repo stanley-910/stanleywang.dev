@@ -57,7 +57,6 @@ Work   Backend services for the card product, in Kotlin and Python.
 Fit    Two backend internships line up with the stack.
 Catch  Grad year unstated; confirm December 2026 grads fit the cohort.
 
-[copy icon]
 ```
 
 - **Way back:** a `.link-row` of `.link-quiet` words, `digest / jobs`: `digest` links to the index, the feed name is the current page (`aria-current`), the slash is `hairline`. It replaces "← digest". Lowercase mono, so it reads as the top bar's sibling, not a button.
@@ -68,7 +67,9 @@ Catch  Grad year unstated; confirm December 2026 grads fit the cohort.
 - **Facts:** up to four rows of mono `meta`, 6px apart, 6px under the title. A fact is plain text, or carries one of three icons: `place` (pin), `grad` (cap), `date` (calendar). A `strong` fact prints in `ink`: the pay, alone on the first row, no icon. In a row with icons, facts sit `space-3` apart, each icon 6px before its text, and a long fact wraps beside its icon; on a phone the facts stack. Two dates under one calendar are one fact, joined by a middle dot. A row of plain facts flows as one line of text with a `hairline` middle dot between them.
 - **Fact icons:** 14px line drawings on a 16 grid, 1.2 stroke, round joins, `currentColor`, `aria-hidden` (`fact-icon.tsx`). The set is closed at these three; a new kind of fact goes in as text first.
 - **Points** (`points` on the item): a `dl` with the label in a 3.25rem mono `meta` `ink-muted` column and the line in `small` `ink`. At most eight. Older runs with a `note` and no points show the note in `small` `ink-muted` instead.
-- **Actions:** any private files as `.digest-action` buttons (28px tall, 1px `hairline` edge, `radius-hair`, mono `meta`, `ink-muted`), then copy: the same button, 28px square, holding only the copy icon (two offset rounded squares, drawn like the fact icons), labelled "Copy brief" for screen readers and as its tooltip. Clicking it prints `copied brief` beside it in mono `meta` for 1.6s, the way the home page's email says `copied`; the button doesn't change or move.
+- **Layout:** the index's ledger: who in a `10rem` left column, the title and everything under it on the right (at most `measure-read`), first baselines aligned. One column at 720px and under, who above the title.
+- **Copy:** the copy icon (two offset rounded squares, 16px, drawn like the fact icons) at the right end of the title's row, in a 24px box with no edge, `ink-muted` going `ink` on hover. Labelled "Copy brief" for screen readers and as its tooltip. Clicking it prints `copied brief` under it in mono `meta` for 1.6s, the way the home page's email says `copied`; nothing moves. It never gets a row of its own.
+- **Files:** any private files sit in a last row as `.digest-action` buttons (28px tall, 1px `hairline` edge, `radius-hair`, mono `meta`, `ink-muted`).
 - **Mark** prints as a `meta` word after the subtitle only when the item has no section and the mark is `good`, `maybe` or `alert` (`alert` in `ink`). Inside a section the heading already says it, and `info` means nothing to say.
 
 ### Sign in (`/digest/login`)

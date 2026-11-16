@@ -35,7 +35,7 @@ export function CopyButton({ text }: { text: string }) {
     <span className="digest-copy">
       <button
         type="button"
-        className="digest-action digest-action-icon"
+        className="digest-copy-button"
         aria-label="Copy brief"
         title="Copy brief"
         onClick={() =>
@@ -47,8 +47,8 @@ export function CopyButton({ text }: { text: string }) {
       >
         <svg
           viewBox="0 0 16 16"
-          width="14"
-          height="14"
+          width="16"
+          height="16"
           fill="none"
           stroke="currentColor"
           strokeWidth="1.2"
