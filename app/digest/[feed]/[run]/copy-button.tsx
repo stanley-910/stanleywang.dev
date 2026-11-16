@@ -56,13 +56,19 @@ export function CopyButton({ text }: { text: string }) {
           strokeLinejoin="round"
           aria-hidden="true"
         >
-          <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" />
-          <path d="M10.5 5.5V4A1.5 1.5 0 0 0 9 2.5H4A1.5 1.5 0 0 0 2.5 4v5A1.5 1.5 0 0 0 4 10.5h1.5" />
+          {state === 'copied' ? (
+            <path d="M3.5 8.5 6.5 11.5 12.5 4.5" />
+          ) : (
+            <>
+              <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" />
+              <path d="M10.5 5.5V4A1.5 1.5 0 0 0 9 2.5H4A1.5 1.5 0 0 0 2.5 4v5A1.5 1.5 0 0 0 4 10.5h1.5" />
+            </>
+          )}
         </svg>
       </button>
       <span className="digest-copy-said" aria-live="polite">
         {state === 'copied'
-          ? 'copied brief'
+          ? 'copied'
           : state === 'failed'
             ? 'copy failed'
             : ''}

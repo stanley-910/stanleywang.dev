@@ -399,11 +399,13 @@
   gap: 3px;
 }
 
+/* Company, then copy beside it: the same spot on every item, whatever the
+   title's length, and out of the reading column. */
 .digest-item-who {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0 var(--space-1);
+  align-items: center;
+  gap: 0 6px;
   min-width: 0;
 }
 
@@ -482,8 +484,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   padding: 0;
   background: none;
   color: var(--ink-muted);
@@ -495,10 +497,13 @@
   color: var(--ink);
 }
 
+/* "copied" beside the icon, as the home page's email says it; drawn over
+   the empty space to its right, so nothing moves. */
 .digest-copy-said {
   position: absolute;
-  top: 100%;
-  right: 0;
+  top: 50%;
+  left: calc(100% + 4px);
+  transform: translateY(-50%);
   color: var(--ink-muted);
   font-family: var(--font-mono);
   font-size: var(--text-meta);

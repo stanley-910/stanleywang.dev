@@ -38,13 +38,14 @@ function Item({ item, base }: { item: DigestItem; base: string }) {
   return (
     <li className="digest-item" data-mark={item.mark}>
       <div className="digest-item-side">
-        {(item.subtitle || mark) && (
-          <p className="digest-item-who">
+        {(item.subtitle || mark || item.copy) && (
+          <div className="digest-item-who">
             {item.subtitle && (
               <span className="digest-name">{item.subtitle}</span>
             )}
+            {item.copy && <CopyButton text={item.copy} />}
             {mark && <span className="digest-meta digest-mark">{mark}</span>}
-          </p>
+          </div>
         )}
         {rows.length > 0 && (
           <div className="digest-fact-rows">
@@ -81,7 +82,6 @@ function Item({ item, base }: { item: DigestItem; base: string }) {
               item.title
             )}
           </p>
-          {item.copy && <CopyButton text={item.copy} />}
         </div>
         <div className="digest-item-body">
           {item.points && item.points.length > 0 && (
