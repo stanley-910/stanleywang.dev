@@ -579,10 +579,20 @@ function sampleRow(at: Sampling, r: number) {
         a += al
         const kal = kd[o + 3]
         if (kal === 0) continue
-        const k =
-          (kd[o] > 127 ? 4 : 0) |
-          (kd[o + 1] > 127 ? 2 : 0) |
-          (kd[o + 2] > 127 ? 1 : 0)
+        const k0 = kd[o]
+        const k1 = kd[o + 1]
+        const k2 = kd[o + 2]
+        // An even blend of two kinds that differ in two channels or more (a blade's edge over the
+        // land) sits at the middle in each, and off by a step there one channel falls each side:
+        // a kind that's neither. It votes for nothing rather than for a petal in the grass.
+        if (
+          +(k0 > MID_LO && k0 < MID_HI) +
+            +(k1 > MID_LO && k1 < MID_HI) +
+            +(k2 > MID_LO && k2 < MID_HI) >
+          1
+        )
+          continue
+        const k = (k0 > 127 ? 4 : 0) | (k1 > 127 ? 2 : 0) | (k2 > 127 ? 1 : 0)
         if (!((seen >> k) & 1)) {
           seen |= 1 << k
           weight[k] = 0
@@ -608,7 +618,7 @@ function sampleRow(at: Sampling, r: number) {
                 li += md[m + 1]
                 bk += md[m + 2]
                 pn++
-              } else if (k === Kind.Land || md[m] === 0) {
+              } else if (k === Kind.Land || md[m] < FAINT) {
                 // The sun and moon (GLOBE: neutral light, back flag) carry no light of their
                 // own: averaged in, they'd shade a crest cell by how much disc is behind it,
                 // flickering as it moves.
@@ -623,7 +633,10 @@ function sampleRow(at: Sampling, r: number) {
                 // Fluff reads only fluff's own marks (id 0): a seed head, firefly or the moon
                 // in front of a petal or leaf would otherwise take its back flag and print as
                 // a loose petal.
-                if (k === Kind.Land || (!isGlobe && (md[m + 1] || md[m + 2]))) {
+                if (
+                  k === Kind.Land ||
+                  (!isGlobe && (md[m + 1] >= FAINT || md[m + 2] >= FAINT))
+                ) {
                   ll += md[m + 1]
                   lb += md[m + 2]
                   ln++
@@ -709,6 +722,21 @@ function sampleRow(at: Sampling, r: number) {
     }
   }
 }
+
+/**
+ * A meta byte under this is nothing: no petal's id, no light, no back flag. Not a bare zero, since
+ * a browser that guards against canvas fingerprinting (Helium, Brave) hands pixels back a step off,
+ * and a fluff cell with nothing behind it then read as lit from below: seed heads and fireflies
+ * flashed as solid blocks, a different few each frame. Un-premultiplied at a fringe the step is a few; marks sit at 128 or 255 and ids 24 apart.
+ */
+const FAINT = 12
+
+/**
+ * The band about the middle in which a kind's channel can't be told on from off, for the same
+ * browsers: their step grows to four or so on a blended pixel, and this is twice that each way.
+ */
+const MID_LO = 119
+const MID_HI = 136
 
 /** Where the command at `cmds[i]` ends, as `replay` reads it. */
 function commandEnd(cmds: Float32Array, i: number) {
