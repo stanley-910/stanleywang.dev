@@ -145,25 +145,9 @@
   inset: -12px calc(-1 * var(--space-1));
 }
 
-/* Facts sit apart by space, not by a separator glyph. */
-.digest-fact-rows {
-  display: flex;
-  flex-direction: column;
-  width: fit-content;
-  max-width: 100%;
-}
-
-/* Rows split by a faint rule: what and where above, who and when below. */
-.digest-facts + .digest-facts {
-  margin-top: 5px;
-  padding-top: 5px;
-  border-top: 1px solid color-mix(in srgb, var(--hairline) 30%, transparent);
-}
-
+/* Facts: one quiet mono line per row, a dot between facts. */
 .digest-facts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px 0;
+  display: block;
   max-width: var(--measure-read);
   margin: 0;
   padding: 0;
@@ -174,19 +158,17 @@
   line-height: var(--leading-meta);
 }
 
+/* Facts flow as one line of text, so a long one wraps mid-fact instead of
+   dropping whole to the next line. */
+.digest-facts > li {
+  display: inline;
+}
+
 /* The dot trails each fact, so a wrapped row never starts with one. */
 .digest-facts > li:not(:last-child)::after {
   content: '·';
   margin: 0 0.6ch;
   color: var(--hairline);
-}
-
-.digest-fact-rows + .digest-note {
-  margin-top: 4px;
-}
-
-.digest-note + .digest-note {
-  margin-top: 6px;
 }
 
 .digest-foot {
@@ -315,69 +297,133 @@
   }
 }
 
-/* ── Files and details: quiet mono controls under the note ─────────── */
+/* ── Items on a run page ─────────────────────────────────────────
+   Read top to bottom: who, the title (the only underlined thing), the facts,
+   then labelled lines, then the one action. Space separates items. */
 
-.digest-files {
+.digest-ledger:has(> .digest-item) {
+  gap: 44px;
+}
+
+.digest-item {
   display: flex;
-  flex-wrap: wrap;
-  gap: 2px var(--space-3);
+  flex-direction: column;
+  gap: var(--space-2);
+  max-width: var(--measure-read);
+}
+
+.digest-item-head {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.digest-item-who {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+}
+
+.digest-item-head > .digest-link,
+.digest-item-head > span {
+  align-self: flex-start;
+}
+
+.digest-item-head > .digest-facts {
+  margin-top: 3px;
+}
+
+.digest-item-head > .digest-facts + .digest-facts {
+  margin-top: 0;
+}
+
+/* Label on the left in quiet mono, the line itself in ink. */
+.digest-points {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   margin: 0;
 }
 
-/* The one action on a row: a faint outlined chip, so it doesn't read as text. */
-.digest-copy {
-  padding: 0 8px;
-  border: 1px solid color-mix(in srgb, var(--hairline) 45%, transparent);
-  border-radius: 4px;
-  font-size: var(--text-meta);
-  letter-spacing: inherit;
-  cursor: pointer;
-  transition: border-color var(--duration-quick) var(--ease-calm);
+.digest-points > div {
+  display: grid;
+  grid-template-columns: 3.25rem minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--space-1);
 }
 
-.digest-copy:hover {
-  border-color: var(--hairline);
+.digest-points dt {
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  line-height: var(--leading-small);
+}
+
+.digest-points dd {
+  margin: 0;
+  font-size: var(--text-small);
+  line-height: var(--leading-small);
+}
+
+.digest-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.digest-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+/* A plain small button: outlined, mono. Hover darkens it; nothing moves. */
+.digest-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 104px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-hair);
+  background: none;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    color var(--duration-quick) var(--ease-calm),
+    border-color var(--duration-quick) var(--ease-calm);
+}
+
+.digest-action:hover {
+  border-color: var(--ink-muted);
+  color: var(--ink);
+}
+
+.digest-action:active {
+  border-color: var(--ink);
+}
+
+.digest-action:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
 .digest-details > summary {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
   color: var(--ink-muted);
   font-family: var(--font-mono);
   font-size: var(--text-meta);
   cursor: pointer;
-  list-style: none;
-}
-
-.digest-details > summary::-webkit-details-marker {
-  display: none;
-}
-
-/* A small turned caret, no icon font. */
-.digest-details > summary::before {
-  content: '';
-  width: 5px;
-  height: 5px;
-  border-right: 1px solid currentColor;
-  border-bottom: 1px solid currentColor;
-  transform: translateY(-2px) rotate(-45deg);
-  transition: transform var(--duration-quick) var(--ease-calm);
-}
-
-.digest-details[open] > summary::before {
-  transform: translateY(-3px) rotate(45deg);
-}
-
-.digest-details > summary:hover {
-  color: var(--ink);
 }
 
 .digest-details > ul {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  max-width: var(--measure-read);
   margin: var(--space-1) 0 0;
   padding: 0;
   list-style: none;
@@ -387,7 +433,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .digest-details > summary::before {
+  .digest-action {
     transition: none;
   }
 }

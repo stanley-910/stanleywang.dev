@@ -12,6 +12,8 @@ export interface DigestItem {
    *  [["$130k-180k", "NYC, SF"], ["Fall 2026 to Summer 2027", "posted 3d ago", "rolling"]]. */
   facts?: string[] | string[][]
   note?: string
+  /** Labelled lines read top to bottom, e.g. { label: "Fit", text: "…" }. */
+  points?: DigestPoint[]
   url?: string
   /** Groups consecutive items under a heading, e.g. "Good fits" / "Maybes". */
   section?: string
@@ -21,6 +23,11 @@ export interface DigestItem {
   files?: DigestFileRef[]
   /** Plain text a "Copy brief" control puts on the clipboard, e.g. context to paste into an agent chat. */
   copy?: string
+}
+
+export interface DigestPoint {
+  label: string
+  text: string
 }
 
 export interface DigestDetails {
@@ -98,6 +105,18 @@ function parseDetails(v: unknown, field: string): DigestDetails[] | undefined {
   })
 }
 
+function parsePoints(v: unknown, field: string): DigestPoint[] | undefined {
+  if (v === undefined || v === null) return undefined
+  if (!Array.isArray(v)) throw new Error(`${field} must be an array`)
+  return v.slice(0, 8).map((d, k) => {
+    const o = (d ?? {}) as Record<string, unknown>
+    return {
+      label: str(o.label, 24, `${field}[${k}].label`),
+      text: str(o.text, 400, `${field}[${k}].text`),
+    }
+  })
+}
+
 function parseFiles(v: unknown, field: string): DigestFileRef[] | undefined {
   if (v === undefined || v === null) return undefined
   if (!Array.isArray(v)) throw new Error(`${field} must be an array`)
@@ -152,6 +171,7 @@ export function parseRun(
       mark,
       facts: facts && parseFacts(facts, `items[${i}].facts`),
       note: optStr(it.note, 1000, `items[${i}].note`),
+      points: parsePoints(it.points, `items[${i}].points`),
       url: httpUrl(it.url, `items[${i}].url`),
       section: optStr(it.section, 60, `items[${i}].section`),
       details: parseDetails(it.details, `items[${i}].details`),

@@ -33,17 +33,18 @@ function Item({ item, base }: { item: DigestItem; base: string }) {
     !item.section && item.mark && SHOWN_MARKS.has(item.mark)
       ? item.mark
       : undefined
+  const rows = factRows(item)
   return (
-    <li className="digest-row" data-mark={item.mark}>
-      {(item.subtitle || mark) && (
-        <p className="digest-row-meta">
-          {item.subtitle && (
-            <span className="digest-name">{item.subtitle}</span>
-          )}
-          {mark && <span className="digest-meta digest-mark">{mark}</span>}
-        </p>
-      )}
-      <div className="digest-row-body">
+    <li className="digest-item" data-mark={item.mark}>
+      <div className="digest-item-head">
+        {(item.subtitle || mark) && (
+          <p className="digest-item-who">
+            {item.subtitle && (
+              <span className="digest-name">{item.subtitle}</span>
+            )}
+            {mark && <span className="digest-meta digest-mark">{mark}</span>}
+          </p>
+        )}
         {item.url ? (
           <a
             className="link digest-link"
@@ -56,49 +57,59 @@ function Item({ item, base }: { item: DigestItem; base: string }) {
         ) : (
           <span>{item.title}</span>
         )}
-        {factRows(item).length > 0 && (
-          <div className="digest-fact-rows">
-            {factRows(item).map((row, r) => (
-              <ul key={r} className="digest-facts">
-                {row.map((f, k) => (
-                  <li key={k}>{f}</li>
-                ))}
-              </ul>
+        {rows.map((row, r) => (
+          <ul key={r} className="digest-facts">
+            {row.map((f, k) => (
+              <li key={k}>{f}</li>
             ))}
-          </div>
-        )}
-        {item.note?.split('\n').map((para, k) => (
-          <p key={k} className="digest-note">
-            {para}
-          </p>
-        ))}
-        {(item.copy || (item.files && item.files.length > 0)) && (
-          <p className="link-row digest-files">
-            {item.copy && <CopyButton text={item.copy} />}
-            {item.files?.map((f) => (
-              <a
-                key={f.name}
-                className="link-quiet digest-quiet"
-                href={`${base}/${f.name}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {f.label}
-              </a>
-            ))}
-          </p>
-        )}
-        {item.details?.map((d) => (
-          <details key={d.label} className="digest-details">
-            <summary className="digest-quiet">{d.label}</summary>
-            <ul>
-              {d.lines.map((l, k) => (
-                <li key={k}>{l}</li>
-              ))}
-            </ul>
-          </details>
+          </ul>
         ))}
       </div>
+      {item.points && item.points.length > 0 && (
+        <dl className="digest-points">
+          {item.points.map((pt) => (
+            <div key={pt.label}>
+              <dt>{pt.label}</dt>
+              <dd>{pt.text}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {item.note && (
+        <div className="digest-notes">
+          {item.note.split('\n').map((para, k) => (
+            <p key={k} className="digest-note">
+              {para}
+            </p>
+          ))}
+        </div>
+      )}
+      {item.details?.map((d) => (
+        <details key={d.label} className="digest-details">
+          <summary>{d.label}</summary>
+          <ul>
+            {d.lines.map((l, k) => (
+              <li key={k}>{l}</li>
+            ))}
+          </ul>
+        </details>
+      ))}
+      {(item.copy || (item.files && item.files.length > 0)) && (
+        <div className="digest-actions">
+          {item.copy && <CopyButton text={item.copy} />}
+          {item.files?.map((f) => (
+            <a
+              key={f.name}
+              className="digest-action"
+              href={`${base}/${f.name}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {f.label}
+            </a>
+          ))}
+        </div>
+      )}
     </li>
   )
 }
